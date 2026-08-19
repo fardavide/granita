@@ -135,6 +135,18 @@ let package = Package(
             path: "Client/Connection/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
+        .target(
+            name: "ClientConnectionPresentation",
+            dependencies: ["ClientConnectionUi", "ClientConnectionDomain", "CoreBrandingDomain"],
+            path: "Client/Connection/Presentation",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .testTarget(
+            name: "ClientConnectionPresentationTests",
+            dependencies: ["ClientConnectionPresentation", "ClientConnectionDomain"],
+            path: "Client/Connection/PresentationTests",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
         .testTarget(
             name: "ClientConnectionDataTests",
             dependencies: ["ClientConnectionData", "ClientConnectionDomain", "CoreDiffDomain"],
@@ -233,6 +245,7 @@ let package = Package(
                 "ClientConnectionDomain",
                 "ClientConnectionData",
                 "ClientConnectionUi",
+                "ClientConnectionPresentation",
                 "ClientWorktreesPresentation",
                 "ClientWorktreesData",
                 "ClientViewerPresentation",

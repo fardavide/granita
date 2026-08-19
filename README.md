@@ -71,6 +71,16 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.2 — 2026-08-19
+- **The phone now looks for your Mac.** Opening Granita browses the local network for a Mac running
+  the server and lists what it finds, updating as Macs appear and go to sleep. Nothing can be read
+  yet — selecting one does nothing — but the app is no longer a blank screen.
+- **Refusing local network permission says so, and offers the fix.** iOS makes a denied browser look
+  identical to one that is simply finding nothing, so that case is called out explicitly with a
+  button into Settings rather than left as an endless spinner.
+- **The Mac serves its first endpoint.** `granita-server` answers `/v1/health` and advertises itself
+  over Bonjour, so the two halves can find each other.
+
 ### 0.0.1 — 2026-08-19
 - **The project exists and builds end to end.** Both apps compile and launch empty, the backend
   runs from a terminal, and the test suite is green. The module graph for every feature is in
