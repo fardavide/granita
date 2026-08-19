@@ -1,0 +1,16 @@
+diff --git a/src/renamed-from.txt b/src/renamed-to.txt
+similarity index 82%
+rename from src/renamed-from.txt
+rename to src/renamed-to.txt
+index 1e395f2..f6e5203 100644
+--- a/src/renamed-from.txt
++++ b/src/renamed-to.txt
+@@ -2,7 +2,7 @@ alpha
+ beta
+ gamma
+ delta
+-epsilon
++EPSILON
+ zeta
+ eta
+ theta

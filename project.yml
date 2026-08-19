@@ -1,0 +1,173 @@
+# Xcode project spec — regenerate Granita.xcodeproj with `make project` (XcodeGen).
+#
+# The generated project AND its shared schemes are committed, which is the one place this file
+# departs from the spec's "gitignored build artifact". Xcode Cloud requires a project that is
+# "continuously present" in the repository and reads its product list from shared schemes; a
+# project generated at build time is explicitly unsupported. Committing it also retires the
+# spec's Package.resolved trap, since nothing under the project is ignored any more.
+#
+# Never hand-edit project.pbxproj. This file is the source; `make project` is how it moves.
+
+name: Granita
+
+options:
+  bundleIdPrefix: dev.fardavide.granita
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "26.0"
+    macOS: "26.0"
+  # Keep the generated project byte-stable across runs, so regenerating never churns the diff.
+  generateEmptyDirectories: false
+
+packages:
+  Granita:
+    path: Packages/Granita
+
+# Settings both apps share. The version lives here, once, and `make version` is the only thing
+# that edits it.
+settingGroups:
+  shared:
+    MARKETING_VERSION: 0.0.1
+    # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
+    # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
+    # build number that repeats within a release train, so a hardcoded 1 fails on the second
+    # upload. See .claude/skills/versioning.
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: A7Q83J6LR4
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    CLANG_ENABLE_MODULES: YES
+
+targets:
+
+  GranitaMac:
+    type: application
+    platform: macOS
+    sources:
+      - Apps/GranitaMac
+    dependencies:
+      # The shell links exactly one product: the composition root. Nothing else is reachable
+      # from the app bundle, which is what keeps the layer graph meaningful.
+      - package: Granita
+        product: ServerMacUi
+    entitlements:
+      path: Apps/GranitaMac/GranitaMac.entitlements
+    info:
+      path: Apps/GranitaMac/Info.plist
+      properties:
+        CFBundleDisplayName: Granita
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Menu bar only: no Dock icon, no main window.
+        LSUIElement: true
+        # Required for notarised distribution outside the Mac App Store (ITMS-90242 territory
+        # for store builds, and it is what Finder shows as the app's category either way).
+        LSApplicationCategoryType: public.app-category.developer-tools
+        # Local network privacy applies to macOS 15+ too, and it covers *registering* a Bonjour
+        # service, not only browsing — so the menu bar app shows an approval alert the first time
+        # it advertises, and needs both keys to do so.
+        NSLocalNetworkUsageDescription: >-
+          Granita serves your diffs to your iPhone and iPad over your local network.
+        NSBonjourServices:
+          - _granita._tcp
+        # Standard HTTPS only. Without this every upload sits in "Missing Compliance" and
+        # reaches no tester until answered by hand, every single time.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      groups: [shared]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac
+        PRODUCT_NAME: Granita
+        # Notarisation requires the hardened runtime. Exec'ing /usr/bin/git is unaffected by it —
+        # the binary is Apple-signed.
+        ENABLE_HARDENED_RUNTIME: YES
+        # macOS 15+ tracks program identity by code signature for local network privacy, so an
+        # ad-hoc "Sign to Run Locally" identity makes the system lose the app across rebuilds and
+        # Bonjour registration starts failing or re-prompting for no visible reason.
+        CODE_SIGN_STYLE: Automatic
+
+  GranitaMobile:
+    type: application
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - Apps/GranitaMobile
+    dependencies:
+      - package: Granita
+        product: ClientAppUi
+    info:
+      path: Apps/GranitaMobile/Info.plist
+      properties:
+        CFBundleDisplayName: Granita
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: >-
+          Granita finds your Mac on your local network so you can read the diffs it serves.
+        NSBonjourServices:
+          - _granita._tcp
+        NSCameraUsageDescription: >-
+          Granita reads the pairing code your Mac displays.
+        # A custom trust evaluation in a URLSessionDelegate satisfies App Transport Security on
+        # its own, so no exception is required. This key is kept as a declaration of intent, and
+        # because it is what a plaintext fallback would need if TLS ever had to be turned off.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.fardavide.granita.pairing
+            CFBundleURLSchemes: [granita]
+        # iPad is a real target, not a scaled iPhone, so every iPad orientation is supported —
+        # that is what makes the app resizable for Split View, Slide Over and Stage Manager.
+        # `UIRequiresFullScreen` is deliberately absent: it is deprecated as of iOS 26 and will be
+        # ignored, so declaring it only produces a build warning.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      groups: [shared]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile
+        PRODUCT_NAME: Granita
+        CODE_SIGN_STYLE: Automatic
+        # 1,2 = iPhone and iPad. With iPhone alone iPadOS runs the app in compatibility mode: a
+        # fixed iPhone-shaped window that cannot be resized, with no multitasking.
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+# XcodeGen emits a shared scheme only when a `schemes:` block declares one. Without this, Xcode
+# Cloud's product list comes up empty with no explanation — verify with
+# `xcodebuild -project Granita.xcodeproj -describeAllArchivableProducts -json`.
+schemes:
+
+  GranitaMac:
+    build:
+      targets:
+        GranitaMac: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  GranitaMobile:
+    build:
+      targets:
+        GranitaMobile: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

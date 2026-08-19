@@ -1,0 +1,16 @@
+diff --git a/src/modified.txt b/src/modified.txt
+index c9e9e05..d96039a 100644
+--- a/src/modified.txt
++++ b/src/modified.txt
+@@ -1,4 +1,4 @@
+-one
++ONE
+ two
+ three
+ four
+@@ -7,4 +7,4 @@ six
+ seven
+ eight
+ nine
+-ten
++TEN

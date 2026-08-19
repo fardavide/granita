@@ -1,0 +1,13 @@
+diff --git a/src/sectioned.swift b/src/sectioned.swift
+index 7c4a6fa..ba8be42 100644
+--- a/src/sectioned.swift
++++ b/src/sectioned.swift
+@@ -3,7 +3,7 @@ import Foundation
+ func alpha() -> Int {
+     let a = 1
+     let b = 2
+-    let c = 3
++    let c = 30
+     let d = 4
+     let e = 5
+     return a + b + c + d + e

@@ -1,0 +1,7 @@
+diff --git a/src/untracked.txt b/src/untracked.txt
+new file mode 100644
+index 0000000..7de1b76
+--- /dev/null
++++ b/src/untracked.txt
+@@ -0,0 +1 @@
++never staged

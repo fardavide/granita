@@ -1,0 +1,7 @@
+diff --git a/src/single-line.txt b/src/single-line.txt
+index 5cd091d..2619f7c 100644
+--- a/src/single-line.txt
++++ b/src/single-line.txt
+@@ -1 +1 @@
+-single line
++SINGLE LINE

@@ -1,0 +1,129 @@
+diff --git a/src/a file with spaces.txt b/src/a file with spaces.txt
+index 6ee6362..66e8b1e 100644
+--- a/src/a file with spaces.txt	
++++ b/src/a file with spaces.txt	
+@@ -1 +1 @@
+-a file with spaces.txt lives here
++a file with spaces.txt lives here, edited
+diff --git a/src/added.txt b/src/added.txt
+new file mode 100644
+index 0000000..858e580
+--- /dev/null
++++ b/src/added.txt
+@@ -0,0 +1,2 @@
++brand new
++second line
+diff --git a/src/binary.bin b/src/binary.bin
+index 553a99f..496bad5 100644
+Binary files a/src/binary.bin and b/src/binary.bin differ
+diff --git a/src/caffè-日本語-🧊.txt b/src/caffè-日本語-🧊.txt
+index 7ca5441..10830b6 100644
+--- a/src/caffè-日本語-🧊.txt
++++ b/src/caffè-日本語-🧊.txt
+@@ -1 +1 @@
+-unicode path
++unicode path, edited — caffè 日本語 🧊
+diff --git a/src/crlf.txt b/src/crlf.txt
+index 2e11fe5..577f794 100644
+--- a/src/crlf.txt
++++ b/src/crlf.txt
+@@ -1,3 +1,3 @@
+ first
+-second
++SECOND
+ third
+diff --git a/src/deleted.txt b/src/deleted.txt
+deleted file mode 100644
+index 2b92c48..0000000
+--- a/src/deleted.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-delete me
+-and me
+diff --git a/src/mode-change.sh b/src/mode-change.sh
+old mode 100644
+new mode 100755
+diff --git a/src/modified.txt b/src/modified.txt
+index c9e9e05..d96039a 100644
+--- a/src/modified.txt
++++ b/src/modified.txt
+@@ -1,4 +1,4 @@
+-one
++ONE
+ two
+ three
+ four
+@@ -7,4 +7,4 @@ six
+ seven
+ eight
+ nine
+-ten
++TEN
+diff --git a/src/no-newline-both.txt b/src/no-newline-both.txt
+index d33b21f..c326927 100644
+--- a/src/no-newline-both.txt
++++ b/src/no-newline-both.txt
+@@ -1 +1 @@
+-no trailing newline here
+\ No newline at end of file
++no trailing newline here, edited
+\ No newline at end of file
+diff --git a/src/no-newline-gained.txt b/src/no-newline-gained.txt
+index 3e223b9..415259c 100644
+--- a/src/no-newline-gained.txt
++++ b/src/no-newline-gained.txt
+@@ -1 +1 @@
+-gains a newline
+\ No newline at end of file
++gains a newline
+diff --git a/src/no-newline-lost.txt b/src/no-newline-lost.txt
+index e980f74..468d3ac 100644
+--- a/src/no-newline-lost.txt
++++ b/src/no-newline-lost.txt
+@@ -1 +1 @@
+-loses a newline
++loses a newline
+\ No newline at end of file
+diff --git a/src/renamed-from.txt b/src/renamed-to.txt
+similarity index 82%
+rename from src/renamed-from.txt
+rename to src/renamed-to.txt
+index 1e395f2..f6e5203 100644
+--- a/src/renamed-from.txt
++++ b/src/renamed-to.txt
+@@ -2,7 +2,7 @@ alpha
+ beta
+ gamma
+ delta
+-epsilon
++EPSILON
+ zeta
+ eta
+ theta
+diff --git a/src/sectioned.swift b/src/sectioned.swift
+index 7c4a6fa..ba8be42 100644
+--- a/src/sectioned.swift
++++ b/src/sectioned.swift
+@@ -3,7 +3,7 @@ import Foundation
+ func alpha() -> Int {
+     let a = 1
+     let b = 2
+-    let c = 3
++    let c = 30
+     let d = 4
+     let e = 5
+     return a + b + c + d + e
+diff --git a/src/single-line.txt b/src/single-line.txt
+index 5cd091d..2619f7c 100644
+--- a/src/single-line.txt
++++ b/src/single-line.txt
+@@ -1 +1 @@
+-single line
++SINGLE LINE
+diff --git a/vendor/sub b/vendor/sub
+index 513146a..73d2435 160000
+--- a/vendor/sub
++++ b/vendor/sub
+@@ -1 +1 @@
+-Subproject commit 513146a64694dea774646a5f9c1a7da4f6b486ad
++Subproject commit 73d24354b1423bc991a4c0e2374f38fb9ba253d1

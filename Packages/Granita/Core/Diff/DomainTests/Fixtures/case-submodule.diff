@@ -1,0 +1,7 @@
+diff --git a/vendor/sub b/vendor/sub
+index 513146a..73d2435 160000
+--- a/vendor/sub
++++ b/vendor/sub
+@@ -1 +1 @@
+-Subproject commit 513146a64694dea774646a5f9c1a7da4f6b486ad
++Subproject commit 73d24354b1423bc991a4c0e2374f38fb9ba253d1

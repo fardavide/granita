@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+
+# Xcode
+#
+# Granita.xcodeproj is deliberately NOT ignored. It is generated from project.yml by
+# `make project` and must never be hand-edited — but it is committed, because Xcode Cloud
+# requires a project that is continuously present in the repository and reads its product list
+# from the shared schemes inside it.
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Swift Package Manager
+.build/
+# .swiftpm is per-user state, except shared schemes
+**/.swiftpm/*
+!**/.swiftpm/xcode
+**/.swiftpm/xcode/*
+!**/.swiftpm/xcode/xcshareddata
+
+# Generated git fixture repositories. Disposable: `make fixtures` rebuilds them. The golden
+# .diff files they produce, under Core/Diff/DomainTests/Fixtures/, ARE committed.
+.fixtures/
+
+# Claude Code
+.claude/settings.local.json
+.claude/worktrees/
+
+# Python (icon and fixture tooling)
+__pycache__/

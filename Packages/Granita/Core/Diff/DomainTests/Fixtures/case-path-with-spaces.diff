@@ -1,0 +1,7 @@
+diff --git a/src/a file with spaces.txt b/src/a file with spaces.txt
+index 6ee6362..66e8b1e 100644
+--- a/src/a file with spaces.txt	
++++ b/src/a file with spaces.txt	
+@@ -1 +1 @@
+-a file with spaces.txt lives here
++a file with spaces.txt lives here, edited

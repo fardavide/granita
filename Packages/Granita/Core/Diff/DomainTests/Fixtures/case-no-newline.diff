@@ -1,0 +1,25 @@
+diff --git a/src/no-newline-both.txt b/src/no-newline-both.txt
+index d33b21f..c326927 100644
+--- a/src/no-newline-both.txt
++++ b/src/no-newline-both.txt
+@@ -1 +1 @@
+-no trailing newline here
+\ No newline at end of file
++no trailing newline here, edited
+\ No newline at end of file
+diff --git a/src/no-newline-gained.txt b/src/no-newline-gained.txt
+index 3e223b9..415259c 100644
+--- a/src/no-newline-gained.txt
++++ b/src/no-newline-gained.txt
+@@ -1 +1 @@
+-gains a newline
+\ No newline at end of file
++gains a newline
+diff --git a/src/no-newline-lost.txt b/src/no-newline-lost.txt
+index e980f74..468d3ac 100644
+--- a/src/no-newline-lost.txt
++++ b/src/no-newline-lost.txt
+@@ -1 +1 @@
+-loses a newline
++loses a newline
+\ No newline at end of file
