@@ -98,7 +98,9 @@ make project  # regenerate Granita.xcodeproj after editing project.yml
   merge. `gh pr merge --admin` will fail; the answer is to fix the red check.
 - **Merging to `main` publishes.** Every squash merge archives on Xcode Cloud — TestFlight for the
   phone app, notarised Developer ID for the Mac app. A build cannot be un-published.
-- Rebase onto `main` rather than merging it in; linear history rejects the merge commit.
+- If a PR is refused as out of date, run `gh api -X PUT /repos/fardavide/granita/pulls/<n>/update-branch`
+  rather than rebasing and force-pushing. The squash flattens the merge commit, so linear history
+  still holds, and nothing is rewritten.
 - `Granita.xcodeproj` is generated and committed. **Never hand-edit `project.pbxproj`.**
 
 ## Sanctioned tooling
