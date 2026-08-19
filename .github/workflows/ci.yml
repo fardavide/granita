@@ -100,3 +100,97 @@ jobs:
           xcodegen --version
       - name: Regenerate and compare
         run: make verify-generated
+
+  # Reports *and* gates. The rule is Oltre's: a plain ratchet with no floor and no slack — every
+  # percentage in the per-module table must hold at or above the last green `main` run. A fixed
+  # threshold either sits so low it never fires or so high it blocks unrelated work; a ratchet asks
+  # the only question worth asking of a pull request, which is whether it made things worse.
+  coverage:
+    name: Coverage
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+
+      # The delta's other half. Only `main` writes a baseline, so the most recent cache matching the
+      # prefix is always the last green `main` run — and a pull request branch can read the default
+      # branch's caches, which is what makes this work with no token and no external service.
+      # Restored before the measurement, and outside `build/`, which the measurement wipes.
+      - name: Restore the main coverage baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: .coverage-baseline
+          key: granita-coverage-v1-${{ github.sha }}
+          restore-keys: granita-coverage-v1-
+
+      # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
+      # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
+      # image is externally managed and refuses a plain `pip install`.
+      - name: Test the coverage script
+        run: |
+          python3 -m venv .venv-coverage
+          .venv-coverage/bin/pip install --quiet pytest
+          .venv-coverage/bin/python -m pytest .github/scripts -q
+
+      - name: Measure coverage
+        run: .github/scripts/measure-coverage.sh
+
+      - name: Render the report
+        run: |
+          python3 .github/scripts/coverage.py render \
+            --current build/coverage/summary.json \
+            --baseline .coverage-baseline/summary.json \
+            --out build/coverage/comment.md \
+            --verdict-out build/coverage/verdict.json
+
+      - name: Publish to the run summary
+        run: cat build/coverage/comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      # One comment per pull request, rewritten in place: it should show where coverage *is*, not a
+      # transcript of every push. A fork gets a read-only token and cannot comment — the run summary
+      # above still carries the report, so this is a soft failure.
+      - name: Comment the report on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('build/coverage/comment.md', 'utf8');
+            const marker = '<!-- granita-coverage-report -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Store this run as the new baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p .coverage-baseline
+          cp build/coverage/summary.json .coverage-baseline/summary.json
+      - name: Save the baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: .coverage-baseline
+          key: granita-coverage-v1-${{ github.sha }}
+
+      # Last, so a blocked pull request already carries the comment explaining why. Pull requests
+      # only: on a `main` push the merge has happened and the gate can prevent nothing, and turning
+      # `main` red for a number no revert-free action can fix is a false alarm rather than a signal.
+      # The baseline above is stored first for the same reason — `main` must keep tracking reality,
+      # or every later pull request is measured against a number `main` no longer has.
+      - name: Enforce the coverage gate
+        if: github.event_name == 'pull_request'
+        run: python3 .github/scripts/coverage.py enforce --verdict build/coverage/verdict.json
