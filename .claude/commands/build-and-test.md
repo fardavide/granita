@@ -45,7 +45,20 @@ gh pr checks --watch      # exits non-zero on failure; this is the gate
 gh pr merge --squash
 ```
 
-- Rebase onto `main` if the merge is refused as out of date — never merge `main` in, since linear
-  history rejects the merge commit.
+- **If the merge is refused as out of date, use GitHub's own update:**
+
+  ```bash
+  gh api -X PUT /repos/fardavide/granita/pulls/<n>/update-branch
+  ```
+
+  That merges `main` into the branch. The merge commit never reaches `main`, because the squash
+  flattens it, so `required_linear_history` is satisfied — and nothing is rewritten, so no
+  force-push and no lease to go stale.
+
+  **Do not rebase-and-force-push a pull request branch.** It looks tidier and it is how this went
+  wrong once: a lease went stale during unrelated branch work, the force-push was rejected, and the
+  pull request had in fact already been merged. Rebasing is the right instinct for *local* work; for
+  a branch that already exists on the remote with checks attached to its head, it throws away the
+  checks and risks clobbering someone else's push.
 - `gh pr merge --admin` will fail. There is no bypass; the answer is to fix the red check.
 - Do not arm auto-merge. Watch the checks, then merge explicitly.
