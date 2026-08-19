@@ -2,7 +2,9 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.1.** Scaffold complete, CI green, `main` protected. No product behaviour yet.
+**Version 0.0.1.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+`/v1/health` is served and discoverable over Bonjour; the phone app is still an empty state.
 
 ## Milestones
 
@@ -11,6 +13,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | | Milestone | State |
 |---|---|---|
 | M0 | Scaffold — layout, manifest, CI, ruleset, harness, fixtures | **done** |
+| — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
 | M1 | `CoreDiffDomain` parser, display columns, word diff; `CoreTreeDomain` grouping | next |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
@@ -25,6 +28,9 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - A golden fixture corpus covering every parser case in the spec, generated from the real `git`
   binary and committed, plus the fixture repositories the git-layer tests will drive.
 - Four gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner.
+- `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
+  otherwise, with the advertised port confirmed to be the one actually serving.
+- An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment
 
@@ -46,9 +52,12 @@ Still unverified, because each needs code that does not exist yet:
 Tracked here because none of it can be done from a CLI. See the handover in the pull request that
 sets up delivery.
 
-- Apple Developer Program membership, and a Developer ID Application certificate.
-- Bundle identifiers registered, an App Store Connect record for the phone app, an internal
-  TestFlight tester group, and accepted agreements.
-- Apple's GitHub app installed on this repository.
-- The two Xcode Cloud workflows, created in Xcode.app.
+- ~~Apple Developer Program membership.~~ Done. A Developer ID Application certificate is still
+  needed to distribute the **Mac** app outside the store, but not to develop or to ship the phone
+  app — the existing Apple Development identity is a real signature, which is all the local network
+  privacy trap requires.
+- ~~Bundle identifier, App Store Connect record, internal tester group, agreements, Apple's GitHub
+  app, and the iOS Xcode Cloud workflow.~~ Done — build 1 reached TestFlight.
+- A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
+  Not started; the Mac app runs locally in the meantime.
 - The first project folder to add.

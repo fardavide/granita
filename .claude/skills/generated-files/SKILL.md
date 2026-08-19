@@ -108,3 +108,17 @@ there all along.
 - More generally: a check that mutates what it measures produces a finding about itself. When an
   inspection reports something surprising about a build product, re-create the product before
   believing it.
+
+## Opening the project in Xcode rewrites the shared schemes
+
+Xcode normalises `Granita.xcodeproj/xcshareddata/xcschemes/*.xcscheme` the moment the project is
+opened — it rewrites the scheme `version` and sets `BuildableName` to the resolved product name
+(`Granita.app`) where XcodeGen writes the target name (`GranitaMobile.app`). Both work; Xcode Cloud
+resolves the target by `BlueprintIdentifier`, not by that string.
+
+But the committed schemes are **XcodeGen's output**, so Xcode's rewrite is drift, and the
+"Generated files" job will go red on it.
+
+**After opening the project in Xcode, run `make project` before committing** — and never
+`git add -A` straight after an Xcode session without checking what it touched. That is exactly how
+this landed in a documentation-only commit and turned a pull request red.
