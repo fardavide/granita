@@ -94,3 +94,17 @@ CoreGraphics instead and the generator asserts the resulting PNG colour type on 
 The three SVGs are the three appearances iOS 26 and macOS 26 render — any, dark, tinted. Replacing
 the artwork means replacing files in `Art/icon/` and running `make icons`; if the new artwork drops
 the squircle clip, the generator fails rather than silently producing a double-masked icon.
+
+## Inspecting a build product without destroying it
+
+`plutil -extract <key> <format> <file>` **rewrites the file in place**. Without an explicit `-o -`
+it does not print to stdout — it replaces the plist with the extracted value. That mistake truncated
+an archived `Info.plist` from 1729 bytes to a 5-byte array during the Xcode Cloud prep, after which
+every further check saw a plist with no keys and reported a missing `UIDeviceFamily` that had been
+there all along.
+
+- **Read a plist with `plutil -p <file>`.** It is read-only.
+- Use `plutil -extract` only with `-o -`.
+- More generally: a check that mutates what it measures produces a finding about itself. When an
+  inspection reports something surprising about a build product, re-create the product before
+  believing it.

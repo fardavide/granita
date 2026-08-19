@@ -182,15 +182,27 @@ than trusted, on the archived product:
 the way Xcode Cloud calls it: `CI_BUILD_NUMBER=42` rewrote `CURRENT_PROJECT_VERSION` across all four
 build configurations and re-pinned `MARKETING_VERSION` from `project.yml`.
 
-### A false alarm worth recording
+### `UIDeviceFamily` is present — and how a check destroyed the evidence
 
-`UIDeviceFamily` is **absent from the unsigned archive** and present in both a simulator build and a
-plain device build (`[1, 2]` in each), with `TARGETED_DEVICE_FAMILY = 1,2` resolving correctly for
-the Release/device configuration.
+`UIDeviceFamily` is `[1, 2]` in the unsigned archive, so iPad support — a LOCKED v1 requirement — is
+intact. `TARGETED_DEVICE_FAMILY` resolves to `1,2` for the Release/device configuration and the
+simulator and plain device builds agree.
 
-So it is an artifact of archiving with `CODE_SIGNING_ALLOWED=NO`, not a defect: an unsigned archive
-is not byte-identical to a real one, and this key is one of the differences. iPad support is a LOCKED
-v1 requirement, so **confirm on the first real TestFlight build that it lists iPhone and iPad** — and
-do not "fix" the project in the meantime, because there is nothing wrong with it.
+An earlier revision of this file claimed the opposite, and the cause is worth keeping because it will
+bite again: **`plutil -extract <key> <format> <file>` rewrites the file in place.** Without `-o -`
+it does not print to stdout; it replaces the plist with the extracted value. The check ran, silently
+truncated `Info.plist` from 1729 bytes to a 5-byte array, and every inspection afterwards saw a plist
+with no keys — which read exactly like "the key is missing".
+
+Reproduced deliberately:
+
+```
+before                                  1729 bytes
+plutil -extract UIDeviceFamily json …      5 bytes   ← the file, not stdout
+```
+
+**Inspect a plist with `plutil -p <file>`, which is read-only.** Use `plutil -extract` only with an
+explicit `-o -`. The same applies to anything else that inspects a build product: a check that
+mutates what it measures produces a finding about itself.
 
 Everything past signing is unproven until the first Xcode Cloud run.
