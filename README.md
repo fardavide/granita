@@ -71,6 +71,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.3 — 2026-08-19
+- **Reopening the app after refusing local network access now explains itself.** It said "Could not
+  search" and showed a raw network error code. iOS reports a refused permission one way to the first
+  browser an app creates and a different way to every one after that, and only the first was
+  recognised — so the screen that offers to open Settings appeared once and never again.
+
 ### 0.0.2 — 2026-08-19
 - **The phone now looks for your Mac.** Opening Granita browses the local network for a Mac running
   the server and lists what it finds, updating as Macs appear and go to sleep. Nothing can be read
