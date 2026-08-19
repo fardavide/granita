@@ -206,3 +206,29 @@ explicit `-o -`. The same applies to anything else that inspects a build product
 mutates what it measures produces a finding about itself.
 
 Everything past signing is unproven until the first Xcode Cloud run.
+
+## 12. The walking skeleton, on real hardware
+
+Confirmed on 2026-08-19, end to end, with nothing simulated:
+
+```
+Mac    granita-server advertising _granita._tcp as "Davide's MacBook Pro"
+       dns-sd -L → MacBook-Pro.local.:59145
+       curl      → {"name":"Granita","serverVersion":"0.0.2","apiVersion":1}
+
+phone  Granita 0.0.2, installed from TestFlight, lists "Davide's MacBook Pro"
+```
+
+What that closes, none of which was inferred:
+
+- **Delivery.** Merge to `main` → Xcode Cloud archive → TestFlight → an installed app. Signing,
+  provisioning, the icon and the version keys all real.
+- **Discovery on device.** `NWBrowser` finds the service, and the local network permission prompt
+  appears and works. Neither is observable in the simulator.
+- **mDNS across segments.** The Mac was on Ethernet and the phone on Wi-Fi, so that network bridges
+  multicast DNS between them. Worth knowing, because a router that does not would look exactly like
+  a bug in the app.
+
+**Still unverified: the refused path.** `localNetworkDenied` is covered by a test through a fake, but
+nobody has watched iOS actually withhold the permission. That state exists precisely because a denied
+browser is indistinguishable from one finding nothing, so it is the one worth seeing for real.

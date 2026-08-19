@@ -4,9 +4,12 @@ Where the project is. Update this when a slice lands.
 
 **Version 0.0.2.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
-The two halves can find each other: the Mac serves `/v1/health` and advertises itself over Bonjour,
-and the phone browses for it and lists what it finds. Selecting a Mac does nothing yet — there is no
-pairing, no API client beyond health, and nothing to read.
+The two halves find each other **on real hardware**: the Mac serves `/v1/health` and advertises over
+Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
+across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
+
+Selecting a Mac does nothing yet: there is no pairing, no API client beyond health, and nothing to
+read.
 
 ## Milestones
 
@@ -86,9 +89,10 @@ In order, and the first one is already agreed rather than open:
 
 ## Waiting on Davide
 
-- **Confirmation that discovery works on his iPhone**, including what a *refused* local network
-  permission looks like. That path cannot be exercised in the simulator, which does not implement
-  local network privacy at all, so it is the one acceptance criterion this repository cannot check
-  for itself.
+- **The refused-permission path, seen on device.** Granting works and is confirmed; denying is not.
+  It is covered by a test through a fake, but the real thing cannot be exercised in the simulator —
+  which does not implement local network privacy at all — so whether the screen reads right when iOS
+  actually withholds the permission is still unknown. Turn it off under Settings › Granita › Local
+  Network to check.
 - A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
   Not started; the Mac app runs locally in the meantime, and only distribution needs it.
