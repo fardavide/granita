@@ -34,3 +34,5 @@ build/
 
 # Python (icon and fixture tooling)
 __pycache__/
+.venv-coverage/
+.coverage-baseline/
