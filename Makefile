@@ -10,6 +10,9 @@ IOS_SIM      := platform=iOS Simulator,name=iPhone 17,OS=latest
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
 UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+# Generated and committed, and therefore checkable. The icons are generated and committed too but
+# are deliberately absent — see verify-generated.
+GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
 
 .DEFAULT_GOAL := help
 
@@ -40,21 +43,27 @@ fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures
 	./Scripts/make-fixture-repo.sh
 
 .PHONY: icons
-icons: ## Regenerate both app icon sets
+icons: ## Regenerate both app icon sets from Art/icon/*.svg
 	./Scripts/make-app-icons.py
 
 .PHONY: verify-generated
 verify-generated: ## Fail if the committed project or fixtures are stale versus their sources
-	@$(MAKE) --no-print-directory project fixtures icons
+	@# Icons are deliberately not checked here. Their PNGs are committed, but rasterising an SVG is
+	@# not reproducible across machines or OS releases, so this would compare a runner's
+	@# antialiasing against a laptop's and fail on artwork nobody touched. `make icons` is manual.
+	@$(MAKE) --no-print-directory project fixtures
 	@# Regenerate from a differently-named directory. Anything that leaks the build location into a
 	@# committed fixture — an absolute path, or a tracked file containing one, which changes every
 	@# commit hash downstream of it — shows up here rather than on a runner whose checkout lives
 	@# somewhere else. Two runs in the same directory cannot catch this class of bug.
 	@./Scripts/make-fixture-repo.sh --out "$$(mktemp -d)/granita-path-independence-check" > /dev/null
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "::error::Generated files are stale. Run 'make project fixtures icons' and commit the result."; \
-		git status --porcelain; \
-		git --no-pager diff --stat; \
+	@# Scoped to the generated paths, not the whole tree: this asks "is what is committed what the
+	@# sources produce", which is a different question from "are there uncommitted edits". Checking
+	@# the whole tree would make the target unusable locally mid-change.
+	@if [ -n "$$(git status --porcelain -- $(GENERATED))" ]; then \
+		echo "::error::Generated files are stale. Run 'make project fixtures' and commit the result."; \
+		git status --porcelain -- $(GENERATED); \
+		git --no-pager diff --stat -- $(GENERATED); \
 		exit 1; \
 	fi
 	@echo "Generated files are in sync with their sources."
