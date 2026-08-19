@@ -20,16 +20,49 @@ milestone that will close them. Anything measured is recorded with its number.
 | git, CI runner | 2.55.0 |
 | XcodeGen | 2.46.0 |
 
-## 1. Hummingbird 2 — current, and NIOTS is reachable
+## 1. Hummingbird 2 — current, and the Bonjour bind works end to end
 
 Latest release is 2.26.0; there is no Hummingbird 3, so the spec's choice is current rather than
-pinned to an old major. Resolving it pulls `swift-nio-transport-services` and
-`swift-service-lifecycle` transitively, which are the two the design depends on: the former is what
-makes `BindAddress.nwEndpoint` route through the listener bootstrap that listens and advertises
-Bonjour in one operation, and the latter is what the server's start and stop cycle is built on.
+pinned to an old major.
 
-Not yet exercised in code — the bind path and TLS options are M2/M3 work — but the packages resolve
-and compile in this graph.
+**The §8 bind is real and was run.** `BindAddress.nwEndpoint` exists, and `Server.makeServer` routes
+it through `NIOTSListenerBootstrap.bind(endpoint:)` — it `preconditionFailure`s rather than
+degrading if handed a plain socket bootstrap, so running on a `NIOTSEventLoopGroup` is mandatory
+rather than advisory. `NIOTSListenerBootstrap(validatingGroup:)` is how the group is checked.
+
+Verified by running `granita-server` and browsing for it:
+
+```
+dns-sd -B _granita._tcp local
+  Add  3   1 local.  _granita._tcp.  Granita Skeleton Test
+  Add  2  14 local.  _granita._tcp.  Granita Skeleton Test
+
+dns-sd -L "Granita Skeleton Test" _granita._tcp local
+  … can be reached at MacBook-Pro.local.:59144
+
+curl http://127.0.0.1:59144/v1/health
+  {"apiVersion":1,"serverVersion":"0.0.1","name":"Granita"}
+```
+
+So the whole point of the trap holds: one object binds and advertises, and **the advertised port is
+the one actually serving**. A separate `NWListener` would have bound the port itself, and two objects
+cannot bind the same TCP port.
+
+**One consequence the spec does not mention.** With a service endpoint the *system* chooses the port
+— 59144 above, not 8737. SPEC §9's "port 8737, automatic fallback if taken, chosen port persisted"
+therefore describes the `--insecure-http` path only; in the advertised path there is no port to
+choose or persist. That costs nothing, because §10 already requires the client to re-resolve through
+Bonjour before falling back to a stored address.
+
+TLS options ride the same code path and are still unexercised. **M3.**
+
+### The one dependency this forced
+
+`swift-nio-transport-services` is now declared explicitly. It is **not** a fourth dependency in
+substance: it was already in the resolved graph via Hummingbird, and SPEC §8 mandates its use.
+SwiftPM simply requires a product be named before a target may import it, and Hummingbird does not
+re-export it. `HummingbirdTesting`, used by the API tests, is a product of the Hummingbird package
+itself and adds nothing.
 
 ## 2. swift-subprocess — 1.0.0, stable
 
