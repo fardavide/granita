@@ -1,4 +1,6 @@
-import ClientConnectionUi
+import ClientConnectionData
+import ClientConnectionDomain
+import ClientConnectionPresentation
 import SwiftUI
 
 /// Composition root for the phone and the iPad: the one Client target that may see a `Data`
@@ -13,7 +15,12 @@ public struct GranitaMobileScene: Scene {
 
     public var body: some Scene {
         WindowGroup {
-            NotPairedView(onStartPairing: {})
+            NavigationStack {
+                ServerDiscoveryScreen(
+                    viewModel: ServerDiscoveryViewModel(discovery: BonjourServerDiscovery()),
+                    onSelect: { _ in }
+                )
+            }
         }
     }
 }
