@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same ref cancels an in-flight run. macOS runner minutes are billed at 10x,
+# so this is the difference between a rebased branch costing one run and costing four.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# One concern per job, on its own runner. Each job name below is a required status check in
+# .github/rulesets/protect-main.json — renaming one here without renaming it there leaves every
+# pull request pending forever, with no error to explain it.
+jobs:
+
+  # The deterministic TDD suite: the package's own tests, run on the host with no simulator. This
+  # is the job that will carry the diff parser, the git layer and every view model, and it is the
+  # one that must stay fast enough to be run on every save locally.
+  unit-tests:
+    name: Unit tests (Granita)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Cache SwiftPM source packages
+        uses: actions/cache@v4
+        with:
+          path: Packages/Granita/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+      - name: Run package tests
+        run: make test
+
+  # Compile-check each app on its own platform. Separate jobs rather than a matrix step, so a
+  # macOS-only regression cannot hide behind an iOS failure and the ruleset gets one check per
+  # platform. Unsigned: a compile check needs no signed binary and the runner holds no identity.
+  build:
+    name: Build app (${{ matrix.app.name }})
+    runs-on: macos-26
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - { name: macOS, scheme: GranitaMac,    destination: 'generic/platform=macOS' }
+          - { name: iOS,   scheme: GranitaMobile, destination: 'generic/platform=iOS Simulator' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Cache SwiftPM source packages
+        uses: actions/cache@v4
+        with:
+          path: SourcePackages
+          key: xcode-spm-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: xcode-spm-${{ runner.os }}-
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme ${{ matrix.app.scheme }} -clonedSourcePackagesDirPath SourcePackages
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Granita.xcodeproj \
+            -scheme ${{ matrix.app.scheme }} \
+            -destination '${{ matrix.app.destination }}' \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -quiet \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+  # Three things in this repository are generated and committed: Granita.xcodeproj (from
+  # project.yml), the golden diff fixtures (from the real git binary), and the app icon sets. Each
+  # is committed for a reason — Xcode Cloud needs a project that is continuously present, the
+  # parser suite must run without git, and an icon is a hard App Store Connect reject. Committed
+  # generated files go stale silently, so this job regenerates all three and fails if anything moved.
+  #
+  # It doubles as the guard on git's own behaviour: make-fixture-repo.sh asserts the traps the git
+  # layer relies on — the two opposite -z rename layouts, the `diff --no-index` exit code, unborn
+  # HEAD, a conflicted path diffing as a normal unified diff rather than diff --cc. If a future git
+  # release changes one, this job goes red with a readable diff instead of the parser quietly
+  # reading the wrong field.
+  generated:
+    name: Generated files
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Install XcodeGen
+        run: brew install --quiet xcodegen
+      # Both tools shape the committed output, so a red run below is only readable if you can see
+      # which versions produced it. A project.pbxproj diff usually means XcodeGen moved; a .diff
+      # fixture diff usually means git did.
+      - name: Report the tool versions that produced the comparison
+        run: |
+          git --version
+          xcodegen --version
+      - name: Regenerate and compare
+        run: make verify-generated

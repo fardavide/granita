@@ -1,0 +1,29 @@
+name: Select Xcode
+description: >
+  Activate the Xcode 26.6 toolchain on the runner — the version Granita is developed against —
+  falling back to the newest installed Xcode 26.x with a warning. Pinning the minor version is what
+  keeps environment-sensitive output reproducible; bump it deliberately, alongside re-recording any
+  baselines it moves. Requires the repository to be checked out first (composite local action).
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        # The image default Xcode drifts release to release, so select explicitly rather than
+        # inheriting whatever the runner happens to ship this month.
+        xcode="$(ls -d /Applications/Xcode_26.6*.app 2>/dev/null | sort -V | tail -1 || true)"
+        if [ -z "$xcode" ]; then
+          xcode="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -n "$xcode" ]; then
+            echo "::warning::Xcode 26.6 not found on this image; using $xcode — rendered output may drift."
+          fi
+        fi
+        if [ -z "$xcode" ]; then
+          echo "::error::No Xcode 26.x found under /Applications on this runner image."
+          exit 1
+        fi
+        sudo xcode-select -s "$xcode"
+        xcodebuild -version
+        swift --version
