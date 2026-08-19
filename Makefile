@@ -46,6 +46,11 @@ icons: ## Regenerate both app icon sets
 .PHONY: verify-generated
 verify-generated: ## Fail if the committed project or fixtures are stale versus their sources
 	@$(MAKE) --no-print-directory project fixtures icons
+	@# Regenerate from a differently-named directory. Anything that leaks the build location into a
+	@# committed fixture — an absolute path, or a tracked file containing one, which changes every
+	@# commit hash downstream of it — shows up here rather than on a runner whose checkout lives
+	@# somewhere else. Two runs in the same directory cannot catch this class of bug.
+	@./Scripts/make-fixture-repo.sh --out "$$(mktemp -d)/granita-path-independence-check" > /dev/null
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "::error::Generated files are stale. Run 'make project fixtures icons' and commit the result."; \
 		git status --porcelain; \

@@ -62,6 +62,10 @@ say() { printf '  %s\n' "$1"; }
 
 rm -rf "$OUT"
 mkdir -p "$OUT" "$GOLDEN"
+# Resolve to the physical path. git reports worktree locations with symlinks resolved, and on
+# macOS /var is a symlink to /private/var — so a caller passing a path under /var would have its
+# build location survive into worktree-list.z despite the rewrite below.
+OUT="$(cd "$OUT" && pwd -P)"
 
 # ---------------------------------------------------------------------------------------------
 # 1. The main fixture repository — one worktree holding every parser case at once.
@@ -115,7 +119,10 @@ git_ commit -qm "baseline"
 SUB="$OUT/submodule-origin"
 mkdir -p "$SUB"
 ( cd "$SUB" && git_ init -q . && printf 'sub v1\n' > sub.txt && git_ add -A && git_ commit -qm "sub one" )
-git_ -c protocol.file.allow=always submodule add -q "$SUB" vendor/sub 2>/dev/null
+# A RELATIVE url, deliberately. An absolute one lands in .gitmodules, which is a tracked file, so
+# it changes the tree, the commit, and therefore every HEAD recorded in worktree-list.z — making
+# the whole repository hash differently on a laptop and on a CI runner.
+git_ -c protocol.file.allow=always submodule add -q ../submodule-origin vendor/sub 2>/dev/null
 git_ add -A
 git_ commit -qm "add submodule"
 ( cd "$SUB" && printf 'sub v2\n' > sub.txt && git_ add -A && git_ commit -qm "sub two" )
