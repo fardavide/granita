@@ -218,6 +218,28 @@ printf 'outside the root\n' > "$OUT/outside-worktree/src/outside.txt"
 
 say "worktrees: .claude/worktrees/agent-slice and $OUT/outside-worktree"
 
+# `worktree list --porcelain -z` is the product's source of truth for worktrees, so its layout is
+# worth a committed golden — but it is the one git output here that carries ABSOLUTE paths, which
+# differ between a laptop and a CI runner and would make the fixture churn on every machine.
+#
+# So the fixture root is rewritten to a fixed token on the way out. That is the only edit made to
+# any golden file, it is confined to a path prefix, and it leaves the record layout — which is the
+# thing being asserted — byte-for-byte as git emitted it. A test substitutes its own root back in.
+#
+# Generated from the main repository rather than a bare one, because that is where the three
+# interesting shapes live: the primary checkout, a worktree nested under .claude/worktrees/, and a
+# worktree created outside the repository root entirely.
+git_ worktree list --porcelain -z | python3 -c '
+import sys
+raw = sys.stdin.buffer.read()
+sys.stdout.buffer.write(raw.replace(sys.argv[1].encode(), b"/GRANITA_FIXTURE_ROOT"))
+' "$OUT" > "$GOLDEN/worktree-list.z"
+
+if ! grep -qa "GRANITA_FIXTURE_ROOT" "$GOLDEN/worktree-list.z"; then
+    echo "error: worktree-list.z still carries a machine-specific path" >&2
+    exit 1
+fi
+
 # ---------------------------------------------------------------------------------------------
 # 2. Unborn HEAD — `git diff HEAD` exits 128 here while `git status` works fine.
 # ---------------------------------------------------------------------------------------------
@@ -313,7 +335,6 @@ printf 'plain, edited\n' > plain.txt
 git_ status --porcelain=v2 -z            > "$GOLDEN/status-porcelain-v2-rename.z"
 diff_ HEAD -z -M --numstat               > "$GOLDEN/diff-numstat-rename.z"
 diff_ HEAD -z -M --raw                   > "$GOLDEN/diff-raw-rename.z"
-git_ worktree list --porcelain -z        > "$GOLDEN/worktree-list.z"
 
 say "confirmed: numstat -z emits an empty field before an old/new rename pair"
 
