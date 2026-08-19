@@ -162,3 +162,35 @@ is already in the corpus waiting for it. **M5.**
 warning. All four jobs pass. The iOS build targets a generic simulator destination and needs no
 specific runtime installed, so `xcodebuild -downloadPlatform iOS` is not required; a snapshot job
 against a named simulator will need the availability probe Aura uses, and that lands with it.
+
+## 11. Xcode Cloud, proven as far as signing
+
+The repo-side work is done and an **unsigned archive of the phone app succeeds**. Inspected rather
+than trusted, on the archived product:
+
+| | |
+|---|---|
+| `CFBundleIdentifier` | `dev.fardavide.granita.mobile` |
+| `CFBundleShortVersionString` | `0.0.1`, from `project.yml` |
+| `MinimumOSVersion` | `26.0` |
+| `ITSAppUsesNonExemptEncryption` | `false` — without it every build sits in "Missing Compliance" |
+| icon | `Assets.car` + `AppIcon*.png` present; `CFBundleIconName` nested under `CFBundleIcons` |
+| `Frameworks/` | absent — the package is linked, not embedded, so no ITMS-90171 |
+| architecture | `arm64` |
+
+`ci_scripts/ci_pre_xcodebuild.sh` is committed with its executable bit (`100755`) and was dry-run
+the way Xcode Cloud calls it: `CI_BUILD_NUMBER=42` rewrote `CURRENT_PROJECT_VERSION` across all four
+build configurations and re-pinned `MARKETING_VERSION` from `project.yml`.
+
+### A false alarm worth recording
+
+`UIDeviceFamily` is **absent from the unsigned archive** and present in both a simulator build and a
+plain device build (`[1, 2]` in each), with `TARGETED_DEVICE_FAMILY = 1,2` resolving correctly for
+the Release/device configuration.
+
+So it is an artifact of archiving with `CODE_SIGNING_ALLOWED=NO`, not a defect: an unsigned archive
+is not byte-identical to a real one, and this key is one of the differences. iPad support is a LOCKED
+v1 requirement, so **confirm on the first real TestFlight build that it lists iPhone and iPad** — and
+do not "fix" the project in the meantime, because there is nothing wrong with it.
+
+Everything past signing is unproven until the first Xcode Cloud run.

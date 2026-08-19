@@ -54,12 +54,22 @@ One local package holds everything testable; the two Xcode targets are thin `@ma
 one product each. Features are `<Unit>/<Feature>/<Layer>` directories, and a module's name is its
 path with the slashes removed (`Client/Viewer/Data` → `import ClientViewerData`).
 
-`Domain` → `Data` → `Ui` → `Presentation`, enforced by the target graph in `Package.swift`: a
-dependency a target does not declare does not compile.
+There is no single chain. Each layer depends on `Domain` and on nothing else in the list:
 
-**`Presentation` depends on `Ui`, not the other way round.** `Ui` is the inner layer — stateless
-views that take what they render and report what happened. `Presentation` owns the view models and
-composes screens from them. Only three modules import a `Data` target, because wiring
+| Layer | Depends on | Does **not** depend on |
+|---|---|---|
+| `Domain` | other `Domain` only | everything else |
+| `Data` | `Domain` | `Ui`, `Presentation` |
+| `Ui` | `Domain`, SwiftUI | `Presentation`, `Data` |
+| `Presentation` | `Ui`, `Domain` | `Data` |
+
+Enforced by the target graph in `Package.swift`: a dependency a target does not declare does not
+compile. `Data` and the two view layers never meet — they are siblings over `Domain`, not a
+pipeline.
+
+**`Presentation` depends on `Ui`, not the other way round.** `Ui` is the inner view layer —
+stateless views that take what they render and report what happened. `Presentation` owns the view
+models and composes screens from them. Only three modules import a `Data` target, because wiring
 implementations into protocols is their job: `ClientAppPresentation`, `ServerMacPresentation`, and
 the `granita-server` executable.
 
