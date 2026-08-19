@@ -33,4 +33,16 @@ public enum Branding {
 
     /// Default TCP port. Taken ports fall back automatically and the chosen one is persisted.
     public static let defaultPort = 8737
+
+    /// The build's marketing version, reported by `/v1/health` so a phone can say "update your Mac
+    /// app" rather than failing to decode a payload it half-understands.
+    ///
+    /// Read from the bundle when there is one — the menu bar app — and falling back to a literal
+    /// for `swift run`, which has no bundle to read. The literal is the one place this repeats
+    /// `MARKETING_VERSION` in project.yml, and the test below pins them together.
+    public static var serverVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? fallbackServerVersion
+    }
+
+    static let fallbackServerVersion = "0.0.1"
 }

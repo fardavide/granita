@@ -60,7 +60,13 @@ let package = Package(
         // swift-subprocess — `Foundation.Process` deadlocks when a child outwrites the pipe
         // buffer unless both streams drain concurrently, and it hands the child our own process
         // group, which makes timeout handling dangerous.
-        .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0")
+        .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
+        // NOT a fourth dependency in substance. It is already in the resolved graph — Hummingbird
+        // pulls it — and SPEC §8 mandates running on a NIOTSEventLoopGroup, because that is the
+        // only bootstrap that can bind and advertise Bonjour in one operation. SwiftPM simply
+        // requires the product be named before a target may import it, and Hummingbird does not
+        // re-export it.
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.28.0")
     ],
     targets: [
 
@@ -73,6 +79,13 @@ let package = Package(
         .target(
             name: "CoreBrandingDomain",
             path: "Core/Branding/Domain",
+            swiftSettings: [swift6]
+        ),
+
+        .testTarget(
+            name: "CoreBrandingDomainTests",
+            dependencies: ["CoreBrandingDomain"],
+            path: "Core/Branding/DomainTests",
             swiftSettings: [swift6]
         ),
 
@@ -314,14 +327,24 @@ let package = Package(
                 "ServerStoreDomain",
                 "ServerGitDomain",
                 "CoreDiffDomain",
-                .product(name: "Hummingbird", package: "hummingbird")
+                .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "NIOTransportServices", package: "swift-nio-transport-services")
             ],
             path: "Server/Api/Presentation",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ServerApiPresentationTests",
-            dependencies: ["ServerApiPresentation", "ServerWorktreesDomain", "ServerStoreDomain", "CoreDiffDomain"],
+            dependencies: [
+                "ServerApiPresentation",
+                "ServerWorktreesDomain",
+                "ServerStoreDomain",
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                // Same package as Hummingbird itself, so this adds no dependency: it is the
+                // in-process test client, which exercises the real router without binding a port.
+                .product(name: "HummingbirdTesting", package: "hummingbird")
+            ],
             path: "Server/Api/PresentationTests",
             swiftSettings: [swift6]
         ),
