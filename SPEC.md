@@ -42,7 +42,7 @@ Not open for substitution. If you think one is wrong, stop and say so rather tha
 | Live updates | Yes in v1. Pushing feedback into Claude is v2 |
 | Distribution | Paid Apple Developer Program, TestFlight |
 | Persistence | No SQL. The data is tiny and does not justify a database |
-| Modules | `<Unit>/<Feature>/<Layer>` directory tree with flat concatenated module names (`import ClientViewerData`). Layers: `Domain`, `Data`, `Presentation` (view models, mappers, presentation logic), `Ui` (SwiftUI views only), following Oltre |
+| Modules | `<Unit>/<Feature>/<Layer>` directory tree with flat concatenated module names (`import ClientViewerData`). Layers: `Domain`, `Data`, `Ui` (stateless SwiftUI views only), `Presentation` (view models, mappers, screen composition). **`Presentation` depends on `Ui`**, not the reverse. Following Oltre |
 | Execution | Milestones with approval gates. Stop after each one |
 
 ### DELEGATED, decided by the author at Davide's request
@@ -207,23 +207,24 @@ granita/
 │       │   ├── Connection/
 │       │   │   ├── Domain/           # ClientConnectionDomain: repo protocols, pairing model
 │       │   │   ├── Data/             # ClientConnectionData: URLSession, SPKI pinning, Bonjour, SSE
+│       │   │   ├── Ui/               # ClientConnectionUi: pairing and not-paired views
 │       │   │   └── DataTests/
 │       │   ├── Worktrees/
 │       │   │   ├── Domain/           # ClientWorktreesDomain: grouping, sorting, pin and alias logic
 │       │   │   ├── Data/             # ClientWorktreesData: list fetch + PATCH over the connection
+│       │   │   ├── Ui/               # ClientWorktreesUi: sidebar rows, rename sheet. Stateless views
 │       │   │   ├── Presentation/     # ClientWorktreesPresentation: view models, row mappers
-│       │   │   ├── Ui/               # ClientWorktreesUi: sidebar, rename sheet. SwiftUI views only
 │       │   │   ├── DomainTests/
 │       │   │   └── PresentationTests/
 │       │   ├── Viewer/
 │       │   │   ├── Domain/           # ClientViewerDomain: expansion, viewed, wrap and prefetch policy
 │       │   │   ├── Data/             # ClientViewerData: batched /diffs and /lines fetching
-│       │   │   ├── Presentation/     # ClientViewerPresentation: view models, line and hunk mappers
 │       │   │   ├── Ui/               # ClientViewerUi: scroll, gutter, focus mode, highlight (Highlightr)
+│       │   │   ├── Presentation/     # ClientViewerPresentation: view models, line and hunk mappers
 │       │   │   ├── DomainTests/
 │       │   │   └── PresentationTests/
 │       │   └── App/
-│       │       └── Ui/               # ClientAppUi: root scenes, composition root
+│       │       └── Presentation/     # ClientAppPresentation: root scene, composition root
 │       └── Server/                   # macOS only, may use macOS-only APIs freely
 │           ├── Git/
 │           │   ├── Domain/           # ServerGitDomain: GitClient protocol, typed errors
@@ -245,8 +246,8 @@ granita/
 │           │   ├── Presentation/     # ServerApiPresentation: Hummingbird routes, TLS, auth, SSE
 │           │   └── PresentationTests/
 │           ├── Mac/
-│           │   ├── Presentation/     # ServerMacPresentation: menu, settings, connection log view models
-│           │   └── Ui/               # ServerMacUi: MenuBarExtra, Settings tabs, pairing QR views
+│           │   ├── Ui/               # ServerMacUi: menu, settings tabs, pairing QR. Stateless views
+│           │   └── Presentation/     # ServerMacPresentation: scenes, view models, composition root
 │           └── Cli/
 │               └── Main/             # granita-server executable, composition root
 ├── Apps/
@@ -269,14 +270,21 @@ them:**
 - A `Domain` target depends only on other `Domain` targets and Foundation. No frameworks, no I/O.
 - A `Data` target depends on `Domain` targets (its own feature's and others') plus at most **one**
   declared infra dependency, listed in §2.
-- A `Presentation` target holds **view models, mappers and presentation logic**. It depends on
-  `Domain` targets and Observation. It **never imports SwiftUI** and never imports a `Data` target,
-  which is what keeps every view model testable with plain Swift Testing and hand-written fakes.
-- A `Ui` target holds **SwiftUI views only**: layout, styling, view-local state. It depends on its
-  feature's `Presentation`, on `Domain` for model types, and on SwiftUI. It never imports `Data`,
-  and it contains no logic a test would want to reach.
+- A `Ui` target holds **stateless SwiftUI views only**: each takes what it renders and reports what
+  happened, through initialiser parameters and closures. It depends on `Domain` for the model types
+  it renders and on SwiftUI. It owns no view model, imports no `Presentation` and no `Data`, and
+  contains no logic a test would want to reach — so it has no test target.
+- A `Presentation` target holds **view models, mappers and screen composition**. It depends on its
+  feature's `Ui` and on `Domain` targets, and never on a `Data` target.
+- **`Presentation` depends on `Ui`, not the other way round** (Davide, 2026-08-19). `Ui` is the
+  inner of the two view layers. A view that imported its view model could only ever serve the one
+  screen that view model belonged to; a view that takes values and closures serves any screen that
+  has them. It follows that `Presentation` sees SwiftUI transitively, which is a change from an
+  earlier draft of this section.
 - Only the three **composition roots** import `Data` targets and wire implementations into
-  protocols: `ClientAppUi`, `ServerMacUi`, and `Server/Cli/Main`.
+  protocols: `ClientAppPresentation`, `ServerMacPresentation`, and `Server/Cli/Main`. Both app roots
+  are `Presentation` modules, because under the rule above a `Ui` module could not reach a `Data`
+  target even if it wanted to.
 - `Server/Api/Presentation` is the server's presentation layer in the same sense, domain-to-wire
   mapping plus routes. The server API has no `Ui` sibling, since it has no views.
 - Platform split: `Core/*` compiles for iOS and macOS, `Client/*` is exercised on iOS and iPadOS,
@@ -725,7 +733,7 @@ path at all.
 
 Menu bar only (`LSUIElement`), no Dock icon, no main window. The server runs in-process. Views live
 in `Server/Mac/Ui`, view models and mappers in `Server/Mac/Presentation`; the Xcode target is a thin
-`@main` shell over `ServerMacUi`, the composition root.
+`@main` shell over `ServerMacPresentation`, the composition root.
 
 **Menu bar:** icon reflecting server state, running, stopped or error. **TRAP:** `MenuBarExtra`'s
 label reliably renders only `Text` and `Image`, so the dirty-worktree count is a `Text("\(n)")`
@@ -793,7 +801,7 @@ laptop that slept is the single most likely reason the phone cannot reach the se
 
 Universal, `NavigationSplitView`, real three column layout on iPad, adaptive stack on iPhone. Every
 feature lives under `Client/` in the package; the Xcode target is a thin shell importing
-`ClientAppUi`, which is the composition root.
+`ClientAppPresentation`, which is the composition root.
 
 ### Structure
 
@@ -938,7 +946,7 @@ test suite. Commit after each green-refactor cycle.
   is testable from a terminal. Acceptance: integration tests drive the real git binary against the
   fixture repos, and `curl` against a running `granita-server` returns correct JSON for every endpoint
   including the rename, conflict and unborn-HEAD cases.
-- **M3. GranitaMac.** `ServerMacPresentation`, `ServerMacUi` and the shell: menu bar app, Settings
+- **M3. GranitaMac.** `ServerMacUi`, `ServerMacPresentation` and the shell: menu bar app, Settings
   with explicit project enabling, Bonjour advertising through the Hummingbird NIOTS bind, pairing with
   QR, login item, embedded server, TLS identity in the Keychain, connection log panel,
   wake-from-sleep rebind. Acceptance: pair from a real device on the LAN and hit the API.

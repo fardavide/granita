@@ -11,11 +11,20 @@ import PackageDescription
 //
 //   Domain        other Domain targets and Foundation. No frameworks, no I/O.
 //   Data          Domain targets, plus at most one external infra dependency.
-//   Presentation  Domain targets and Observation. Never SwiftUI, never a Data target.
-//   Ui            its own Presentation, Domain for model types, and SwiftUI. Never a Data target.
+//   Ui            SwiftUI views only, over Domain for the model types they render. The INNER of
+//                 the two view layers: it owns no view models and depends on no Presentation.
+//   Presentation  view models, mappers and screen composition, over its feature's Ui and Domain.
+//                 Never a Data target.
+//
+// Presentation depends on Ui, not the other way round. A Ui target is a vocabulary of stateless
+// views that take what they render and report what happened; Presentation owns the state and
+// arranges them into screens. That direction is what keeps a view reusable by more than the one
+// screen that first needed it, and it is why a Ui target has no test target — there is nothing in
+// one a test would want to reach.
 //
 // Three targets are composition roots and are exempt, because wiring implementations into
-// protocols is their entire job: ClientAppUi, ServerMacUi and the granita-server executable.
+// protocols is their entire job: ClientAppPresentation, ServerMacPresentation and the
+// granita-server executable. Nothing depends on them, which is what makes the exemption safe.
 //
 // Exactly three external dependencies, each pinned to exactly one target. No other target may
 // declare an external product.
@@ -23,8 +32,8 @@ import PackageDescription
 /// Every target compiles in Swift 6 language mode; strict concurrency checking is `complete` there.
 let swift6 = SwiftSetting.swiftLanguageMode(.v6)
 
-/// Presentation and Ui targets are main-actor by default: a view model that drives SwiftUI is
-/// main-actor in practice, and saying so once per target beats annotating every type.
+/// Ui and Presentation are main-actor by default: both drive SwiftUI, and saying so once per target
+/// beats annotating every type in them.
 let mainActorByDefault = SwiftSetting.defaultIsolation(MainActor.self)
 
 let package = Package(
@@ -36,8 +45,8 @@ let package = Package(
     products: [
         // The two app shells link one product each; `granita-server` is how the backend runs,
         // is tested and is recovered without Xcode in the loop.
-        .library(name: "ClientAppUi", targets: ["ClientAppUi"]),
-        .library(name: "ServerMacUi", targets: ["ServerMacUi"]),
+        .library(name: "ClientAppPresentation", targets: ["ClientAppPresentation"]),
+        .library(name: "ServerMacPresentation", targets: ["ServerMacPresentation"]),
         .executable(name: "granita-server", targets: ["ServerCliMain"])
     ],
     dependencies: [
@@ -57,10 +66,10 @@ let package = Package(
 
         // MARK: - Core — pure logic, compiles for iOS and macOS alike
 
-        // Not in the spec's §3 tree. The spec asks for the product name, bundle-identifier
-        // prefix, Bonjour service type, URL scheme and Application Support directory to live in
-        // "a single Branding.swift", and both units need them — so it is a Core module rather
-        // than a copy on each side.
+        // Not in the spec's §3 tree. The spec asks for the product name, bundle-identifier prefix,
+        // Bonjour service type, URL scheme and Application Support directory to live in "a single
+        // Branding.swift", and both units need them — so it is a Core module rather than a copy on
+        // each side.
         .target(
             name: "CoreBrandingDomain",
             path: "Core/Branding/Domain",
@@ -107,6 +116,12 @@ let package = Package(
             path: "Client/Connection/Data",
             swiftSettings: [swift6]
         ),
+        .target(
+            name: "ClientConnectionUi",
+            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain"],
+            path: "Client/Connection/Ui",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
         .testTarget(
             name: "ClientConnectionDataTests",
             dependencies: ["ClientConnectionData", "ClientConnectionDomain", "CoreDiffDomain"],
@@ -127,15 +142,15 @@ let package = Package(
             swiftSettings: [swift6]
         ),
         .target(
-            name: "ClientWorktreesPresentation",
+            name: "ClientWorktreesUi",
             dependencies: ["ClientWorktreesDomain", "CoreDiffDomain"],
-            path: "Client/Worktrees/Presentation",
+            path: "Client/Worktrees/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .target(
-            name: "ClientWorktreesUi",
-            dependencies: ["ClientWorktreesPresentation", "ClientWorktreesDomain", "CoreDiffDomain"],
-            path: "Client/Worktrees/Ui",
+            name: "ClientWorktreesPresentation",
+            dependencies: ["ClientWorktreesUi", "ClientWorktreesDomain", "CoreDiffDomain"],
+            path: "Client/Worktrees/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
@@ -164,15 +179,8 @@ let package = Package(
             swiftSettings: [swift6]
         ),
         .target(
-            name: "ClientViewerPresentation",
-            dependencies: ["ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
-            path: "Client/Viewer/Presentation",
-            swiftSettings: [swift6, mainActorByDefault]
-        ),
-        .target(
             name: "ClientViewerUi",
             dependencies: [
-                "ClientViewerPresentation",
                 "ClientViewerDomain",
                 "CoreDiffDomain",
                 "CoreTreeDomain",
@@ -182,6 +190,12 @@ let package = Package(
                 .product(name: "Highlightr", package: "Highlightr")
             ],
             path: "Client/Viewer/Ui",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .target(
+            name: "ClientViewerPresentation",
+            dependencies: ["ClientViewerUi", "ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            path: "Client/Viewer/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
@@ -199,18 +213,19 @@ let package = Package(
 
         // Composition root for the phone: the only Client target that may see a Data target.
         .target(
-            name: "ClientAppUi",
+            name: "ClientAppPresentation",
             dependencies: [
                 "CoreBrandingDomain",
+                "CoreDiffDomain",
                 "ClientConnectionDomain",
                 "ClientConnectionData",
-                "ClientWorktreesUi",
+                "ClientConnectionUi",
+                "ClientWorktreesPresentation",
                 "ClientWorktreesData",
-                "ClientViewerUi",
-                "ClientViewerData",
-                "CoreDiffDomain"
+                "ClientViewerPresentation",
+                "ClientViewerData"
             ],
-            path: "Client/App/Ui",
+            path: "Client/App/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
@@ -312,19 +327,19 @@ let package = Package(
         ),
 
         .target(
-            name: "ServerMacPresentation",
-            dependencies: ["CoreBrandingDomain", "ServerWorktreesDomain", "ServerStoreDomain", "ServerGitDomain", "CoreDiffDomain"],
-            path: "Server/Mac/Presentation",
+            name: "ServerMacUi",
+            dependencies: ["CoreBrandingDomain", "ServerWorktreesDomain", "ServerStoreDomain", "CoreDiffDomain"],
+            path: "Server/Mac/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
-        // Composition root for the menu bar app: the only Server Ui target, and the only one that
-        // may see a Data target.
+        // Composition root for the menu bar app: the only Server target that may see a Data target.
         .target(
-            name: "ServerMacUi",
+            name: "ServerMacPresentation",
             dependencies: [
                 "CoreBrandingDomain",
-                "ServerMacPresentation",
+                "CoreDiffDomain",
+                "ServerMacUi",
                 "ServerApiPresentation",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
@@ -332,10 +347,9 @@ let package = Package(
                 "ServerGitDomain",
                 "ServerGitData",
                 "ServerSessionsData",
-                "ServerWatchData",
-                "CoreDiffDomain"
+                "ServerWatchData"
             ],
-            path: "Server/Mac/Ui",
+            path: "Server/Mac/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 

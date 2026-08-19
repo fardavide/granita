@@ -8,9 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		2D2E0F87B05427345965A345 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B372D7F4A8791B0E72A5251 /* Assets.xcassets */; };
-		4537938604663A6B9699EF30 /* ServerMacUi in Frameworks */ = {isa = PBXBuildFile; productRef = 37E817B9516BF50EB54FEB63 /* ServerMacUi */; };
+		4537938604663A6B9699EF30 /* ServerMacPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = C9788573475B6F055081C736 /* ServerMacPresentation */; };
 		8D957603285B9B07B48A4D18 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D8BA25970E39E480588A658 /* Assets.xcassets */; };
-		D9A5B4AAEA7F84B2F76589E0 /* ClientAppUi in Frameworks */ = {isa = PBXBuildFile; productRef = 3369DDF734865E1B658507FA /* ClientAppUi */; };
+		D9A5B4AAEA7F84B2F76589E0 /* ClientAppPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = 369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */; };
 		E7F6AB9B8358DC951E0EC94E /* GranitaMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */; };
 		F0838C2B10B545CCF67FF561 /* GranitaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */; };
 /* End PBXBuildFile section */
@@ -33,7 +33,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D9A5B4AAEA7F84B2F76589E0 /* ClientAppUi in Frameworks */,
+				D9A5B4AAEA7F84B2F76589E0 /* ClientAppPresentation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,7 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4537938604663A6B9699EF30 /* ServerMacUi in Frameworks */,
+				4537938604663A6B9699EF30 /* ServerMacPresentation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,7 +121,7 @@
 			);
 			name = GranitaMobile;
 			packageProductDependencies = (
-				3369DDF734865E1B658507FA /* ClientAppUi */,
+				369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */,
 			);
 			productName = GranitaMobile;
 			productReference = F97E4BC6F28CE4A30011888B /* GranitaMobile.app */;
@@ -141,7 +141,7 @@
 			);
 			name = GranitaMac;
 			packageProductDependencies = (
-				37E817B9516BF50EB54FEB63 /* ServerMacUi */,
+				C9788573475B6F055081C736 /* ServerMacPresentation */,
 			);
 			productName = GranitaMac;
 			productReference = C11FFC228F9E6F34066874BD /* GranitaMac.app */;
@@ -497,13 +497,13 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		3369DDF734865E1B658507FA /* ClientAppUi */ = {
+		369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ClientAppUi;
+			productName = ClientAppPresentation;
 		};
-		37E817B9516BF50EB54FEB63 /* ServerMacUi */ = {
+		C9788573475B6F055081C736 /* ServerMacPresentation */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ServerMacUi;
+			productName = ServerMacPresentation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

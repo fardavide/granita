@@ -51,7 +51,7 @@ targets:
       # The shell links exactly one product: the composition root. Nothing else is reachable
       # from the app bundle, which is what keeps the layer graph meaningful.
       - package: Granita
-        product: ServerMacUi
+        product: ServerMacPresentation
     entitlements:
       path: Apps/GranitaMac/GranitaMac.entitlements
     info:
@@ -95,7 +95,7 @@ targets:
       - Apps/GranitaMobile
     dependencies:
       - package: Granita
-        product: ClientAppUi
+        product: ClientAppPresentation
     info:
       path: Apps/GranitaMobile/Info.plist
       properties:
