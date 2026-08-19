@@ -2,9 +2,11 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.1.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.2.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
-`/v1/health` is served and discoverable over Bonjour; the phone app is still an empty state.
+The two halves can find each other: the Mac serves `/v1/health` and advertises itself over Bonjour,
+and the phone browses for it and lists what it finds. Selecting a Mac does nothing yet — there is no
+pairing, no API client beyond health, and nothing to read.
 
 ## Milestones
 
@@ -14,7 +16,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 |---|---|---|
 | M0 | Scaffold — layout, manifest, CI, ruleset, harness, fixtures | **done** |
 | — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
-| M1 | `CoreDiffDomain` parser, display columns, word diff; `CoreTreeDomain` grouping | next |
+| M1 | `CoreDiffDomain` parser, display columns, word diff; `CoreTreeDomain` grouping | after the snapshot harness |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
@@ -27,7 +29,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - Both apps build and launch empty; the backend runs from a terminal.
 - A golden fixture corpus covering every parser case in the spec, generated from the real `git`
   binary and committed, plus the fixture repositories the git-layer tests will drive.
-- Four gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner.
+- Four gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 9 tests, 3 suites.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
@@ -61,3 +63,32 @@ sets up delivery.
 - A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
   Not started; the Mac app runs locally in the meantime.
 - The first project folder to add.
+
+
+## What to pick up next
+
+In order, and the first one is already agreed rather than open:
+
+1. **`swift-snapshot-testing`.** Davide approved it as a **fourth, test-only** dependency — linked to
+   an app-hosted test target, never to a shipped product, so the apps stay on three. It was deferred
+   from the discovery slice only so that could reach his phone sooner. The first subject is the
+   discovery view, which is stateless and therefore renderable in all five of its states without a
+   Mac or a granted permission: searching, nothing found, a list, permission refused, failed — light
+   and dark, iPhone and iPad.
+
+   **The CI job and the ruleset must move together.** Adding the job without adding its name to
+   `.github/rulesets/protect-main.json` leaves a check that can fail without blocking anything;
+   adding the name without the job leaves every pull request pending forever, with no bypass to
+   escape through. Same pull request, both.
+
+2. **M1, the diff parser.** The 25 golden fixtures are committed and cover every case in SPEC §6, so
+   it can be written test-first against real `git` output from the first failing test.
+
+## Waiting on Davide
+
+- **Confirmation that discovery works on his iPhone**, including what a *refused* local network
+  permission looks like. That path cannot be exercised in the simulator, which does not implement
+  local network privacy at all, so it is the one acceptance criterion this repository cannot check
+  for itself.
+- A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
+  Not started; the Mac app runs locally in the meantime, and only distribution needs it.

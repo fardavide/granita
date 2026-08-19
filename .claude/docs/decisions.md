@@ -186,3 +186,29 @@ Cloud asks for the GitHub app to be installed on the **`apple` organisation**, l
 transitive `apple/swift-*` dependency. That is impossible — only an organisation owner can install it
 — and unnecessary, because those repositories are public and are cloned anonymously. Apple's app is
 installed on `fardavide/granita` alone.
+
+## The Xcode Cloud build number is a team-wide counter, and that is fine
+
+Observed rather than documented by Apple: `CI_BUILD_NUMBER` increments across the whole developer
+account, not per app. Granita's first builds were 70 and 71 because another project of Davide's had
+reached 69.
+
+Left alone deliberately. App Store Connect requires `CFBundleVersion` to be unique and **increasing
+within one app's release train** — every build sharing a `CFBundleShortVersionString` — and does not
+require it to start at 1 or to be contiguous. Gaps appear whenever the other project builds, and
+that is valid. The only thing lost is being able to read "how many Granita builds" off the number;
+buying that back would mean replacing Apple's counter with our own, which is more machinery and a
+new way to collide, for cosmetics.
+
+## The CI-skip token silences GitHub Actions too, so it goes in the pull request title
+
+Xcode Cloud and GitHub Actions honour the same token in a commit message. Putting it in a **branch**
+commit therefore suppresses the four required checks, and with no bypass on the ruleset that makes
+the pull request permanently unmergeable — checks that will never report.
+
+It belongs in the **pull request title**, which becomes the squash subject: it then reaches only the
+merge commit, where the checks have already run and only the archive is skipped.
+
+Two attempts were burned learning this, the second because the commit message *explained* the token
+— prose containing it is indistinguishable from meaning it. A commit that documents this must not
+spell the token out.
