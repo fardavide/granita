@@ -490,15 +490,22 @@ status --porcelain=v2 -z --renames
   2 RM N... 100644 ... R100 <newPath>NUL<oldPath>NUL        ← NEW path first
 
 diff --numstat -z -M
-  <added>TAB<deleted>TABNUL<oldPath>NUL<newPath>NUL         ← empty field, then OLD, then NEW
-  <added>TAB<deleted>TAB<path>NUL                           ← non-rename form
+  <added>TAB<deleted>TAB NUL <oldPath> NUL <newPath> NUL    ← rename: OLD then NEW
+  <added>TAB<deleted>TAB<path> NUL                          ← non-rename form
 ```
 
-`--numstat -z` emits an **extra empty field** before the paths on rename records, by design, so a
-script can tell single-path from rename records without reading ahead. A naive NUL splitter
-desynchronises for the rest of the stream at the first rename, and copying the porcelain-v2 field
-order into the numstat parser swaps old and new on every rename. Detect the rename form by the empty
-field. Test both layouts explicitly.
+**Corrected 2026-08-20, verified against the committed fixture.** An earlier draft of this section
+said `--numstat -z` emits "an extra empty field" before the paths on a rename, and that a parser
+should detect the rename form by that empty field. It does not, and there is **no zero-length NUL
+field anywhere in the stream**. What marks a rename is a **trailing TAB** inside the first field —
+`1\t1\t` rather than `1\t1\tplain.txt` — so the record spans three NUL fields instead of one. A
+parser scanning for an empty NUL field finds none and reads every rename as an ordinary record.
+
+The hazard the old wording pointed at is real: records occupy a **variable number of NUL fields**, so
+a naive whole-buffer split desynchronises for the rest of the stream at the first rename. Consume
+field by field: if the field ends with a TAB, two more fields follow and they are old then new.
+Copying the porcelain-v2 field order here reverses every rename, because that format emits NEW
+first. Test both layouts explicitly.
 
 **TRAP, conflicted files.** `status --porcelain=v2` unmerged records start with `u` and carry **10**
 fields, not 8:
@@ -557,8 +564,23 @@ also run without git.
 Computed in the parser, per line, and carried in the model because §10 depends on it: tabs expand to
 the next multiple of 4, East Asian Wide and Fullwidth characters count 2, combining marks count 0,
 everything else counts 1. Lines containing anything outside that predictable set (emoji, ZWJ
-sequences, unusual scripts) set `displayColumns` to the best-effort value **and** the client falls
-back to real text measurement for those lines only, see §10.
+sequences, unusual scripts) set `displayColumns` to the best-effort value **and** set
+`DiffLine.needsMeasurement`, so the client falls back to real text measurement for those lines only,
+see §10.
+
+Three points the original rule left open, settled 2026-08-20:
+
+- **`DiffLine` carries `needsMeasurement`.** §4's model had no field for the flag this paragraph and
+  §10 both rely on, so the client had no way to know which lines to measure. It is a plain `Bool`
+  rather than an optional, because an absent key meaning false is the same ambiguity §8's PATCH body
+  already has to work around.
+- **Control and format characters (Unicode Cc/Cf) count 0**, not 1. Read literally, "everything else
+  counts 1" gives `first\r` six columns for a line that occupies five, so every CRLF line would
+  over-measure. CRLF is preserved verbatim in `text`, so the CR is content — it simply renders
+  nothing.
+- **East Asian *Ambiguous* characters count 1 and are not flagged.** `è` and `—` are Ambiguous, they
+  are narrow in the monospaced fonts the viewer uses, and flagging them would push ordinary European
+  prose onto the slow measured-for-real path.
 
 ### Word level diff
 

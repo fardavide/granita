@@ -117,13 +117,18 @@ jobs:
           echo "Package.resolved covers the Xcode graph."
 
   # Reports *and* gates. The rule is Oltre's: a plain ratchet with no floor and no slack — every
-  # percentage in the per-module table must hold at or above the last green `main` run. A fixed
+  # percentage in the per-kind table must hold at or above the last green `main` run. A fixed
   # threshold either sits so low it never fires or so high it blocks unrelated work; a ratchet asks
   # the only question worth asking of a pull request, which is whether it made things worse.
+  #
+  # It runs the suite once per kind of test, which means it boots a simulator and runs the snapshot
+  # tests a second time — the Snapshot job below already ran them. That duplication is bought
+  # deliberately: this pass wants the coverage profile and ignores the verdict, so a stale baseline
+  # reddens one job rather than two.
   coverage:
     name: Coverage
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: write
@@ -135,12 +140,27 @@ jobs:
       # prefix is always the last green `main` run — and a pull request branch can read the default
       # branch's caches, which is what makes this work with no token and no external service.
       # Restored before the measurement, and outside `build/`, which the measurement wipes.
+      #
+      # v2 because the summary is now keyed by test kind rather than by module. A v1 baseline shares
+      # no value with a v2 run, so reading one would report the gate as skipped on every branch until
+      # `main` happened to write a new one — a silently ungated week.
       - name: Restore the main coverage baseline
         uses: actions/cache/restore@v4
         with:
           path: .coverage-baseline
-          key: granita-coverage-v1-${{ github.sha }}
-          restore-keys: granita-coverage-v1-
+          key: granita-coverage-v2-${{ github.sha }}
+          restore-keys: granita-coverage-v2-
+
+      # The snapshot pass builds the iOS app, and snapshot-testing is the only remote dependency the
+      # project resolves. Same cache as the Snapshot job, keyed the same way and for the same reason.
+      - name: Cache SwiftPM source packages
+        uses: actions/cache@v4
+        with:
+          path: SourcePackages
+          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: snapshot-spm-${{ runner.os }}-
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
 
       # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
       # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
@@ -199,7 +219,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .coverage-baseline
-          key: granita-coverage-v1-${{ github.sha }}
+          key: granita-coverage-v2-${{ github.sha }}
 
       # Last, so a blocked pull request already carries the comment explaining why. Pull requests
       # only: on a `main` push the merge has happened and the gate can prevent nothing, and turning
@@ -283,8 +303,8 @@ jobs:
         if: failure()
         run: |
           python3 .github/scripts/snapshot-report.py \
-            Apps/GranitaMobileTests/__SnapshotFailures__ \
-            Apps/GranitaMobileTests/__Snapshots__ \
+            Apps/GranitaMobileSnapshotTests/__SnapshotFailures__ \
+            Apps/GranitaMobileSnapshotTests/__Snapshots__ \
             snapshot-report
       - name: Upload the snapshot diff report
         if: failure()

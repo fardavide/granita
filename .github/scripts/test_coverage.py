@@ -15,11 +15,31 @@ def counter(covered: int, count: int) -> dict:
     return {"covered": covered, "count": count}
 
 
-def summary(total: tuple[int, int], modules: dict[str, tuple[int, int]], ref: str = "main") -> dict:
+def entry(lines: tuple[int, int], regions: tuple[int, int]) -> dict:
+    return {"lines": counter(*lines), "regions": counter(*regions)}
+
+
+def summary(categories: dict[str, dict], ref: str = "main", commit: str = "abc1234") -> dict:
+    return {"ref": ref, "commit": commit, "categories": categories}
+
+
+def export(files: list[tuple[str, tuple[int, int], tuple[int, int]]]) -> dict:
+    """An llvm-cov export shaped the way both SwiftPM and `xcrun llvm-cov` emit it."""
     return {
-        "ref": ref,
-        "totals": counter(*total),
-        "modules": {name: counter(*value) for name, value in modules.items()},
+        "data": [
+            {
+                "files": [
+                    {
+                        "filename": name,
+                        "summary": {
+                            "lines": {"covered": lines[0], "count": lines[1]},
+                            "regions": {"covered": regions[0], "count": regions[1]},
+                        },
+                    }
+                    for name, lines, regions in files
+                ]
+            }
+        ]
     }
 
 
@@ -34,173 +54,201 @@ class TestPathClassification:
         # The suffix must be on a directory, not on the file — a shipped type may be named for tests.
         assert not coverage.is_test_path("Core/Diff/Domain/FixtureTests.swift")
 
-    def test_given_a_source_path_when_deriving_the_module_then_it_matches_the_manifest(self):
-        assert coverage.module_of("Client/Viewer/Data/Fetch.swift") == "ClientViewerData"
-        assert coverage.module_of("Server/Api/Presentation/Router.swift") == "ServerApiPresentation"
+
+class TestCollect:
+
+    def test_given_an_export_when_collecting_then_only_package_sources_count(self, tmp_path):
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [
+                        ("/w/Packages/Granita/Core/Tree/Domain/Node.swift", (8, 10), (3, 5)),
+                        # A test file: ~100% covered by construction, so counting it would mean
+                        # writing more test code raises the number regardless of what it reaches.
+                        ("/w/Packages/Granita/Core/Tree/DomainTests/NodeTests.swift", (40, 40), (9, 9)),
+                        # A dependency, and the package's own generated build products.
+                        ("/w/SourcePackages/checkouts/hummingbird/Sources/Router.swift", (1, 99), (1, 40)),
+                        ("/w/Packages/Granita/.build/checkouts/x/Sources/X.swift", (1, 99), (1, 40)),
+                        # The app shells are thin @main files outside the package.
+                        ("/w/Apps/GranitaMobile/GranitaMobileApp.swift", (5, 5), (2, 2)),
+                    ]
+                )
+            )
+        )
+        out = tmp_path / "summary.json"
+
+        coverage.collect(
+            coverage.parse(["collect", "--category", "unit", "--export", str(path), "--out", str(out), "--ref", "main"])
+        )
+
+        written = json.loads(out.read_text())
+        assert written["categories"]["unit"] == entry((8, 10), (3, 5))
+
+    def test_given_a_summary_when_collecting_another_category_then_both_survive(self, tmp_path):
+        out = tmp_path / "summary.json"
+        out.write_text(json.dumps(summary({"unit": entry((8, 10), (3, 5))})))
+        path = tmp_path / "export.json"
+        path.write_text(json.dumps(export([("/w/Packages/Granita/Core/Tree/Ui/Row.swift", (20, 40), (4, 9))])))
+
+        coverage.collect(
+            coverage.parse(
+                ["collect", "--category", "snapshot", "--export", str(path), "--out", str(out), "--ref", "main"]
+            )
+        )
+
+        written = json.loads(out.read_text())
+        assert written["categories"]["unit"] == entry((8, 10), (3, 5))
+        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9))
+
+
+class TestPercent:
+
+    def test_given_a_counter_when_measuring_then_it_is_a_percentage(self):
+        assert coverage.percent(counter(1, 4)) == 25.0
+
+    def test_given_nothing_to_cover_when_measuring_then_it_is_unmeasurable(self):
+        # Not the same as 0% and must not read as it: a kind that ran nothing has no grade.
+        assert coverage.percent(counter(0, 0)) is None
+        assert coverage.percent(None) is None
 
 
 class TestGate:
 
-    def test_given_coverage_is_unchanged_when_gating_then_it_passes(self):
-        # given
-        current = summary((50, 100), {"CoreDiffDomain": (50, 100)})
+    def test_given_every_value_held_when_gating_then_it_passes(self):
+        current = summary({"unit": entry((9, 10), (4, 5)), "all": entry((9, 10), (4, 5))})
+        baseline = summary({"unit": entry((8, 10), (4, 5)), "all": entry((8, 10), (4, 5))})
 
-        # when
-        verdict = coverage.verdict_for(current, current)
+        verdict = coverage.gate_verdict(current, baseline)
 
-        # then
-        assert verdict["ok"]
+        assert verdict["status"] == "pass"
+        assert len(verdict["checks"]) == 4
 
-    def test_given_a_module_went_backwards_when_gating_then_it_fails_and_names_it(self):
-        # given
-        baseline = summary((50, 100), {"CoreDiffDomain": (50, 100)})
-        current = summary((40, 100), {"CoreDiffDomain": (40, 100)})
+    def test_given_lines_held_but_regions_fell_when_gating_then_it_fails(self):
+        # The whole point of the second column: a PR can add covered lines while a branch it used
+        # to take stops being taken.
+        current = summary({"unit": entry((9, 10), (3, 5))})
+        baseline = summary({"unit": entry((8, 10), (4, 5))})
 
-        # when
-        verdict = coverage.verdict_for(current, baseline)
+        verdict = coverage.gate_verdict(current, baseline)
 
-        # then
-        assert not verdict["ok"]
-        assert {r["name"] for r in verdict["regressions"]} == {"total", "CoreDiffDomain"}
+        assert verdict["status"] == "fail"
+        assert [check["label"] for check in verdict["regressions"]] == ["Unit regions"]
 
-    def test_given_coverage_improved_when_gating_then_it_passes(self):
-        # given
-        baseline = summary((50, 100), {"CoreDiffDomain": (50, 100)})
-        current = summary((80, 100), {"CoreDiffDomain": (80, 100)})
+    def test_given_a_kind_measured_for_the_first_time_when_gating_then_it_is_not_judged(self):
+        current = summary({"unit": entry((8, 10), (4, 5)), "snapshot": entry((1, 10), (1, 5))})
+        baseline = summary({"unit": entry((8, 10), (4, 5))})
 
-        # when - then
-        assert coverage.verdict_for(current, baseline)["ok"]
+        verdict = coverage.gate_verdict(current, baseline)
 
-    def test_given_a_new_module_when_gating_then_it_is_not_checked(self):
-        # given — a module absent from the baseline has nothing to regress against.
-        baseline = summary((50, 100), {"CoreDiffDomain": (50, 100)})
-        current = summary((25, 200), {"CoreDiffDomain": (50, 100), "CoreTreeDomain": (0, 100)})
+        assert verdict["status"] == "pass"
+        assert [check["category"] for check in verdict["checks"]] == ["unit", "unit"]
 
-        # when
-        verdict = coverage.verdict_for(current, baseline)
+    def test_given_a_kind_that_ran_nothing_when_gating_then_it_is_not_judged(self):
+        current = summary({"ui": entry((0, 0), (0, 0))})
+        baseline = summary({"ui": entry((0, 0), (0, 0))})
 
-        # then — the new module is unchecked, but it still drags the total down, and the total IS
-        # checked. Adding untested code is a regression even when no existing module moved.
-        assert {c["name"] for c in verdict["checks"]} == {"total", "CoreDiffDomain"}
-        assert not verdict["ok"]
-        assert [r["name"] for r in verdict["regressions"]] == ["total"]
+        assert coverage.gate_verdict(current, baseline)["status"] == "skipped"
 
-    def test_given_a_module_was_deleted_when_gating_then_it_is_not_a_regression(self):
-        # given
-        baseline = summary((50, 100), {"CoreDiffDomain": (25, 50), "Gone": (25, 50)})
-        current = summary((25, 50), {"CoreDiffDomain": (25, 50)})
+    def test_given_no_baseline_when_gating_then_the_gate_is_skipped(self):
+        assert coverage.gate_verdict(summary({"unit": entry((8, 10), (4, 5))}), None)["status"] == "skipped"
 
-        # when - then
-        assert coverage.verdict_for(current, baseline)["ok"]
+    def test_given_a_drop_below_the_printed_precision_when_gating_then_it_holds(self):
+        # The verdict can never contradict the ±0 in the row above it.
+        current = summary({"unit": entry((9999, 100000), (1, 2))})
+        baseline = summary({"unit": entry((10000, 100000), (1, 2))})
 
-    def test_given_no_baseline_when_gating_then_nothing_is_enforced(self):
-        # given — the first run on a fresh cache has nothing to compare against.
-        current = summary((0, 100), {"CoreDiffDomain": (0, 100)})
-
-        # when
-        verdict = coverage.verdict_for(current, None)
-
-        # then
-        assert verdict["ok"]
-        assert not verdict["compared"]
-
-    def test_given_an_empty_module_when_gating_then_it_is_skipped_rather_than_dividing_by_zero(self):
-        # given — a module of pure declarations reports no countable lines.
-        baseline = summary((50, 100), {"Empty": (0, 0)})
-        current = summary((50, 100), {"Empty": (0, 0)})
-
-        # when
-        verdict = coverage.verdict_for(current, baseline)
-
-        # then
-        assert verdict["ok"]
-        assert "Empty" not in {c["name"] for c in verdict["checks"]}
-
-
-class TestCollect:
-
-    def test_given_an_llvm_export_when_collecting_then_tests_and_dependencies_are_excluded(self, tmp_path):
-        # given
-        def file_entry(name: str, covered: int, count: int) -> dict:
-            return {"filename": name, "summary": {"lines": {"covered": covered, "count": count}}}
-
-        root = "/repo/Packages/Granita/"
-        export = {"data": [{"files": [
-            file_entry(f"{root}Client/Connection/Domain/Server.swift", 8, 10),
-            file_entry(f"{root}Client/Connection/DomainTests/ServerTests.swift", 40, 40),
-            file_entry(f"{root}.build/checkouts/hummingbird/Sources/App.swift", 100, 100),
-            file_entry("/somewhere/else/Other.swift", 1, 1),
-        ]}]}
-        export_path = tmp_path / "export.json"
-        export_path.write_text(json.dumps(export))
-        out = tmp_path / "summary.json"
-
-        # when
-        coverage.main(["collect", "--export", str(export_path), "--out", str(out), "--ref", "main"])
-
-        # then — only the shipped source counts.
-        result = json.loads(out.read_text())
-        assert result["totals"] == {"covered": 8, "count": 10}
-        assert result["modules"] == {"ClientConnectionDomain": {"covered": 8, "count": 10}}
-
-
-class TestEnforce:
-
-    def test_given_a_regression_when_enforcing_then_it_exits_non_zero(self, tmp_path):
-        # given
-        verdict = tmp_path / "verdict.json"
-        verdict.write_text(json.dumps(coverage.verdict_for(
-            summary((40, 100), {"CoreDiffDomain": (40, 100)}),
-            summary((50, 100), {"CoreDiffDomain": (50, 100)}),
-        )))
-
-        # when - then
-        assert coverage.main(["enforce", "--verdict", str(verdict)]) == 1
-
-    def test_given_coverage_held_when_enforcing_then_it_exits_zero(self, tmp_path):
-        # given
-        held = summary((50, 100), {"CoreDiffDomain": (50, 100)})
-        verdict = tmp_path / "verdict.json"
-        verdict.write_text(json.dumps(coverage.verdict_for(held, held)))
-
-        # when - then
-        assert coverage.main(["enforce", "--verdict", str(verdict)]) == 0
+        assert coverage.gate_verdict(current, baseline)["status"] == "pass"
 
 
 class TestRender:
 
-    def test_given_a_baseline_when_rendering_then_the_comment_carries_a_marker_and_the_deltas(self, tmp_path):
-        # given
+    def render(self, tmp_path, current: dict, baseline: dict | None) -> str:
         current_path = tmp_path / "current.json"
+        current_path.write_text(json.dumps(current))
         baseline_path = tmp_path / "baseline.json"
-        current_path.write_text(json.dumps(summary((60, 100), {"CoreDiffDomain": (60, 100)})))
-        baseline_path.write_text(json.dumps(summary((50, 100), {"CoreDiffDomain": (50, 100)})))
-        comment = tmp_path / "comment.md"
+        if baseline is not None:
+            baseline_path.write_text(json.dumps(baseline))
+        out = tmp_path / "comment.md"
+        coverage.render(
+            coverage.parse(
+                [
+                    "render",
+                    "--current",
+                    str(current_path),
+                    "--baseline",
+                    str(baseline_path),
+                    "--out",
+                    str(out),
+                    "--verdict-out",
+                    str(tmp_path / "verdict.json"),
+                ]
+            )
+        )
+        return out.read_text()
 
-        # when
-        coverage.main([
-            "render", "--current", str(current_path), "--baseline", str(baseline_path),
-            "--out", str(comment), "--verdict-out", str(tmp_path / "verdict.json"),
-        ])
+    def test_given_a_summary_when_rendering_then_every_kind_has_a_row(self, tmp_path):
+        text = self.render(tmp_path, summary({"unit": entry((8, 10), (4, 5))}), None)
 
-        # then — the marker is what lets CI rewrite one comment instead of appending a transcript.
-        body = comment.read_text()
-        assert "<!-- granita-coverage-report -->" in body
-        assert "60.0%  +10.0" in body
+        for label in ("Unit", "Ui", "Snapshot", "All tests"):
+            assert f"| {label}" in text or f"| **{label}**" in text
 
-    def test_given_no_baseline_when_rendering_then_it_says_so_rather_than_showing_false_deltas(self, tmp_path):
-        # given
-        current_path = tmp_path / "current.json"
-        current_path.write_text(json.dumps(summary((60, 100), {"CoreDiffDomain": (60, 100)})))
-        comment = tmp_path / "comment.md"
+    def test_given_a_kind_with_no_pass_when_rendering_then_its_cells_are_dashes(self, tmp_path):
+        text = self.render(tmp_path, summary({"unit": entry((8, 10), (4, 5))}), None)
 
-        # when
-        coverage.main([
-            "render", "--current", str(current_path), "--baseline", str(tmp_path / "absent.json"),
-            "--out", str(comment), "--verdict-out", str(tmp_path / "verdict.json"),
-        ])
+        assert "| Ui | — | — |" in text
 
-        # then
-        body = comment.read_text()
-        assert "No baseline yet" in body
-        assert "(new)" in body
+    def test_given_a_baseline_when_rendering_then_cells_carry_a_delta(self, tmp_path):
+        text = self.render(
+            tmp_path,
+            summary({"unit": entry((9, 10), (4, 5))}),
+            summary({"unit": entry((8, 10), (4, 5))}),
+        )
+
+        assert "90.0% ▲ +10.0" in text
+        assert "80.0% ±0" in text
+
+    def test_given_a_regression_when_rendering_then_the_comment_names_it(self, tmp_path):
+        text = self.render(
+            tmp_path,
+            summary({"unit": entry((7, 10), (4, 5))}),
+            summary({"unit": entry((8, 10), (4, 5))}),
+        )
+
+        assert "Coverage gate failed" in text
+        assert "Unit lines" in text
+
+    def test_given_no_module_breakdown_is_wanted_when_rendering_then_none_is_written(self, tmp_path):
+        # Coverage is reported per test kind, not per module: the question worth asking is which
+        # kind of test reaches the code, and a per-module table answers a different one.
+        text = self.render(tmp_path, summary({"unit": entry((8, 10), (4, 5))}), None)
+
+        assert "Module" not in text
+        assert "package" not in text.lower()
+
+
+class TestEnforce:
+
+    def enforce(self, tmp_path, verdict: dict) -> int:
+        path = tmp_path / "verdict.json"
+        path.write_text(json.dumps(verdict))
+        return coverage.enforce(coverage.parse(["enforce", "--verdict", str(path)]))
+
+    def test_given_a_passing_verdict_when_enforcing_then_it_exits_zero(self, tmp_path):
+        assert self.enforce(tmp_path, {"status": "pass", "checks": [], "regressions": []}) == 0
+
+    def test_given_a_skipped_verdict_when_enforcing_then_it_exits_zero(self, tmp_path):
+        assert self.enforce(tmp_path, {"status": "skipped", "checks": [], "regressions": []}) == 0
+
+    def test_given_a_failing_verdict_when_enforcing_then_it_exits_one(self, tmp_path):
+        verdict = {
+            "status": "fail",
+            "checks": [],
+            "regressions": [{"label": "Unit lines", "current": 70.0, "baseline": 80.0}],
+        }
+
+        assert self.enforce(tmp_path, verdict) == 1
+
+    def test_given_no_verdict_at_all_when_enforcing_then_it_exits_one(self, tmp_path):
+        # Silence is not consent: a missing verdict means the report step never ran.
+        assert coverage.enforce(coverage.parse(["enforce", "--verdict", str(tmp_path / "nope.json")])) == 1

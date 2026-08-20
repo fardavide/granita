@@ -29,9 +29,9 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F20DDE31A4498AFF2502475F"
-               BuildableName = "GranitaMobileTests.xctest"
-               BlueprintName = "GranitaMobileTests"
+               BlueprintIdentifier = "5431A1C6D34DB1A6CADE4051"
+               BuildableName = "GranitaMobileSnapshotTests.xctest"
+               BlueprintName = "GranitaMobileSnapshotTests"
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -58,9 +58,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F20DDE31A4498AFF2502475F"
-               BuildableName = "GranitaMobileTests.xctest"
-               BlueprintName = "GranitaMobileTests"
+               BlueprintIdentifier = "5431A1C6D34DB1A6CADE4051"
+               BuildableName = "GranitaMobileSnapshotTests.xctest"
+               BlueprintName = "GranitaMobileSnapshotTests"
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </TestableReference>
