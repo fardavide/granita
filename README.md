@@ -71,7 +71,7 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
-### 0.0.4 — 2026-08-20
+### 0.0.4 — 2026-08-21
 - **Coming back to Granita from the background no longer claims local network access is off.** iOS
   tears down the app's connection to the discovery daemon while it is suspended, and every browser
   dies with it — the same way a genuinely refused permission dies. Granita read that as a refusal,
