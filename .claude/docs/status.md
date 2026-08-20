@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.2.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.4.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
 The two halves find each other **on real hardware**: the Mac serves `/v1/health` and advertises over
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
@@ -89,10 +89,12 @@ In order, and the first one is already agreed rather than open:
 
 ## Waiting on Davide
 
-- **The refused-permission path, seen on device.** Granting works and is confirmed; denying is not.
-  It is covered by a test through a fake, but the real thing cannot be exercised in the simulator —
-  which does not implement local network privacy at all — so whether the screen reads right when iOS
-  actually withholds the permission is still unknown. Turn it off under Settings › Granita › Local
-  Network to check.
+- **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
+  the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
+  hardware is the true one: whether a browser that iOS really is withholding permission from dies
+  three times over and reaches the Settings screen within a couple of seconds, rather than sitting on
+  "Looking for your Mac". The simulator does not implement local network privacy at all, so only a
+  device can say. Turn it off under Settings › Granita › Local Network to check, then turn it back on
+  without relaunching — the screen should find the Mac again on its own within five seconds.
 - A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
   Not started; the Mac app runs locally in the meantime, and only distribution needs it.
