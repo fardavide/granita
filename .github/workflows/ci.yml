@@ -207,13 +207,22 @@ jobs:
       - uses: ./.github/actions/select-xcode
 
       # snapshot-testing is the only remote dependency the Xcode project resolves, and it pulls
-      # swift-syntax, so cache the clones. The other jobs need no cache of this kind: the package's
-      # own dependencies are cached separately, keyed on Package.resolved.
+      # swift-syntax, so cache the clones.
+      #
+      # Keyed on project.yml rather than on the project's Package.resolved, which is what Aura keys
+      # on. Aura hand-maintains its .xcodeproj so that file is committed there; here the project is
+      # generated, and `xcodegen generate` wipes project.xcworkspace/xcshareddata — so the file
+      # cannot be committed, hashFiles would return empty, and every run would collide on one
+      # degenerate key while looking like it had a cache.
+      #
+      # The cost of the substitute: project.yml pins a lower bound, so a new patch release of
+      # snapshot-testing reuses a stale cache entry until this file changes. That only slows a run
+      # down; it cannot make one wrong.
       - name: Cache SwiftPM source packages
         uses: actions/cache@v4
         with:
           path: SourcePackages
-          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
           restore-keys: snapshot-spm-${{ runner.os }}-
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
