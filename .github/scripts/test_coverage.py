@@ -15,8 +15,8 @@ def counter(covered: int, count: int) -> dict:
     return {"covered": covered, "count": count}
 
 
-def entry(lines: tuple[int, int], regions: tuple[int, int]) -> dict:
-    return {"lines": counter(*lines), "regions": counter(*regions)}
+def entry(lines: tuple[int, int], regions: tuple[int, int], scope: str = "package") -> dict:
+    return {"lines": counter(*lines), "regions": counter(*regions), "scope": scope}
 
 
 def summary(categories: dict[str, dict], ref: str = "main", commit: str = "abc1234") -> dict:
@@ -53,6 +53,16 @@ class TestPathClassification:
         assert not coverage.is_test_path("Client/Connection/Data/Bonjour.swift")
         # The suffix must be on a directory, not on the file — a shipped type may be named for tests.
         assert not coverage.is_test_path("Core/Diff/Domain/FixtureTests.swift")
+
+    def test_given_a_view_layer_file_when_classifying_then_it_is_view_code(self):
+        assert coverage.is_view_path("Client/Connection/Ui/ServerDiscoveryView.swift")
+        assert coverage.is_view_path("Client/App/Presentation/GranitaApp.swift")
+        # A layer may hold subdirectories, and they are still that layer.
+        assert coverage.is_view_path("Client/Connection/Ui/Components/Badge.swift")
+
+    def test_given_a_domain_or_data_file_when_classifying_then_it_is_not_view_code(self):
+        assert not coverage.is_view_path("Core/Diff/Domain/UnifiedDiffParser.swift")
+        assert not coverage.is_view_path("Client/Connection/Data/Bonjour.swift")
 
 
 class TestCollect:
@@ -99,7 +109,57 @@ class TestCollect:
 
         written = json.loads(out.read_text())
         assert written["categories"]["unit"] == entry((8, 10), (3, 5))
-        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9))
+        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope="views")
+
+    def test_given_a_snapshot_export_when_collecting_then_only_view_code_counts(self, tmp_path):
+        # A rendered view executes no parser and no repository, so every line of those the app
+        # happens to link is one a snapshot can never cover. Left in the denominator, the row falls
+        # whenever domain code is added anywhere under the app — which says nothing about snapshots.
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [
+                        ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (20, 40), (4, 9)),
+                        ("/w/Packages/Granita/Core/Diff/Domain/Parser.swift", (0, 500), (0, 200)),
+                        ("/w/Packages/Granita/Client/Connection/Data/Bonjour.swift", (0, 60), (0, 20)),
+                    ]
+                )
+            )
+        )
+        out = tmp_path / "summary.json"
+
+        coverage.collect(
+            coverage.parse(
+                ["collect", "--category", "snapshot", "--export", str(path), "--out", str(out), "--ref", "main"]
+            )
+        )
+
+        written = json.loads(out.read_text())
+        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope="views")
+
+    def test_given_a_unit_export_when_collecting_then_every_layer_counts(self, tmp_path):
+        # The scoping is the snapshot kind's alone. A unit test can reach any layer, and a Ui test
+        # drives the real app, so reaching a repository and a parser is exactly what it does.
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [
+                        ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (20, 40), (4, 9)),
+                        ("/w/Packages/Granita/Core/Diff/Domain/Parser.swift", (30, 500), (10, 200)),
+                    ]
+                )
+            )
+        )
+        out = tmp_path / "summary.json"
+
+        coverage.collect(
+            coverage.parse(["collect", "--category", "unit", "--export", str(path), "--out", str(out), "--ref", "main"])
+        )
+
+        written = json.loads(out.read_text())
+        assert written["categories"]["unit"] == entry((50, 540), (14, 209))
 
 
 class TestPercent:
@@ -143,6 +203,23 @@ class TestGate:
 
         assert verdict["status"] == "pass"
         assert [check["category"] for check in verdict["checks"]] == ["unit", "unit"]
+
+    def test_given_a_baseline_measured_over_other_files_when_gating_then_it_is_not_judged(self):
+        # Changing what a row measures makes the old number the answer to a different question, not
+        # a better one. The kind rejoins the ratchet on the next `main` run, as any new kind does.
+        current = summary({"snapshot": entry((9, 10), (4, 5), scope="views")})
+        baseline = summary({"snapshot": entry((8, 10), (4, 5), scope="package")})
+
+        assert coverage.gate_verdict(current, baseline)["status"] == "skipped"
+
+    def test_given_a_baseline_measured_the_same_way_when_gating_then_it_is_judged(self):
+        current = summary({"snapshot": entry((7, 10), (4, 5), scope="views")})
+        baseline = summary({"snapshot": entry((8, 10), (4, 5), scope="views")})
+
+        verdict = coverage.gate_verdict(current, baseline)
+
+        assert verdict["status"] == "fail"
+        assert [check["label"] for check in verdict["regressions"]] == ["Snapshot lines"]
 
     def test_given_a_kind_that_ran_nothing_when_gating_then_it_is_not_judged(self):
         current = summary({"ui": entry((0, 0), (0, 0))})
@@ -217,6 +294,13 @@ class TestRender:
 
         assert "Coverage gate failed" in text
         assert "Unit lines" in text
+
+    def test_given_two_rows_with_different_denominators_when_rendering_then_the_report_says_so(self, tmp_path):
+        # Two percentages in one table that are not measured over the same files read as comparable
+        # unless the table says otherwise.
+        text = self.render(tmp_path, summary({"snapshot": entry((8, 10), (4, 5), scope="views")}), None)
+
+        assert "view layers alone" in text
 
     def test_given_no_module_breakdown_is_wanted_when_rendering_then_none_is_written(self, tmp_path):
         # Coverage is reported per test kind, not per module: the question worth asking is which

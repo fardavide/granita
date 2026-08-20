@@ -325,3 +325,106 @@ Rejected: attributing coverage to a kind by test-name suffix, Oltre-style. Oltre
 applies to every `Test` task at once; here the three kinds are already three separate bundles built
 by two different toolchains, so a suffix would be a second, weaker convention layered over a
 partition the build system enforces for free.
+
+## The parser reports what the diff text says, and nothing the git layer already knows
+
+A parsed file carries its path, the path it came from when that differs, whether git refused to diff
+it, whether it is a gitlink, and its hunks. It deliberately does **not** carry a status or a line
+count, even though both are readable from the text: §5.3's rule is that the change set and its stats
+come from one comparison with identical options, and a status re-derived here would be exactly the
+second, disagreeing source that rule exists to prevent. A staged delete plus an unstaged add is one
+rename to the comparison the stats come from — and the per-file diff would have to agree with it by
+construction rather than by coincidence.
+
+Binary and gitlink are the exceptions because only the diff text states them: a one-line summary or a
+`GIT binary patch` payload instead of hunks, and mode 160000 on the index line.
+
+## The parser never fails, because a truncated hunk is an ordinary input
+
+The size guard hands it the first two thousand lines of a large diff, so a hunk that stops half way
+through is what the guard promised rather than corruption. Throwing would turn every large file into
+an error. Anything unrecognised is skipped and everything before it is kept, so the declared hunk
+counts stay as git wrote them while the body is simply short — which is what lets the client show
+"the first N lines" honestly.
+
+Rejected: typed throws with a malformed-input case. It would be a case no caller could do anything
+with, on an input the product produces on purpose.
+
+## Splitting diff output on a newline `Character` silently merges every line of a CRLF file
+
+Swift treats CRLF as a **single** grapheme cluster, so splitting on `"\n"` as a `Character` does not
+split a CRLF file at all — it returns the whole diff as one line, with no error anywhere. The split
+is on the newline **byte**. The CR that remains at the end of each line is content: it is what makes
+the file a CRLF file, is preserved verbatim on the wire, and counts zero columns.
+
+This is not theoretical: temporarily reverting the split to the `Character` form turns the CRLF
+fixture's four lines into one, which is how the behaviour was confirmed rather than assumed.
+
+## A conflict marker is recognised by state, not by a prefix
+
+A row of `=` signs is a Markdown heading underline far more often than it is a conflict separator, and
+tagging one as a marker would render ordinary documentation as a conflict. So a separator or a
+terminator only counts as one when an opener has been seen and not yet closed, and the marker must be
+exactly seven characters, alone or followed by a label — nine equals signs is content.
+
+Two consequences worth stating. The open-conflict state is held across the **whole file** rather than
+reset per hunk, because a conflict region longer than twice the context breaks into two hunks and the
+terminator then arrives in the second one. And `|||||||` is recognised alongside the three §4 names,
+because the diff3 and zdiff3 conflict styles emit it and an agent's own git configuration may well
+select one — a marker we do not recognise renders as content, which is the failure that matters here.
+
+## The word diff measures similarity over non-whitespace tokens only
+
+§6 sets a floor of 0.4 without saying what is measured. Counting the whitespace runs between words
+would carry any two lines of similar shape over it — the runs match whatever the words are, so four
+words against four different words scores 0.43 on spacing alone. Excluding them, the same pair scores
+zero and is left unsegmented, which is what the floor is for: telling a line that was edited apart
+from a line that was replaced.
+
+The check is a token-bag overlap rather than the subsequence itself, so the quadratic comparison is
+only run on pairs that can pass. A pure indentation change still isolates correctly, because
+whitespace remains a token *inside* the comparison; it is only excluded from the similarity score.
+
+## The marker for a missing trailing newline does not break a pair
+
+§6 pairs maximal runs of deletions "immediately followed by" additions. Taken literally, no file
+without a trailing newline is ever word-diffed, because git writes `\ No newline at end of file`
+between the line it belongs to and the next one — which is every pair in such a file. Runs are
+collected past those markers; the markers themselves are never paired and number neither side.
+
+## The invocation must pin the diff path prefixes
+
+The parser removes the leading `a/` and `b/` from every path. That is not ambiguous with a path that
+genuinely begins with `a/` — git writes `a/a/file` — but the prefixes are **configurable**, and
+`diff.noprefix` in Davide's own git configuration would silently remove the first two characters of
+every path in the product with no error anywhere.
+
+§5.1 hardens each invocation against his configuration but does not cover this one. The diff-family
+suffix must therefore also pin the prefixes explicitly, alongside `--no-ext-diff` and `--no-color`.
+Recorded here rather than fixed in place because the git layer does not exist yet; it is a
+requirement that layer inherits, not a preference.
+
+## The Snapshot coverage row is measured over the view layers, not the whole package
+
+The parser landing dropped that row from 72.6% to 32.8% while the project's uncovered lines went from
+72 to 73 — the covered line count did not move at all. The phone app links the diff modules through
+its connection feature, so five hundred new lines joined the snapshot denominator, and rendering a
+view executes none of them. Measured that way the row falls whenever domain code is added anywhere
+under the app, which is a fact about the dependency graph rather than about the snapshots, and no
+amount of testing the parser could have fixed it.
+
+Scoped to the layers that draw, the row answers the question it exists for: of the code that draws
+screens, how much does a baseline put on screen. Davide's call between three options. The Ui kind is
+left unscoped, because a behavioural test drives the real app and reaching a repository and a parser
+is exactly what it does.
+
+Rejected: ratcheting that row on covered lines rather than a percentage, which would have passed
+today and still caught a deleted baseline, but leaves a number in the table that nothing enforces the
+meaning of. Also rejected: reporting the row without gating it, which keeps the dilution and loses
+the signal.
+
+**A redefinition un-judges its row for one run.** The summary now records what each kind's percentage
+was taken over, and the gate compares two numbers only when both were taken the same way. Without
+that, changing the measurement fails the very pull request that changes it — for the redefinition
+rather than for a regression — and the only way through would be to disable the gate for one merge,
+which is the habit this ruleset exists to prevent.
