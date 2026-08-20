@@ -428,3 +428,65 @@ was taken over, and the gate compares two numbers only when both were taken the 
 that, changing the measurement fails the very pull request that changes it — for the redefinition
 rather than for a regression — and the only way through would be to disable the gate for one merge,
 which is the habit this ruleset exists to prevent.
+
+## The file tree carries structure and identity, and nothing that changes while it is on screen
+
+A row of the file selector renders a status letter, a name, `+n / -m` and a viewed checkbox, so the
+obvious design hangs the whole change record off each leaf. The tree carries an identifier and a
+repo-relative path instead, and the rest is joined by identifier one layer up.
+
+Two reasons. The first is that everything omitted **churns while the shape does not**: viewed state
+flips under the reader's finger, stats move on every poll, and a structure rebuilt for either is a
+structure that was never really about the change record. The second is that the change record does
+not exist yet — landing SPEC §4's `FileChange` here would have forced a decision on how an opaque
+identifier encodes on the wire, and the spec carries no JSON example to settle it. That belongs to
+M2's API contract, not to a grouping function, and guessing it here would have put a wire format in
+a module that never touches the wire.
+
+So the tree's input is its own two-field entry: an identifier to hand back when a row is tapped, and
+where the file sits. The mapping from a change record is a boundary mapper, which is what boundary
+mappers are for.
+
+## The flat toggle is not a second shape the domain owes
+
+§10's file selector has a toggle "to a flat path list", which reads like a second output. It is not
+one, and flattening the tree to produce it would be actively wrong.
+
+A depth-first walk of a directory-grouped tree yields **a third order**, agreeing with neither the
+tree nor the diff. The change set as it arrives is already git's own path order, which is the order
+of the one continuous scroll the detail pane renders — so the flat list is the input list, unchanged,
+and tapping the nth row goes to the nth file in the scroll. There is nothing for a domain function to
+do.
+
+The tree is therefore the only shape built, and it is the one that reorders.
+
+## Directories above files, and the sort is over what the row reads
+
+Git orders a diff by whole-path bytes, which interleaves the two — `Makefile` lands between `Apps/`
+and `Sources/`. A project view does not, and "Android Studio style" is the brief, so directories sort
+above files and each group sorts alphabetically.
+
+Case-insensitively, because a case-sensitive comparison puts every capitalised name above every
+lowercase one and that is not where a reader looks; with the raw names as a tiebreak so two spellings
+of one word still order deterministically. Nothing in the comparison is locale-sensitive: an iPhone
+and an iPad showing one worktree must show it identically.
+
+The comparison is over the **compacted** name — what the row actually reads — rather than the first
+component of the chain. The two differ only when a separator meets a punctuation character in a
+sibling's name, and sorting a visible list by something other than its visible text is the harder
+behaviour to explain.
+
+## Compaction folds directories, never a file, and the row is identified by its deepest path
+
+`app/src/main/kotlin/com/example` is one row because each of those directories holds exactly one
+child and that child is another directory. A directory whose only child is a **file** is left alone:
+the file is content the row contains, not another step of the path, and folding it in would leave
+nowhere to render its status, stats and checkbox.
+
+A compacted row is identified by the **deepest** directory in its chain, because that is the row
+collapse state has to be remembered against — the chain collapses and expands as the single thing the
+reader sees. Its name keeps the separators; its path is the full repo-relative one.
+
+Considered and deferred: aggregate `+n / -m` on a directory row, which a collapsed directory could
+usefully show. §10 asks for stats on file rows only, and the aggregate is a sum over a subtree that
+the view layer can take when a design asks for it.

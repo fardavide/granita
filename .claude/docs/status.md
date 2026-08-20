@@ -19,7 +19,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 |---|---|---|
 | M0 | Scaffold — layout, manifest, CI, ruleset, harness, fixtures | **done** |
 | — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
-| M1 | Diff parser, display columns, word diff; path grouping into a tree | parser done, tree left |
+| M1 | Diff parser, display columns, word diff; path grouping into a tree | **done** |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
@@ -36,7 +36,10 @@ The spec's milestones, each ending in something runnable and a green suite, with
   binary and gitlink files, mode changes, conflict markers, CRLF, missing trailing newlines, paths
   with spaces and non-ASCII, column widths, and word-level segments within a line. Nothing calls it
   yet — it is a library waiting for the git layer.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 87 package tests in 9 suites, plus
+- **The file selector's tree**: a pure function from a worktree's changed files to the rows the phone
+  renders, with single-child directory chains compacted into one row, directories above files, and a
+  deterministic order that does not inherit the one the diff arrived in. Waiting on the git layer too.
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 96 package tests in 10 suites, plus
   the snapshot suite on a simulator.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
@@ -75,17 +78,16 @@ sets up delivery.
 
 ## What to pick up next
 
-In order:
+**M2, the git layer.** M1 is done, so the whole of `Core` is a library nothing calls yet. M2 is the
+largest remaining slice and the one that finally connects it to something. Its traps are catalogued
+in SPEC §5 and verified in `verification.md`, and it inherits two requirements from M1:
 
-1. **The rest of M1 — grouping changed paths into a tree.** The parser is done; what is missing is
-   the collapsing of single-child directories and the ordering the file selector navigates. It needs
-   no fixtures and no git: it is a pure function over a list of paths.
-
-2. **M2, the git layer.** The largest remaining slice, and the one that finally connects the parser
-   to something. Its traps are catalogued in SPEC §5 and verified in `verification.md`, and it
-   inherits one more requirement from the parser: the diff-family invocation must pin the `a/` and
-   `b/` path prefixes, because `diff.noprefix` in Davide's own configuration would otherwise remove
-   the first two characters of every path with no error anywhere.
+- the diff-family invocation must pin the `a/` and `b/` path prefixes, because `diff.noprefix` in
+  Davide's own configuration would otherwise remove the first two characters of every path with no
+  error anywhere;
+- SPEC §4's `FileChange` lands with it rather than with the tree, and it is the first type that has
+  to say how an opaque identifier encodes on the wire — the spec carries no JSON example, so that is
+  a decision M2 makes rather than inherits.
 
 ## Waiting on Davide
 
