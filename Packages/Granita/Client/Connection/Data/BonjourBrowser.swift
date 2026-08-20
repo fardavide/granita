@@ -1,3 +1,4 @@
+import Dispatch
 import Network
 
 import ClientConnectionDomain
@@ -5,6 +6,11 @@ import CoreBrandingDomain
 
 /// A real `NWBrowser`, with its two callbacks turned into one stream that ends when it does.
 final class BonjourBrowser: ServiceBrowsing {
+
+    /// Browsing has no reason to be on the main queue: what the events reach is a main-actor view
+    /// model, and the hop happens at its `await` rather than here. Off the main queue they also
+    /// arrive in a host test, whose main thread belongs to the test runner.
+    private static let queue = DispatchQueue(label: "granita.discovery.browser")
 
     private let browser: NWBrowser
 
@@ -54,7 +60,7 @@ final class BonjourBrowser: ServiceBrowsing {
             browser.browseResultsChangedHandler = { results, _ in
                 continuation.yield(.found(results.compactMap(Self.server(from:))))
             }
-            browser.start(queue: .main)
+            browser.start(queue: Self.queue)
         }
     }
 

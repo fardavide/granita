@@ -45,4 +45,24 @@ struct BonjourBrowserTests {
         // when - then
         #expect(BonjourBrowser.change(for: .cancelled) == .finish)
     }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a real browser when it is cancelled then its stream ends without reporting a death`() async {
+        // given — the one thing this drives for real. Nothing advertises the service on a build
+        // machine, so what is asserted is the teardown, which does not depend on finding anything.
+        let sut = BonjourBrowser()
+
+        // when
+        let events = sut.start()
+        sut.cancel()
+
+        // then — reaching the line after the loop is the assertion the session leans on: a cancelled
+        // browser ends its stream, and it does so without a failure, which is how the session tells
+        // "stopped on purpose" from "died and needs replacing".
+        var reported: [BrowserEvent] = []
+        for await event in events {
+            reported.append(event)
+        }
+        #expect(reported.contains { if case .failed = $0 { true } else { false } } == false)
+    }
 }
