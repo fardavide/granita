@@ -122,3 +122,16 @@ But the committed schemes are **XcodeGen's output**, so Xcode's rewrite is drift
 **After opening the project in Xcode, run `make project` before committing** — and never
 `git add -A` straight after an Xcode session without checking what it touched. That is exactly how
 this landed in a documentation-only commit and turned a pull request red.
+
+## The Xcode project's Package.resolved cannot be committed here
+
+`xcodegen generate` rewrites `Granita.xcodeproj/project.xcworkspace/xcshareddata`, so a
+`Package.resolved` written there does not survive `make project`. Aura commits that file and keys a
+CI cache on it; Aura hand-maintains its `.xcodeproj`, and that is the difference.
+
+So **never key a CI cache on it** — `hashFiles` returns empty for a missing file, and every run then
+collides on one degenerate key while appearing to have a working cache. Key on `project.yml`, which
+is committed, always present, and carries the version spec.
+
+The package's own `Packages/Granita/Package.resolved` is unaffected: it lives outside the generated
+project, is committed, and is the right thing to key the package jobs on.

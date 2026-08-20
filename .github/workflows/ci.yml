@@ -194,3 +194,88 @@ jobs:
       - name: Enforce the coverage gate
         if: github.event_name == 'pull_request'
         run: python3 .github/scripts/coverage.py enforce --verdict build/coverage/verdict.json
+
+  # Isolated on purpose. The baselines are recorded locally and their rendering is
+  # environment-sensitive, so keeping them in their own job means a pixel diff never masks a real
+  # unit or build failure. This job GATES the pull request.
+  snapshot-tests:
+    name: Snapshot tests (iOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+
+      # snapshot-testing is the only remote dependency the Xcode project resolves, and it pulls
+      # swift-syntax, so cache the clones.
+      #
+      # Keyed on project.yml rather than on the project's Package.resolved, which is what Aura keys
+      # on. Aura hand-maintains its .xcodeproj so that file is committed there; here the project is
+      # generated, and `xcodegen generate` wipes project.xcworkspace/xcshareddata — so the file
+      # cannot be committed, hashFiles would return empty, and every run would collide on one
+      # degenerate key while looking like it had a cache.
+      #
+      # The cost of the substitute: project.yml pins a lower bound, so a new patch release of
+      # snapshot-testing reuses a stale cache entry until this file changes. That only slows a run
+      # down; it cannot make one wrong.
+      - name: Cache SwiftPM source packages
+        uses: actions/cache@v4
+        with:
+          path: SourcePackages
+          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: snapshot-spm-${{ runner.os }}-
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
+
+      # Fail early and readably if the image has no simulator to render on, rather than surfacing it
+      # as an opaque xcodebuild destination error.
+      - name: Verify a simulator is available
+        id: simulator
+        run: |
+          runtimes="$(xcrun simctl list runtimes available)"
+          devices="$(xcrun simctl list devices available)"
+          if ! grep -q 'iOS 26' <<< "$runtimes"; then
+            echo "::error::No iOS 26 simulator runtime on this runner image"
+            exit 1
+          fi
+          # The name is resolved rather than hardcoded: this image ships "iPhone 17 Pro" and not a
+          # plain "iPhone 17", and that has already changed once between releases.
+          name="$(grep -oE 'iPhone 1[6-9][A-Za-z ]*' <<< "$devices" | head -1 | sed 's/ *$//')"
+          if [ -z "$name" ]; then
+            echo "::error::No recent iPhone simulator on this runner image"
+            exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Using $name"
+
+      # Renders 24 baselines: six discovery states across iPhone and iPad, light and dark. The
+      # assertions are main-actor isolated — without that, UIKit traps on a background thread, the
+      # host restarts, and the retry reports "0 tests passed" having rendered nothing.
+      - name: Run snapshot tests
+        run: |
+          xcodebuild test \
+            -project Granita.xcodeproj \
+            -scheme GranitaMobile \
+            -destination 'platform=iOS Simulator,name=${{ steps.simulator.outputs.name }},OS=latest' \
+            -clonedSourcePackagesDirPath SourcePackages \
+            CODE_SIGNING_ALLOWED=NO
+
+      # On a mismatch the freshly-rendered image is written beside the baseline it failed against
+      # (SnapshotSupport pins SNAPSHOT_ARTIFACTS there). Pair them into one self-contained HTML page
+      # so a red run is reviewable by eye — including on a phone — rather than by downloading an
+      # .xcresult and opening Xcode.
+      - name: Build the snapshot diff report
+        if: failure()
+        run: |
+          python3 .github/scripts/snapshot-report.py \
+            Apps/GranitaMobileTests/__SnapshotFailures__ \
+            Apps/GranitaMobileTests/__Snapshots__ \
+            snapshot-report
+      - name: Upload the snapshot diff report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: snapshot-report
+          retention-days: 7
+          if-no-files-found: warn

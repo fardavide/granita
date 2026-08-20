@@ -22,6 +22,11 @@ options:
 packages:
   Granita:
     path: Packages/Granita
+  # The fourth dependency, and the only one that is not in Package.swift. It is attached to the
+  # app-hosted test target below and to nothing else, so the two shipped apps stay on three.
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    from: 1.19.4
 
 # Settings both apps share. The version lives here, once, and `make version` is the only thing
 # that edits it.
@@ -141,6 +146,35 @@ targets:
         # fixed iPhone-shaped window that cannot be resized, with no multitasking.
         TARGETED_DEVICE_FAMILY: "1,2"
 
+  # Snapshot tests live here rather than in the package, and they have to. A SwiftPM test target is
+  # hostless: there is no key window, so a SwiftUI view lays out against nothing and renders blank.
+  # Only an app-hosted bundle gives the real window that `drawHierarchyInKeyWindow` needs.
+  GranitaMobileTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - path: Apps/GranitaMobileTests
+        # The baselines are the assertion, not a resource. A file-system-synchronized group would
+        # flatten every PNG into the bundle, where identically-named baselines from different suites
+        # collide as "Multiple commands produce".
+        excludes:
+          - "__Snapshots__/**"
+          - "__SnapshotFailures__/**"
+    dependencies:
+      - target: GranitaMobile
+      - package: SnapshotTesting
+        product: SnapshotTesting
+    settings:
+      base:
+        # Overridden deliberately. XcodeGen derives TEST_HOST from the TARGET name — giving
+        # `GranitaMobile.app/GranitaMobile` — but PRODUCT_NAME renames the product to `Granita`, so
+        # the generated default points at a bundle that is never built. It fails at build time with
+        # a missing-input error naming Info.plist, which points nowhere near the cause.
+        # BUNDLE_EXECUTABLE_FOLDER_PATH is empty on iOS and `Contents/MacOS` on macOS.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.tests
+
 # XcodeGen emits a shared scheme only when a `schemes:` block declares one. Without this, Xcode
 # Cloud's product list comes up empty with no explanation — verify with
 # `xcodebuild -project Granita.xcodeproj -describeAllArchivableProducts -json`.
@@ -163,6 +197,11 @@ schemes:
     build:
       targets:
         GranitaMobile: all
+        GranitaMobileTests: [test]
+    test:
+      config: Debug
+      targets:
+        - GranitaMobileTests
     run:
       config: Debug
     profile:

@@ -36,3 +36,6 @@ build/
 __pycache__/
 .venv-coverage/
 .coverage-baseline/
+
+# Snapshot mismatches — freshly rendered images, written per failing run
+Apps/GranitaMobileTests/__SnapshotFailures__/

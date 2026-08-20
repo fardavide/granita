@@ -21,6 +21,20 @@
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F20DDE31A4498AFF2502475F"
+               BuildableName = "GranitaMobileTests.xctest"
+               BlueprintName = "GranitaMobileTests"
+               ReferencedContainer = "container:Granita.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -39,7 +53,20 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F20DDE31A4498AFF2502475F"
+               BuildableName = "GranitaMobileTests.xctest"
+               BlueprintName = "GranitaMobileTests"
+               ReferencedContainer = "container:Granita.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
+      <CommandLineArguments>
+      </CommandLineArguments>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
