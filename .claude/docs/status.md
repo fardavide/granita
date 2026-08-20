@@ -19,7 +19,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 |---|---|---|
 | M0 | Scaffold — layout, manifest, CI, ruleset, harness, fixtures | **done** |
 | — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
-| M1 | `CoreDiffDomain` parser, display columns, word diff; `CoreTreeDomain` grouping | after the snapshot harness |
+| M1 | Diff parser, display columns, word diff; path grouping into a tree | parser done, tree left |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
@@ -32,7 +32,12 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - Both apps build and launch empty; the backend runs from a terminal.
 - A golden fixture corpus covering every parser case in the spec, generated from the real `git`
   binary and committed, plus the fixture repositories the git-layer tests will drive.
-- Four gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 9 tests, 3 suites.
+- **The unified diff parser**, asserted against that corpus: hunks and line numbering, renames,
+  binary and gitlink files, mode changes, conflict markers, CRLF, missing trailing newlines, paths
+  with spaces and non-ASCII, column widths, and word-level segments within a line. Nothing calls it
+  yet — it is a library waiting for the git layer.
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 87 package tests in 9 suites, plus
+  the snapshot suite on a simulator.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
@@ -70,22 +75,17 @@ sets up delivery.
 
 ## What to pick up next
 
-In order, and the first one is already agreed rather than open:
+In order:
 
-1. **`swift-snapshot-testing`.** Davide approved it as a **fourth, test-only** dependency — linked to
-   an app-hosted test target, never to a shipped product, so the apps stay on three. It was deferred
-   from the discovery slice only so that could reach his phone sooner. The first subject is the
-   discovery view, which is stateless and therefore renderable in all five of its states without a
-   Mac or a granted permission: searching, nothing found, a list, permission refused, failed — light
-   and dark, iPhone and iPad.
+1. **The rest of M1 — grouping changed paths into a tree.** The parser is done; what is missing is
+   the collapsing of single-child directories and the ordering the file selector navigates. It needs
+   no fixtures and no git: it is a pure function over a list of paths.
 
-   **The CI job and the ruleset must move together.** Adding the job without adding its name to
-   `.github/rulesets/protect-main.json` leaves a check that can fail without blocking anything;
-   adding the name without the job leaves every pull request pending forever, with no bypass to
-   escape through. Same pull request, both.
-
-2. **M1, the diff parser.** The 25 golden fixtures are committed and cover every case in SPEC §6, so
-   it can be written test-first against real `git` output from the first failing test.
+2. **M2, the git layer.** The largest remaining slice, and the one that finally connects the parser
+   to something. Its traps are catalogued in SPEC §5 and verified in `verification.md`, and it
+   inherits one more requirement from the parser: the diff-family invocation must pin the `a/` and
+   `b/` path prefixes, because `diff.noprefix` in Davide's own configuration would otherwise remove
+   the first two characters of every path with no error anywhere.
 
 ## Waiting on Davide
 

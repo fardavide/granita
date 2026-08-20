@@ -61,6 +61,24 @@ GATE_EPSILON = 0.05
 # in them, and everything else in an export is a dependency or a toolchain header.
 PACKAGE_MARKER = "/Packages/Granita/"
 
+# The two layers that draw. A layer may hold subdirectories, so the name is matched anywhere in the
+# path rather than only at the position the convention usually puts it.
+VIEW_LAYERS = {"Ui", "Presentation"}
+
+# What each kind's percentage is measured over, and the name that says so in the summary.
+#
+# The snapshot kind is scoped to the view layers because a rendered view executes no repository and
+# no parser: every line of those that the phone app happens to link is one a snapshot can never
+# cover. Measured over the whole package, the row falls whenever domain code is added anywhere under
+# the app — which is a fact about the app's dependency graph and not about the snapshots. Scoped, it
+# answers the question it exists for: of the code that draws screens, how much does a baseline put
+# on screen.
+#
+# The Ui kind is deliberately left unscoped. A behavioural test drives the real app, so reaching a
+# repository and a parser is exactly what it does, and scoping it would undercount it.
+DEFAULT_SCOPE = "package"
+SCOPES = {"snapshot": "views"}
+
 
 # --- collect -----------------------------------------------------------------------------------
 
@@ -75,11 +93,16 @@ def is_test_path(relative: str) -> bool:
     return any(part.endswith("Tests") for part in pathlib.PurePosixPath(relative).parts[:-1])
 
 
+def is_view_path(relative: str) -> bool:
+    """A file in a layer that draws — the only code a rendered snapshot can execute."""
+    return bool(VIEW_LAYERS.intersection(pathlib.PurePosixPath(relative).parts[:-1]))
+
+
 def empty() -> dict:
     return {"covered": 0, "count": 0}
 
 
-def read_export(path: pathlib.Path) -> dict:
+def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
     """Sum one llvm-cov export down to one counter per kind, over shipped package sources only.
 
     SwiftPM writes this format itself and `xcrun llvm-cov export` writes the same one, so a host
@@ -93,7 +116,10 @@ def read_export(path: pathlib.Path) -> dict:
         # package marker and neither of which is ours.
         if PACKAGE_MARKER not in name or "/.build/" in name:
             continue
-        if is_test_path(name.split(PACKAGE_MARKER, 1)[1]):
+        relative = name.split(PACKAGE_MARKER, 1)[1]
+        if is_test_path(relative):
+            continue
+        if scope == "views" and not is_view_path(relative):
             continue
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
@@ -108,7 +134,13 @@ def collect(args: argparse.Namespace) -> int:
     out = pathlib.Path(args.out)
     summary = json.loads(out.read_text()) if out.is_file() else {"categories": {}}
 
-    summary.setdefault("categories", {})[args.category] = read_export(pathlib.Path(args.export))
+    scope = SCOPES.get(args.category, DEFAULT_SCOPE)
+    # Recorded beside the counters so the gate can tell a number that got worse from a number that
+    # started answering a different question.
+    summary.setdefault("categories", {})[args.category] = {
+        **read_export(pathlib.Path(args.export), scope),
+        "scope": scope,
+    }
     if args.ref:
         summary["ref"] = args.ref
     if args.commit:
@@ -169,6 +201,11 @@ def category_rows(current: dict, baseline: dict) -> list[str]:
     for name in CATEGORIES:
         measured = current.get("categories", {}).get(name, {})
         base = baseline.get("categories", {}).get(name, {})
+        # A delta against a number taken over different files is a subtraction nobody performed, and
+        # an arrow next to it reads as a verdict. The gate already refuses to judge such a pair; the
+        # table has to say the same thing, so the row reads as new rather than as improved.
+        if base.get("scope", DEFAULT_SCOPE) != measured.get("scope", DEFAULT_SCOPE):
+            base = {}
         emphasis = "**" if name == "all" else ""
         cells = [
             f"{emphasis}{format_cell(measured.get(counter), base.get(counter))}{emphasis}"
@@ -193,11 +230,18 @@ def gate_checks(current: dict, baseline: dict) -> list[dict]:
 
     A value only one side has is not a regression and not a pass — it is unjudgeable, and left out
     entirely. A kind measured for the first time joins the ratchet on the next `main` run.
+
+    So is a value the two runs measured over different files. Changing what a row covers makes the
+    old number the answer to a different question rather than a better one, and comparing the two
+    would fail a pull request for the redefinition itself. Such a kind rejoins the ratchet on the
+    next `main` run, exactly as a new one does.
     """
     checks = []
     for category in CATEGORIES:
         measured = current.get("categories", {}).get(category, {})
         base = baseline.get("categories", {}).get(category, {})
+        if measured.get("scope", DEFAULT_SCOPE) != base.get("scope", DEFAULT_SCOPE):
+            continue
         for counter in COUNTERS:
             now, before = percent(measured.get(counter)), percent(base.get(counter))
             if now is None or before is None:
@@ -298,8 +342,9 @@ def render(args: argparse.Namespace) -> int:
         "",
         "<sub>No number in the table may fall below the last `main` run — every row, not just the "
         "total. Regions rather than branches because swiftc emits no branch coverage; a region is "
-        "an `if`, a `guard`, a `case`, a ternary or a closure body. Kinds are directories; see the "
-        "`swift-testing` skill.</sub>",
+        "an `if`, a `guard`, a `case`, a ternary or a closure body. The Snapshot row is measured "
+        "over the view layers alone, because a rendered view executes no repository and no parser. "
+        "Kinds are directories; see the `swift-testing` skill.</sub>",
     ]
 
     text = "\n".join(lines) + "\n"
