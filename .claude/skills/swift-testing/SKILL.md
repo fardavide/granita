@@ -98,7 +98,7 @@ under `.fixtures/`, which `make fixtures` builds and `.gitignore` excludes.
 ## Snapshot tests
 
 `swift-snapshot-testing` is the **fourth** dependency, approved as **test-only**. It is attached to
-the `GranitaMobileTests` Xcode target and to nothing else — never to `Package.swift` — so the two
+the `GranitaMobileSnapshotTests` Xcode target and to nothing else — never to `Package.swift` — so the two
 shipped apps stay on three.
 
 - **They must be app-hosted.** A SwiftPM test target is hostless: there is no key window, so a
@@ -139,9 +139,44 @@ like one that works.
 - Reference PNGs are **16-bit Display P3**. `sips` and other 8-bit tooling truncate them silently and
   will report two different images as identical.
 
-### They do not feed the coverage ratchet
+## Test kinds, and what the coverage report measures
 
-The `Coverage` job measures `swift test` over the package, and snapshot tests live in the Xcode
-target — so `ClientConnectionUi` reads 0% there despite being covered by 24 baselines. The two gates
-are separate on purpose; do not "fix" the coverage number by moving snapshot tests into the package,
-because a hostless target renders blank.
+A test declares its kind by **which directory it lives in**, because a directory is already a
+bundle here and a bundle is the finest thing a coverage profile can be scoped to. Three kinds:
+
+| Kind | Where | What it is |
+|---|---|---|
+| Unit | `Packages/Granita/<Unit>/<Feature>/<Layer>Tests/` | In-process, on the host, no simulator. The default — everything that is not one of the two below |
+| Ui | `Apps/GranitaMobileUiTests/` | Behavioural: a screen rendered and driven, asserting what changed. **None exist yet** |
+| Snapshot | `Apps/GranitaMobileSnapshotTests/` | Rendered against a committed baseline, on a simulator |
+
+The `Coverage` job runs the suite **once per kind**, plus once with the profiles merged, because
+coverage is a property of the tests that ran: the only way to say what the snapshot tests reach, as
+opposed to what everything reaches, is to run them alone and read the profile. The report is a row
+per kind and nothing else — there is no per-module breakdown, because the question worth asking is
+which kind of test reaches the code, not which directory it sits in.
+
+Rules that follow:
+
+- **A row of dashes is not a zero.** `Ui` reads `—` because the target does not exist yet. The first
+  behavioural test brings `Apps/GranitaMobileUiTests` and its `project.yml` target with it, and the
+  row starts carrying numbers on the next `main` run.
+- **Read the Snapshot row as "was this rendered", not "was this asserted".** Rendering a screen
+  executes every line that composes it, so `ClientConnectionUi` scores high the moment any baseline
+  puts it on screen. Line coverage cannot tell a rendered line from a driven one. What the split is
+  good for is the comparison *between* kinds on one module.
+- **Do not "fix" a number by moving snapshot tests into the package.** A SwiftPM test target is
+  hostless and renders blank; the split is the reason the numbers mean anything.
+- **The rows have different denominators, so do not subtract them.** A pass only measures the code
+  its own binaries map: the simulator never links the server modules, and the host cannot render a
+  view. Each row answers "of what this kind could reach, how much did it", and only `All tests`
+  spans the project. The corollary is a hazard worth knowing: deleting the last test that pulls a
+  module into a binary removes that module's uncovered lines from the denominator, so the
+  percentage goes *up*. Coverage rising after tests are deleted is the signature.
+- **Lines and regions, not lines and branches.** swiftc emits no branch coverage — llvm-cov reports
+  `branches: 0/0` for every Swift object, dependencies included, and no flag changes it. A region is
+  an `if`, a `guard`, a `case`, a ternary or a closure body, and it moves when a path stops being
+  taken even though the line total holds.
+- **Every value is gated**, line and region, for every kind that both this run and the last `main`
+  run put a number on. Plain ratchet, no floor, no slack. A kind measured for the first time is not
+  judged — it joins on the next `main` run.

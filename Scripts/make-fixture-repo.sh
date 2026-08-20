@@ -206,7 +206,15 @@ diff_ HEAD -U3 -- "src/caffè-日本語-🧊.txt"      > "$GOLDEN/case-path-non-
 diff_ HEAD -U3 -- src/sectioned.swift           > "$GOLDEN/case-section-heading.diff"
 diff_ HEAD -U3 -- src/single-line.txt           > "$GOLDEN/case-omitted-hunk-counts.diff"
 diff_ HEAD -U3 -- vendor/sub                    > "$GOLDEN/case-submodule.diff"
+# Staged first, deliberately. It is created after the baseline commit, so `diff HEAD` shows an
+# untracked file as nothing at all — which is how this fixture came to be committed at zero bytes,
+# leaving the width arithmetic the whole viewer depends on with no coverage at all.
+git_ add src/columns/display-columns.txt
 diff_ HEAD -U3 -- src/columns/display-columns.txt > "$GOLDEN/case-display-columns.diff"
+if [ ! -s "$GOLDEN/case-display-columns.diff" ]; then
+    echo "error: the display-columns fixture is empty; the file is probably untracked again" >&2
+    exit 1
+fi
 # An empty diff is a real case: a clean path must parse to zero files, not to one empty file.
 diff_ HEAD -U3 -- src/untouched.txt             > "$GOLDEN/case-empty.diff"
 

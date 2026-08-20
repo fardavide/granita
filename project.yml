@@ -149,11 +149,17 @@ targets:
   # Snapshot tests live here rather than in the package, and they have to. A SwiftPM test target is
   # hostless: there is no key window, so a SwiftUI view lays out against nothing and renders blank.
   # Only an app-hosted bundle gives the real window that `drawHierarchyInKeyWindow` needs.
-  GranitaMobileTests:
+  #
+  # Named for the kind of test it holds, not for the app it hosts. The Coverage job reports a row per
+  # kind and scopes each pass with `-only-testing:<target>`, so a bundle is the unit a kind is
+  # measured in — a plain `GranitaMobileTests` would be the obvious place to drop a behavioural test,
+  # and the snapshot row would then quietly start counting what a different kind of test reached.
+  # Behavioural tests get `Apps/GranitaMobileUiTests` and a target beside this one.
+  GranitaMobileSnapshotTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, iPadOS]
     sources:
-      - path: Apps/GranitaMobileTests
+      - path: Apps/GranitaMobileSnapshotTests
         # The baselines are the assertion, not a resource. A file-system-synchronized group would
         # flatten every PNG into the bundle, where identically-named baselines from different suites
         # collide as "Multiple commands produce".
@@ -173,7 +179,7 @@ targets:
         # BUNDLE_EXECUTABLE_FOLDER_PATH is empty on iOS and `Contents/MacOS` on macOS.
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
         BUNDLE_LOADER: "$(TEST_HOST)"
-        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.tests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.snapshottests
 
 # XcodeGen emits a shared scheme only when a `schemes:` block declares one. Without this, Xcode
 # Cloud's product list comes up empty with no explanation — verify with
@@ -197,11 +203,11 @@ schemes:
     build:
       targets:
         GranitaMobile: all
-        GranitaMobileTests: [test]
+        GranitaMobileSnapshotTests: [test]
     test:
       config: Debug
       targets:
-        - GranitaMobileTests
+        - GranitaMobileSnapshotTests
     run:
       config: Debug
     profile:

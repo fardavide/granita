@@ -1,218 +1,379 @@
 #!/usr/bin/env python3
-"""Measure, report and gate line coverage.
+"""Measure, report and gate coverage **per kind of test**.
 
-The gate is Oltre's rule, deliberately: a plain **ratchet** against the last green `main` run, with
-no floor and no slack. Every percentage in the table must hold at or above the baseline. A fixed
-threshold either sits so low it never fires or so high it blocks unrelated work; a ratchet asks the
-only question worth asking of a pull request, which is whether it made things worse.
+The report answers one question the whole-suite number cannot: *which kind of test is actually
+reaching this code*. A row per kind — unit, ui, snapshot, and everything together — and two columns
+per row.
 
 Three subcommands, matching how CI uses them:
 
-    collect   an llvm-cov export  ->  a small, diffable summary
-    render    summary + baseline  ->  a PR comment and a verdict
-    enforce   a verdict           ->  exit 1 if coverage regressed
+    collect   one llvm-cov export  ->  one row of a small, diffable summary
+    render    summary + baseline   ->  a PR comment and a verdict
+    enforce   a verdict            ->  exit 1 if coverage regressed
+
+**Lines and regions, not lines and branches.** swiftc emits no branch coverage: llvm-cov reports
+`branches: 0/0` across every mapped line in this project, dependencies included, and there is no
+flag that changes it — the counter exists for clang. `regions` is what Swift does emit and is the
+near-equivalent: an `if`, a `guard`, each `case`, a ternary and every closure body get their own
+counter, so a region number moves when a path stops being taken even though the line total holds.
 
 **Test sources are excluded.** A test file is ~100% covered by construction, so counting them means
 writing more test code raises the number regardless of what it reaches. The figure here answers
-"how much of Granita does the suite exercise", and cannot be gamed.
+"how much of Granita does this kind of test exercise", and cannot be gamed.
 
-Coverage is grouped by **module** rather than by directory, because the module is the unit the
-architecture is expressed in — `Client/Viewer/Data` is `ClientViewerData` — so a regression names
-something a reader can act on.
+The gate is Oltre's rule: a plain **ratchet** against the last green `main` run, with no floor and
+no slack. Every percentage in the table must hold at or above the baseline. A fixed threshold either
+sits so low it never fires or so high it blocks unrelated work; a ratchet asks the only question
+worth asking of a pull request, which is whether it made things worse.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 
-# A directory whose name ends in Tests holds tests. That is the repository's own convention
-# (`Client/Viewer/DomainTests`), so it needs no separate list to fall out of date.
+# Order is the report's order, and "all" is last because it is the summary line.
+CATEGORIES = ["unit", "ui", "snapshot", "all"]
+
+LABELS = {
+    "unit": "Unit",
+    "ui": "Ui",
+    "snapshot": "Snapshot",
+    "all": "All tests",
+}
+
+# The two llvm-cov counters the table shows and the gate judges. The export carries `functions`,
+# `instantiations` and `mcdc` as well: the first two move with refactors rather than with tests,
+# and mcdc is 0/0 for the same reason branches are.
+COUNTERS = ["lines", "regions"]
+
+COMMENT_MARKER = "<!-- granita-coverage-report -->"
+
+# The gate judges to the precision the table prints. Without this a 0.01-point drop would fail a
+# pull request whose own report shows the delta as "±0" — the same tolerance `format_delta` uses to
+# decide a number has not moved, so the verdict can never contradict the row above it.
+GATE_EPSILON = 0.05
+
+# Only the package is measured. The two Xcode targets are thin `@main` shells with nothing testable
+# in them, and everything else in an export is a dependency or a toolchain header.
+PACKAGE_MARKER = "/Packages/Granita/"
+
+
+# --- collect -----------------------------------------------------------------------------------
+
+
 def is_test_path(relative: str) -> bool:
-    return any(part.endswith("Tests") for part in pathlib.PurePosixPath(relative).parts[:-1])
+    """A directory whose name ends in Tests holds tests.
 
-
-def module_of(relative: str) -> str:
-    """`Client/Connection/Domain/Foo.swift` -> `ClientConnectionDomain`.
-
-    Mirrors the manifest: a module's name is its path with the slashes removed.
+    That is the repository's own convention (`Client/Viewer/DomainTests`), so it needs no separate
+    list to fall out of date. The suffix must be on a directory rather than on the file, because a
+    shipped type may legitimately be named for tests.
     """
-    parts = pathlib.PurePosixPath(relative).parts
-    return "".join(parts[:3]) if len(parts) >= 4 else "".join(parts[:-1])
+    return any(part.endswith("Tests") for part in pathlib.PurePosixPath(relative).parts[:-1])
 
 
 def empty() -> dict:
     return {"covered": 0, "count": 0}
 
 
-def add(into: dict, more: dict) -> None:
-    into["covered"] += more["covered"]
-    into["count"] += more["count"]
+def read_export(path: pathlib.Path) -> dict:
+    """Sum one llvm-cov export down to one counter per kind, over shipped package sources only.
+
+    SwiftPM writes this format itself and `xcrun llvm-cov export` writes the same one, so a host
+    `swift test` pass and a simulator `xcodebuild test` pass fold in through the same code.
+    """
+    export = json.loads(path.read_text())
+    totals = {counter: empty() for counter in COUNTERS}
+    for entry in export["data"][0]["files"]:
+        name = entry["filename"]
+        # `.build` holds resolved dependencies and generated sources, both of which sit under the
+        # package marker and neither of which is ours.
+        if PACKAGE_MARKER not in name or "/.build/" in name:
+            continue
+        if is_test_path(name.split(PACKAGE_MARKER, 1)[1]):
+            continue
+        for counter in COUNTERS:
+            measured = entry["summary"].get(counter)
+            if not measured:
+                continue
+            totals[counter]["covered"] += measured["covered"]
+            totals[counter]["count"] += measured["count"]
+    return totals
+
+
+def collect(args: argparse.Namespace) -> int:
+    out = pathlib.Path(args.out)
+    summary = json.loads(out.read_text()) if out.is_file() else {"categories": {}}
+
+    summary.setdefault("categories", {})[args.category] = read_export(pathlib.Path(args.export))
+    if args.ref:
+        summary["ref"] = args.ref
+    if args.commit:
+        summary["commit"] = args.commit
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+
+    measured = summary["categories"][args.category]
+    print(
+        f"{args.category}: lines {show(percent(measured['lines']))}, "
+        f"regions {show(percent(measured['regions']))}"
+    )
+    return 0
+
+
+# --- render ------------------------------------------------------------------------------------
 
 
 def percent(counter: dict | None) -> float | None:
+    """None when there is nothing to cover — which is not the same as 0% and must not read as it.
+
+    A kind with no test of its own ran nothing and covered nothing; that is a dash, not a failing
+    grade, and the gate leaves it alone rather than comparing it to a zero nobody measured.
+    """
     if not counter or not counter["count"]:
         return None
     return 100.0 * counter["covered"] / counter["count"]
 
 
-def collect(args: argparse.Namespace) -> int:
-    export = json.loads(pathlib.Path(args.export).read_text())
-    marker = "/Packages/Granita/"
-
-    totals, modules = empty(), {}
-    for entry in export["data"][0]["files"]:
-        name = entry["filename"]
-        # Anything outside the package is a dependency or a toolchain header, and anything under
-        # .build is generated.
-        if marker not in name or "/.build/" in name:
-            continue
-        relative = name.split(marker, 1)[1]
-        if is_test_path(relative):
-            continue
-        lines = {"covered": entry["summary"]["lines"]["covered"], "count": entry["summary"]["lines"]["count"]}
-        add(totals, lines)
-        add(modules.setdefault(module_of(relative), empty()), lines)
-
-    summary = {
-        "ref": args.ref,
-        "totals": totals,
-        "modules": dict(sorted(modules.items())),
-    }
-    out = pathlib.Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(summary, indent=2) + "\n")
-    print(f"lines {totals['covered']}/{totals['count']} ({percent(totals) or 0:.1f}%) across {len(modules)} modules")
-    return 0
+def show(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1f}%"
 
 
-def format_delta(current: float | None, baseline: float | None) -> str:
-    if current is None:
-        return "—"
+def format_delta(current: float, baseline: float | None) -> str:
     if baseline is None:
-        return f"{current:.1f}%  (new)"
+        return " (new)"
     change = current - baseline
-    if abs(change) < 0.05:
-        return f"{current:.1f}%  ="
-    return f"{current:.1f}%  {'+' if change > 0 else ''}{change:.1f}"
+    if abs(change) < GATE_EPSILON:
+        return " ±0"
+    return f" {'▲' if change > 0 else '▼'} {change:+.1f}"
+
+
+def format_cell(counter: dict | None, base_counter: dict | None) -> str:
+    value = percent(counter)
+    if value is None:
+        return "—"
+    return f"{value:.1f}%{format_delta(value, percent(base_counter))}"
+
+
+def category_rows(current: dict, baseline: dict) -> list[str]:
+    """Every kind gets a row, including one that ran nothing.
+
+    A kind that is missing from the table is a kind nobody remembers is missing; a row of dashes
+    says the project has no test of that kind yet, which is the more useful fact.
+    """
+    rows = []
+    for name in CATEGORIES:
+        measured = current.get("categories", {}).get(name, {})
+        base = baseline.get("categories", {}).get(name, {})
+        emphasis = "**" if name == "all" else ""
+        cells = [
+            f"{emphasis}{format_cell(measured.get(counter), base.get(counter))}{emphasis}"
+            for counter in COUNTERS
+        ]
+        rows.append(f"| {emphasis}{LABELS[name]}{emphasis} | " + " | ".join(cells) + " |")
+    return rows
+
+
+def uncovered_lines(summary: dict) -> int | None:
+    counter = summary.get("categories", {}).get("all", {}).get("lines")
+    if not counter or not counter["count"]:
+        return None
+    return counter["count"] - counter["covered"]
+
+
+# --- gate --------------------------------------------------------------------------------------
 
 
 def gate_checks(current: dict, baseline: dict) -> list[dict]:
-    """One check per row that exists in BOTH runs.
+    """One entry per table value that both runs put a number on.
 
-    A module absent from the baseline is new and has nothing to regress against; a module absent
-    from the current run was deleted, and deleting code is not a coverage regression.
+    A value only one side has is not a regression and not a pass — it is unjudgeable, and left out
+    entirely. A kind measured for the first time joins the ratchet on the next `main` run.
     """
     checks = []
-    rows = [("total", current["totals"], baseline["totals"])]
-    for name, counter in current["modules"].items():
-        if name in baseline.get("modules", {}):
-            rows.append((name, counter, baseline["modules"][name]))
-
-    for name, now, before in rows:
-        now_percent, before_percent = percent(now), percent(before)
-        if now_percent is None or before_percent is None:
-            continue
-        # A hair of tolerance for float formatting only — not slack. Anything a reader would see as
-        # a drop in the rendered table is a drop here.
-        checks.append({
-            "name": name,
-            "current": now_percent,
-            "baseline": before_percent,
-            "ok": now_percent >= before_percent - 0.05,
-        })
+    for category in CATEGORIES:
+        measured = current.get("categories", {}).get(category, {})
+        base = baseline.get("categories", {}).get(category, {})
+        for counter in COUNTERS:
+            now, before = percent(measured.get(counter)), percent(base.get(counter))
+            if now is None or before is None:
+                continue
+            checks.append({
+                "category": category,
+                "counter": counter,
+                "label": f"{LABELS[category]} {counter}",
+                "current": now,
+                "baseline": before,
+                "status": "pass" if now >= before - GATE_EPSILON else "fail",
+            })
     return checks
 
 
-def verdict_for(current: dict, baseline: dict | None) -> dict:
-    checks = gate_checks(current, baseline) if baseline else []
-    regressions = [c for c in checks if not c["ok"]]
-    return {
-        "ok": not regressions,
-        "compared": baseline is not None,
-        "checks": checks,
-        "regressions": regressions,
-    }
+def gate_verdict(current: dict, baseline: dict | None) -> dict:
+    checks = gate_checks(current, baseline) if baseline is not None else []
+    regressions = [check for check in checks if check["status"] == "fail"]
+    if not checks:
+        status = "skipped"
+    elif regressions:
+        status = "fail"
+    else:
+        status = "pass"
+    return {"status": status, "checks": checks, "regressions": regressions}
+
+
+def values(count: int) -> str:
+    return "1 value" if count == 1 else f"{count} values"
+
+
+def verdict_sentence(verdict: dict) -> str:
+    """What the comment leads with — the only part of the report anyone has to act on."""
+    if verdict["status"] == "skipped":
+        # Almost always a cache miss. It also covers the case where a baseline exists but shares no
+        # value with this run, which is why the sentence does not promise which one it was.
+        return (
+            "⚠️ **The coverage gate did not run** — nothing in this run has a `main` baseline to "
+            "compare against, so nothing was enforced."
+        )
+    if verdict["status"] == "pass":
+        return (
+            f"✅ **Coverage gate passed** — all {values(len(verdict['checks']))} in the table hold "
+            f"at or above the last `main` run."
+        )
+    return "\n".join([
+        f"❌ **Coverage gate failed** — {values(len(verdict['regressions']))} fell below the last "
+        f"`main` run:",
+        "",
+        *[
+            f"- **{check['label']}**: {check['current']:.1f}%, below the {check['baseline']:.1f}% "
+            f"it held on `main`."
+            for check in verdict["regressions"]
+        ],
+        "",
+        "Cover what this branch added. No number in the table may go down, whatever the others do.",
+    ])
 
 
 def render(args: argparse.Namespace) -> int:
     current = json.loads(pathlib.Path(args.current).read_text())
-    baseline_path = pathlib.Path(args.baseline)
-    baseline = json.loads(baseline_path.read_text()) if baseline_path.is_file() else None
+    baseline_path = pathlib.Path(args.baseline) if args.baseline else None
+    has_baseline = baseline_path is not None and baseline_path.is_file()
+    baseline = json.loads(baseline_path.read_text()) if has_baseline else {}
 
-    verdict = verdict_for(current, baseline)
+    lines = [
+        COMMENT_MARKER,
+        "### Test coverage",
+        "",
+        "| Test kind | Lines | Regions |",
+        "|---|---|---|",
+        *category_rows(current, baseline),
+        "",
+    ]
 
-    lines = ["<!-- granita-coverage-report -->", "## Coverage", ""]
-    if baseline is None:
-        lines += ["No baseline yet — the first `main` run records one. Nothing is gated this time.", ""]
+    # Directly under the table, because it is the one line that can cost someone a merge.
+    verdict = gate_verdict(current, baseline if has_baseline else None)
+    lines += [verdict_sentence(verdict), ""]
 
-    lines += ["| | Lines | Covered |", "|---|---|---|"]
-    base_modules = (baseline or {}).get("modules", {})
-    lines.append(
-        f"| **total** | {format_delta(percent(current['totals']), percent((baseline or {}).get('totals')))} "
-        f"| {current['totals']['covered']}/{current['totals']['count']} |"
-    )
-    for name, counter in current["modules"].items():
-        lines.append(
-            f"| `{name}` | {format_delta(percent(counter), percent(base_modules.get(name)))} "
-            f"| {counter['covered']}/{counter['count']} |"
-        )
+    missed = uncovered_lines(current)
+    base_missed = uncovered_lines(baseline) if has_baseline else None
+    if missed is not None:
+        # Spelled out rather than arrowed: fewer uncovered lines is the good direction, and a "▼"
+        # next to a number reads as a regression however it is meant.
+        if base_missed is None or base_missed == missed:
+            trend = "."
+        elif missed < base_missed:
+            trend = f" — {base_missed - missed} fewer than the baseline."
+        else:
+            trend = f" — {missed - base_missed} more than the baseline."
+        lines += [f"**{missed} uncovered lines** across the project{trend}", ""]
 
-    lines.append("")
-    if verdict["regressions"]:
-        lines.append("**Coverage regressed:**")
-        lines += [
-            f"- `{r['name']}` {r['baseline']:.1f}% → {r['current']:.1f}%"
-            for r in verdict["regressions"]
-        ]
-        lines += ["", "The gate is a ratchet against the last green `main` run: no floor, no slack."]
-    elif verdict["compared"]:
-        lines.append("No module went backwards against `main`.")
+    if has_baseline:
+        lines.append(f"Δ against `{baseline.get('ref', 'main')}` @ `{baseline.get('commit', 'unknown')[:7]}`.")
+    else:
+        lines.append("_No baseline yet — deltas appear once this workflow has run on `main`._")
+    lines += [
+        "",
+        "<sub>No number in the table may fall below the last `main` run — every row, not just the "
+        "total. Regions rather than branches because swiftc emits no branch coverage; a region is "
+        "an `if`, a `guard`, a `case`, a ternary or a closure body. Kinds are directories; see the "
+        "`swift-testing` skill.</sub>",
+    ]
 
-    pathlib.Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    pathlib.Path(args.out).write_text("\n".join(lines) + "\n")
-    pathlib.Path(args.verdict_out).write_text(json.dumps(verdict, indent=2) + "\n")
-    print("\n".join(lines))
+    text = "\n".join(lines) + "\n"
+    out = pathlib.Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text)
+    print(text)
+
+    # Written rather than returned as an exit code: the comment has to reach the pull request
+    # before the gate closes, so `enforce` is a separate step that runs after it.
+    if args.verdict_out:
+        verdict_out = pathlib.Path(args.verdict_out)
+        verdict_out.parent.mkdir(parents=True, exist_ok=True)
+        verdict_out.write_text(json.dumps(verdict, indent=2, sort_keys=True) + "\n")
     return 0
 
 
+# --- enforce -----------------------------------------------------------------------------------
+
+
 def enforce(args: argparse.Namespace) -> int:
-    verdict = json.loads(pathlib.Path(args.verdict).read_text())
-    if verdict["ok"]:
-        print("Coverage held." if verdict["compared"] else "No baseline to compare against yet.")
+    path = pathlib.Path(args.verdict)
+    if not path.is_file():
+        # No verdict means `render` never ran. Silence is not consent.
+        print(f"::error::No verdict at {path} — the report step did not run.")
+        return 1
+
+    verdict = json.loads(path.read_text())
+    status = verdict.get("status")
+    if status == "fail":
+        for check in verdict["regressions"]:
+            print(
+                f"::error::Coverage regressed in {check['label']}: "
+                f"{check['baseline']:.1f}% → {check['current']:.1f}%"
+            )
+        return 1
+    if status == "skipped":
+        print("Coverage gate skipped: nothing in this run has a baseline to compare against.")
         return 0
-    for regression in verdict["regressions"]:
-        print(
-            f"::error::Coverage regressed in {regression['name']}: "
-            f"{regression['baseline']:.1f}% → {regression['current']:.1f}%"
-        )
-    return 1
+    print(f"Coverage gate passed: all {len(verdict['checks'])} values hold.")
+    return 0
 
 
-def main(argv: list[str]) -> int:
+# --- entry point -------------------------------------------------------------------------------
+
+
+def parse(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p = sub.add_parser("collect", help="llvm-cov export -> summary")
-    p.add_argument("--export", required=True)
-    p.add_argument("--out", required=True)
-    p.add_argument("--ref", default="local")
-    p.set_defaults(func=collect)
+    collect_parser = sub.add_parser("collect", help="fold one kind's llvm-cov export into the summary")
+    collect_parser.add_argument("--category", required=True, choices=CATEGORIES)
+    collect_parser.add_argument("--export", required=True)
+    collect_parser.add_argument("--out", required=True)
+    collect_parser.add_argument("--ref", default="")
+    collect_parser.add_argument("--commit", default=os.environ.get("GITHUB_SHA", ""))
+    collect_parser.set_defaults(func=collect)
 
-    p = sub.add_parser("render", help="summary + baseline -> comment and verdict")
-    p.add_argument("--current", required=True)
-    p.add_argument("--baseline", required=True)
-    p.add_argument("--out", required=True)
-    p.add_argument("--verdict-out", required=True)
-    p.set_defaults(func=render)
+    render_parser = sub.add_parser("render", help="write the Markdown report and the verdict")
+    render_parser.add_argument("--current", required=True)
+    render_parser.add_argument("--baseline")
+    render_parser.add_argument("--out", required=True)
+    render_parser.add_argument("--verdict-out")
+    render_parser.set_defaults(func=render)
 
-    p = sub.add_parser("enforce", help="verdict -> exit code")
-    p.add_argument("--verdict", required=True)
-    p.set_defaults(func=enforce)
+    enforce_parser = sub.add_parser("enforce", help="exit non-zero if the gate failed")
+    enforce_parser.add_argument("--verdict", required=True)
+    enforce_parser.set_defaults(func=enforce)
 
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    args = parse(argv)
     return args.func(args)
 
 

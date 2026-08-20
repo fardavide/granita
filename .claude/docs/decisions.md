@@ -244,3 +244,84 @@ Rejected: resolving in `ci_post_clone.sh` on every Xcode Cloud build. It would m
 file irrelevant and remove the hazard entirely, but automatic resolution is disabled there precisely
 to keep archives reproducible, and buying convenience with reproducibility is the wrong trade for the
 one pipeline that publishes.
+
+## Three settled gaps in the diff model, and one spec error
+
+Found while planning M1 against the committed fixture corpus.
+
+**SPEC §5.3 was wrong about renames in `--numstat -z`.** It said the format emits "an extra empty
+field" before the paths and that a parser should detect a rename by that field. There is no
+zero-length NUL field anywhere in the stream; what marks a rename is a **trailing TAB** inside the
+first field, so the record spans three NUL fields rather than one. A parser following the old wording
+reads every rename as an ordinary record. Corrected in place, verified against the fixture. This is
+the first thing in the spec found to be actually incorrect rather than merely incomplete — and it sat
+inside a paragraph warning that a naive splitter desynchronises here.
+
+**`DiffLine` gained `needsMeasurement`.** §6 and §10 both require the client to measure
+unpredictable lines for real, and §4's model had no field to say which. A plain `Bool`, always
+encoded: an absent key meaning false is the ambiguity §8's PATCH body already works around, and
+re-deriving the judgement on the client would duplicate the Unicode logic on both sides where a
+disagreement is a row-count error in the scroll.
+
+**Control characters count 0 columns, and East Asian Ambiguous counts 1.** Neither is in §6. Read
+literally, "everything else counts 1" gives `first\r` six columns for a line occupying five, so every
+CRLF line would over-measure — and CRLF is preserved verbatim in `text`, so the CR is content that
+renders nothing. Ambiguous characters (`è`, `—`) are narrow in the monospaced fonts the viewer uses,
+and flagging them would push ordinary European prose onto the slow measured path.
+
+## The display-columns fixture was committed empty
+
+`case-display-columns.diff` was 0 bytes from the day it was generated. The file it diffs is created
+after the baseline commit and was never staged, and `git diff HEAD` shows an untracked file as
+nothing at all — so the width arithmetic the entire viewer depends on had no coverage whatsoever.
+
+`make verify-generated` could never have caught it: empty is deterministic, so committed-empty equals
+regenerated-empty forever. The generator now stages the file and **asserts the fixture is non-empty**,
+which is the check that was missing. The lesson generalises past this one file: a generator that only
+proves it ran proves nothing about what it produced.
+
+## Coverage is reported per kind of test, and the second column is regions
+
+The report was a per-module table measured by one `swift test` pass. It is now a row per **kind of
+test** — unit, ui, snapshot, and everything merged — with no module breakdown at all. Davide's call:
+the question worth asking of a module is which kind of test reaches it, and a per-module row cannot
+answer that however many of them there are.
+
+**A kind is a directory, because a directory is a bundle and a bundle is what a coverage profile can
+be scoped to.** The package's `…Tests` directories are unit; `Apps/GranitaMobileSnapshotTests` is
+snapshot; `Apps/GranitaMobileUiTests` will be ui. The iOS snapshot target was renamed from
+`GranitaMobileTests` for exactly that reason — under the old name the obvious place to put a
+behavioural test was the snapshot bundle, and the snapshot row would have started counting what a
+different kind of test reached, silently and in the direction that looks like good news.
+
+**Lines and regions, not lines and branches.** swiftc emits no branch coverage: llvm-cov reports
+`branches: 0/0` across all 169,532 mapped lines in this project, Hummingbird and NIO and
+swift-subprocess included, and there is no flag that changes it — the counter is clang's. `regions`
+is the near-equivalent Swift does emit, one counter per `if`, `guard`, `case`, ternary and closure
+body, and it moves when a path stops being taken even though the line total holds. Asked for and
+approved as "Regions", labelled honestly rather than borrowing Oltre's "Branch" header for a number
+that is not one.
+
+**Two traps in measuring the simulator pass**, both of which produce an export with zero package
+files and no error to explain it:
+
+- `-enableCodeCoverage YES` instruments the **test bundle only**. The app and the local package
+  targets it links keep no coverage mapping at all. `ENABLE_CODE_COVERAGE=YES` and
+  `CLANG_COVERAGE_MAPPING=YES` as build settings are what reach every target in the graph.
+- Under Xcode 26 an app's own code lives in `Granita.app/Granita.debug.dylib`; the launcher beside it
+  carries no `__llvm_covmap`. Passing only the launcher to `llvm-cov` reads nothing.
+
+**The `all` row is a profile-level union, not a sum of the rows.** `llvm-profdata merge` adds the
+counters per function and one `llvm-cov export` over every object resolves them — the host binary
+contributes the server modules the simulator never links, the simulator objects contribute the views
+the host cannot render. Adding the rows would double-count every line two kinds both reach.
+
+**The Coverage job now boots a simulator and runs the snapshot tests a second time**, duplicating
+~15 minutes of a 10x-billed runner that the Snapshot job already spends. Bought deliberately: the
+coverage pass wants the profile and ignores the verdict — it runs under `|| true` — so a stale
+baseline reddens one job rather than two, which is the isolation the Snapshot job was split out for.
+
+Rejected: attributing coverage to a kind by test-name suffix, Oltre-style. Oltre's Gradle filter
+applies to every `Test` task at once; here the three kinds are already three separate bundles built
+by two different toolchains, so a suffix would be a second, weaker convention layered over a
+partition the build system enforces for free.

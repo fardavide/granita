@@ -38,4 +38,8 @@ __pycache__/
 .coverage-baseline/
 
 # Snapshot mismatches — freshly rendered images, written per failing run
-Apps/GranitaMobileTests/__SnapshotFailures__/
+Apps/GranitaMobileSnapshotTests/__SnapshotFailures__/
+
+# Xcode-resolved dependency checkouts. CI creates this via -clonedSourcePackagesDirPath;
+# it is a build artefact and must never be committed.
+SourcePackages/
