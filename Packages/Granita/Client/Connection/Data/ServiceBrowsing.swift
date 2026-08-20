@@ -15,7 +15,7 @@ protocol ServiceBrowsing: Sendable {
 }
 
 /// What a browser reports, in this feature's vocabulary rather than the network framework's.
-enum BrowserEvent: Sendable {
+enum BrowserEvent: Equatable, Sendable {
     case ready
     /// Alive but unable to proceed. A waiting browser recovers on its own.
     case waiting(NWError)

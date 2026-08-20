@@ -15,23 +15,40 @@ final class BonjourBrowser: ServiceBrowsing {
         )
     }
 
+    /// What a browser's state means to the session listening to it.
+    ///
+    /// Separated from the callback it is read in because that one runs only against a real network,
+    /// and which states are a browser's last is the part the session's whole restart loop turns on.
+    static func change(for state: NWBrowser.State) -> BrowserStateChange {
+        switch state {
+        case .setup:
+            .ignore
+        case .ready:
+            .report(.ready)
+        case .waiting(let error):
+            .report(.waiting(error))
+        case .failed(let error):
+            .reportAndFinish(.failed(error))
+        case .cancelled:
+            .finish
+        @unknown default:
+            .ignore
+        }
+    }
+
     func start() -> AsyncStream<BrowserEvent> {
         AsyncStream { continuation in
             browser.stateUpdateHandler = { state in
-                switch state {
-                case .setup:
+                switch Self.change(for: state) {
+                case .ignore:
                     break
-                case .ready:
-                    continuation.yield(.ready)
-                case .waiting(let error):
-                    continuation.yield(.waiting(error))
-                case .failed(let error):
-                    continuation.yield(.failed(error))
+                case .report(let event):
+                    continuation.yield(event)
+                case .reportAndFinish(let event):
+                    continuation.yield(event)
                     continuation.finish()
-                case .cancelled:
+                case .finish:
                     continuation.finish()
-                @unknown default:
-                    break
                 }
             }
             browser.browseResultsChangedHandler = { results, _ in
@@ -51,4 +68,16 @@ final class BonjourBrowser: ServiceBrowsing {
         guard case .service(let name, _, _, _) = result.endpoint else { return nil }
         return DiscoveredServer(id: name, name: name)
     }
+}
+
+// MARK: -
+
+/// What a browser's state change asks of the stream carrying its events.
+enum BrowserStateChange: Equatable {
+    case ignore
+    case report(BrowserEvent)
+    /// The last thing this browser will say, and then it is finished.
+    case reportAndFinish(BrowserEvent)
+    /// Finished with nothing to add: a cancelled browser was stopped on purpose.
+    case finish
 }
