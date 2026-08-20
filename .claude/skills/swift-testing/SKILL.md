@@ -167,6 +167,13 @@ Rules that follow:
   good for is the comparison *between* kinds on one module.
 - **Do not "fix" a number by moving snapshot tests into the package.** A SwiftPM test target is
   hostless and renders blank; the split is the reason the numbers mean anything.
+- **The Snapshot row is measured over the view layers alone.** A rendered view executes no
+  repository and no parser, so every line of those the phone app happens to link is one a snapshot
+  can never cover. Measured over the whole package the row fell whenever domain code was added
+  anywhere under the app — a fact about the dependency graph, not about the snapshots. Scoped, it
+  answers what it is for: of the code that draws screens, how much does a baseline put on screen.
+  The Ui kind is **not** scoped, because a behavioural test drives the real app and reaching a
+  repository is exactly what it does.
 - **The rows have different denominators, so do not subtract them.** A pass only measures the code
   its own binaries map: the simulator never links the server modules, and the host cannot render a
   view. Each row answers "of what this kind could reach, how much did it", and only `All tests`
@@ -180,3 +187,8 @@ Rules that follow:
 - **Every value is gated**, line and region, for every kind that both this run and the last `main`
   run put a number on. Plain ratchet, no floor, no slack. A kind measured for the first time is not
   judged — it joins on the next `main` run.
+- **Changing what a row measures un-judges it for one run.** The summary records the files each
+  kind's percentage was taken over, and the gate compares two numbers only when both were taken the
+  same way: a redefinition would otherwise fail the pull request that makes it, for the
+  redefinition rather than for a regression. Redefine deliberately, and expect one run with that
+  row unenforced.
