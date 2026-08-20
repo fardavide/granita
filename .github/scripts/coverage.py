@@ -201,6 +201,11 @@ def category_rows(current: dict, baseline: dict) -> list[str]:
     for name in CATEGORIES:
         measured = current.get("categories", {}).get(name, {})
         base = baseline.get("categories", {}).get(name, {})
+        # A delta against a number taken over different files is a subtraction nobody performed, and
+        # an arrow next to it reads as a verdict. The gate already refuses to judge such a pair; the
+        # table has to say the same thing, so the row reads as new rather than as improved.
+        if base.get("scope", DEFAULT_SCOPE) != measured.get("scope", DEFAULT_SCOPE):
+            base = {}
         emphasis = "**" if name == "all" else ""
         cells = [
             f"{emphasis}{format_cell(measured.get(counter), base.get(counter))}{emphasis}"

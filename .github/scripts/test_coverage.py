@@ -295,6 +295,17 @@ class TestRender:
         assert "Coverage gate failed" in text
         assert "Unit lines" in text
 
+    def test_given_a_baseline_measured_over_other_files_when_rendering_then_the_row_carries_no_delta(self, tmp_path):
+        # The gate refuses to judge such a pair, so the table must not show an arrow for it either:
+        # a delta nobody computed reads as a verdict, and here it would read as a large improvement.
+        text = self.render(
+            tmp_path,
+            summary({"snapshot": entry((9, 10), (4, 5), scope="views")}),
+            summary({"snapshot": entry((5, 10), (2, 5), scope="package")}),
+        )
+
+        assert "| Snapshot | 90.0% (new) | 80.0% (new) |" in text
+
     def test_given_two_rows_with_different_denominators_when_rendering_then_the_report_says_so(self, tmp_path):
         # Two percentages in one table that are not measured over the same files read as comparable
         # unless the table says otherwise.
