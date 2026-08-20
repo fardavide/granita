@@ -101,6 +101,21 @@ jobs:
       - name: Regenerate and compare
         run: make verify-generated
 
+      # Xcode resolves the project and the local package as ONE graph and writes the union into the
+      # package's Package.resolved; `swift build` and `swift test` rewrite the same file with the
+      # package's own dependencies only. Whoever ran last wins, and Xcode Cloud — which disables
+      # automatic resolution — refuses the stripped version outright.
+      #
+      # That failure lands after the merge, as an email about a broken archive, with no red check to
+      # have caught it. This is the red check. `make resolve` is the fix.
+      - name: Assert Package.resolved covers the Xcode graph
+        run: |
+          if ! grep -q 'swift-snapshot-testing' Packages/Granita/Package.resolved; then
+            echo "::error::Package.resolved is missing swift-snapshot-testing, so the Xcode Cloud archive cannot resolve. Run 'make resolve' and commit the result."
+            exit 1
+          fi
+          echo "Package.resolved covers the Xcode graph."
+
   # Reports *and* gates. The rule is Oltre's: a plain ratchet with no floor and no slack — every
   # percentage in the per-module table must hold at or above the last green `main` run. A fixed
   # threshold either sits so low it never fires or so high it blocks unrelated work; a ratchet asks
