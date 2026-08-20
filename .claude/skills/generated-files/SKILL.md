@@ -123,15 +123,28 @@ But the committed schemes are **XcodeGen's output**, so Xcode's rewrite is drift
 `git add -A` straight after an Xcode session without checking what it touched. That is exactly how
 this landed in a documentation-only commit and turned a pull request red.
 
-## The Xcode project's Package.resolved cannot be committed here
+## Package.resolved is shared between two resolvers that disagree
 
-`xcodegen generate` rewrites `Granita.xcodeproj/project.xcworkspace/xcshareddata`, so a
-`Package.resolved` written there does not survive `make project`. Aura commits that file and keys a
-CI cache on it; Aura hand-maintains its `.xcodeproj`, and that is the difference.
+There is one `Package.resolved`, at `Packages/Granita/Package.resolved`, and **two things write it**:
 
-So **never key a CI cache on it** — `hashFiles` returns empty for a missing file, and every run then
-collides on one degenerate key while appearing to have a working cache. Key on `project.yml`, which
-is committed, always present, and carries the version spec.
+| What ran | Result |
+|---|---|
+| `xcodebuild` / opening the project | 30 pins — the project's remote packages **and** the package's own |
+| `swift build`, `swift test`, `make test` | 26 pins — the package's own only |
 
-The package's own `Packages/Granita/Package.resolved` is unaffected: it lives outside the generated
-project, is committed, and is the right thing to key the package jobs on.
+Xcode treats the local package as the graph root and writes the union there. It does **not** write
+`Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`; that file is never
+created, which is why no CI cache may be keyed on it — `hashFiles` returns empty for a missing file,
+so every run would collide on one key while appearing to cache.
+
+**The union is what must be committed.** Xcode Cloud disables automatic dependency resolution and
+refuses a stale resolved file, so the stripped version fails the archive — after the merge, as an
+email, with no red check to have caught it.
+
+So: **after running `swift test` or `swift build`, run `make resolve` before committing.** A CI step
+asserts the committed file still covers the Xcode graph, which turns that silent post-merge failure
+into a red check on the pull request.
+
+An earlier revision of this file claimed `xcodegen generate` wipes the workspace resolved file. It
+does not — the file simply never exists. The test that produced that claim checked for a file that
+had never been created, so it failed for the wrong reason and read as a wipe.

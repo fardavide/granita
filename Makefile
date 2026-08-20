@@ -73,3 +73,20 @@ clean: ## Remove build output and the generated fixture repositories
 	rm -rf $(PACKAGE)/.build .fixtures
 	xcodebuild clean -project $(PROJECT) -scheme GranitaMac    -quiet || true
 	xcodebuild clean -project $(PROJECT) -scheme GranitaMobile -quiet || true
+
+.PHONY: resolve
+resolve: ## Refresh Package.resolved for the Xcode graph (run before committing after `swift test`)
+	@# Xcode resolves the project AND the local package as one graph and writes the union here;
+	@# `swift build` and `swift test` rewrite the same file with the package's own dependencies
+	@# only, dropping the Xcode-only ones. Xcode Cloud disables automatic resolution and refuses a
+	@# stale file, so the union is what must be committed.
+	@# Into a throwaway derived data path, deliberately. With a warm one there is nothing to
+	@# resolve, so xcodebuild does not rewrite the file and silently leaves whatever `swift build`
+	@# last wrote — which is the stripped version this target exists to undo.
+	xcodebuild -resolvePackageDependencies -project $(PROJECT) -scheme GranitaMobile \
+		-derivedDataPath "$$(mktemp -d)/resolve" > /dev/null
+	@python3 -c "import json;d=json.load(open('$(PACKAGE)/Package.resolved'));\
+		pins=d['pins'];\
+		ok=any('snapshot' in p['identity'] for p in pins);\
+		print(f\"Package.resolved: {len(pins)} pins, Xcode graph {'covered' if ok else 'MISSING'}\");\
+		exit(0 if ok else 1)"
