@@ -95,9 +95,53 @@ counts, section headings, paths with spaces and non-ASCII, and an empty diff.
 Tests that need a real repository — the git layer, worktree enumeration — drive the repositories
 under `.fixtures/`, which `make fixtures` builds and `.gitignore` excludes.
 
-## Screenshot tests
+## Snapshot tests
 
-None yet, and no CI job for them, because there is no UI to render. They land with the first `Ui`
-slice, in an app-hosted target, and `.github/rulesets/protect-main.json` gains the job name in the
-same pull request. Adding the library is a fourth dependency and therefore a conversation with
-Davide first.
+`swift-snapshot-testing` is the **fourth** dependency, approved as **test-only**. It is attached to
+the `GranitaMobileTests` Xcode target and to nothing else — never to `Package.swift` — so the two
+shipped apps stay on three.
+
+- **They must be app-hosted.** A SwiftPM test target is hostless: there is no key window, so a
+  SwiftUI view lays out against nothing and renders blank. `drawHierarchyInKeyWindow: true` needs a
+  real host, which is why the target sets `TEST_HOST`.
+- **The suite must be `@MainActor`.** Swift Testing runs `@Test` functions off the main actor, and
+  rendering touches UIKit view properties, which trap. The trap is worse than a failure: the crash
+  restarts the test host and the retry reports **"0 tests passed"**, so the suite goes green having
+  rendered nothing.
+- **Assert what ships.** Wrap the view the way the composition root wraps it. `.navigationTitle`
+  renders nothing outside a navigation container, so an unwrapped baseline silently stops covering
+  the title bar.
+- **One parameterised test, not twenty functions.** `@Test(arguments: Case.all, SnapshotLayout.all)`
+  produces every state × layout from one function, so adding a state is one line.
+
+### Calibrating the tolerances — and proving they bite
+
+`perceptualPrecision` is the **per-pixel colour** threshold and stays loose (0.87) to absorb runner
+drift. `precision` is the **area** budget and must be **tight (0.999)**.
+
+Aura's 0.98 was inherited and is wrong here. It allows 2% of pixels to move, and on a mostly-empty
+screen a whole changed sentence is ~1.6% — the suite stayed green after "Local network access is
+off" became "…is disabled". Aura's screens are dense; a budget calibrated for them hides real
+changes on sparse ones.
+
+**Prove a new suite can fail before trusting it.** Change a string the baseline captures, confirm
+red, revert, confirm green. A snapshot test that cannot fail is a decoration, and it looks exactly
+like one that works.
+
+### Recording and reading failures
+
+- Record **locally**: delete the baseline and run; the first pass writes it and fails, a re-run
+  compares. **Never record on CI** — that turns the test into a recorder of whatever the code does.
+- Baselines live in `__Snapshots__/<source file name>/`. The directory is named after the **source
+  file**, not the test type, so renaming a test file orphans its baselines.
+- Mismatches are written to `__SnapshotFailures__/` (gitignored) and CI turns them into one
+  self-contained HTML page, uploaded as `snapshot-diffs`. Read the diff; do not guess.
+- Reference PNGs are **16-bit Display P3**. `sips` and other 8-bit tooling truncate them silently and
+  will report two different images as identical.
+
+### They do not feed the coverage ratchet
+
+The `Coverage` job measures `swift test` over the package, and snapshot tests live in the Xcode
+target — so `ClientConnectionUi` reads 0% there despite being covered by 24 baselines. The two gates
+are separate on purpose; do not "fix" the coverage number by moving snapshot tests into the package,
+because a hostless target renders blank.

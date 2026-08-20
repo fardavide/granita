@@ -54,6 +54,9 @@
           },
           {
             "context": "Coverage"
+          },
+          {
+            "context": "Snapshot tests (iOS)"
           }
         ]
       }
