@@ -141,7 +141,7 @@ let package = Package(
         ),
         .target(
             name: "ClientConnectionData",
-            dependencies: ["CoreBrandingDomain", "ClientConnectionDomain", "CoreDiffDomain"],
+            dependencies: ["CoreBrandingDomain", "ClientConnectionDomain", "CoreDiffDomain", "CorePairingDomain"],
             path: "Client/Connection/Data",
             swiftSettings: [swift6]
         ),
@@ -165,7 +165,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClientConnectionDataTests",
-            dependencies: ["ClientConnectionData", "ClientConnectionDomain", "CoreDiffDomain"],
+            dependencies: ["ClientConnectionData", "ClientConnectionDomain", "CoreDiffDomain", "CorePairingDomain"],
             path: "Client/Connection/DataTests",
             swiftSettings: [swift6]
         ),

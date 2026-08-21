@@ -1,7 +1,8 @@
 # Design
 
 The client's four screens, judged and drawn. This is the authority on **what the phone and the iPad
-look like and why**, and it is the half that lasts.
+look like and why**, and it is the half that lasts. The Mac's own surfaces are in
+[`design-mac.md`](design-mac.md).
 
 The drawings do not. [`design/granita-design-review.html`](design/granita-design-review.html) is
 working material for the screens still to be built — open it for §2, §3 and §4, whose frames carry

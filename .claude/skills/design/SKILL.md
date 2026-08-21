@@ -1,18 +1,25 @@
 ---
 name: design
-description: Granita's client screens are already designed — the four screens, the controls each one must use, the fields that drop first at 390pt, and the calls that are settled. Points at the design authority and names the rules that are binding rather than advisory.
+description: Granita's screens are already designed — the client's four, the Mac's seven, the controls each one must use, the fields that drop first at 390pt, and the calls that are settled. Points at the design authority and names the rules that are binding rather than advisory.
 when_to_use: >
-  Consult BEFORE writing or changing any SwiftUI in a Client Ui or Presentation target — a screen, a
-  row, an empty state, a sheet, a toolbar, a colour or a truncation. Also when choosing a control,
-  when a design question feels open, when adding a snapshot state, and when the user asks how
-  something should look.
+  Consult BEFORE writing or changing any SwiftUI in a Client or Server Ui or Presentation target — a
+  screen, a Settings tab, a menu, a row, an empty state, a sheet, a toolbar, a colour or a
+  truncation. Also when choosing a control, when a design question feels open, when adding a snapshot
+  state, and when the user asks how something should look.
 ---
 
 # Design
 
-**The client is designed. Do not invent a screen.** The authority is
-[`../../docs/design.md`](../../docs/design.md), and the drawings are
-[`../../docs/design/granita-design-review.html`](../../docs/design/granita-design-review.html).
+**Both halves are designed. Do not invent a screen.** The authorities are
+[`../../docs/design.md`](../../docs/design.md) for the phone and the iPad and
+[`../../docs/design-mac.md`](../../docs/design-mac.md) for the menu bar app, and the drawings are the
+two files in [`../../docs/design/`](../../docs/design/).
+
+**The Mac's frames are one release older than its sheet.** They were drawn against 0.0.6; 0.0.7
+repaired two of the five premises they overturn and made a third obsolete. `design-mac.md` records
+the corrected calls and marks which still stand — build from the sheet, and use the frames for
+measurements. Building the drawing as returned would put a "this link is not encrypted" warning under
+a QR that now carries a real pinned key.
 
 This skill is the **answers**. [`design-handoff`](../design-handoff/SKILL.md) is the **round trip** —
 when a screen needs a design, what the prompt carries, and the rule that no pull request touching a
@@ -25,13 +32,21 @@ settled — say so and stop rather than quietly picking the other option.
 
 ## The rule that fires most often
 
-**A design question is not an open question.** Four screens are drawn: server discovery (built), the
-worktree sidebar, the file selector, the continuous diff. If you are about to choose a control, a
-truncation mode, an empty-state action or a colour, the answer is already written down. Look it up.
+**A design question is not an open question.** Eleven surfaces are drawn. On the client: server
+discovery (built), the worktree sidebar, the file selector, the continuous diff. On the Mac: the
+status item and its menu, the window's five tabs, and each of General, Projects, Devices, Connections
+and Advanced. If you are about to choose a control, a truncation mode, an empty-state action or a
+colour, the answer is already written down. Look it up.
 
-Only two things are genuinely open, both in §4 and both needing a device rather than another
-drawing: the code point size, and whether wrap-off survives on the phone. Everything else has an
-answer.
+Four things are genuinely open, and none of them is answered by another drawing:
+
+- The code point size, and whether wrap-off survives on the phone (client §4) — both need a device.
+- Whether the menu bar's dirty-worktree count is affordable — needs `WorktreeRegistry.projects()`
+  timed on a real machine with real projects enabled.
+- What happens when the store's lock file is already held — refuse to start, or serve read-only. A
+  question for Davide, not for a designer.
+
+Everything else has an answer.
 
 ## Binding rules, in the order they get broken
 

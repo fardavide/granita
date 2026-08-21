@@ -71,6 +71,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.8 — 2026-08-22
+- **Two pairs of words that sound alike are gone from the six-word code.** The list a Mac draws its
+  spoken pairing code from held `amber` beside `ember` and `bacon` beside `beacon` — a problem only
+  when the code is being read across a room, which is the one situation those words exist for. They
+  are now `emerald` and `beetle`, and the list is held to that rule by a test rather than by a
+  comment.
+
 ### 0.0.7 — 2026-08-21
 - **Your Mac now serves over TLS, under a certificate only it has.** Granita generates its own
   ten-year identity the first time it runs, keeps it in your login Keychain, and serves everything

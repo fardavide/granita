@@ -28,11 +28,12 @@ packages:
     url: https://github.com/pointfreeco/swift-snapshot-testing
     from: 1.19.4
 
-# Settings both apps share. The version lives here, once, and `make version` is the only thing
-# that edits it.
+# Settings both apps share. The version lives here, once, and it is bumped by hand — a second
+# constant in CoreBrandingDomain tracks it, and a test fails until both agree. See
+# .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.7
+    MARKETING_VERSION: 0.0.8
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second

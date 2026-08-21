@@ -57,6 +57,24 @@ public struct PairingLink: Hashable, Sendable {
         fingerprint = SpkiFingerprint(rawValue: try field("spki"))
     }
 
+    /// Reads whatever a camera just found, and says whether it is worth reacting to.
+    ///
+    /// A scanner is not a form: it reads several times a second and most of what it sees belongs to
+    /// somebody else. So `notAPairingLink` never reaches a reader as a failure — it is the ordinary
+    /// case, and the outcome that carries it says nothing rather than saying no.
+    public static func scanned(_ text: String) -> ScannedCode {
+        guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return .somethingElse
+        }
+        do {
+            return .pairingLink(try PairingLink(url: url))
+        } catch .notAPairingLink {
+            return .somethingElse
+        } catch {
+            return .damagedPairingLink(error)
+        }
+    }
+
     /// The `granita://pair?host=&port=&code=&spki=` form SPEC §8 specifies.
     ///
     /// A string rather than a `URL`, because that is what every consumer of it actually wants — a
@@ -91,6 +109,24 @@ public struct PairingLink: Hashable, Sendable {
     private static let unreserved = CharacterSet(
         charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
     )
+}
+
+/// What one read of a viewfinder amounts to.
+///
+/// Three cases rather than a `Result`, because the third is neither success nor failure: it is the
+/// answer "that was not for us", which happens far more often than either of the others and which
+/// the reader must never be told about.
+public enum ScannedCode: Hashable, Sendable {
+
+    /// Ours, whole, and ready to pair with.
+    case pairingLink(PairingLink)
+
+    /// Ours, and not usable. The reader is pointing at the right screen, so this one earns a
+    /// sentence — silence would read as a camera that had stopped working.
+    case damagedPairingLink(PairingLinkError)
+
+    /// Somebody else's QR code, or none at all. Keep looking, and say nothing.
+    case somethingElse
 }
 
 public enum PairingLinkError: Error, Hashable, Sendable {

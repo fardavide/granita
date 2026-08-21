@@ -15,9 +15,11 @@ it is not a history browser.
 - **`SPEC.md` is the specification.** Its paragraphs marked TRAP describe defects found by running
   things, not by reading documentation — do not simplify them away. `decisions.md` records every
   place this repository knowingly departs from it.
-- **The client is designed.** `.claude/docs/design.md` is the authority on what the phone and the
-  iPad look like, and the `/design` skill is binding before any client SwiftUI. A design question is
-  not an open question — look it up rather than inventing a screen.
+- **Both halves are designed.** `.claude/docs/design.md` is the authority on what the phone and the
+  iPad look like, `.claude/docs/design-mac.md` on the menu bar app's seven surfaces, and the
+  `/design` skill is binding before any SwiftUI in either. A design question is not an open question
+  — look it up rather than inventing a screen. The Mac frames were drawn against 0.0.6 and the sheet
+  corrects them for 0.0.7; trust the sheet.
 - **Invoke applicable skills before acting.** If none apply, say so.
 
 | Skill | Use it for |
