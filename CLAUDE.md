@@ -21,6 +21,7 @@ it is not a history browser.
 |---|---|
 | `/architecture` | The module tree, which layer may import which, composition roots, typed identifiers, adding a dependency |
 | `/swift-style` | Swift 6 and SwiftUI conventions — concurrency, optionality, typed errors, naming, member ordering |
+| `/design-handoff` | Anything a reader looks at: the round trip to Claude Design, and the rule that **no pull request touching a screen opens before its frames exist** |
 | `/swift-testing` | Swift Testing, the Scenario fixture, handwritten fakes, the golden diff corpus |
 | `/git-invocation` | Running `git` — argument vectors, `-z` parsing, and the six behaviours that are not obvious |
 | `/generated-files` | The Xcode project, the diff fixtures and the icons: how to regenerate, what CI gates |
