@@ -183,11 +183,16 @@ Rules that follow:
 - **Do not "fix" a number by moving snapshot tests into the package.** A SwiftPM test target is
   hostless and renders blank; the split is the reason the numbers mean anything.
 - **The Unit and All rows are measured over what a host test can reach** — the package, minus view
-  bodies and minus the composition roots. A SwiftUI body needs a renderer and a SwiftPM test target
-  is hostless; no test constructs a composition root. Counted, those lines make the number move when
-  a module is first linked into a test binary, which is a fact about the target graph. **A macOS
-  view layer is therefore measured by nothing until a macOS snapshot kind exists** — that is owed,
-  and it is what the Mac's Settings tabs need before they land.
+  bodies, minus the composition roots, minus the handful of files named in `UNREACHABLE_FILES`. A
+  SwiftUI body needs a renderer and a SwiftPM test target is hostless; no test constructs a
+  composition root; and a test binary is unsigned, so it has no keychain for the identity store to
+  write to. Counted, those lines make the number move when a module is first linked into a test
+  binary, which is a fact about the target graph. **A macOS view layer is therefore measured by
+  nothing until a macOS snapshot kind exists** — that is owed, and it is what the Mac's Settings
+  tabs need before they land.
+- **The bar for `UNREACHABLE_FILES` is "unrunnable by construction", never "hard to test".** Adding
+  a name there is a redefinition, so it comes with a rename of the scope string — that is what
+  leaves the row unjudged for one run instead of failing the pull request that makes the change.
 - **The Snapshot row is measured over the view layers alone.** A rendered view executes no
   repository and no parser, so every line of those the phone app happens to link is one a snapshot
   can never cover. Measured over the whole package the row fell whenever domain code was added

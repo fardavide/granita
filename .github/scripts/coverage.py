@@ -77,6 +77,21 @@ DRAWING_LAYER = "Ui"
 # the same decision for all three.
 COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
 
+# Files a host test cannot execute for a reason that is not a layer and not a composition root.
+#
+# One so far, and the bar for a second is the same as the bar for this one: the code must be
+# unrunnable from `swift test` *by construction*, not merely untested. A SwiftPM test binary is
+# unsigned and has no keychain of its own, so the only way to run the Keychain store at all is to
+# write into the developer's real login keychain — which is why it sits behind
+# `ServerIdentityStore`, why everything downstream is tested against a fake, and why it was verified
+# by running the server instead. See `decisions.md` and the "Verified against the real environment"
+# section of `status.md`.
+#
+# Named per file rather than per directory, deliberately: `Server/Identity/Data` also holds the
+# interface enumeration, which a host test does reach and does cover, and exempting the directory
+# would stop measuring it.
+UNREACHABLE_FILES = {"Server/Identity/Data/KeychainServerIdentityStore.swift"}
+
 # What each kind's percentage is measured over, and the name that says so in the summary.
 #
 # The snapshot kind is scoped to the view layers because a rendered view executes no repository and
@@ -90,16 +105,21 @@ COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
 # repository and a parser is exactly what it does, and scoping it would undercount it.
 #
 # The unit and all-tests kinds are scoped to what a test can reach. A host `swift test` cannot
-# render a SwiftUI body and cannot construct a composition root, so those lines are uncoverable by
-# construction rather than uncovered by neglect — and counting them means the number moves when a
-# module is first pulled into a test binary, which is a fact about the target graph rather than
-# about the tests. Drawing code is judged by the Snapshot row instead, which is the mirror of this
-# rule: that row excludes everything a rendered view cannot execute.
+# render a SwiftUI body, cannot construct a composition root, and has no keychain to write to, so
+# those lines are uncoverable by construction rather than uncovered by neglect — and counting them
+# means the number moves when a module is first pulled into a test binary, which is a fact about the
+# target graph rather than about the tests. Drawing code is judged by the Snapshot row instead,
+# which is the mirror of this rule: that row excludes everything a rendered view cannot execute.
+#
+# The scope's name changed from `reachable` to `host-reachable` when UNREACHABLE_FILES was added,
+# and the rename is the point rather than a tidy-up: the gate compares two numbers only when both
+# were taken the same way, so renaming is how a redefinition declares itself and leaves these two
+# rows unjudged for exactly one run instead of failing the pull request that redefines them.
 #
 # The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
 # nothing until a macOS snapshot kind exists. See status.md.
 DEFAULT_SCOPE = "package"
-SCOPES = {"snapshot": "views", "unit": "reachable", "all": "reachable"}
+SCOPES = {"snapshot": "views", "unit": "host-reachable", "all": "host-reachable"}
 
 
 # --- collect -----------------------------------------------------------------------------------
@@ -127,8 +147,11 @@ def is_composition_root_path(relative: str) -> bool:
 
 
 def is_reachable_path(relative: str) -> bool:
-    """A file a host test could execute: not a view body, not wiring nothing depends on."""
+    """A file a host test could execute: not a view body, not wiring nothing depends on, and not
+    something whose only real collaborator is absent from a test binary."""
     if DRAWING_LAYER in pathlib.PurePosixPath(relative).parts[:-1]:
+        return False
+    if relative.lstrip("/") in UNREACHABLE_FILES:
         return False
     return not is_composition_root_path(relative)
 
@@ -156,7 +179,7 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
             continue
         if scope == "views" and not is_view_path(relative):
             continue
-        if scope == "reachable" and not is_reachable_path(relative):
+        if scope == "host-reachable" and not is_reachable_path(relative):
             continue
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
