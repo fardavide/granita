@@ -173,6 +173,24 @@ struct SessionIndexTests {
         #expect(await scenario.sut.suggestedAliases(for: [("/repo", nil)]).isEmpty)
     }
 
+    @Test
+    func `given no configured directory when the default is asked for then it is the agent's own`() {
+        // given — `CLAUDE_CONFIG_DIR` is how a machine moves the whole thing, and reading
+        // `~/.claude` regardless would find someone else's sessions or none at all.
+        let configured = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"]
+
+        // when
+        let root = SessionIndex.defaultRootUrl().path(percentEncoded: false)
+
+        // then
+        if let configured, configured.isEmpty == false {
+            #expect(root == URL(filePath: configured).path(percentEncoded: false))
+        } else {
+            // A directory URL carries a trailing separator, which is not part of the name.
+            #expect(root.hasSuffix("/.claude/") || root.hasSuffix("/.claude"))
+        }
+    }
+
     // MARK: - Scenario
 
     private struct Scenario {

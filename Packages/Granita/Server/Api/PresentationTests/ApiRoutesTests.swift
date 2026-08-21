@@ -687,6 +687,136 @@ extension ApiRoutesTests {
 
 }
 
+extension ApiRoutesTests {
+
+    // MARK: - A project that stops being one
+
+    @Test
+    func `given an enabled folder that is not a repository when projects are listed then the list survives`(
+    ) async throws {
+        // given — a folder Davide enabled and later deleted, or moved, or that was never a
+        // checkout. It must not take the other projects down with it, because the list is the only
+        // screen from which he could go and fix it.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        try await scenario.store.add(project: StoredProject(
+            id: ProjectID(canonicalPath: "/nowhere/granita-was-here"),
+            path: "/nowhere/granita-was-here",
+            name: "gone",
+            isVisible: true
+        ))
+
+        // when
+        let projects = try await scenario.get([Project].self, "/v1/projects")
+        let worktrees = try await scenario.get([Worktree].self, "/v1/worktrees")
+
+        // then — it is listed, with nothing in it, rather than being an error for the whole route.
+        #expect(projects.count == 2)
+        #expect(projects.first { $0.name == "gone" }?.worktreeCount == 0)
+        #expect(worktrees.count == 1)
+    }
+
+    @Test
+    func `given two enabled projects when one is named then only its worktrees come back`() async throws {
+        // given — the parameter is optional and omitting it means all of them, so the filtering
+        // branch is only taken when a project is actually named.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        try await scenario.store.add(project: StoredProject(
+            id: ProjectID(canonicalPath: "/nowhere/second"),
+            path: "/nowhere/second",
+            name: "second",
+            isVisible: true
+        ))
+
+        // when
+        let named = try await scenario.get(
+            [Worktree].self,
+            "/v1/worktrees?projectID=\(ProjectID(canonicalPath: "/nowhere/second").rawValue)"
+        )
+        let all = try await scenario.get([Worktree].self, "/v1/worktrees")
+
+        // then
+        #expect(named.isEmpty)
+        #expect(all.count == 1)
+    }
+}
+
+extension ApiRoutesTests {
+
+    // MARK: - What the client may leave out
+
+    @Test
+    func `given no parameters at all when lines are asked for then the defaults are the useful ones`(
+    ) async throws {
+        // given — every parameter on this route is optional, and the defaults are what a client
+        // asking for "the file" rather than "part of the file" gets.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "plain.txt" })
+
+        // when
+        let lines = try await scenario.get(
+            LinesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/lines"
+        )
+
+        // then — the working copy, from the first line, in one readable piece.
+        #expect(lines.lines.first == "plain, edited")
+        #expect(lines.eof)
+    }
+
+    @Test
+    func `given a side this API does not have when lines are asked for then it reads the working copy`(
+    ) async throws {
+        // given — the value comes off the wire, so it can be anything at all.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "plain.txt" })
+
+        // when
+        let lines = try await scenario.get(
+            LinesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/lines?side=sideways"
+        )
+
+        // then — the side a reader is looking at is the working copy, so that is what an
+        // unrecognised one falls back to rather than an error nobody can act on.
+        #expect(lines.lines.first == "plain, edited")
+    }
+
+    @Test
+    func `given no files named when diffs are asked for then nothing comes back rather than everything`(
+    ) async throws {
+        // given — the alternative reading, that an empty list means "all of them", would make a
+        // malformed request the most expensive one this API answers.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+
+        // when
+        let diffs = try await scenario.get(
+            [FileDiff].self, "/v1/worktrees/\(worktree.id.rawValue)/diffs"
+        )
+
+        // then
+        #expect(diffs.isEmpty)
+    }
+}
+
 private struct LinesBody: Decodable, Sendable {
     let lines: [String]
     let eof: Bool
