@@ -1,3 +1,4 @@
+import Foundation
 import Network
 
 import ClientConnectionDomain
@@ -79,16 +80,12 @@ struct BrowserRestartPolicy {
     /// Network.framework's localized description is the same string for almost everything, so on its
     /// own it tells a reader nothing they can carry into a bug report. The code is the part that
     /// identifies which failure this was, and the reader of this app is the developer of it.
+    /// Read through the `NSError` bridge rather than by switching on the kind. `NWError` is not
+    /// frozen, so a switch needs an `@unknown default` — a branch no test can reach, which would
+    /// quietly drop the code for whichever kind Apple adds next. The bridge carries the underlying
+    /// code for every kind there is, including one that does not exist yet.
     private static func diagnostic(for error: NWError) -> String {
-        switch error {
-        case .posix(let code): "\(error.localizedDescription)\nNWError \(code.rawValue)"
-        case .dns(let code): "\(error.localizedDescription)\nNWError \(code)"
-        case .tls(let status): "\(error.localizedDescription)\nNWError \(status)"
-        case .wifiAware(let code): "\(error.localizedDescription)\nNWError \(code)"
-        // NWError is not frozen, so a kind added later has to compile. It falls back to the sentence
-        // alone rather than to a code we would be inventing.
-        @unknown default: error.localizedDescription
-        }
+        "\(error.localizedDescription)\nNWError \((error as NSError).code)"
     }
 }
 

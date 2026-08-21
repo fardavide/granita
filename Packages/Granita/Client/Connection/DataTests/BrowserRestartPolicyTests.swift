@@ -29,10 +29,20 @@ struct BrowserRestartPolicyTests {
 
         // then — anything we cannot attribute stays a failure, so a real fault is never disguised as
         // a permission problem the reader would go looking for in Settings.
-        #expect(state != .localNetworkDenied)
-        if case .failed = state {} else {
-            Issue.record("expected a failure state, got \(state)")
-        }
+        #expect(state == .failed(diagnostic: "\(error.localizedDescription)\nNWError 50"))
+    }
+
+    @Test
+    func `given an unfamiliar dns error when the browser waits then it is reported as a failure`() {
+        // given — the resolver has many codes and only two of them are about permission. This is the
+        // waiting path's version of the same question the death path answers below.
+        let error = NWError.dns(-65_563)
+
+        // when
+        let state = BrowserRestartPolicy.stateWhileWaiting(on: error)
+
+        // then
+        #expect(state == .failed(diagnostic: "\(error.localizedDescription)\nNWError -65563"))
     }
 
     @Test
@@ -118,7 +128,7 @@ struct BrowserRestartPolicyTests {
         // then — a fault we cannot attribute is shown as itself. Calling it a refusal would send the
         // reader to a Settings switch that is already on.
         #expect(restart.report == .failed(
-            diagnostic: "\(error.localizedDescription)\nNWError \(POSIXErrorCode.ENETDOWN.rawValue)"
+            diagnostic: "\(error.localizedDescription)\nNWError 50"
         ))
     }
 
