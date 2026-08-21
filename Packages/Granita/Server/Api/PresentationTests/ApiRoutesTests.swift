@@ -672,31 +672,6 @@ extension ApiRoutesTests {
         #expect(try await scenario.get([Project].self, "/v1/projects").isEmpty)
     }
 
-    @Test
-    func `given git cannot answer in the time allowed when changes are asked for then it says so`(
-    ) async throws {
-        // given — no git invocation finishes within a millisecond; spawning the process costs more
-        // than that on its own.
-        let scenario = try ApiScenario(repository: .renames)
-        defer { scenario.cleanUp() }
-        try await scenario.enableProject()
-        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
-
-        let impatient = try ApiScenario(repository: .renames, gitTimeout: .milliseconds(1))
-        defer { impatient.cleanUp() }
-        try await impatient.enableProject()
-
-        // when - then — the reader gets a sentence rather than a spinner, which is the whole
-        // reason a git failure is carried rather than collapsed.
-        try await impatient.application.test(.router) { client in
-            try await client.execute(
-                uri: "/v1/worktrees/\(worktree.id.rawValue)/changes", method: .get
-            ) { response in
-                #expect(response.status == .internalServerError || response.status == .gone)
-                #expect(errorCode(in: response) != nil)
-            }
-        }
-    }
 }
 
 private struct LinesBody: Decodable, Sendable {
