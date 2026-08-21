@@ -15,11 +15,15 @@ it is not a history browser.
 - **`SPEC.md` is the specification.** Its paragraphs marked TRAP describe defects found by running
   things, not by reading documentation — do not simplify them away. `decisions.md` records every
   place this repository knowingly departs from it.
+- **The client is designed.** `.claude/docs/design.md` is the authority on what the phone and the
+  iPad look like, and the `/design` skill is binding before any client SwiftUI. A design question is
+  not an open question — look it up rather than inventing a screen.
 - **Invoke applicable skills before acting.** If none apply, say so.
 
 | Skill | Use it for |
 |---|---|
 | `/architecture` | The module tree, which layer may import which, composition roots, typed identifiers, adding a dependency |
+| `/design` | **Any client SwiftUI** — which screen, which control, what truncates which way, what an empty state may offer |
 | `/swift-style` | Swift 6 and SwiftUI conventions — concurrency, optionality, typed errors, naming, member ordering |
 | `/swift-testing` | Swift Testing, the Scenario fixture, handwritten fakes, the golden diff corpus |
 | `/git-invocation` | Running `git` — argument vectors, `-z` parsing, and the six behaviours that are not obvious |
@@ -87,11 +91,15 @@ the `granita-server` executable.
 ## Build & test
 
 ```bash
-make test     # package tests, on the host, no simulator
-make build    # compile-check the package and both apps, unsigned
-make run      # run the backend in a terminal
-make project  # regenerate Granita.xcodeproj after editing project.yml
+make test       # package tests, on the host, no simulator
+make build      # compile-check the package and both apps, unsigned
+make snapshots  # render the screens on a simulator against the committed baselines
+make run        # run the backend in a terminal
+make project    # regenerate Granita.xcodeproj after editing project.yml
 ```
+
+`make record-snapshots` re-records the baselines, and is only ever correct after a deliberate change
+to `.claude/docs/design.md`.
 
 - **`main` is PR-gated** by the `protect-main` ruleset: squash only, linear history, four required
   checks, **no bypass for anyone including Davide**. Branch, open a PR, wait for the checks, squash

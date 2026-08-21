@@ -8,6 +8,7 @@ choice was made belongs here.
 |---|---|
 | [`architecture.md`](architecture.md) | The two halves, the layer rules and how the compiler enforces them, dependency inversion, opaque identifiers |
 | [`decisions.md`](decisions.md) | Why each choice was made and what it beat — including every deliberate departure from `SPEC.md` |
+| [`design.md`](design.md) | The client's four screens, the control each one must use, and every call with the alternative it beat. [`design/`](design/) holds the same review as drawings |
 | [`status.md`](status.md) | Milestones, what exists, what Davide still owns |
 | [`verification.md`](verification.md) | What the spec's verify-first pass found against the real environment, with numbers |
 
@@ -18,6 +19,9 @@ build. `decisions.md` is the authority on where this repository knowingly differ
 
 - **Read `architecture.md` and `decisions.md` before any non-trivial change**, so you do not break a
   layer boundary or re-open something already settled.
+- **Read the relevant section of `design.md` before writing any client SwiftUI.** The screens are
+  drawn and each call names the alternative it beat, so choosing the other one is re-opening a
+  settled question rather than exercising judgement. The `/design` skill holds the actionable form.
 - **Record a decision here whenever a choice would be expensive to reverse** — layering, an error
   model, a dependency, a naming convention. Append it to `decisions.md`, newest last, and name the
   alternative it beat: a decision without its discarded options gets re-litigated within a month.

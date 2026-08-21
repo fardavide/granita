@@ -121,6 +121,10 @@ the expression.
 
 ## SwiftUI
 
+**The client's screens are already designed — read the `design` skill first.** It owns *what* a
+screen is: which control, what truncates which way, what an empty state may offer. This section owns
+*how* the Swift is written.
+
 - **Semantic colours only**, no hardcoded hex. Light and dark are both first-class, and there is a
   colourblind-safe palette toggle, so a hardcoded colour is three bugs rather than one.
 - `@Observable` view models, injected through the view's init. No `ObservableObject` or `@Published`

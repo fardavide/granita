@@ -28,10 +28,21 @@ struct ServerDiscoveryViewSnapshotTests {
         // Wrapped in a NavigationStack because the composition root wraps it, and because
         // `.navigationTitle` renders nothing outside a navigation container — an unwrapped baseline
         // would silently stop covering the title bar the reader actually sees.
+        //
+        // Clamped to the same measure, on the same side of the stack, for the same reason. The
+        // measure is what makes the iPad read as the phone at rest in a bigger room, and it only
+        // takes the large title with it from outside the navigation container — so a baseline that
+        // applied it inside would assert an alignment the app does not have.
         assertScreenSnapshot(
             NavigationStack {
-                ServerDiscoveryView(state: subject.state, onSelect: { _ in }, onOpenSettings: {})
-            },
+                ServerDiscoveryView(
+                    state: subject.state,
+                    onSearchAgain: {},
+                    onOpenSettings: {}
+                )
+            }
+            .frame(maxWidth: ServerDiscoveryView.contentWidth)
+            .frame(maxWidth: .infinity),
             layout: layout,
             named: subject.name
         )
@@ -77,6 +88,9 @@ struct Case: Sendable, CustomTestStringConvertible {
         // way to a first browser and another way to every browser after it.
         Case(name: "permission-refused", state: .localNetworkDenied),
 
-        Case(name: "failed", state: .failed("The operation couldn’t be completed."))
+        // Two lines, because that is what the screen has to lay out: the system's sentence, which is
+        // the same for almost every fault, and the code, which is the only part of it anyone can
+        // act on. A one-line payload would stop covering the layout the reader actually gets.
+        Case(name: "failed", state: .failed(diagnostic: "The operation couldn’t be completed.\nNWError -65563"))
     ]
 }

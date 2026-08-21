@@ -13,6 +13,9 @@ UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLO
 # Generated and committed, and therefore checkable. The icons are generated and committed too but
 # are deliberately absent — see verify-generated.
 GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
+# Recorded, not generated: no source produces them, so verify-generated cannot check them and the
+# snapshot job is what gates them instead.
+SNAPSHOTS    := Apps/GranitaMobileSnapshotTests/__Snapshots__
 
 .DEFAULT_GOAL := help
 
@@ -37,6 +40,24 @@ build: ## Compile-check the package and both apps
 .PHONY: run
 run: ## Run the backend in a terminal, no Xcode in the loop
 	cd $(PACKAGE) && swift run granita-server
+
+.PHONY: snapshots
+snapshots: ## Render the screens on a simulator and compare against the committed baselines
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO
+
+.PHONY: record-snapshots
+record-snapshots: ## Re-record every snapshot baseline after a deliberate design change
+	@# The recording procedure, and the second run is the point of it. snapshot-testing writes a
+	@# missing baseline and fails that same run, so a single pass can only tell you it wrote
+	@# something — never that what it wrote renders stably. The re-run compares, and a red one here
+	@# means the screen is not deterministic rather than that the design moved.
+	@#
+	@# Never run this on CI. A recorder on CI turns the suite into a record of whatever the code
+	@# currently does, which is a test that cannot fail.
+	rm -rf $(SNAPSHOTS)
+	-@$(MAKE) --no-print-directory snapshots
+	@$(MAKE) --no-print-directory snapshots
+	@echo "Baselines re-recorded and verified stable. Review every changed PNG before committing."
 
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures

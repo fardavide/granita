@@ -2,7 +2,11 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.4.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.5.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+The client is now **designed** rather than improvised: all four screens were reviewed and redrawn
+against 0.0.4 on 2026-08-21, and [`design.md`](design.md) is the authority on what they look like.
+Discovery — the only one of the four that exists — has been brought in line with it.
 
 The two halves find each other **on real hardware**: the Mac serves `/v1/health` and advertises over
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
@@ -53,6 +57,11 @@ The spec's milestones, each ending in something runnable and a green suite, with
   the snapshot suite on a simulator.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
+- **A design for the whole client**, and a discovery screen that matches it: the row is a navigation
+  row with its arrow on the trailing edge and middle truncation, searching pulses and stopping is
+  still, nothing-found and failure both offer a real retry, the failure's advice is ours with the
+  system's diagnostic demoted to small print, and every state sits in a 420pt centred measure on
+  iPad. §2–§4 are drawn and waiting for M4 and M5.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment

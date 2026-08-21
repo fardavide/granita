@@ -71,6 +71,27 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.5 — 2026-08-21
+- **The list of Macs no longer drops its arrow onto a second line.** A long device name pushed the
+  row's disclosure arrow underneath the name, left-aligned, nowhere near where an arrow belongs. The
+  row is a proper navigation row now, so the arrow stays on the trailing edge at every text size —
+  and a name too long to fit is shortened **in the middle**, because two Macs called "MacBook Pro"
+  and "MacBook Pro (work)" differ at the end, which is exactly what the old shortening threw away.
+- **"Search Again" when nothing turned up.** If you started Granita on your Mac after your phone had
+  already given up looking, the only way to make it look again was to quit the app. There is a button
+  now, and it starts a genuinely new search rather than re-reading a dead one.
+- **Looking for a Mac now looks like it is looking.** The antenna pulses while the search is running
+  and goes still when it stops, so you can tell the two apart without reading the sentence under it.
+- **A failed search says something you can act on.** It used to show whatever the system said, which
+  was "The operation couldn't be completed" — the same sentence for every fault there is. It now
+  explains what to try, offers a Try Again button, and prints the raw diagnostic in small type at the
+  bottom, selectable, for pasting into a bug report.
+- **The first-launch sentence mentions permission.** iOS puts its "allow local network access" alert
+  over this screen, and the sentence behind the alert is the one that has to earn the tap on Allow.
+  It now says permission first.
+- **On iPad, the screen stops being a stretched phone.** Everything sits in a centred column instead
+  of a name at one end of the display and its arrow 900 points away at the other.
+
 ### 0.0.4 — 2026-08-21
 - **Coming back to Granita from the background no longer claims local network access is off.** iOS
   tears down the app's connection to the discovery daemon while it is suspended, and every browser

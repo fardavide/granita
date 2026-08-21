@@ -32,11 +32,19 @@ struct BrowserRestartPolicy {
 
     /// What to report for a browser that is alive but cannot proceed. Nothing is replaced and
     /// nothing is counted: it recovers on its own.
+    ///
+    /// A defunct connection is the exception, and it is deliberately silent here. It is the code
+    /// that means two different things — a refusal seen by a browser that was not the app's first,
+    /// or a process that has just been resumed — and telling them apart is what the death counting
+    /// below is for. Reporting it from the waiting path reached the screen ahead of that counting,
+    /// so a resumed app showed a failure on a network that was fine.
     static func stateWhileWaiting(on error: NWError) -> DiscoveryState {
-        guard case .dns(let code) = error, code == policyDenied else {
-            return .failed(error.localizedDescription)
+        guard case .dns(let code) = error else { return .failed(diagnostic: diagnostic(for: error)) }
+        return switch code {
+        case policyDenied: .localNetworkDenied
+        case defunctConnection: .searching
+        default: .failed(diagnostic: diagnostic(for: error))
         }
-        return .localNetworkDenied
     }
 
     mutating func recordReady() {
@@ -47,7 +55,7 @@ struct BrowserRestartPolicy {
         consecutiveDeaths += 1
         guard case .dns(let code) = error else {
             return BrowserRestart(
-                report: .failed(error.localizedDescription),
+                report: .failed(diagnostic: Self.diagnostic(for: error)),
                 delay: Self.delayBeforeReplacement
             )
         }
@@ -60,9 +68,26 @@ struct BrowserRestartPolicy {
             BrowserRestart(report: nil, delay: Self.delayBeforeReplacement)
         default:
             BrowserRestart(
-                report: .failed(error.localizedDescription),
+                report: .failed(diagnostic: Self.diagnostic(for: error)),
                 delay: Self.delayBeforeReplacement
             )
+        }
+    }
+
+    /// The system's sentence with its raw code appended.
+    ///
+    /// Network.framework's localized description is the same string for almost everything, so on its
+    /// own it tells a reader nothing they can carry into a bug report. The code is the part that
+    /// identifies which failure this was, and the reader of this app is the developer of it.
+    private static func diagnostic(for error: NWError) -> String {
+        switch error {
+        case .posix(let code): "\(error.localizedDescription)\nNWError \(code.rawValue)"
+        case .dns(let code): "\(error.localizedDescription)\nNWError \(code)"
+        case .tls(let status): "\(error.localizedDescription)\nNWError \(status)"
+        case .wifiAware(let code): "\(error.localizedDescription)\nNWError \(code)"
+        // NWError is not frozen, so a kind added later has to compile. It falls back to the sentence
+        // alone rather than to a code we would be inventing.
+        @unknown default: error.localizedDescription
         }
     }
 }

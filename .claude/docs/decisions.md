@@ -697,3 +697,91 @@ The date format on the wire is currently whatever the HTTP framework's encoder d
 reads the raw JSON and checks it parses as ISO 8601, so a framework upgrade that switches to
 seconds-since-epoch is a red test rather than a phone showing every worktree as modified in 1970.
 Pinning the encoder explicitly is worth doing when M3 next touches this module.
+
+## The client's screens are designed, and the design is a document in this repository
+
+The four client screens were reviewed and redrawn on 21 August 2026, against 0.0.4 as shipped. The
+result lives in [`design.md`](design.md), with the drawings beside it in [`design/`](design/), and
+the `design` skill makes consulting it binding before any client SwiftUI.
+
+Kept as a **document rather than as a link to the design tool**, because a review whose alternatives
+are only in someone's session gets re-litigated the first time an agent has a different idea. Every
+call in it names what it beat, for exactly the reason the entries in this file do.
+
+The frames under `design/uploads/` are copies of the 0.0.4 baselines taken at import time, not
+pointers at the live ones. They are the record of the defects the review annotates, and the live
+baselines now show the fixes — a symlink would have quietly rewritten the evidence.
+
+### The rename sheet offers the session suggestion; it does not prefill it
+
+The one place the design contradicts `SPEC.md` §10 outright, recorded here because that is what this
+file is for. The spec says the rename sheet opens with the suggested alias prefilled. It will
+instead open **empty, with the derived name as the placeholder, and the suggestion offered as a
+tappable row**.
+
+Prefilling means the reader's first act in every non-accepting case is to select-all and delete 51
+characters on a phone keyboard, and a prefilled field cannot distinguish "I accepted the agent's
+summary" from "I named this". Offering costs one tap in the accept case. The section footer states
+what the row will read after Save and updates live, which is what makes an empty field legible
+rather than mysterious. Lands with M4.
+
+## A failure carries a diagnostic, not advice
+
+`DiscoveryState.failed` used to carry `error.localizedDescription`, and the discovery screen put it
+in the one line a reader acts on. That handed the screen's advice to Network.framework, which writes
+"The operation couldn't be completed" — true of every failure there has ever been, actionable in
+none of them.
+
+The payload is now labelled a **diagnostic** and rendered at the bottom in small monospaced
+selectable print, with the raw `NWError` code appended, while the description above it is ours and
+fixed. The code is the only part of that string anyone can act on, and the reader of this app is the
+developer of it.
+
+Rejected: hiding the diagnostic behind a disclosure, which is a tap to reveal four words nobody can
+use; and an alert, which demands an answer to a question the reader was not asked and leaves the
+same empty screen behind it. This is a state of the screen, not an interruption.
+
+### A defunct connection while *waiting* now reports searching, not failure
+
+The design asks for policy errors to be routed away from the failure state and rendered as a
+refusal. Applied literally to the waiting path that would re-open the bug 0.0.4 fixed: a defunct
+connection is the code that means *either* a refusal seen by a browser that was not the app's first
+*or* a process that has just been resumed, and telling those apart is what the death counting is
+for. Reporting it as either verdict from the waiting path reaches the screen ahead of the counting.
+
+So the waiting path stays silent on that one code and reports searching, which is what is actually
+true; the death path still counts, and three deaths in a row is still a refusal. The literal reading
+of the design would have accused a reader of a setting they did not change, which is the exact
+failure `BrowserRestartPolicy` exists to prevent.
+
+## Selecting a Mac is a navigation link with no destination yet
+
+§1's headline defect was the discovery row built from a label-and-value pair, which resolves width
+pressure by dropping the "value" — here a disclosure chevron — onto its own line, 300pt from where an
+indicator belongs. The row is now a value-based `NavigationLink`, which supplies the indicator, pins
+it to the trailing edge at every type size, gives the correct pressed state, and draws no chevron at
+all once this list becomes the split-view sidebar in M4.
+
+The consequence is that the `Ui` layer no longer reports the selection and the composition root has
+no `navigationDestination` for a discovered server, so tapping a Mac does nothing. That is what
+tapping a Mac already did — the callback was a no-op, because selecting a Mac *is* pairing and
+pairing brings the Keychain identity and the QR code with it. Chosen over deferring the fix until
+pairing exists, which would have left a shipped bug shipped and asserted as correct by the baselines.
+
+### Where the design review contradicted itself, and how it was read
+
+Two places where §1's prose and its own drawings disagreed. Settled with Davide rather than by
+picking whichever was read last, and folded back into `design.md` so the document no longer holds
+both readings.
+
+- **The Mac row is one line, not two.** The prose asked for a two-line limit with middle truncation;
+  the frame drew one line, middle-truncated; and the paragraph below rejected "a two-line wrap with
+  the chevron centred" for making a 68pt row. A two-line limit does not truncate a long device name
+  at 390pt — it wraps it, producing precisely the rejected layout. One line, so every row is the same
+  height.
+- **The iPad measure goes around the navigation container.** The prose asked for the large title to
+  sit inside the 420pt measure. iOS draws a large title in the navigation bar rather than in the
+  content, so clamping the screen centres the rows and leaves the title at the window's leading edge.
+  The composition root clamps the stack instead, and the snapshot suite clamps on the same side so
+  the baselines assert what ships. Rejected: hand-rolling the header inside the column, which buys
+  exact alignment by giving up a system control.
