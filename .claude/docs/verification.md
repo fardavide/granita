@@ -120,6 +120,15 @@ directory leaves the output byte for byte identical — the directory was alread
 stays one — so a revision hashed from it does not move and the phone never learns anything
 appeared. Reproduced on 2.52.0; `--untracked-files=all` is pinned because of it.
 
+**A nested worktree is an untracked directory.** `ls-files --others` does not descend into another
+repository; it emits one entry with a trailing separator. Since Claude Code puts its worktrees under
+`.claude/worktrees/`, every project an agent has touched has one — and `hash-object --stdin-paths`
+refuses it, failing the **whole batch** rather than that line. Found by running the server against
+the fixture repository, not by reading anything.
+
+**An unborn HEAD is reported as forty zeroes by `worktree list --porcelain`**, on a line present
+like any other, so checking whether the line exists says a repository with no commits has one.
+
 **A conflicted path diffs as a normal unified diff.** Confirmed on a real conflicted merge: the
 output carries a `diff --git` header and inline `<<<<<<<` / `=======` / `>>>>>>>` markers, and no
 `diff --cc` appears anywhere. The parser therefore needs no combined-diff support, as the spec says —
@@ -130,10 +139,20 @@ it tags those lines instead.
 The spec is explicit that this is "implement and verify", not "check whether it works". It needs the
 menu bar app to exist. **M3.**
 
-## 6. Claude Code session transcript shape — open
+## 6. Claude Code session transcript shape — done, and the spec was wrong twice
 
-Needs one real transcript read on this machine, with the finding recorded at the top of the parser.
-**M2.**
+Read on 2026-08-21 against `~/.claude/projects`: 117 session transcripts, largest **74 MB**, which
+is what the head-and-tail rule exists for. The findings are recorded at the top of the parser, as
+§7 asks, and two of them contradict §7:
+
+- **`cwd` is not on every record.** It is on `user`, `assistant`, `attachment` and `system`, and on
+  none of `queue-operation`, `last-prompt`, `pr-link`, `custom-title`, `atis-latch` or
+  `bridge-session` — and one of those is frequently the first line of a file.
+- **There is no `summary` record.** Zero across 400 files, against 4,468 `custom-title` and 10,023
+  `last-prompt`. `custom-title` is the analogue.
+
+One thing §7 got right and is worth keeping: `projects/*/*.jsonl`, exactly one level down. Below the
+sessions sit 1,237 subagent transcripts sharing their session's `cwd`.
 
 ## 7. XcodeGen — confirmed working for this shape
 

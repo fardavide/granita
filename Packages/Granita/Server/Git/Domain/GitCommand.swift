@@ -53,6 +53,13 @@ public enum GitCommand: Hashable, Sendable {
 
     /// A file's content as of a revision, which is the side of it the working tree replaced.
     case fileContent(path: RepositoryRelativePath, at: GitRevision)
+
+    /// The object id each path's working-tree content would have, for the whole change set at once.
+    ///
+    /// One invocation rather than one per file, and git rather than us: a thousand-file worktree
+    /// refreshing every 400 ms cannot afford either a process per file or reading and hashing the
+    /// bytes here.
+    case hashWorktreeFiles(paths: [RepositoryRelativePath])
 }
 
 /// The side of a comparison that is not the working tree.

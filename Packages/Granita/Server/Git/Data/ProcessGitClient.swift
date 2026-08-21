@@ -43,18 +43,35 @@ public struct ProcessGitClient: GitClient {
         let terminationStatus: TerminationStatus
         let outcome: Outcome
         do {
-            let result = try await Subprocess.run(
-                .path(FilePath(executablePath)),
-                arguments: Arguments(GitInvocation.arguments(for: command)),
-                environment: .inherit.updating(overrides),
-                workingDirectory: FilePath(location.path),
-                input: .none,
-                output: .sequence,
-                error: .sequence,
-                body: { execution in try await drain(execution, command: command) }
-            )
-            terminationStatus = result.terminationStatus
-            outcome = result.closureResult
+            // Two shapes of the same call, because only one command reads standard input and the
+            // input type is part of the execution's type rather than a value it carries.
+            if let standardInput = GitInvocation.standardInput(for: command) {
+                let result = try await Subprocess.run(
+                    .path(FilePath(executablePath)),
+                    arguments: Arguments(GitInvocation.arguments(for: command)),
+                    environment: .inherit.updating(overrides),
+                    workingDirectory: FilePath(location.path),
+                    input: .data(standardInput),
+                    output: .sequence,
+                    error: .sequence,
+                    body: { execution in try await drain(execution, command: command) }
+                )
+                terminationStatus = result.terminationStatus
+                outcome = result.closureResult
+            } else {
+                let result = try await Subprocess.run(
+                    .path(FilePath(executablePath)),
+                    arguments: Arguments(GitInvocation.arguments(for: command)),
+                    environment: .inherit.updating(overrides),
+                    workingDirectory: FilePath(location.path),
+                    input: .none,
+                    output: .sequence,
+                    error: .sequence,
+                    body: { execution in try await drain(execution, command: command) }
+                )
+                terminationStatus = result.terminationStatus
+                outcome = result.closureResult
+            }
         } catch let error as SubprocessError {
             throw Self.mapped(error, location: location)
         } catch {
@@ -89,8 +106,8 @@ public struct ProcessGitClient: GitClient {
     /// megabytes: draining standard output to its end before touching standard error leaves git
     /// blocked writing a complaint nobody is reading, and the app blocked waiting for an exit that
     /// cannot happen. That is a hard hang on exactly the large diffs the guards exist for.
-    private func drain(
-        _ execution: Execution<NoInput, SequenceOutput, SequenceOutput>,
+    private func drain<Input: InputProtocol>(
+        _ execution: Execution<Input, SequenceOutput, SequenceOutput>,
         command: GitCommand
     ) async throws -> Outcome {
         try await withThrowingTaskGroup(of: Drained.self, returning: Outcome.self) { group in
