@@ -9,9 +9,7 @@ read first. A frame is one moment's answer to one question; the sheet is what th
 | — | nothing yet | — |
 
 The round trip that produces these, what the prompt has to carry, and where a returned call ends up
-are all in the [`design-handoff`](../../skills/design-handoff/SKILL.md) skill. The prompt that
-asked for each return is committed under [`../../prompts/`](../../prompts/), dated, and not edited
-after the answer arrived.
+are all in the [`design-handoff`](../../skills/design-handoff/SKILL.md) skill.
 
 ## What is not archived here
 

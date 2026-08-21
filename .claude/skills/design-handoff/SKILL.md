@@ -66,9 +66,9 @@ screen, in as many words. Two things follow, and both belong in the prompt:
 ## The screens sent are the committed snapshot baselines
 
 They live in `Apps/GranitaMobileSnapshotTests/__Snapshots__/<source file name>/`, four renderings
-per state — iPhone and iPad, light and dark. Attach them **unrenamed**: the filename ends in
-`<state>-<device>-<appearance>`, which is the caption Design needs, and keeping it links every
-image back to the test that produced it.
+per state — iPhone and iPad, light and dark. Copy them to the Desktop for sending; the filename ends
+in `<state>-<device>-<appearance>`, which is exactly the caption Design needs, so keep that tail and
+drop only the long test-name prefix in front of it.
 
 - **Send all four layouts of a state**, not one. A layout defect and a colour defect look identical
   in a single image, which is the same reason the suite renders four.
@@ -104,12 +104,20 @@ A prompt is **a spec plus context, not a leash.** Where a premise of ours does n
 with a real screen, the answer should say so — that is most of what the round trip buys, and the
 prompt should ask for it out loud.
 
-## Prompts are committed, dated, and not edited afterwards
+## The prompt is chat output, and the images go on the Desktop
 
-One file per round trip at `.claude/prompts/<slice>.md`, opening with what it is for, who wrote it
-and when, and against which doc. It is committed **before** the answer arrives, and once the answer
-has arrived it is left alone: it is the record of what was asked, and a prompt quietly improved
-after the fact makes the answer unreadable.
+**Do not write the prompt to a file and do not open a pull request for it.** Davide, 2026-08-21:
+*"You give prompt in chat in code block, not in files. If we need to attach image, you place them on
+desktop."* A prompt is something he pastes once, in the next thirty seconds, into another tool —
+committing it puts a review gate in front of a clipboard.
+
+So the reply ends with the prompt in one fenced code block, and nothing after it. Copy the baselines
+it references into a folder on the Desktop, named for the round trip, and say in the reply how many
+there are and where they are. Strip the test-name prefix on the way — the caption Design needs is
+the `<state>-<device>-<appearance>` tail, and a folder of files that all begin with the same
+sixty characters cannot be read at a glance.
+
+What is worth keeping in the repository is the **answer**, not the ask. See below.
 
 ## What comes back, and where it goes
 
