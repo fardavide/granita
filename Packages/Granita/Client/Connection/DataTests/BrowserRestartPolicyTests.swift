@@ -92,6 +92,32 @@ struct BrowserRestartPolicyTests {
     }
 
     @Test
+    func `given an unrelated error when the browser dies then it is reported as a failure`() {
+        // given
+        var sut = BrowserRestartPolicy()
+
+        // when
+        let restart = sut.restart(after: .posix(.ENETDOWN))
+
+        // then — a fault we cannot attribute is shown as itself. Calling it a refusal would send the
+        // reader to a Settings switch that is already on.
+        #expect(restart.report == .failed(NWError.posix(.ENETDOWN).localizedDescription))
+    }
+
+    @Test
+    func `given an unfamiliar dns error when the browser dies then it is reported as a failure`() {
+        // given — the two codes this file is about are not the only ones the resolver has.
+        let error = NWError.dns(-65_563)
+        var sut = BrowserRestartPolicy()
+
+        // when
+        let restart = sut.restart(after: error)
+
+        // then
+        #expect(restart.report == .failed(error.localizedDescription))
+    }
+
+    @Test
     func `given a refusal was diagnosed when browsers keep dying then they are replaced less often`() {
         // given
         var sut = BrowserRestartPolicy()

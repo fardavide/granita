@@ -58,7 +58,7 @@ final class BonjourBrowser: ServiceBrowsing {
                 }
             }
             browser.browseResultsChangedHandler = { results, _ in
-                continuation.yield(.found(results.compactMap(Self.server(from:))))
+                continuation.yield(.found(results.compactMap { Self.server(from: $0.endpoint) }))
             }
             browser.start(queue: Self.queue)
         }
@@ -70,8 +70,11 @@ final class BonjourBrowser: ServiceBrowsing {
 
     /// Only service endpoints carry a name, and a name is the identity — anything else is not a
     /// server we can address later.
-    private static func server(from result: NWBrowser.Result) -> DiscoveredServer? {
-        guard case .service(let name, _, _, _) = result.endpoint else { return nil }
+    ///
+    /// Takes the endpoint rather than the browse result that carries it, because a result is only
+    /// ever made by the framework and a test cannot hand one over.
+    static func server(from endpoint: NWEndpoint) -> DiscoveredServer? {
+        guard case .service(let name, _, _, _) = endpoint else { return nil }
         return DiscoveredServer(id: name, name: name)
     }
 }

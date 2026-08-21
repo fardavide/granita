@@ -1,6 +1,7 @@
 import Network
 import Testing
 
+import ClientConnectionDomain
 @testable import ClientConnectionData
 
 /// A browser says five things and two of them are its last. Which is which decides whether the
@@ -44,6 +45,33 @@ struct BonjourBrowserTests {
     func `given the session went away when the browser is cancelled then it ends with nothing to add`() {
         // when - then
         #expect(BonjourBrowser.change(for: .cancelled) == .finish)
+    }
+
+    @Test
+    func `given a service was found when reading a server from it then its name is its identity`() {
+        // given — the instance name is the only stable handle on a Mac: its address and port are
+        // resolved fresh every time, and change when it restarts.
+        let endpoint = NWEndpoint.service(
+            name: "Davide's MacBook Pro",
+            type: "_granita._tcp",
+            domain: "local.",
+            interface: nil
+        )
+
+        // when
+        let server = BonjourBrowser.server(from: endpoint)
+
+        // then
+        #expect(server == DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro"))
+    }
+
+    @Test
+    func `given something that is not a service was found when reading a server from it then there is none`() {
+        // given — a bare address carries no name, so there is nothing to list or to address later.
+        let endpoint = NWEndpoint.hostPort(host: "192.168.1.24", port: 51_763)
+
+        // when - then
+        #expect(BonjourBrowser.server(from: endpoint) == nil)
     }
 
     @Test(.timeLimit(.minutes(1)))
