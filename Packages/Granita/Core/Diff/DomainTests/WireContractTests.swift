@@ -116,6 +116,63 @@ struct WireContractTests {
     }
 
     @Test
+    func `given a file change when round-tripped then it survives with camelCase keys`() throws {
+        // given
+        let change = FileChange(
+            id: FileID(repositoryRelativePath: "src/renamed.txt"),
+            path: "src/renamed.txt",
+            oldPath: "src/original.txt",
+            status: .renamed,
+            isBinary: false,
+            isSubmodule: false,
+            stats: ChangeStats(filesChanged: 1, insertions: 3, deletions: 1),
+            contentHash: String(repeating: "a", count: 64),
+            estimatedLineCount: 12,
+            isViewed: false,
+            isTruncated: false,
+            language: "text"
+        )
+
+        // when
+        let data = try JSONEncoder().encode(change)
+
+        // then
+        #expect(try JSONDecoder().decode(FileChange.self, from: data) == change)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["id"] as? String == change.id.rawValue)
+        #expect(object["oldPath"] as? String == "src/original.txt")
+    }
+
+    @Test
+    func `given a file that was not renamed when encoded then the old path is omitted`() throws {
+        // given
+        let change = FileChange(
+            id: FileID(repositoryRelativePath: "a.txt"),
+            path: "a.txt",
+            oldPath: nil,
+            status: .modified,
+            isBinary: false,
+            isSubmodule: false,
+            stats: ChangeStats(filesChanged: 1, insertions: 1, deletions: 0),
+            contentHash: String(repeating: "b", count: 64),
+            estimatedLineCount: 4,
+            isViewed: true,
+            isTruncated: false,
+            language: nil
+        )
+
+        // when
+        let object = try JSONSerialization.jsonObject(
+            with: try JSONEncoder().encode(change)
+        ) as? [String: Any]
+
+        // then
+        #expect(object?["oldPath"] == nil)
+        #expect(object?["language"] == nil)
+        #expect(object?["isViewed"] as? Bool == true)
+    }
+
+    @Test
     func `given change stats when summed then they add up across files`() {
         // given
         let stats = [

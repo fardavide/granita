@@ -76,7 +76,7 @@ enum GitInvocation {
         case .headCommit:
             exitCode == 0 || exitCode == 1
         case .isInsideWorkTree, .repositoryRoot, .currentBranch, .worktrees, .untrackedPaths,
-             .worktreeStatus:
+             .worktreeStatus, .hashWorktreeFiles:
             exitCode == 0
         }
     }
@@ -134,7 +134,50 @@ enum GitInvocation {
         case .fileContent(let path, let revision):
             encoded(["show"] + diffFamilySuffix)
                 + [Array("\(spelling(of: revision)):".utf8) + Array(path.bytes)]
+
+        case .hashWorktreeFiles:
+            encoded(["hash-object", "--stdin-paths"])
         }
+    }
+}
+
+extension GitInvocation {
+
+    /// What this command reads on standard input, if anything.
+    ///
+    /// Only one command does. `--stdin-paths` takes **one path per line**, so a path containing a
+    /// newline would arrive as two paths and shift every object id after it by one — which is a
+    /// wrong content hash for every remaining file, and a wrong content hash silently un-marks a
+    /// file the reader had marked viewed. Git unquotes a line beginning with a double quote using
+    /// C escapes, so such a path is quoted on the way in.
+    static func standardInput(for command: GitCommand) -> Data? {
+        guard case .hashWorktreeFiles(let paths) = command else { return nil }
+        var input = Data()
+        for path in paths {
+            input.append(contentsOf: quotedIfNeeded(path.bytes))
+            input.append(UInt8(ascii: "\n"))
+        }
+        return input
+    }
+
+    private static func quotedIfNeeded(_ bytes: Data) -> Data {
+        let needsQuoting = bytes.contains { byte in
+            byte == UInt8(ascii: "\n") || byte == UInt8(ascii: "\r") || byte == UInt8(ascii: "\\")
+        } || bytes.first == UInt8(ascii: "\"")
+        guard needsQuoting else { return bytes }
+
+        var quoted = Data([UInt8(ascii: "\"")])
+        for byte in bytes {
+            switch byte {
+            case UInt8(ascii: "\n"): quoted.append(contentsOf: Data("\\n".utf8))
+            case UInt8(ascii: "\r"): quoted.append(contentsOf: Data("\\r".utf8))
+            case UInt8(ascii: "\\"): quoted.append(contentsOf: Data("\\\\".utf8))
+            case UInt8(ascii: "\""): quoted.append(contentsOf: Data("\\\"".utf8))
+            default: quoted.append(byte)
+            }
+        }
+        quoted.append(UInt8(ascii: "\""))
+        return quoted
     }
 }
 

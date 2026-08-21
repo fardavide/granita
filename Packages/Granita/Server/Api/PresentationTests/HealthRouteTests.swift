@@ -53,7 +53,7 @@ private struct Scenario {
     let sut: any ApplicationProtocol
 
     init(serverVersion: String) {
-        sut = Application(router: GranitaRouter.build(serverVersion: serverVersion))
+        sut = Application(router: GranitaRouter.build(ApiScenario.healthOnlyDependencies(serverVersion: serverVersion)))
     }
 
     /// Decodes the health payload, so a test asserts on the model rather than on a JSON string and
