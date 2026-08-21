@@ -93,7 +93,10 @@ counts, section headings, paths with spaces and non-ASCII, and an empty diff.
   will silently merge records.
 
 Tests that need a real repository — the git layer, worktree enumeration — drive the repositories
-under `.fixtures/`, which `make fixtures` builds and `.gitignore` excludes.
+under `.fixtures/`, which `make fixtures` builds and `.gitignore` excludes. A fresh checkout has
+none of them, so the failure says to run it rather than reading as a broken test. One of them,
+`hostile`, exists only to defeat the invocation hardening; see the `git-invocation` skill before
+asserting anything against it.
 
 ## Snapshot tests
 

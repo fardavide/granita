@@ -512,3 +512,122 @@ The cost is about two seconds of "looking for your Mac" before a real refusal is
 against a screen that lies to someone who changed nothing. The browser sits behind a protocol for
 this reason and no other: the restart loop is otherwise reachable only by suspending an app on a
 physical device, and it is the loop, not the mapping, that was broken.
+
+## The git client asks a closed set of questions, not an arbitrary command line
+
+The obvious shape for "run git" is a subcommand and a list of arguments. It was rejected. The
+questions the product asks are fixed by SPEC §5.3 and each carries a flag whose absence is a defect
+that produces no error — so they are an enumeration, and the argument vector for each is built in
+one place that a test reads as an array.
+
+Two things follow that are worth stating because they look like omissions.
+
+**No exit code reaches the success path.** Two commands answer by failing — `git diff` exits 1 when
+it found differences, `rev-parse --verify --quiet HEAD` exits 1 in a repository with no commits —
+and the temptation is to hand the caller the code and let it decide. Instead each command declares
+which codes count as having answered, and an unborn HEAD is simply an empty answer. What a caller
+gets back is bytes and whether they are all of them. That keeps the exit code, which is a fact about
+a subprocess, out of a protocol whose whole purpose is that it need not be one.
+
+**The error is allowed to be more concrete than the success path**, and carries git's standard error
+verbatim along with the exit code. It is read on a phone by someone who cannot open a terminal, and
+a failure that arrives as a bare code is a failure nobody can act on.
+
+## Every configurable part of an invocation is pinned, including the ones that are already the default
+
+§5.1 hardens the invocation against a developer's global configuration, and lists the pager, the
+colour setting and the path-quoting rule. Two more were found by reading the configuration keys that
+exist rather than the ones the spec names.
+
+**The path prefixes.** M1 recorded this as a requirement the git layer inherits, and it is now
+`--src-prefix=a/ --dst-prefix=b/` on every diff-family command. `diff.noprefix` is set in Davide's
+own configuration and would take the first two characters off every path in the product;
+`diff.mnemonicPrefix` would spell them `i/`, `w/` and `c/` instead. Neither fails.
+
+**The status invocation, in full.** Its bytes are hashed into the worktree's revision, which is the
+only thing that tells the phone something moved, so anything that changes those bytes changes when
+the phone refreshes. `status.showUntrackedFiles=no` empties the section outright. The collapsed
+default is subtler and was verified rather than assumed: with `--untracked-files=normal`, adding a
+second file inside an already-untracked directory leaves the output **byte for byte identical**, so
+the revision does not move and the phone never learns. `all` is therefore pinned, along with
+`--renames`, `--no-branch` and `--no-show-stash`.
+
+The diff-family flags go **immediately after the subcommand** rather than at the end, because
+everything past `--` is a pathspec: a flag appended to a vector that ends in a path is read as the
+name of another file to diff.
+
+## A fixture repository configured to defeat the product
+
+Every other fixture is built with `GIT_CONFIG_GLOBAL=/dev/null`, which means none of them can tell a
+hardened invocation from an unhardened one. The whole of §5.1 could have been deleted and the suite
+would have stayed green.
+
+`.fixtures/hostile` puts that configuration in the repository's own config, where a child process
+reads it whatever the environment says: no path prefixes, mnemonic prefixes, forced colour,
+octal-escaped paths, hidden untracked files, and an external diff tool that fails. The generator
+asserts each trap **with the others neutralised**, so one flag going missing from the product cannot
+be hidden by another still working — a fixture that quietly stops being hostile makes the git
+layer's tests pass for the wrong reason, which is worse than not having it.
+
+Confirmed to bite by removing each pinned flag in turn and watching the suite go red, including the
+two real-binary tests: without the prefixes git emits `"a/caff\303\250.txt" "caff\303\250.txt"`, and
+without the untracked mode the status carries no untracked file at all.
+
+## An output cap truncates, and truncating means killing git
+
+§5.4 wants a diff that is too large shown as a prefix with a flag, not refused. So the cap is not an
+error: the client returns what it read and says it is a prefix.
+
+Stopping the read is only half of enforcing it. A macOS pipe buffers 64 KiB and the cap permits two
+megabytes, so git is still writing into a pipe nobody is emptying and blocks there forever — the
+hang is on exactly the large diffs the guard exists for. The process is torn down as part of hitting
+the cap, which in turn means a truncated run's termination status describes our own signal and must
+not be judged: judging it would turn every large diff into a failure.
+
+The same teardown serves the timeout, and neither ever signals a process **group** — a child gets
+this process's own group, so signalling the group signals the menu bar app.
+
+## Arguments are bytes, and so is a repo-relative path
+
+A path on disk is a sequence of bytes with no encoding attached. Decoding one to build an argument
+vector substitutes a replacement character, and re-invoking on the result addresses a file that does
+not exist — silently, because U+FFFD is a perfectly ordinary filename character.
+
+So the vector is `[[UInt8]]` and a repo-relative path carries its bytes, with text as the lossy
+projection for display and for the wire rather than the other way round. This is the shape M1
+anticipated when it gave `FileID` a byte-based derivation.
+
+The checkout's own location stays a string. It comes from `git worktree list` or from Davide picking
+a folder, it is never accepted from a client, and treating a directory Davide chose as undecodable
+buys nothing.
+
+## An opaque identifier is a bare string on the wire
+
+The second requirement M1 recorded and left open, and the spec carries no JSON example to settle it.
+Decided: a bare string, not `{"rawValue": "…"}`.
+
+The synthesised encoding of a one-field struct is the object, which is why this had to be decided
+rather than inherited. The wrapper exists to keep three kinds of hash from being interchangeable at
+compile time; it is not a shape the wire owes anyone, and an identifier has to be a string to serve
+as a path component in a URL and as a key in a JSON object. `RawRepresentable` says the first part
+and `CodingKeyRepresentable` the second — without it a dictionary keyed by an identifier encodes as
+a flat array of alternating keys and values, which no other client would read as a mapping.
+
+`FileChange` itself does not land with this. It needs a content hash, a status and a line count,
+none of which exist until the change-set slice, and the decision this was blocking was the encoding
+rather than the struct.
+
+## What the first git slice deliberately leaves out
+
+Two things from §5.3 are absent, and neither is an oversight.
+
+**Resolving the git binary.** §5.1 wants `/usr/bin/git`, then `xcrun -f git`, then `PATH`, with a
+clear error in the Mac UI when there is none. The middle step is itself a subprocess, so a locator
+worth testing needs its own seam, and it belongs with the composition roots that will call it. Until
+then the executable is a constructor parameter, and a path with no binary at it surfaces as git
+being unavailable.
+
+**`hash-object --stdin-paths`.** The only command that writes to a child's standard input, and the
+only one with an unresolved correctness question: `--stdin-paths` reads one path per line, so a path
+containing a newline needs C-quoting on the way in. That question belongs to §5.5's content hashing
+rather than to the client, and adding the case later changes no signature.

@@ -113,6 +113,13 @@ if it ever stops being 1.
 128 with `fatal: ambiguous argument 'HEAD'`, and substituting the empty tree object
 `4b825dc642cb6eb9a060e54bf8d69288fbee4904` produces the correct full-addition diff.
 
+**Two configuration keys the spec does not name change what `status --porcelain=v2` reports**, and
+its bytes are the worktree's revision. `status.showUntrackedFiles=no` empties the untracked section
+outright. And with the collapsed default, adding a **second** file inside an already-untracked
+directory leaves the output byte for byte identical — the directory was already one `?` line and
+stays one — so a revision hashed from it does not move and the phone never learns anything
+appeared. Reproduced on 2.52.0; `--untracked-files=all` is pinned because of it.
+
 **A conflicted path diffs as a normal unified diff.** Confirmed on a real conflicted merge: the
 output carries a `diff --git` header and inline `<<<<<<<` / `=======` / `>>>>>>>` markers, and no
 `diff --cc` appears anywhere. The parser therefore needs no combined-diff support, as the spec says —

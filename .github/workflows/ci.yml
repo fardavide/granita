@@ -34,6 +34,11 @@ jobs:
           path: Packages/Granita/.build
           key: spm-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
           restore-keys: spm-${{ runner.os }}-
+      # The git layer's tests drive the real binary against real repositories, which are gitignored
+      # and therefore absent from a checkout. Regenerating them here also means every run asserts
+      # the git behaviours the generator checks, against whatever git this image ships.
+      - name: Build the git fixture repositories
+        run: make fixtures
       - name: Run package tests
         run: make test
 
@@ -170,6 +175,11 @@ jobs:
           python3 -m venv .venv-coverage
           .venv-coverage/bin/pip install --quiet pytest
           .venv-coverage/bin/python -m pytest .github/scripts -q
+
+      # The unit pass runs the package suite, and the git layer's part of it needs the real
+      # repositories that are gitignored out of a checkout.
+      - name: Build the git fixture repositories
+        run: make fixtures
 
       - name: Measure coverage
         run: .github/scripts/measure-coverage.sh
