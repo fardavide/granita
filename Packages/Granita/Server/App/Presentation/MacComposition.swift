@@ -5,6 +5,7 @@ import CoreBrandingDomain
 import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
+import ServerMacPresentation
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain

@@ -7,11 +7,15 @@ import SwiftUI
 /// because the connection log is the one panel that is useful before anything else works: the rest
 /// of the window is about setting Granita up, and this is about finding out why the setup is not
 /// taking.
-struct GranitaSettingsScreen: View {
+public struct GranitaSettingsScreen: View {
 
-    let model: ServerMacModel
+    private let model: ServerMacModel
 
-    var body: some View {
+    public init(model: ServerMacModel) {
+        self.model = model
+    }
+
+    public var body: some View {
         TabView {
             Tab("Advanced", systemImage: "gearshape.2") {
                 ConnectionLogView(attempts: model.connectionAttempts)

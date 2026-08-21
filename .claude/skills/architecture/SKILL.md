@@ -87,7 +87,7 @@ The other edges are each forbidden for their own reason:
 
 ## The three composition roots
 
-`ClientAppPresentation`, `ServerMacPresentation` and the `granita-server` executable are the **only**
+`ClientAppPresentation`, `ServerAppPresentation` and the `granita-server` executable are the **only**
 modules that import a `Data` target, because wiring implementations into protocols is their entire
 job. Nothing depends on them, which is what makes the exemption safe rather than a hole: the layers
 they mix cannot travel anywhere.

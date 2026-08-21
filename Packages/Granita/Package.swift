@@ -23,7 +23,7 @@ import PackageDescription
 // one a test would want to reach.
 //
 // Three targets are composition roots and are exempt, because wiring implementations into
-// protocols is their entire job: ClientAppPresentation, ServerMacPresentation and the
+// protocols is their entire job: ClientAppPresentation, ServerAppPresentation and the
 // granita-server executable. Nothing depends on them, which is what makes the exemption safe.
 //
 // Exactly three external dependencies, each pinned to exactly one target. No other target may
@@ -46,7 +46,7 @@ let package = Package(
         // The two app shells link one product each; `granita-server` is how the backend runs,
         // is tested and is recovered without Xcode in the loop.
         .library(name: "ClientAppPresentation", targets: ["ClientAppPresentation"]),
-        .library(name: "ServerMacPresentation", targets: ["ServerMacPresentation"]),
+        .library(name: "ServerAppPresentation", targets: ["ServerAppPresentation"]),
         .executable(name: "granita-server", targets: ["ServerCliMain"])
     ],
     dependencies: [
@@ -394,7 +394,6 @@ let package = Package(
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
-        // Composition root for the menu bar app: the only Server target that may see a Data target.
         .target(
             name: "ServerMacPresentation",
             dependencies: [
@@ -402,14 +401,8 @@ let package = Package(
                 "CoreDiffDomain",
                 "ServerMacUi",
                 "ServerApiDomain",
-                "ServerApiPresentation",
                 "ServerWorktreesDomain",
-                "ServerStoreDomain",
-                "ServerStoreData",
-                "ServerGitDomain",
-                "ServerGitData",
-                "ServerSessionsData",
-                "ServerWatchData"
+                "ServerStoreDomain"
             ],
             path: "Server/Mac/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
@@ -418,6 +411,32 @@ let package = Package(
             name: "ServerMacPresentationTests",
             dependencies: ["ServerMacPresentation", "ServerApiDomain"],
             path: "Server/Mac/PresentationTests",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+
+        // Composition root for the menu bar app: the only Server library that may see a Data
+        // target. It is a module of its own rather than part of the Mac's Presentation for the
+        // same reason `Client/App/Presentation` is — wiring is not a feature, nothing depends on
+        // it, and a test cannot construct it, so it does not belong in a module whose contents
+        // are meant to be reachable from one.
+        .target(
+            name: "ServerAppPresentation",
+            dependencies: [
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                "ServerApiDomain",
+                "ServerApiPresentation",
+                "ServerMacPresentation",
+                "ServerMacUi",
+                "ServerWorktreesDomain",
+                "ServerStoreDomain",
+                "ServerStoreData",
+                "ServerGitDomain",
+                "ServerGitData",
+                "ServerSessionsData",
+                "ServerWatchData"
+            ],
+            path: "Server/App/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 

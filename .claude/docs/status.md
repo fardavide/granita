@@ -110,6 +110,13 @@ What is left, in the order it was planned:
    wired to the `Pairing` actor that already exists. Acceptance for the milestone is pairing from a
    real device on the LAN and reading the API, and that is what earns the minor version.
 
+**Owed before slice 2: a macOS snapshot kind.** The Mac's views are measured by no test kind at all
+— the snapshot suite is the iOS target — so every screen the Settings window gains is code nothing
+renders. The gate tolerates that today because the Unit and All rows were rescoped in the same pull
+request that created the gap, and a rescoped row is unjudged for one run. It will not tolerate the
+three remaining tabs. The design round trip returns frames, and a screen built from a frame lands
+with its baselines: that is the pull request the macOS kind belongs in.
+
 Smaller things still open in these modules:
 
 - **The `xcrun -f git` step.** Both composition roots now share one probe of three fixed paths;

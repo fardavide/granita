@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		0C62426463AFBD64981C4544 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 73708ADF568FC34A53BB9302 /* SnapshotTesting */; };
 		2D2E0F87B05427345965A345 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B372D7F4A8791B0E72A5251 /* Assets.xcassets */; };
-		4537938604663A6B9699EF30 /* ServerMacPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = C9788573475B6F055081C736 /* ServerMacPresentation */; };
+		4537938604663A6B9699EF30 /* ServerAppPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = DC675B33476B33B9153DC215 /* ServerAppPresentation */; };
 		528A2CEC660A5049C037AD8A /* ServerDiscoveryViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */; };
 		8D957603285B9B07B48A4D18 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D8BA25970E39E480588A658 /* Assets.xcassets */; };
 		D9A5B4AAEA7F84B2F76589E0 /* ClientAppPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = 369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */; };
@@ -65,7 +65,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4537938604663A6B9699EF30 /* ServerMacPresentation in Frameworks */,
+				4537938604663A6B9699EF30 /* ServerAppPresentation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,7 +196,7 @@
 			);
 			name = GranitaMac;
 			packageProductDependencies = (
-				C9788573475B6F055081C736 /* ServerMacPresentation */,
+				DC675B33476B33B9153DC215 /* ServerAppPresentation */,
 			);
 			productName = GranitaMac;
 			productReference = C11FFC228F9E6F34066874BD /* GranitaMac.app */;
@@ -640,9 +640,9 @@
 			package = 4C2BC932A5F84D41AEE4935A /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
 			productName = SnapshotTesting;
 		};
-		C9788573475B6F055081C736 /* ServerMacPresentation */ = {
+		DC675B33476B33B9153DC215 /* ServerAppPresentation */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ServerMacPresentation;
+			productName = ServerAppPresentation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
