@@ -2,12 +2,16 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.7.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.8.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
-The client is now **designed** rather than improvised: all four screens were reviewed and redrawn
-against 0.0.4 on 2026-08-21, and [`design.md`](design.md) is the authority on what they look like.
-Discovery — the only one of the four that exists — has been brought in line with it. The Mac's own
-surfaces are **not** in that review and still have no frames.
+**Both halves are now designed.** The client's four screens were reviewed and redrawn against 0.0.4
+on 2026-08-21 ([`design.md`](design.md)); the Mac's seven surfaces were drawn for the first time on
+the same day and are recorded in [`design-mac.md`](design-mac.md). Discovery is the only screen of
+the eleven that exists, and it matches its drawing. **Nothing is blocked on a design any more** — the
+Mac's tabs are blocked on the snapshot kind the Mac has never had.
+
+Read `design-mac.md` rather than the Mac frames: they were drawn against 0.0.6 and 0.0.7 landed
+after, repairing two of the five premises they overturn and making a third obsolete.
 
 The two halves find each other **on real hardware**: the Mac serves `/v1/health` and advertises over
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
