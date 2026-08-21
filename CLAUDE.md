@@ -71,7 +71,7 @@ pipeline.
 **`Presentation` depends on `Ui`, not the other way round.** `Ui` is the inner view layer —
 stateless views that take what they render and report what happened. `Presentation` owns the view
 models and composes screens from them. Only three modules import a `Data` target, because wiring
-implementations into protocols is their job: `ClientAppPresentation`, `ServerMacPresentation`, and
+implementations into protocols is their job: `ClientAppPresentation`, `ServerAppPresentation`, and
 the `granita-server` executable.
 
 ## Conventions that differ from defaults

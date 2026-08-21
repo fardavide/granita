@@ -134,10 +134,34 @@ output carries a `diff --git` header and inline `<<<<<<<` / `=======` / `>>>>>>>
 `diff --cc` appears anywhere. The parser therefore needs no combined-diff support, as the spec says —
 it tags those lines instead.
 
-## 5. `MenuBarExtra` + `Settings` under `LSUIElement` — open
+## 5. `MenuBarExtra` + `Settings` under `LSUIElement` — done, and it needs all of the pattern
 
-The spec is explicit that this is "implement and verify", not "check whether it works". It needs the
-menu bar app to exist. **M3.**
+Implemented and run on macOS 26, not looked up. The pattern SPEC §9 prescribes works as written: a
+1×1 `Window` declared **before** the `Settings` scene holds `openSettings`, the menu records that
+Settings was asked for rather than opening it, and the app switches to `.regular` and activates
+before the call.
+
+Measured on a build launched by `make run-mac`, driving the real status item through the
+accessibility API rather than by hand:
+
+```
+before opening      background only = true         ← .accessory, no Dock icon
+menu items          "Serving on MacBook-Pro.local:53613" / "Settings…" / "Quit Granita"
+after clicking      background only = false        ← .regular, window on screen
+```
+
+**The 1×1 window is 1×33, and it is visible.** SwiftUI gives it a title bar, so what lands on screen
+is a sliver. It cannot be closed — the render tree it holds is the whole point — so it is made
+transparent and deaf to the mouse instead. Confirmed as `alpha=0.0` in `CGWindowListCopyWindowInfo`.
+
+**TRAP, for anyone verifying a window this way: Stage Manager lies to window enumeration.** With
+Stage Manager on, the Settings window reported 72×109 at the left screen edge through both
+`CGWindowListCopyWindowInfo` and `screencapture -l`, while the window's own autosaved frame was
+560×488 — because what was being measured was its **thumbnail in the Stage Manager strip**, under
+the app's own name and flagged on-screen. Accessibility reported the process as having no windows at
+all, for the same reason. Two hypotheses were chased and discarded against those numbers — a window
+sizing to its tab bar, and one born miniaturised — before Davide said what was actually on his
+screen. **Window geometry is not verifiable from outside the app on a Mac using Stage Manager.**
 
 ## 6. Claude Code session transcript shape — done, and the spec was wrong twice
 
@@ -153,6 +177,39 @@ is what the head-and-tail rule exists for. The findings are recorded at the top 
 
 One thing §7 got right and is worth keeping: `projects/*/*.jsonl`, exactly one level down. Below the
 sessions sit 1,237 subagent transcripts sharing their session's `cwd`.
+
+## 6b. Local network privacy on macOS, and Bonjour from inside the app — done
+
+SPEC §8 warns that local network privacy exists on macOS 15+ and covers **registering** a service,
+not only browsing. `GranitaMac` carries `NSLocalNetworkUsageDescription` and `NSBonjourServices`,
+and a signed local build registers successfully — no alert blocked it on this Mac, which has
+already granted Granita access. A machine granting it for the first time still gets the alert.
+
+Confirmed against the running menu bar app rather than the executable:
+
+```
+lsof -p <pid>        Granita … TCP *:53611 (LISTEN)
+dns-sd -B            _granita._tcp.  "MacBook Pro"
+dns-sd -L            MacBook\032Pro._granita._tcp.local. → MacBook-Pro.local.:53611
+curl /v1/health      {"serverVersion":"0.0.4","name":"Granita","apiVersion":1}
+curl /v1/projects    401
+```
+
+So the advertised port is the port serving, inside the app and not only in the executable.
+
+**TRAP, and it cost the first run: `ProcessInfo.processInfo.hostName` and
+`Host.current().localizedName` are reverse DNS lookups, not names of this machine.** They answered
+`customer.mlnnita1.isp.starlink.com` — the ISP's name for the public address — so Granita advertised
+under a name nobody would recognise in a list of Macs, while the same call from a terminal a minute
+later answered `macbook-pro.local` and looked fine. `SCDynamicStoreCopyComputerName` and
+`SCDynamicStoreCopyLocalHostName` answer from the machine's own preferences and do not vary with
+what the router says.
+
+**A channel bound to a network endpoint has no `localAddress`.** `Application`'s `onServerRunning`
+hands over a channel whose `localAddress` is `nil` under `BindAddress.nwEndpoint`, because there is
+no POSIX socket beneath it — a status line built from it says the server is up and nowhere. The port
+is on the `NWListener`, reachable through `NIOTSChannelOptions.listener`, which is also the object
+that chose it.
 
 ## 7. XcodeGen — confirmed working for this shape
 

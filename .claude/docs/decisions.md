@@ -735,3 +735,61 @@ rather than asserted once.
 The cost is accepted and named: a surface with no snapshot suite — the Mac settings window, today —
 can only be described, so what comes back for it is a first drawing rather than a review. Those two
 kinds of ask are numbered separately inside a prompt rather than blurred together.
+
+## One model per unit, not one per view
+
+Davide's correction, 2026-08-21, on seeing a `MenuBarViewModel` and a `ConnectionLogViewModel` land
+beside each other in the same module: **a state object per view is a vertical split wearing a
+layer's name.** The menu bar item and the Settings window are two views onto one running server, and
+splitting that server's state across as many objects as there are places it is drawn puts the seam
+in the wrong direction — a screen, rather than a layer.
+
+So a unit's `Presentation` holds **one** `@Observable` model, named for the unit rather than for a
+screen: `ServerMacModel` carries what the server is doing and who has reached it, and the four
+Settings tabs M3 still has to build add properties to it rather than a type each. Views stay
+stateless and are handed values, which is unchanged — that direction was already settled when
+`Presentation` was put above `Ui`.
+
+The cost is a type that grows, and it is worth naming: if one model stops being readable, the split
+is by **layer concern** — what it wraps — and never by which screen happens to draw it. What is
+gone is the reflex that a new screen needs a new state object.
+
+The phone still has `ServerDiscoveryViewModel` from M1, and it is deliberately left alone rather
+than swept: the rule is written here and in the architecture skill, and each module converts as it
+is next opened. M4 reopens the client's connection feature and converts it there.
+
+## The composition root is its own module, and coverage is measured over what a test can reach
+
+Two things landed together because the first is what makes the second expressible.
+
+**`ServerAppPresentation`, which the spec's §3 tree does not list.** The menu bar app's wiring lived
+in `Server/Mac/Presentation` beside the model it builds. That module was then both a feature's
+presentation layer and a composition root — one of them full of things a test constructs, the other
+full of things no test can. It is now split the way the client already was: `Client/App/Presentation`
+has always been the phone's composition root, and `Server/App/Presentation` is the Mac's. The
+feature module loses its `Data` dependencies with it, so `Presentation` no longer sees `Data`
+anywhere except in the two roots and the executable — which is what the layer rule always said.
+
+**Then the coverage gate.** Adding the Mac's first test target pulled `ServerMacUi` and the
+composition root into the unit denominator for the first time and dropped the Unit row 11.7 points
+in one pull request. Nothing had got worse: a SwiftUI body needs a renderer and a SwiftPM test
+target is hostless, and no test constructs a composition root, so those lines are uncoverable by
+construction rather than uncovered by neglect. The number moved because a module was linked into a
+test binary — a fact about the target graph, and the same class of dilution that scoped the Snapshot
+row to the view layers.
+
+So the Unit and All rows are now measured over **what a host test can reach**: the package, minus
+view bodies, minus the composition roots. It is the mirror of the Snapshot row's scope rather than a
+new idea, and the gate un-judges a redefined row for exactly one run, which is the mechanism that
+exists for this.
+
+`granita-server` was already exempt by accident — an executable target is not linked into a test
+binary, so its composition root has never been measured at all. Naming the directories makes that
+the same decision for all three rather than a property of how one of them is packaged.
+
+**What this leaves open, deliberately.** A macOS view layer is now measured by nothing: the Snapshot
+kind is the iOS target, and there is no macOS equivalent. That is tracked in `status.md` and it is
+owed before the Settings window grows its other three tabs — each one is a screen that a host test
+cannot execute, and the Unit row will keep drifting down until a kind exists that renders them.
+Screens composed in `Presentation` have the same problem in miniature and are counted today, which
+is the honest reading: they are reachable in principle, and nothing renders them yet.

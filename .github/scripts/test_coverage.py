@@ -64,6 +64,22 @@ class TestPathClassification:
         assert not coverage.is_view_path("Core/Diff/Domain/UnifiedDiffParser.swift")
         assert not coverage.is_view_path("Client/Connection/Data/Bonjour.swift")
 
+    def test_given_a_composition_root_when_classifying_then_no_host_test_reaches_it(self):
+        assert not coverage.is_reachable_path("Server/App/Presentation/MacComposition.swift")
+        assert not coverage.is_reachable_path("Client/App/Presentation/GranitaMobileScene.swift")
+        assert not coverage.is_reachable_path("Server/Cli/Main/GranitaServer.swift")
+
+    def test_given_a_view_body_when_classifying_then_no_host_test_reaches_it(self):
+        # Hostless: there is no key window, so a body lays out against nothing and renders blank.
+        assert not coverage.is_reachable_path("Server/Mac/Ui/MenuBarContent.swift")
+
+    def test_given_a_model_or_a_parser_when_classifying_then_a_host_test_reaches_it(self):
+        assert coverage.is_reachable_path("Server/Mac/Presentation/ServerMacModel.swift")
+        assert coverage.is_reachable_path("Core/Diff/Domain/UnifiedDiffParser.swift")
+        # An App directory that is not a composition root is ordinary code. The pair is what names
+        # one, not the word on its own.
+        assert coverage.is_reachable_path("Client/App/Domain/Session.swift")
+
 
 class TestCollect:
 
@@ -93,7 +109,7 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((8, 10), (3, 5))
+        assert written["categories"]["unit"] == entry((8, 10), (3, 5), scope="reachable")
 
     def test_given_a_summary_when_collecting_another_category_then_both_survive(self, tmp_path):
         out = tmp_path / "summary.json"
@@ -138,15 +154,22 @@ class TestCollect:
         written = json.loads(out.read_text())
         assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope="views")
 
-    def test_given_a_unit_export_when_collecting_then_every_layer_counts(self, tmp_path):
-        # The scoping is the snapshot kind's alone. A unit test can reach any layer, and a Ui test
-        # drives the real app, so reaching a repository and a parser is exactly what it does.
+    def test_given_a_unit_export_when_collecting_then_what_a_host_test_cannot_reach_does_not_count(self, tmp_path):
+        # A SwiftUI body needs a renderer and a SwiftPM test target is hostless, so a view's lines
+        # are uncoverable here by construction. Wiring is the same: nothing depends on a composition
+        # root and no test constructs one. Counting either means the number moves when a module is
+        # first pulled into a test binary — a fact about the target graph, not about the tests.
         path = tmp_path / "export.json"
         path.write_text(
             json.dumps(
                 export(
                     [
-                        ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (20, 40), (4, 9)),
+                        ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (0, 40), (0, 9)),
+                        ("/w/Packages/Granita/Server/App/Presentation/MacComposition.swift", (0, 90), (0, 30)),
+                        ("/w/Packages/Granita/Server/Cli/Main/GranitaServer.swift", (0, 190), (0, 60)),
+                        # A model in a Presentation module is an ordinary object a test constructs,
+                        # so it stays judged — the exclusion is the drawing layer, not the layer above.
+                        ("/w/Packages/Granita/Server/Mac/Presentation/ServerMacModel.swift", (20, 25), (6, 8)),
                         ("/w/Packages/Granita/Core/Diff/Domain/Parser.swift", (30, 500), (10, 200)),
                     ]
                 )
@@ -159,7 +182,7 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((50, 540), (14, 209))
+        assert written["categories"]["unit"] == entry((50, 525), (16, 208), scope="reachable")
 
 
 class TestPercent:

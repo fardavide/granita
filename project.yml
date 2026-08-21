@@ -32,7 +32,7 @@ packages:
 # that edits it.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.4
+    MARKETING_VERSION: 0.0.5
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -56,7 +56,7 @@ targets:
       # The shell links exactly one product: the composition root. Nothing else is reachable
       # from the app bundle, which is what keeps the layer graph meaningful.
       - package: Granita
-        product: ServerMacPresentation
+        product: ServerAppPresentation
     entitlements:
       path: Apps/GranitaMac/GranitaMac.entitlements
     info:

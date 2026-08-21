@@ -65,6 +65,18 @@ PACKAGE_MARKER = "/Packages/Granita/"
 # path rather than only at the position the convention usually puts it.
 VIEW_LAYERS = {"Ui", "Presentation"}
 
+# The layer a host test cannot execute at all: a SwiftUI view body needs a renderer, and a SwiftPM
+# test target is hostless. Distinct from VIEW_LAYERS, which includes `Presentation` — a model there
+# is an ordinary object a test constructs, and must stay judged.
+DRAWING_LAYER = "Ui"
+
+# The composition roots, by the directory each one occupies. Wiring implementations into protocols
+# is their whole job, nothing depends on them, and no test constructs one — `granita-server` has
+# never been measured at all, because an executable target is not linked into a test binary. That
+# exemption was an accident of packaging rather than a decision; naming the directories makes it
+# the same decision for all three.
+COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
+
 # What each kind's percentage is measured over, and the name that says so in the summary.
 #
 # The snapshot kind is scoped to the view layers because a rendered view executes no repository and
@@ -76,8 +88,18 @@ VIEW_LAYERS = {"Ui", "Presentation"}
 #
 # The Ui kind is deliberately left unscoped. A behavioural test drives the real app, so reaching a
 # repository and a parser is exactly what it does, and scoping it would undercount it.
+#
+# The unit and all-tests kinds are scoped to what a test can reach. A host `swift test` cannot
+# render a SwiftUI body and cannot construct a composition root, so those lines are uncoverable by
+# construction rather than uncovered by neglect — and counting them means the number moves when a
+# module is first pulled into a test binary, which is a fact about the target graph rather than
+# about the tests. Drawing code is judged by the Snapshot row instead, which is the mirror of this
+# rule: that row excludes everything a rendered view cannot execute.
+#
+# The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
+# nothing until a macOS snapshot kind exists. See status.md.
 DEFAULT_SCOPE = "package"
-SCOPES = {"snapshot": "views"}
+SCOPES = {"snapshot": "views", "unit": "reachable", "all": "reachable"}
 
 
 # --- collect -----------------------------------------------------------------------------------
@@ -96,6 +118,19 @@ def is_test_path(relative: str) -> bool:
 def is_view_path(relative: str) -> bool:
     """A file in a layer that draws — the only code a rendered snapshot can execute."""
     return bool(VIEW_LAYERS.intersection(pathlib.PurePosixPath(relative).parts[:-1]))
+
+
+def is_composition_root_path(relative: str) -> bool:
+    """A file in one of the three composition roots, matched on the pair of directories naming it."""
+    parts = pathlib.PurePosixPath(relative).parts[:-1]
+    return any(pair in COMPOSITION_ROOTS for pair in zip(parts, parts[1:]))
+
+
+def is_reachable_path(relative: str) -> bool:
+    """A file a host test could execute: not a view body, not wiring nothing depends on."""
+    if DRAWING_LAYER in pathlib.PurePosixPath(relative).parts[:-1]:
+        return False
+    return not is_composition_root_path(relative)
 
 
 def empty() -> dict:
@@ -120,6 +155,8 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
         if is_test_path(relative):
             continue
         if scope == "views" and not is_view_path(relative):
+            continue
+        if scope == "reachable" and not is_reachable_path(relative):
             continue
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
@@ -343,8 +380,10 @@ def render(args: argparse.Namespace) -> int:
         "<sub>No number in the table may fall below the last `main` run — every row, not just the "
         "total. Regions rather than branches because swiftc emits no branch coverage; a region is "
         "an `if`, a `guard`, a `case`, a ternary or a closure body. The Snapshot row is measured "
-        "over the view layers alone, because a rendered view executes no repository and no parser. "
-        "Kinds are directories; see the `swift-testing` skill.</sub>",
+        "over the view layers alone, because a rendered view executes no repository and no parser; "
+        "the Unit and All rows are measured over what a host test can reach, which excludes view "
+        "bodies and the composition roots. Kinds are directories; see the `swift-testing` "
+        "skill.</sub>",
     ]
 
     text = "\n".join(lines) + "\n"

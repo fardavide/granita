@@ -49,11 +49,29 @@ on 2026-08-19, and it inverts what most SwiftUI projects do, so it is worth stat
 - A **`Ui`** module is a vocabulary of **stateless views**. Each takes what it renders and reports
   what happened, through initialiser parameters and closures. It owns no view model, holds no state
   beyond a view's own, and knows nothing about where its data came from.
-- A **`Presentation`** module owns the `@Observable` view models and **composes screens** out of
+- A **`Presentation`** module owns the unit's `@Observable` model and **composes screens** out of
   those views. It is the outer of the two, so it is the one that changes when a screen changes.
 
+## One model per unit, never one per view
+
+A state object per screen — `MenuBarViewModel` beside `ConnectionLogViewModel` — is a **vertical**
+split wearing a layer's name: it cuts by which view draws the state rather than by what the state
+is. Two views onto one running server then hold that server's state in two places.
+
+- A unit's `Presentation` holds **one** `@Observable` model, named for the unit and not for a
+  screen. `ServerMacModel` carries the server's state and the connection log; a new Settings tab
+  adds properties to it, not a type beside it.
+- Do not name anything `…ViewModel` in new code. The name is the reflex being removed.
+- If one model stops being readable, split it by **what it wraps** — a layer concern — never by
+  which screen draws it.
+- Views are unchanged by this: they stay stateless and are handed values.
+
+The phone's `ServerDiscoveryViewModel` predates the rule and is left alone deliberately. Each
+module converts as it is next opened rather than in a sweep; M4 converts the client's connection
+feature when it reopens it. See `decisions.md`, "One model per unit, not one per view".
+
 That direction is what keeps a view reusable by more than the first screen that needed it: a view
-that imported a view model could only ever serve that one. It also means a `Ui` module has no test
+that imported its model could only ever serve that one. It also means a `Ui` module has no test
 target — there is nothing in one a test would want to reach — while everything worth asserting sits
 in `Presentation`, one layer up.
 
@@ -69,7 +87,7 @@ The other edges are each forbidden for their own reason:
 
 ## The three composition roots
 
-`ClientAppPresentation`, `ServerMacPresentation` and the `granita-server` executable are the **only**
+`ClientAppPresentation`, `ServerAppPresentation` and the `granita-server` executable are the **only**
 modules that import a `Data` target, because wiring implementations into protocols is their entire
 job. Nothing depends on them, which is what makes the exemption safe rather than a hole: the layers
 they mix cannot travel anywhere.
