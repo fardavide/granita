@@ -12,13 +12,13 @@ enum SpokenWords {
 
     static let all = [
         "amber", "anchor", "apple", "arrow", "autumn", "bacon", "badge", "bamboo",
-        "banjo", "barley", "basil", "beacon", "bison", "blanket", "bonus", "bottle",
+        "banjo", "barley", "basil", "beetle", "bison", "blanket", "bonus", "bottle",
         "boulder", "bracket", "bronze", "bucket", "cabin", "cactus", "camera", "candle",
         "canvas", "carbon", "cargo", "carpet", "cedar", "cello", "cement", "chapel",
         "cherry", "chisel", "cinder", "circus", "citrus", "cobalt", "cocoa", "comet",
         "copper", "coral", "cotton", "coyote", "cricket", "crimson", "crystal", "cymbal",
         "dagger", "dahlia", "daisy", "damson", "delta", "denim", "diamond", "dolphin",
-        "domino", "donkey", "dragon", "drummer", "dynamo", "eagle", "ember", "engine",
+        "domino", "donkey", "dragon", "drummer", "dynamo", "eagle", "emerald", "engine",
         "fabric", "falcon", "fennel", "fiddle", "filter", "flannel", "flint", "forest",
         "fossil", "fountain", "foxglove", "fresco", "frigate", "galaxy", "gallon", "garlic",
         "gazebo", "ginger", "glacier", "granite", "gravel", "gremlin", "guitar", "hammer",

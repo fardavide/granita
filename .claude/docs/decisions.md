@@ -1038,3 +1038,97 @@ rather than for a regression.
 Rejected: deleting the interface-enumeration tests so nothing links the module and it leaves the
 denominator the way `granita-server` does. It would have passed the gate today by removing tests,
 which is the failure signature the `swift-testing` skill warns about in as many words.
+
+## The pinned trust replaces the system's evaluation and never runs beside it
+
+macOS and iOS cap a TLS server certificate at 398 days and apply the cap **even to a certificate
+handed to `SecTrust` as its own anchor** — Apple's published exemption covers roots a human
+installed, not one set programmatically. SPEC §8's certificate lasts ten years, so the default policy
+refuses it for its entire life.
+
+A client that evaluated *and* compared the fingerprint would therefore refuse every Granita that has
+ever existed, and the only symptom is a handshake that fails with nothing attached to it. So the
+server-trust challenge is answered on the fingerprint alone: no `SecTrustEvaluateWithError`, no
+policy, no chain. The key is the whole question, which is what SPEC §8 means by pinning.
+
+This is asserted from both ends rather than commented. `ServerIdentityDomainTests` pins the refusal
+itself — a real `SecTrust` under a real policy, expected to say "exceeds maximum temporal validity" —
+so an OS that changes its mind turns a test red. And `PinnedServerTrustTests` judges a **ten-year**
+`openssl`-generated certificate and expects it accepted, so anyone reintroducing default evaluation
+beside the pin breaks that test rather than shipping a client that cannot connect to anything.
+
+Rejected: evaluating first and pinning second, which is the shape every pinning tutorial shows and
+which is wrong here for the reason above. Rejected too: shortening the certificate to 398 days so
+both could run — it buys nothing, because pinning already makes expiry a backstop rather than a
+schedule, and it would put a renewal on the calendar of an app whose whole point is that it is not
+administered.
+
+## The client reconstructs the public key info rather than parsing the certificate
+
+The fingerprint is taken over the whole `SubjectPublicKeyInfo` structure, which is what the Mac
+hashed and what every other pinning implementation in the world agrees on. Getting those exact bytes
+back on the phone could be done two ways: parse the leaf certificate's DER, or read the key out with
+`SecCertificateCopyKey` and let CryptoKit re-encode it.
+
+CryptoKit re-encodes. `SecKeyCopyExternalRepresentation` hands back the X9.63 point, and
+`P256.Signing.PublicKey(x963Representation:).derRepresentation` produces byte-for-byte the structure
+the Mac hashed with the same call. There is one implementation of that encoding on both sides, which
+is the property that matters: two implementations of one structure is how a fingerprint comes to
+disagree with itself.
+
+Rejected: promoting `DerValue` to a `Core` module so the client could share it. It is a *writer* —
+"just enough DER to write one certificate" — so sharing it would have meant writing a DER *reader*
+that does not exist, to recover bytes that a two-line round trip already returns exactly. A module
+move and a new parser, for nothing.
+
+## A scanned code that is not ours is a state, not a refusal
+
+`PairingLink` already refused a non-Granita URL with `notAPairingLink`. What was missing is that a
+viewfinder is not a form: it reads several times a second and most of what it finds belongs to
+somebody else — a Wi-Fi code on a poster, a URL on the back of a bus. Surfacing those as errors would
+put a stream of refusals in front of somebody who is simply holding a phone up at a screen.
+
+So `PairingLink.scanned` returns one of three things, and the distinction it draws is **ours / not
+ours** rather than valid / invalid. A `granita://` link that is damaged is worth a sentence, because
+the reader is pointing at the right thing and it is not working. Anything else — another scheme,
+another action under our own scheme, or text that is not a URL at all — is not an event.
+
+Rejected: a `Result`, which forces the common case to be a failure and would make silence the
+caller's job to remember. Rejected: treating a `granita://` link with an unknown action as damage,
+which would make any future URL this app learns to open surface as a broken pairing code today.
+
+## The spoken word list's promises are asserted, not described
+
+The list documented four properties — a fixed count the 42-bit entropy argument depends on, no
+duplicates, no two words a single letter apart, and no spelling contested across the Atlantic — and
+nothing enforced any of them. It contained `amber` beside `ember`, which is the pair its own comment
+names as the thing to avoid, and `bacon` beside `beacon`, which nobody had noticed at all.
+
+They are now five tests over the list itself. The failure they prevent is not a build error: it is
+somebody across a room reading six words aloud, months from now, and the wrong pairing being spent
+once. `emerald` and `beetle` replace the two collisions.
+
+Rejected: taking the list from a dictionary or from the PGP word list. The hand-picked constraint is
+the point — the fallback exists for the case where the channel is a voice or a memory — and a
+borrowed list would satisfy none of these four properties by accident.
+
+## The Mac's design is recorded against a release the review had not seen
+
+Claude Design drew the Mac's six surfaces on 21 August 2026 against 0.0.6, and 0.0.7 landed in the
+same week. Two of the five premises the review overturns were repaired by that release independently:
+the connection log's source address and the six-word code's redeemability. A third — the plaintext
+warning it moved to sit under the QR — is obsolete, because TLS and a real `spki=` shipped in 0.0.7.
+
+[`design-mac.md`](design-mac.md) therefore records the review's calls **as corrected**, with a table
+saying which premises still stand, rather than as returned. The frames stay as working material until
+each section ships.
+
+This is the `design-handoff` skill's rule doing its job in the direction it was written for: a return
+is a recommendation, not a decision, and where a drawing and the code disagree the code is checked
+before either is believed. Building the drawing as returned would have reintroduced a warning telling
+a reader their pairing link is unencrypted when it is not — which is worse than no warning, because
+it is the one screen where a reader is deciding whether to trust something.
+
+Rejected: asking Design for a redraw against 0.0.7 before building anything. Four of the five calls
+are untouched by the release, the two that changed are both *deletions*, and a second round trip to
+delete a warning would have blocked the whole milestone on a question already answered.

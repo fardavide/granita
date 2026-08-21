@@ -29,4 +29,28 @@ public struct SpkiFingerprint: Hashable, Sendable, RawRepresentable {
     public init(subjectPublicKeyInfoDer: some DataProtocol) {
         rawValue = Data(SHA256.hash(data: subjectPublicKeyInfoDer)).base64EncodedString()
     }
+
+    /// Whether this is the same fingerprint, compared in time that does not depend on where two
+    /// differ.
+    ///
+    /// `==` would do the same job and return on the first differing character. Both sides here are
+    /// public — a fingerprint is printed in a QR code — so the leak is not of a secret, but the
+    /// comparison sits in the handshake path of a server on the same LAN as whoever is measuring it,
+    /// and a compare that walks a prefix is the shape an attacker builds a matching key against.
+    /// Cheap to do properly, so it is done properly.
+    ///
+    /// The length is not secret: a SHA-256 digest in base64 is always the same width, and a value
+    /// that is not is not a fingerprint at all.
+    public func matches(_ other: Self) -> Bool {
+        let mine = Array(rawValue.utf8)
+        let theirs = Array(other.rawValue.utf8)
+        guard mine.count == theirs.count, mine.isEmpty == false else {
+            return false
+        }
+        var difference: UInt8 = 0
+        for index in mine.indices {
+            difference |= mine[index] ^ theirs[index]
+        }
+        return difference == 0
+    }
 }

@@ -1,0 +1,291 @@
+# Design — the Mac
+
+The menu bar app's six surfaces, drawn for the first time. This is the authority on **what the Mac
+looks like and why**; [`design.md`](design.md) is the same thing for the phone and the iPad.
+
+The drawings are working material and do not last.
+[`design/granita-mac-design-review.html`](design/granita-mac-design-review.html) holds the frames at
+1:1 — open it for the measurements this prose only summarises — and **each section is deleted from it
+as it is implemented**. When the last one ships, the file goes.
+
+First drawing, 21 August 2026, against 0.0.6. The Settings window is drawn at 620 × 560pt and the
+status item at its real 22pt height. Everything is a stock control: `TabView`, `Form`, `List`,
+`Toggle`, semantic colours, SF Symbols. Where the review moves something it names the control it
+becomes.
+
+> **Read the next section before building anything.** The review was drawn against 0.0.6 and 0.0.7
+> landed after it. Two of the five premises it overturns were fixed in that release, independently
+> and before the frames came back, and a third is obsolete. Building the drawing as returned would
+> reintroduce a warning that is no longer true.
+
+## What is settled, and what is still open
+
+| Section | Surface | State |
+|---|---|---|
+| §1 | The status item and its menu | drawn, not built |
+| §2 | The window — five tabs | drawn, not built |
+| §3 | General | drawn, not built |
+| §4 | Projects | drawn, not built |
+| §5 | Devices | drawn, not built |
+| §6 | Connections | **built as the Advanced tab in 0.0.6**; the review moves and redraws it |
+| §7 | Advanced | drawn, not built |
+
+Two things the review could not decide from drawings, and that only Davide can answer:
+
+- **Whether the dirty-worktree count in the menu bar is affordable.** Producing it means enumerating
+  worktrees and computing a change set per worktree — one git process each, at a ten-second budget.
+  Time `WorktreeRegistry.projects()` on a real machine with real projects enabled. Tens of
+  milliseconds: cache it, refresh on menu-open and a slow timer. Seconds: the number goes behind
+  opening the menu and the label is the icon alone.
+- **What happens when the store's lock file is already held**, because `granita-server` and the menu
+  bar app will both open the same document today. Refuse to start, or serve read-only? The review
+  left it undrawn deliberately rather than guessing, and Advanced is the only surface that could ever
+  say so.
+
+## The five premises, and which of them are still true
+
+The review measured five of the specification's premises against the code before drawing anything.
+Two were repaired by 0.0.7 in the same week, which is recorded in [`decisions.md`](decisions.md)
+under the entries on the six words and on the `Host` header.
+
+| | Premise | Verdict |
+|---|---|---|
+| 1 | The connection log's source is `request.head.authority` — this Mac, on every row, and the rate limiter shares the key | **Already fixed.** `GranitaRequestContext` carries the peer address off the channel and `source` is the address without its port. The global lockout the review warned about cannot happen |
+| 2 | Port 8737, automatic fallback, chosen port persisted | **Stands.** A `.bonjourService` bind hands the port to the system — four recorded runs took 59144, 59145, 53613, 53611. All three clauses describe the CLI, not this app |
+| 3 | The escape hatch is on, so warn about it | **Stands, but its replacement is obsolete.** The banner goes, because `MacComposition` hard-codes `requiresAuthentication: true` and a banner for an unreachable state is always wrong. The review moved a *plaintext* warning under the QR instead — **do not build that**: TLS and a real `spki=` landed in 0.0.7, so the link is encrypted and pinnable |
+| 4 | The six words are a decoration, and two of them need changing | **Already fixed**, and the word list was worse than the review saw. The words are an independently random second credential redeeming the same pairing. The review caught `amber`/`ember`; a property test over all pairs also caught `bacon`/`beacon`, now `emerald` and `beetle` |
+| 5 | Device rows carry last-seen times | **Stands.** `StoredDevice` holds `pairedAt` and nothing later, so last-seen exists only for the current run of the server |
+
+## §1 — The status item
+
+Six specified states, **three symbols**, and a count that appears in exactly one of them.
+
+- Serving is `arrow.trianglehead.branch`. Starting is `hourglass`. **Not** serving is one symbol for
+  both failure and stop — `exclamationmark.triangle`, unfilled. The menu bar answers one question,
+  which is whether the phone can read this Mac; the reason is one click below.
+- The count is a `Text` beside the image with tabular figures, drawn **only while serving and only
+  above zero**.
+
+**Rejected: the zero.** A menu bar is shared, permanent and glanced at, and "0" is a claim the reader
+parses and dismisses every time they look at the clock — while saying exactly what the icon alone
+already says. Also rejected: a badge modifier, which SPEC §14's TRAP forbids; a coloured dot, since a
+status item image is template-tinted by the system and cannot be relied on to stay red; and
+`pause.circle` for stopped, which offers a play button this app does not have. The server's life is
+the app's life, so "stopped" here means it fell over.
+
+Should feel like the Time Machine menu — a glance tells you it is fine, and you open it twice a year.
+
+### The menu
+
+**Keep "Pair a device…", and make it a door rather than a duplicate.** It opens Settings *on the
+Devices tab*: there is one QR in the app and this is a second door to it, not a second
+implementation. It earns the row because under `LSUIElement` this menu is the entire app, and a
+person holding a phone has nowhere else to look. Two consequences: it is **disabled when the server
+is not running**, since the QR encodes a host and port that do not exist; and `settingsRequests` has
+to carry *which tab* was asked for rather than being a bare counter — a value on the request that
+already goes through `SettingsOpener`, not a new mechanism.
+
+**The status line becomes a `Button` that copies.** It is a `Text` today, which the code correctly
+calls "present, legible and unclickable". The port differs every launch, so nobody memorises it and
+the only reason to read it is to paste it — make the row copy `http://macbook-pro.local:59144` and
+the fact becomes a tool. The count gets its noun on the line underneath, because a bare "3" in the
+menu bar cannot carry one.
+
+When the server has failed, the menu leads with the refusal and the one thing to do about it —
+*Not serving — macOS is blocking the local network*, then **Open Local Network Settings…**.
+
+Rejected: dropping the item and letting Settings be the only route, which saves one row and costs the
+one gesture a new device needs; a separate "Copy address" item, which is two rows for one fact; and
+putting the local-network fix behind an alert, when the menu is where the reader already is.
+
+## §2 — The window
+
+**Five tabs, not four, and Advanced last: General, Projects, Devices, Connections, Advanced.** This
+disagrees with the specification twice.
+
+The connection log is **not** an advanced setting. It is a live view of what is happening to this
+Mac, the only panel with a reason to be reopened, and the one thing here read under pressure. It gets
+its own tab. Advanced goes last because that is where every Mac app puts it, and because of what
+shares that tab: `Reset All Data`. Leaving the log there means the panel opened while annoyed is one
+mis-click from the button that unpairs every device.
+
+**Order and selection are different decisions.** Advanced is first in the code today for a good
+reason — it was the only tab worth opening — and that reason expires the moment General and Projects
+exist. Order as above, restore the last-used tab after that, and select **Projects** on a first run,
+because until something is switched on the app does nothing at all.
+
+Tab symbols: `gearshape`, `folder`, `iphone`, `point.3.connected.trianglepath.dotted`, `gearshape.2`.
+
+**The window is 620 × 560pt, fixed width.** The height comes from the QR: the pairing payload is
+about 140 bytes once the digest is percent-encoded, which in byte mode at error correction M is QR
+version 8 or 9 — 49 to 53 modules. At the 4pt module that scans from arm's length, plus a
+four-module quiet zone, **the QR is 236–244pt square**. Stacked with the fallback words, the
+countdown and two paired devices, Devices needs 560pt. The code's `minHeight: 400` would make a
+person scroll to a QR while holding a phone up to it.
+
+Rejected: a System Settings sidebar, which is a bigger window for five one-word panes; and letting
+the window resize per tab, because between a 560pt QR pane and a three-row General pane the jump
+reads as a glitch.
+
+Should feel like Terminal's Settings — five plain panes, opened rarely, none of them clever.
+
+## §3 — General
+
+Three rows, and two of the specification's four are gone.
+
+**There is no port to set.** The row becomes what a person actually wants from it: the address in
+monospace with a **copy button**, and a footnote saying who chose it — *macOS chooses the port when
+Granita advertises itself, so it changes every launch. Your phone finds this Mac by name, not by
+port.* The one real use for that string is pasting it into `curl`.
+
+Rejected: a disabled Port field with an explanation, since a control you cannot operate is worse than
+a fact you can read; and a Port field that *works* by switching the binding to `.hostname`, which
+buys a memorable number and pays for it with Bonjour — the only way the phone finds this Mac at all.
+If a fixed advertised port is ever genuinely wanted it is a change to the binding, not a control on
+this tab.
+
+**There is no escape hatch to warn about**, per premise 3 above.
+
+**Startup** is one `Toggle` — *Open Granita at login* — with the footnote *Granita has no window and
+no Dock icon. If it is not running, your phone finds nothing.* When `SMAppService.register()` is
+refused, the toggle goes back to off and says why, offering **Open Login Items…**.
+
+**The failure state follows the phone's rule exactly: our sentence, our button, the system's string
+demoted to small print.** A refused Bonjour registration is the failure this app is most likely to
+hit on a machine that has never run it, and `ServerRunState.failed` already carries the reason. The
+button opens Privacy & Security › Local Network directly; without it an `NWError` code is the whole
+explanation a person gets for an app that does nothing.
+
+Should feel like the Sharing pane.
+
+## §4 — Projects
+
+The security boundary. **Two verbs, kept apart:** adding a repository puts it in this list, and a
+switch decides whether the phone can see it. A scan can only ever do the first.
+
+**The scan's results never enter this list uninvited.** A scan opens a **sheet**, and its results
+stay there until they are chosen. What the sheet writes is "added, switched off"; the switch in the
+list is a second, separate act. That is what makes "thirty found, none enabled" read as deliberate —
+thirty things were *found*, and the tab never grew by thirty rows, so there is nothing to mistake for
+a broken import. **There is no Select All**, which would be the one gesture making thirty
+repositories of private source code addable in a click. The confirm button counts what it will do —
+`Add 2 Repositories`, disabled at zero.
+
+Rejected: listing candidates inline as disabled rows, which turns the security list into a set of
+things you must check you have *not* switched on; enabling straight from the sheet; and a "scanned"
+section in the tab, which gives the list two meanings and makes the toggle's blast radius depend on
+which section a row is in.
+
+**The row, in order: switch, name, path, then what it costs.** The switch is first because it is the
+only thing on the row with consequences, and left is where a Mac reader's eye starts. The path is
+monospaced and secondary because two projects can share a name and only the path settles it. The
+trailing figure — `4 worktrees, 2 with changes` — comes from `Project.worktreeCount` and
+`dirtyWorktreeCount`, which already exist, and it is what reconciles this tab with the menu bar
+count.
+
+**A project whose folder has gone says so.** Today it still passes `isVisible`, so `projects()`
+serves it with zero worktrees — indistinguishable on the phone from a project with nothing to read.
+The row says *Folder not found*, **disables** the switch, keeps the last known path in monospace and
+offers `Locate…`. Disabled rather than silently flipped off, because turning off something a person
+turned on is a decision the app should not make while they are not looking.
+
+The empty state is a `ContentUnavailableView` with `folder.badge.plus`, offering both verbs once.
+
+Should feel like Full Disk Access in Privacy & Security.
+
+## §5 — Devices
+
+The QR is the largest thing in the app and it sets the window's size.
+
+**Paired devices** lead with the fact that is real — *iOS · paired 3 August* — and add *Seen 4 min
+ago* only when this run has actually served that device. A device with no sighting says *Not seen
+since 9:12*, which is true, rather than a stale date that reads as an accusation. Each row has a
+destructive **Revoke**.
+
+Rejected: persisting last-seen properly. `JsonDocumentStore` rewrites the whole document and its
+contract is "written rarely, read on every request", so a polling phone would turn every request into
+a disk write. If it is ever wanted it is a coarse daily stamp written on change.
+
+**The six words sit at 13pt monospace directly under the QR, as an equal, not as small print** —
+they are a second credential redeeming the same pairing, not a caption. Under them, the countdown:
+*Expires in 1:46*, *Single use*, on a `ProgressView`.
+
+**Do not build the plaintext warning the frames show under the QR.** It was true of 0.0.6 and is not
+true now.
+
+Two other states are drawn: **expired**, where the QR dims behind *Code expired* / *A code lasts two
+minutes and works once* and a **New Code** button; and **server not running**, which shows no QR at
+all — *Pairing needs the server* / *A code has to say where to reach this Mac, and nothing is
+serving*, with **Open General**.
+
+Rejected: a ring or gauge for the countdown, which invents a control; and no countdown at all, which
+leaves the worst state undrawn — a code that quietly expired looks exactly like a wrong code from the
+phone's side.
+
+Should feel like the four-digit code an Apple TV puts on the television.
+
+## §6 — Connections
+
+The one surface that exists. The shape is right and the empty state is the best copy in the app.
+Since premise 1 is already fixed, what remains here is **layout**, not the value behind it.
+
+**A refusal that can be acted on says so.** A served row is a receipt; a refused row is a to-do, and
+it gets the one affordance the served row does not — `Pair…` for no token, `Pair Again…` for a token
+this Mac did not issue. Version skew and rate limiting get no button, because there is nothing on
+this Mac to press. Same list, same order, one axis of difference that means something.
+
+**Two edits to what the row says.** Drop the word "Refused" — the `xmark.circle` already says it,
+forty-five times down a list, and the space pays for the address and the count. And **print the
+repeat count**: the coalescing is right, but as built it turns four hundred attempts into a row that
+looks like one, and "my phone tried once" against "my phone has been hammering this for ten minutes"
+are different problems.
+
+The footer reads *Since 9:12 · the last 50 attempts, this run only*, with a count.
+
+Rejected: colour as the difference, since during setup nearly every row is a refusal and a wall of
+red stops being a signal; sections or a filter picker, because this log is read once, in anger, and
+sorting destroys the newest-first order that makes it readable; and a `Table` with sortable columns,
+which is a database inspector for fifty rows held in memory.
+
+**Kept exactly as written:** the empty state. *"Nothing has tried to connect"*, with *"every device
+that reaches this Mac appears here, whether or not it gets in"* — it tells you the panel is working
+when it is showing you nothing.
+
+Should feel like Console, if Console only ever answered one question.
+
+## §7 — Advanced
+
+Four rows once the log moves out, in two sections. Two of them are one-way doors, so the tab's whole
+job is to make the difference obvious.
+
+**A verbose switch, not a log level.** Five syslog levels are a vocabulary for someone reading
+someone else's logs; there is one reader here and he wants either the normal amount or all of it.
+Beside it, **Open in Console**, filtered to Granita's subsystem — and the button matters more than
+the switch, because a level control with no route to the log leaves a person choosing how much of
+something they cannot find.
+
+**git gets a version, not just a path.** `GitExecutablePath` picks the first of three candidates that
+is executable, and the interesting question is never which won but whether the one that won works.
+The row reads `2.52.0` first and the path second, and in failure it carries git's own standard
+error — the rule the whole API already follows.
+
+**Reset states its blast radius, using the store.** The row above the button counts what exists — two
+projects, two devices — and the confirm repeats it in consequences rather than nouns: *they have to
+pair again*. That sentence is not decoration; a reset is precisely why the log later says "that token
+was not issued by this Mac".
+
+Rejected: a five-level picker; a "Reveal in Finder" row for the log as well as the data folder, when
+the log's home is Console; and a second confirm typed by hand, which is disproportionate for one
+developer's own machine.
+
+Should feel like Xcode's Advanced pane.
+
+## What the Mac still has no way to check
+
+Every surface above is code that **nothing renders**: the snapshot suite is the iOS target, and the
+Mac has no snapshot kind at all. The frames are drawn at 1:1 precisely so they can become the
+baselines, and the review is explicit that the window's real minimum has to be asserted from inside
+the app — window geometry is not measurable from outside while Stage Manager is on.
+
+So the macOS snapshot kind lands in the same pull request as the first tab built from a frame. That
+is not a preference: without it, "we built the design" is an assertion nobody can check.

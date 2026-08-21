@@ -132,16 +132,23 @@ the executable runs, advertises it over TLS under an identity it generated for i
 is listening, re-binds when the Mac wakes, and has a Settings window whose Advanced tab shows the
 last fifty connection attempts with the reason each was turned away.
 
-What is left is **screens, and the frames they wait on**:
+What is left is **screens, and their frames have now arrived.** The Mac round trip came back on
+2026-08-21 and its calls are recorded in [`design-mac.md`](design-mac.md), so nothing here is blocked
+on a design any more:
 
-- **Settings, the other three tabs.** Enabling a project by picking a folder, the visibility toggle,
-  the paired devices with revoke, the login item, the port. The store already holds all of it and
-  `PairingInvitations` already assembles what the Devices tab draws — the work is the drawing.
+- **Settings, and it is four more tabs rather than three.** The review gives the connection log its
+  own tab and puts Advanced last, so that the panel opened while annoyed is not one mis-click from
+  `Reset All Data`. Enabling a project by picking a folder, the visibility toggle, the paired devices
+  with revoke, the login item. The store already holds all of it and `PairingInvitations` already
+  assembles what the Devices tab draws — the work is the drawing. **The port row is deleted**: a
+  service bind hands the port to the system, so General shows the address with a copy button instead.
 - **The pairing QR.** The link and the six words exist and are exercised through
-  `granita-server --pair`; what is missing is the picture of one and the sheet around it.
+  `granita-server --pair`; what is missing is the picture of one. It is the largest thing in the app
+  at 236–244pt square, and it is what sets the window to 620 × 560pt.
 
-The Mac's surfaces are not in the client design that came back on 2026-08-21, so none of these opens
-as a pull request until they have frames of their own.
+**Read `design-mac.md` rather than the frames.** They were drawn against 0.0.6 and 0.0.7 landed
+after, repairing two of the five premises they overturn and making a third obsolete — the sheet says
+which still stand.
 
 **Owed before any of them: a macOS snapshot kind**, unchanged from below, and now the only thing
 between M3 and done.
@@ -154,8 +161,11 @@ proven from a terminal; see "Verified against the real environment".
 — the snapshot suite is the iOS target — so every screen the Settings window gains is code nothing
 renders. The gate tolerates that today because the Unit and All rows were rescoped in the same pull
 request that created the gap, and a rescoped row is unjudged for one run. It will not tolerate the
-three remaining tabs. The design round trip returns frames, and a screen built from a frame lands
-with its baselines: that is the pull request the macOS kind belongs in.
+four remaining tabs. The frames have come back drawn at 1:1 precisely so they can become the
+baselines, and a screen built from a frame lands with its baselines: that is the pull request the
+macOS kind belongs in. The review adds a second reason — the window's real minimum can only be
+asserted from inside the app, because window geometry is not measurable from outside while Stage
+Manager is on.
 
 Smaller things still open in these modules:
 
@@ -165,9 +175,15 @@ Smaller things still open in these modules:
   a test asserts the raw shape so a change is red rather than silent. Setting it deliberately is a
   small job for the next change in the API module.
 - **The store's lock file.** SPEC §9 wants one beside the document so a standalone `granita-server`
-  and the menu bar app cannot both hold it; today both will happily open the same file.
+  and the menu bar app cannot both hold it; today both will happily open the same file. The design
+  review declined to draw the held case and said why: **it is a question for Davide, not a designer.**
+  Refuse to start, or serve read-only? Advanced is the only surface that could ever say so.
 - **The dirty-worktree count** beside the menu bar icon. It needs enabled projects to count, so it
-  belongs with the Projects tab.
+  belongs with the Projects tab. The design draws it, and flags an arithmetic problem first:
+  `WorktreeRegistry.projects()` computes a whole change set per worktree — one git process each at a
+  ten-second budget — so the number cannot be produced on a tick. **Time it on a real machine before
+  building it**: tens of milliseconds means cache and refresh on a slow timer, seconds means the
+  count goes behind opening the menu and the label is the icon alone.
 - **The Bonjour TXT record.** SPEC §8 wants `apiVersion` and a stable `serverInstanceID` in it so a
   phone can tell its paired Mac from another one. `NWEndpoint.service` carries no TXT record, so
   this needs a way in through the same bind rather than a second `NWListener` — which is the trap
