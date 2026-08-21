@@ -354,6 +354,69 @@ diff_ HEAD -z -M --raw                   > "$GOLDEN/diff-raw-rename.z"
 say "confirmed: numstat -z emits an empty field before an old/new rename pair"
 
 # ---------------------------------------------------------------------------------------------
+# 5. A repository configured the way a developer configures one.
+#
+# §5.1 hardens every invocation against the developer's own git configuration. Every other fixture
+# here is built with GIT_CONFIG_GLOBAL=/dev/null, so none of them can tell a hardened invocation
+# from an unhardened one — the flags would be dead weight and the suite would stay green if they
+# were deleted. This repository puts that configuration in the repository itself, where it reaches
+# a child process regardless of environment, so the git layer's tests can prove each flag.
+#
+# Nothing golden is written from it. The output of a deliberately misconfigured repository is not
+# something to record; what matters is that the product's own invocation is unaffected by it.
+# ---------------------------------------------------------------------------------------------
+
+echo "building $OUT/hostile"
+HOSTILE="$OUT/hostile"
+mkdir -p "$HOSTILE"
+cd "$HOSTILE"
+git_ init -q .
+# Non-ASCII, so core.quotePath has something to mangle.
+printf 'alpha\nbeta\n' > "caffè.txt"
+git_ add -A
+git_ commit -qm "baseline"
+printf 'alpha\nBETA\n' > "caffè.txt"
+printf 'never staged\n' > untracked.txt
+
+git_ config diff.noprefix true
+git_ config diff.mnemonicPrefix true
+git_ config color.ui always
+git_ config core.quotePath true
+git_ config status.showUntrackedFiles no
+# An external diff that fails, which is the loudest form of the thing --no-ext-diff exists for: a
+# real one would substitute its own output silently.
+git_ config diff.external /bin/false
+
+# Each trap is asserted with the *other* traps neutralised, so one flag going missing from the
+# product cannot be hidden by another one still working. A fixture that stops being hostile makes
+# the git layer's tests pass for the wrong reason, which is worse than no fixture at all.
+hostile_diff() { git --no-pager -c color.ui=false diff --no-ext-diff --no-color HEAD; }
+
+if hostile_diff | grep -q '^diff --git a/'; then
+    echo "error: the hostile fixture no longer strips the a/ and b/ prefixes" >&2
+    exit 1
+fi
+if ! hostile_diff | grep -q '303'; then
+    echo "error: the hostile fixture no longer octal-quotes a non-ASCII path" >&2
+    exit 1
+fi
+if ! git --no-pager diff --no-ext-diff HEAD | grep -q "$(printf '\033')"; then
+    echo "error: the hostile fixture no longer forces colour into a pipe" >&2
+    exit 1
+fi
+if git --no-pager -c color.ui=false diff --no-color HEAD > /dev/null 2>&1; then
+    echo "error: the hostile fixture's external diff no longer runs" >&2
+    exit 1
+fi
+if git --no-pager status --porcelain=v2 -z | tr '\0' '\n' | grep -q '^?'; then
+    echo "error: the hostile fixture no longer hides untracked files" >&2
+    exit 1
+fi
+
+say "confirmed: unhardened, this repository loses the path prefixes, the path spelling, the"
+say "           untracked files, and the diff itself"
+
+# ---------------------------------------------------------------------------------------------
 
 cd "$REPO_ROOT"
 echo

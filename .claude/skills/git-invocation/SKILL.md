@@ -25,11 +25,29 @@ and every invocation must be hardened against them:
 git -c core.pager=cat -c color.ui=false -c core.quotePath=false --no-pager <subcommand> …
 ```
 
-**Diff-family suffix, appended only for `diff`, `show`, `log`, `diff-index`, `diff-tree`:**
+**Diff-family flags, only for `diff`, `show`, `log`, `diff-index`, `diff-tree`, and placed
+immediately after the subcommand rather than at the end:**
 
 ```
---no-ext-diff --no-color
+--no-ext-diff --no-color --src-prefix=a/ --dst-prefix=b/
 ```
+
+Immediately after, because everything past `--` is a pathspec — a flag appended to a vector ending
+in a path is read as the name of another file to diff.
+
+The two prefixes are pinned because the parser strips a leading `a/` and `b/` and both strings are
+configurable: `diff.noprefix`, which is set in Davide's own configuration, removes them, and
+`diff.mnemonicPrefix` spells them `i/`, `w/` and `c/`. Neither fails.
+
+**`status --porcelain=v2 -z` is pinned in full**, because its bytes are the worktree's revision:
+
+```
+--renames --untracked-files=all --no-branch --no-show-stash
+```
+
+`status.showUntrackedFiles=no` empties the section. And with the collapsed default a *second* file
+appearing inside an already-untracked directory leaves the output byte for byte identical, so the
+revision does not move and the phone never refreshes.
 
 **These are not universal flags, and one of them fails silently.** Verified:
 
@@ -44,6 +62,13 @@ first line of `--show-toplevel` yields `--no-color` as the repository root.
 
 **Test the argument array, not the outcome.** A unit test asserts the exact vector each command
 family produces. "The command succeeded" is not evidence: the `rev-parse` case succeeds.
+
+**And prove the hardening against a repository configured to defeat it.** Every other fixture is
+built with `GIT_CONFIG_GLOBAL=/dev/null`, so none of them can tell a hardened invocation from an
+unhardened one — the flags above could all be deleted and the suite would stay green.
+`.fixtures/hostile` carries that configuration in its own config, where a child reads it whatever
+the environment says. When you add a flag here, add the config key that defeats it there, and check
+the new test goes red when the flag is removed.
 
 ## Environment, every child process
 
