@@ -631,3 +631,31 @@ being unavailable.
 only one with an unresolved correctness question: `--stdin-paths` reads one path per line, so a path
 containing a newline needs C-quoting on the way in. That question belongs to §5.5's content hashing
 rather than to the client, and adding the case later changes no signature.
+
+## Claude Design is asked with baselines and prose, and nothing is uploaded to it
+
+Oltre's design loop is the model this borrows from, and two of its three moving parts transfer
+unchanged: the ask is a **round trip** rather than a hand-off, so the session that writes the prompt
+waits and then builds the answer; and the prompt is committed, dated and left alone afterwards, so
+what was asked stays readable next to what came back. The `design-handoff` skill carries both.
+
+**The third part does not transfer, and that is the decision.** Oltre lifts its own colour tokens
+into a Claude Design project so a frame is composed from the same palette the app draws with.
+Granita has no design-system module and will not grow one for v1 — the palette is semantic system
+colours, the icons are SF Symbols, and every control on screen is a stock one. There is nothing to
+upload, and uploading a synthesised stand-in would be worse than nothing: it would invite frames
+built from a vocabulary the app does not have, and `swift-style` already forbids both the hardcoded
+colour and the hand-rolled control that would be needed to build them. So the prompt names the
+idiom instead, and asks for decisions inside it — hierarchy, what a row says, what an empty state
+offers, which of two readings wins — rather than for a look.
+
+**What goes over as the drawing is the committed snapshot corpus**, unrenamed, all four layouts of
+each state. The alternative considered was a hand-drawn mock of the screen under discussion, which
+is faster and is an unchecked claim about what the app looks like; a baseline is the only image of
+this app that something re-renders and compares. It is also why a screen built from a returned frame
+lands with its baselines in the same pull request: they are what makes fidelity checkable later
+rather than asserted once.
+
+The cost is accepted and named: a surface with no snapshot suite — the Mac settings window, today —
+can only be described, so what comes back for it is a first drawing rather than a review. Those two
+kinds of ask are numbered separately inside a prompt rather than blurred together.
