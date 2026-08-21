@@ -25,6 +25,11 @@ public enum ConnectionOutcome: Hashable, Sendable {
     /// A request carrying a token this Mac issued, and the device it was issued to.
     case accepted(device: String)
 
+    /// A device that has just paired. Distinct from being served, because it is the row someone
+    /// looks for when a phone has been set up and then cannot read anything: it says the pairing
+    /// itself worked and moves the question to the token.
+    case paired(device: String)
+
     case refused(ConnectionRefusal)
 }
 
@@ -43,6 +48,20 @@ public enum ConnectionRefusal: Hashable, Sendable {
     case unknownToken
 
     case rateLimited
+
+    /// A pairing code this Mac never issued — mistyped, meant for another Mac, or already spent.
+    ///
+    /// Told apart from an expired one here and nowhere else. The wire answers both the same way,
+    /// because a caller that has not proved who it is must not learn which; the person reading this
+    /// panel has, and the two mean different things to them — "type it again" against "be quicker".
+    case pairingCodeUnknown
+
+    /// A pairing code this Mac did issue, offered after its two minutes were up.
+    case pairingCodeExpired
+
+    /// The code was right and the device could not be written down. Nothing the phone did, and
+    /// nothing it can do: the disk is full, or the data folder is not writable.
+    case pairingNotRecordable(reason: String)
 
     /// A phone shipping ahead of this Mac. The Mac app and the phone app ship independently, so
     /// this is guaranteed rather than possible.

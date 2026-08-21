@@ -2,6 +2,7 @@ import Foundation
 import Hummingbird
 import NIOCore
 import NIOTransportServices
+import Security
 
 import CoreBrandingDomain
 import ServerApiDomain
@@ -25,15 +26,44 @@ public enum ApiServerBinding: Sendable {
     case bonjourService(name: String)
 }
 
+/// What the bytes on the wire are wrapped in.
+///
+/// An enumeration rather than an optional identity, so that plaintext is a thing the code says out
+/// loud wherever it is chosen — including in the line the terminal prints when it starts.
+public enum ApiTransport: @unchecked Sendable {
+
+    /// TLS under the identity this Mac generated at first run and keeps in the login Keychain.
+    ///
+    /// `SecIdentity` is a Core Foundation object: immutable once created and safe to use from any
+    /// thread, which is not something the compiler can see. Nothing here mutates it.
+    case tls(SecIdentity)
+
+    /// Plain HTTP. `granita-server --insecure-http` only — off by default, never reachable from
+    /// the Mac app's UI, and it exists so that a TLS problem can never leave code unreviewable.
+    case insecurePlaintext
+}
+
 public struct ApiServerConfiguration: Sendable {
 
     public let dependencies: ApiDependencies
     public let binding: ApiServerBinding
+    public let transport: ApiTransport
 
-    public init(dependencies: ApiDependencies, binding: ApiServerBinding) {
+    public init(dependencies: ApiDependencies, binding: ApiServerBinding, transport: ApiTransport) {
         self.dependencies = dependencies
         self.binding = binding
+        self.transport = transport
     }
+}
+
+public enum ApiServerError: Error, Hashable, Sendable {
+
+    /// The Keychain identity could not be turned into TLS options.
+    ///
+    /// Fatal on purpose. The tempting alternative — fall back to plaintext and carry on — would
+    /// serve private source code in the clear to a phone that believes it is on TLS, and the only
+    /// symptom would be that everything works.
+    case tlsIdentityRefused
 }
 
 public enum ApiServer {
@@ -42,8 +72,13 @@ public enum ApiServer {
     ///
     /// A Bonjour binding **requires** `NIOTSEventLoopGroup`: Hummingbird routes a network endpoint
     /// through `NIOTSListenerBootstrap`, and it fails hard rather than silently if handed a plain
-    /// socket bootstrap. It is also the code path that carries TLS options, so the identity work in
-    /// M3 lands here without changing the shape.
+    /// socket bootstrap.
+    ///
+    /// **Listening, advertising and TLS are one operation here, not three.** That same bootstrap is
+    /// what carries `tlsOptions`, which is why the identity goes into the configuration below
+    /// rather than into a second object wrapped around this one — and why the trap SPEC §8 records
+    /// about a separate `NWListener` stays solved rather than being re-opened by the TLS work.
+    ///
     /// - Parameter onRunning: Called once the listener is up, with the address it ended up on.
     ///   `nil` when the channel cannot say, which the caller has to treat as a state rather than
     ///   paper over: with a Bonjour bind the port is the system's choice, so it is not knowable
@@ -51,12 +86,13 @@ public enum ApiServer {
     public static func make(
         configuration: ApiServerConfiguration,
         onRunning: @escaping @Sendable (ServerEndpoint?) async -> Void
-    ) -> some ApplicationProtocol {
+    ) throws(ApiServerError) -> some ApplicationProtocol {
         Application(
             router: GranitaRouter.build(configuration.dependencies),
             configuration: ApplicationConfiguration(
                 address: bindAddress(for: configuration.binding),
-                serverName: Branding.productName
+                serverName: Branding.productName,
+                tlsOptions: try tlsOptions(for: configuration.transport)
             ),
             onServerRunning: { channel in
                 await onRunning(endpoint(of: channel, for: configuration.binding))
@@ -64,6 +100,21 @@ public enum ApiServer {
 
             eventLoopGroupProvider: .shared(NIOTSEventLoopGroup(loopCount: 1))
         )
+    }
+
+    private static func tlsOptions(for transport: ApiTransport) throws(ApiServerError) -> TSTLSOptions {
+        switch transport {
+        case .tls(let identity):
+            // Refused rather than downgraded. `TSTLSOptions` reports this by handing back nothing,
+            // and `?? .none` would be a server that quietly serves plaintext on the port it
+            // advertised as TLS.
+            guard let options = TSTLSOptions.options(serverIdentity: .secIdentity(identity)) else {
+                throw .tlsIdentityRefused
+            }
+            return options
+        case .insecurePlaintext:
+            return .none
+        }
     }
 
     private static func endpoint(of channel: any Channel, for binding: ApiServerBinding) async -> ServerEndpoint? {

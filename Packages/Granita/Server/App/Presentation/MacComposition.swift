@@ -2,9 +2,12 @@ import Foundation
 import Observation
 
 import CoreBrandingDomain
+import CorePairingDomain
 import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
+import ServerIdentityData
+import ServerIdentityDomain
 import ServerMacPresentation
 import ServerSessionsData
 import ServerStoreData
@@ -23,6 +26,11 @@ final class MacComposition {
 
     let model: ServerMacModel
 
+    /// Assembles what a phone is shown in order to pair. Nothing draws it yet — the pairing screen
+    /// is out at design — but everything under it is here and exercised, which is what the
+    /// Devices tab will be handed when its frames arrive.
+    let invitations: PairingInvitations
+
     /// Bumped when the menu asks for Settings. The window that can actually open it watches this;
     /// see `SettingsOpener` for why it cannot simply be a call.
     private(set) var settingsRequests = 0
@@ -40,6 +48,13 @@ final class MacComposition {
         let service = WorktreeService(git: git, limits: .standard)
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
         let log = InMemoryConnectionLog(now: { Date() })
+        let pairing = Pairing(store: store, now: { Date() })
+
+        // Generated on first run and kept for ten years. The addresses are read once, here: a
+        // certificate that chased the current ones would change its key every time the Mac joined
+        // a network, and its key is what every paired phone is pinning.
+        let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
+        invitations = PairingInvitations(pairing: pairing, identities: identities)
 
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
@@ -49,7 +64,7 @@ final class MacComposition {
             ),
             service: service,
             store: store,
-            pairing: Pairing(store: store, now: { Date() }),
+            pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
             connectionLog: log,
             serverVersion: Branding.serverVersion,
@@ -59,11 +74,15 @@ final class MacComposition {
         )
 
         model = ServerMacModel(
-            host: ApiServerHost(
-                configuration: ApiServerConfiguration(
+            // Wrapped rather than replaced: waking is the only thing this adds, and everything
+            // about how the server binds stays in one place.
+            host: RebindingOnWake(
+                host: KeychainBackedServerHost(
                     dependencies: dependencies,
-                    binding: .bonjourService(name: MachineName.computer)
-                )
+                    serviceName: MachineName.computer,
+                    identities: identities
+                ),
+                wakes: WorkspaceWakeNotifications()
             ),
             connectionLog: log
         )

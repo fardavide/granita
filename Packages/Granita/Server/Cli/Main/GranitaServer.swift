@@ -2,9 +2,13 @@ import Foundation
 
 import CoreBrandingDomain
 import CoreDiffDomain
+import CorePairingDomain
+import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
 import ServerGitDomain
+import ServerIdentityData
+import ServerIdentityDomain
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
@@ -43,6 +47,9 @@ struct GranitaServer {
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
         await sessions.refresh()
 
+        let pairing = Pairing(store: store, now: { Date() })
+        let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
+
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
                 store: store,
@@ -51,7 +58,7 @@ struct GranitaServer {
             ),
             service: service,
             store: store,
-            pairing: Pairing(store: store, now: { Date() }),
+            pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
             // The terminal has stderr for this; the log is here because the menu bar app draws it
             // and both composition roots build the same dependencies.
@@ -63,15 +70,21 @@ struct GranitaServer {
             requiresAuthentication: arguments.isInsecureHttp == false
         )
 
-        let binding: ApiServerBinding = arguments.isInsecureHttp
-            ? .hostname("0.0.0.0", port: arguments.port)
-            : .bonjourService(name: arguments.serviceName)
-
-        switch binding {
-        case .hostname(let host, let port):
-            log("serving plain HTTP on \(host):\(port) — no TLS, no Bonjour, no token required")
-        case .bonjourService(let name):
-            log("advertising \(Branding.bonjourServiceType) as \"\(name)\"")
+        let binding: ApiServerBinding
+        let transport: ApiTransport
+        if arguments.isInsecureHttp {
+            binding = .hostname("0.0.0.0", port: arguments.port)
+            transport = .insecurePlaintext
+            log("serving plain HTTP on 0.0.0.0:\(arguments.port) — no TLS, no Bonjour, no token required")
+        } else {
+            binding = .bonjourService(name: arguments.serviceName)
+            do {
+                transport = .tls(try await identities.keychainIdentity().reference)
+            } catch {
+                log("no TLS identity: \(error)")
+                exit(1)
+            }
+            log("advertising \(Branding.bonjourServiceType) as \"\(arguments.serviceName)\"")
         }
 
         let projects = await store.state().projects
@@ -79,17 +92,54 @@ struct GranitaServer {
 
         do {
             try await ApiServer.make(
-                configuration: ApiServerConfiguration(dependencies: dependencies, binding: binding)
+                configuration: ApiServerConfiguration(
+                    dependencies: dependencies,
+                    binding: binding,
+                    transport: transport
+                )
             ) { endpoint in
                 // With a Bonjour bind the port is the system's choice, so this is the first moment
                 // anything knows it — and it is the number to curl.
                 guard let endpoint else { return log("listening, but the port is not knowable") }
                 log("listening on \(endpoint.host):\(endpoint.port)")
+                if arguments.wantsPairing {
+                    await offerPairing(
+                        PairingInvitations(pairing: pairing, identities: identities),
+                        at: endpoint
+                    )
+                }
             }
             .runService()
         } catch {
             log("stopped: \(error)")
             exit(1)
+        }
+    }
+
+    /// Prints a pairing invitation, and keeps printing a fresh one as each expires.
+    ///
+    /// The Mac app will show a QR; there is no QR in a terminal, and there is no way to ask a
+    /// running server for a code from outside it — the codes live in the actor serving requests.
+    /// So `--pair` is how a device is paired without the menu bar app, which is what makes the TLS
+    /// path exercisable before the pairing screen exists.
+    ///
+    /// Reissuing rather than printing once, because two minutes is not long enough to fumble a
+    /// phone out of a pocket and a server that has to be restarted to hand out a second code is a
+    /// worse debugging tool than one that repeats itself.
+    private static func offerPairing(_ invitations: PairingInvitations, at endpoint: ServerEndpoint) async {
+        Task {
+            while Task.isCancelled == false {
+                do {
+                    let invitation = try await invitations.invite(at: endpoint)
+                    log("pair with: \(invitation.link.text)")
+                    log("  or type: \(invitation.spokenCode)")
+                    log("  pinning: \(invitation.link.fingerprint.rawValue)")
+                } catch {
+                    log("could not offer a pairing: \(error)")
+                    return
+                }
+                try? await Task.sleep(for: .seconds(Pairing.codeLifetime))
+            }
         }
     }
 
@@ -122,10 +172,10 @@ struct GranitaServer {
     /// Pairs without a camera, for driving the API from a terminal.
     private static func issueToken(from store: JsonDocumentStore) async {
         let pairing = Pairing(store: store, now: { Date() })
-        let issued = await pairing.issueCode()
+        let offered = await pairing.invite()
         do {
             let response = try await pairing.redeem(
-                code: issued.code,
+                code: offered.code,
                 deviceName: "terminal",
                 platform: "cli"
             )
@@ -163,6 +213,7 @@ private struct Arguments {
     let serviceName: String
     let projectToAdd: String?
     let wantsToken: Bool
+    let wantsPairing: Bool
     let storeUrl: URL
 
     static let usage = """
@@ -171,6 +222,8 @@ private struct Arguments {
           --add-project <path>  Enable a repository, then exit. The only way a path enters
                                 the system; everything after this is addressed by identifier.
           --issue-token         Print a bearer token for driving the API by hand, then exit.
+          --pair                Keep printing a granita://pair link and six-word code, so a
+                                device can pair over TLS without the menu bar app.
           --insecure-http       Serve plain HTTP instead of advertising over Bonjour with TLS,
                                 and require no token. Off by default, never reachable from the UI.
           --port <n>            Port for --insecure-http. Default \(Branding.defaultPort).
@@ -191,6 +244,7 @@ private struct Arguments {
         serviceName = value(after: "--service-name") ?? MachineName.computer
         projectToAdd = value(after: "--add-project")
         wantsToken = arguments.contains("--issue-token")
+        wantsPairing = arguments.contains("--pair")
         storeUrl = value(after: "--store").map { URL(filePath: $0) }
             ?? URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support", directoryHint: .isDirectory)

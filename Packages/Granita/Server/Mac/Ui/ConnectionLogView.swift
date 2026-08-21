@@ -47,9 +47,13 @@ public struct ConnectionLogView: View {
     private func sentence(for outcome: ConnectionOutcome) -> String {
         switch outcome {
         case .accepted(let device): "Served \(device)"
+        case .paired(let device): "Paired \(device)"
         case .refused(.noToken): "Refused — it offered no pairing token"
         case .refused(.unknownToken): "Refused — that token was not issued by this Mac"
         case .refused(.rateLimited): "Refused — too many failed attempts, waiting a minute"
+        case .refused(.pairingCodeUnknown): "Refused — that pairing code is not one this Mac issued"
+        case .refused(.pairingCodeExpired): "Refused — that pairing code had expired"
+        case .refused(.pairingNotRecordable(let reason)): "Refused — the pairing could not be saved: \(reason)"
         case .refused(.unsupportedApiVersion(let sent)):
             "Refused — it speaks version \(sent), this Mac serves \(Branding.apiVersion)"
         }
@@ -58,6 +62,7 @@ public struct ConnectionLogView: View {
     private func symbolName(for outcome: ConnectionOutcome) -> String {
         switch outcome {
         case .accepted: "checkmark.circle"
+        case .paired: "checkmark.seal"
         case .refused: "xmark.circle"
         }
     }

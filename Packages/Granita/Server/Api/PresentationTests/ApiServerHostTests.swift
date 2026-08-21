@@ -17,7 +17,10 @@ struct ApiServerHostTests {
         let host = ApiServerHost(
             configuration: ApiServerConfiguration(
                 dependencies: ApiScenario.healthOnlyDependencies(serverVersion: "0.0.5"),
-                binding: .hostname("127.0.0.1", port: 0)
+                binding: .hostname("127.0.0.1", port: 0),
+                // Plaintext here on purpose: what this test is about is which port was bound, and
+                // a TLS identity would need the Keychain, which a test binary does not have.
+                transport: .insecurePlaintext
             )
         )
 

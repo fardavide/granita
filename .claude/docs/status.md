@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.6.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.7.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
 The client is now **designed** rather than improvised: all four screens were reviewed and redrawn
 against 0.0.4 on 2026-08-21, and [`design.md`](design.md) is the authority on what they look like.
@@ -14,7 +14,8 @@ Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBoo
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
 Selecting a Mac still does nothing: the phone has no API client beyond health and no pairing. What
-changed is the other end — the Mac now serves the whole read API, and a terminal can drive it.
+changed is the other end — the Mac now serves the whole read API **over TLS**, under an identity it
+generated for itself, and a device pairs with it by scanning a link or typing six words.
 
 ## Milestones
 
@@ -54,10 +55,20 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 207 package tests in 21 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 361 package tests in 38 suites, plus
   the snapshot suite on a simulator.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
+- **The TLS identity and pairing.** A self-signed P-256 certificate generated at first run and kept
+  in the login Keychain for ten years, its subject alternative names covering the Bonjour hostname
+  and every local address; its SPKI fingerprint in the `granita://pair` link the phone pins. The
+  certificate is built by a DER encoder of ours in `ServerIdentityDomain`, checked byte for byte
+  against the system's own parser and against an `openssl` vector. TLS goes through the **same**
+  NIOTS bind that already advertises, so listening, advertising and encrypting stay one operation.
+  A pairing offers two credentials for one slot — a long code for the QR and six words for when
+  there is no camera — good for 120 seconds and one device, rate limited five failures a minute per
+  source address, with every refusal reaching the connection log by its exact reason. The Mac
+  re-binds and re-advertises on `NSWorkspace.didWakeNotification`.
 - **A design for the whole client**, and a discovery screen that matches it: the row is a navigation
   row with its arrow on the trailing edge and middle truncation, searching pulses and stopping is
   still, nothing-found and failure both offer a real retry, the failure's advice is ours with the
@@ -76,13 +87,27 @@ Findings from the spec's verify-first pass are in [`verification.md`](verificati
 version: every git trap in the spec reproduces on git 2.52.0 and 2.55.0, all three dependencies are
 current and resolve, and the module graph compiles.
 
+**The TLS and pairing path is verified end to end on this machine**, on 2026-08-21, against
+`granita-server --pair` over the advertised Bonjour port: `curl --pinnedpubkey` reached
+`/v1/health`; the wrong pin was refused with `SSL: public key does not match pinned public key`; the
+six-word code — typed in capitals with spaces — redeemed for a token; that token read `/v1/projects`
+while an unauthenticated request got `unauthorized`; a run of guesses was cut off at the fifth with
+`rateLimited`; and the fingerprint was **identical across a restart**, which is the property every
+paired device depends on and the one that was broken twice before it was right.
+
 Still unverified, because each needs code that does not exist yet:
 
 - Highlightr's throughput on a 200-line Swift block, measured on device (M5).
 - Login-item registration (M3). The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` is
   now implemented and verified on macOS 26.
 - Character-wrapping height arithmetic against measured heights (M5).
-- Self-signed identity plus pinned trust evaluation against App Transport Security on device (M4).
+- **Pinned trust evaluation against App Transport Security on a real iPhone (M4).** The Mac's half
+  is done and proven; what a device has not yet said is whether a `URLSessionDelegate` comparing the
+  fingerprint satisfies ATS. `decisions.md` records the constraint M4 inherits: the default
+  evaluation must be **replaced**, not added to, because macOS refuses a ten-year certificate
+  outright.
+- **Waking from sleep, seen on hardware.** The rebinding loop is asserted against a fake, and
+  `NSWorkspace.didWakeNotification` reaching it is not something a host test can produce.
 
 ## Configuration Davide still owns
 
@@ -102,23 +127,28 @@ sets up delivery.
 
 ## What to pick up next
 
-**M3, the menu bar app, one slice down and four to go.** The Mac app now runs the same backend the
-executable runs, advertises it, says where it is listening, and has a Settings window whose Advanced
-tab shows the last fifty connection attempts with the reason each was turned away. The
-`MenuBarExtra` plus `Settings` trap is implemented and verified; `Host.current().localizedName` and
-the missing `localAddress` were the two things that only running it could have found.
+**M3, the menu bar app: everything that is not a screen is done.** The Mac app runs the same backend
+the executable runs, advertises it over TLS under an identity it generated for itself, says where it
+is listening, re-binds when the Mac wakes, and has a Settings window whose Advanced tab shows the
+last fifty connection attempts with the reason each was turned away.
 
-What is left, in the order it was planned:
+What is left is **screens, and the frames they wait on**:
 
-2. **Settings, the other three tabs.** Enabling a project by picking a folder, the visibility
-   toggle, the paired devices with revoke. The store already holds all of it. A reader-facing
-   surface, so it goes through the design round trip first.
-3. **The login item, and rebinding after wake from sleep.**
-4. **The TLS identity** — self-signed P-256, ten years, SAN over the Bonjour hostname and every
-   local IP, in the login Keychain.
-5. **Pairing** — the QR carrying `granita://pair`, the six-word fallback, and the code lifecycle
-   wired to the `Pairing` actor that already exists. Acceptance for the milestone is pairing from a
-   real device on the LAN and reading the API, and that is what earns the minor version.
+- **Settings, the other three tabs.** Enabling a project by picking a folder, the visibility toggle,
+  the paired devices with revoke, the login item, the port. The store already holds all of it and
+  `PairingInvitations` already assembles what the Devices tab draws — the work is the drawing.
+- **The pairing QR.** The link and the six words exist and are exercised through
+  `granita-server --pair`; what is missing is the picture of one and the sheet around it.
+
+The Mac's surfaces are not in the client design that came back on 2026-08-21, so none of these opens
+as a pull request until they have frames of their own.
+
+**Owed before any of them: a macOS snapshot kind**, unchanged from below, and now the only thing
+between M3 and done.
+
+**The milestone's acceptance — pairing from a real device on the LAN — is the one thing left that
+this machine cannot answer**, and it is what earns the minor version. Everything it depends on is
+proven from a terminal; see "Verified against the real environment".
 
 **Owed before slice 2: a macOS snapshot kind.** The Mac's views are measured by no test kind at all
 — the snapshot suite is the iOS target — so every screen the Settings window gains is code nothing
@@ -138,9 +168,22 @@ Smaller things still open in these modules:
   and the menu bar app cannot both hold it; today both will happily open the same file.
 - **The dirty-worktree count** beside the menu bar icon. It needs enabled projects to count, so it
   belongs with the Projects tab.
+- **The Bonjour TXT record.** SPEC §8 wants `apiVersion` and a stable `serverInstanceID` in it so a
+  phone can tell its paired Mac from another one. `NWEndpoint.service` carries no TXT record, so
+  this needs a way in through the same bind rather than a second `NWListener` — which is the trap
+  §8 exists to warn about. The instance identifier is already in the `/v1/pair` response.
+- **Revoking a device** has a store method and no route. It belongs with the Devices tab, which is
+  the only place that would call it.
 
 ## Waiting on Davide
 
+- **A design round trip for the Mac's own surfaces**, which is now the whole of what is left in M3.
+  The client's four screens came back on 2026-08-21; the Settings window's four tabs and the pairing
+  sheet were not in that ask and have no frames, so none of them can open as a pull request.
+- **Pairing from a real device on the LAN**, which is M3's acceptance and cannot be answered from
+  this machine — the simulator does not implement local network privacy at all. Until the phone has
+  a pairing screen, the way to try it is `make run` with `--pair`: it prints a `granita://pair` link
+  and six words every two minutes, and the fingerprint on that line is what the phone must pin.
 - **The first design round trip, which only he can start**, and which M4 and M5 are now behind. The
   prompt went over in chat: a review of the discovery screen against its 24 baselines, and a first
   drawing of the worktree sidebar, the file selector and the continuous diff. Until the frames come

@@ -73,12 +73,20 @@ class TestPathClassification:
         # Hostless: there is no key window, so a body lays out against nothing and renders blank.
         assert not coverage.is_reachable_path("Server/Mac/Ui/MenuBarContent.swift")
 
+    def test_given_the_keychain_store_when_classifying_then_no_host_test_reaches_it(self):
+        # A test binary is unsigned and has no keychain of its own, so the only way to run this one
+        # is to write into the developer's real login keychain.
+        assert not coverage.is_reachable_path("Server/Identity/Data/KeychainServerIdentityStore.swift")
+
     def test_given_a_model_or_a_parser_when_classifying_then_a_host_test_reaches_it(self):
         assert coverage.is_reachable_path("Server/Mac/Presentation/ServerMacModel.swift")
         assert coverage.is_reachable_path("Core/Diff/Domain/UnifiedDiffParser.swift")
         # An App directory that is not a composition root is ordinary code. The pair is what names
         # one, not the word on its own.
         assert coverage.is_reachable_path("Client/App/Domain/Session.swift")
+        # Named per file rather than per directory, so what sits beside the Keychain store is still
+        # measured — which is the whole reason the exemption is a list of files.
+        assert coverage.is_reachable_path("Server/Identity/Data/LocalAddresses.swift")
 
 
 class TestCollect:
@@ -109,7 +117,7 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((8, 10), (3, 5), scope="reachable")
+        assert written["categories"]["unit"] == entry((8, 10), (3, 5), scope="host-reachable")
 
     def test_given_a_summary_when_collecting_another_category_then_both_survive(self, tmp_path):
         out = tmp_path / "summary.json"
@@ -182,7 +190,7 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((50, 525), (16, 208), scope="reachable")
+        assert written["categories"]["unit"] == entry((50, 525), (16, 208), scope="host-reachable")
 
 
 class TestPercent:
