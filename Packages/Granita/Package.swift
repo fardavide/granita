@@ -352,6 +352,14 @@ let package = Package(
                 "ServerApiPresentation",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
+                "ServerGitDomain",
+                // The acceptance tests compose the real implementations and drive the real git
+                // binary against the fixture repositories, which is what SPEC §12 asks M2 to
+                // prove. A test target is the one place outside a composition root where mixing
+                // layers is the point rather than a leak — nothing depends on it.
+                "ServerGitData",
+                "ServerStoreData",
+                "ServerSessionsData",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
                 // Same package as Hummingbird itself, so this adds no dependency: it is the

@@ -8,8 +8,8 @@ The two halves find each other **on real hardware**: the Mac serves `/v1/health`
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
-Selecting a Mac does nothing yet: there is no pairing, no API client beyond health, and nothing to
-read.
+Selecting a Mac still does nothing: the phone has no API client beyond health and no pairing. What
+changed is the other end — the Mac now serves the whole read API, and a terminal can drive it.
 
 ## Milestones
 
@@ -20,7 +20,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M0 | Scaffold — layout, manifest, CI, ruleset, harness, fixtures | **done** |
 | — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
 | M1 | Diff parser, display columns, word diff; path grouping into a tree | **done** |
-| M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **started** |
+| M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
 | M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | |
@@ -38,14 +38,18 @@ The spec's milestones, each ending in something runnable and a green suite, with
   yet — it is a library waiting for the git layer.
 - **The file selector's tree**: a pure function from a worktree's changed files to the rows the phone
   renders, with single-child directory chains compacted into one row, directories above files, and a
-  deterministic order that does not inherit the one the diff arrived in. Waiting on the git layer too.
+  deterministic order that does not inherit the one the diff arrived in.
 - **The git client**: the closed set of questions the product asks git, the argument vector each one
   becomes, and the process that runs it — both streams drained at once, a byte cap that truncates
   rather than refuses, a ten-second budget that tears the process down without ever signalling a
   process group, and failures that carry git's own standard error. Every invocation is pinned
   against a developer's git configuration, and a fixture repository configured to defeat it proves
-  that rather than leaving it asserted. Nothing calls it yet; the worktree enumerator is next.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 143 package tests in 15 suites, plus
+  that rather than leaving it asserted.
+- **The whole server.** Worktree enumeration, the change set and its stats from one comparison,
+  per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
+  index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
+  repository and `--insecure-http` serves it; the phone cannot read any of it yet.
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 207 package tests in 21 suites, plus
   the snapshot suite on a simulator.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
@@ -63,7 +67,6 @@ Still unverified, because each needs code that does not exist yet:
 - The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` on macOS 26, and login-item
   registration (M3).
 - Character-wrapping height arithmetic against measured heights (M5).
-- One real Claude Code session transcript's record shape (M2).
 - Self-signed identity plus pinned trust evaluation against App Transport Security on device (M4).
 
 ## Configuration Davide still owns
@@ -84,21 +87,23 @@ sets up delivery.
 
 ## What to pick up next
 
-**M2, continued.** The git client is in, and both requirements M1 handed it are settled: the
-diff-family prefixes are pinned and proven against a hostile fixture, and an opaque identifier
-encodes on the wire as a bare string. What is left of M2, roughly a pull request each:
+**M3, the menu bar app.** M2 is done and the backend is real: a terminal can enable a repository
+and read every endpoint. What it cannot do is any of the things that need a window or a Keychain.
 
-- **Worktree enumeration.** `worktree list --porcelain -z` into the domain's worktrees, against the
-  committed golden listing, plus repository detection and the unborn-HEAD flag.
-- **The change set.** `diff HEAD -z -M --raw` and `--numstat` read as one comparison, `ls-files
-  --others` for untracked paths, and SPEC §4's `FileChange` assembled from them — including §5.5's
-  content hash, which brings `hash-object --stdin-paths` and with it the only command that writes to
-  a child's standard input.
-- **The JSON store and the session index**, then **the REST API and the CLI**.
+M3 is `ServerMacUi` and `ServerMacPresentation` plus the shell: the menu bar item and its state,
+Settings with explicit project enabling, the login item, the connection log, wake-from-sleep rebind,
+and the two things M2 deliberately left at the door — **the TLS identity in the Keychain** and
+**pairing with a QR code**, which SPEC §12 puts in M3 and which are why `--insecure-http` exists.
+Acceptance is pairing from a real device on the LAN and hitting the API.
 
-Two things the git client deliberately left for the slices that will call it: resolving the git
-binary (`/usr/bin/git`, `xcrun -f git`, `PATH`), which belongs with a composition root; and reading
-one real Claude Code session transcript, which `verification.md` still lists as open.
+Two smaller things M2 left for whoever is next in these modules:
+
+- **Resolving the git binary** (`/usr/bin/git`, then `xcrun -f git`, then `PATH`). The executable is
+  a constructor parameter and the CLI probes three fixed paths; the `xcrun` step is itself a
+  subprocess and wants its own seam.
+- **Pinning the JSON encoder.** Timestamps are ISO 8601 because that is the framework's default, and
+  a test asserts the raw shape so a change is red rather than silent. Setting it deliberately is a
+  small job for the next change in the API module.
 
 ## Waiting on Davide
 

@@ -23,11 +23,11 @@ public enum ApiServerBinding: Sendable {
 
 public struct ApiServerConfiguration: Sendable {
 
-    public let serverVersion: String
+    public let dependencies: ApiDependencies
     public let binding: ApiServerBinding
 
-    public init(serverVersion: String, binding: ApiServerBinding) {
-        self.serverVersion = serverVersion
+    public init(dependencies: ApiDependencies, binding: ApiServerBinding) {
+        self.dependencies = dependencies
         self.binding = binding
     }
 }
@@ -42,7 +42,7 @@ public enum ApiServer {
     /// M3 lands here without changing the shape.
     public static func make(configuration: ApiServerConfiguration) -> some ApplicationProtocol {
         Application(
-            router: GranitaRouter.build(serverVersion: configuration.serverVersion),
+            router: GranitaRouter.build(configuration.dependencies),
             configuration: ApplicationConfiguration(
                 address: bindAddress(for: configuration.binding),
                 serverName: Branding.productName

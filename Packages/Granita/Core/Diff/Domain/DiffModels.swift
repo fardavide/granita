@@ -155,3 +155,193 @@ public struct Hunk: Hashable, Codable, Sendable {
         self.lines = lines
     }
 }
+
+/// One changed file, as the change set reports it.
+///
+/// Everything here comes from the single comparison the git layer runs, except the three fields
+/// that cannot: `contentHash` is derived per §5.5, `isViewed` is the reader's own state, and
+/// `language` is a hint for the highlighter taken from the extension.
+public struct FileChange: Hashable, Codable, Sendable {
+
+    public let id: FileID
+
+    /// Repo-relative, POSIX separators, decoded lossily from the bytes git reported.
+    public let path: String
+
+    /// Set only for a rename, so nobody has to compare it against `path` to find out.
+    public let oldPath: String?
+
+    public let status: FileStatus
+    public let isBinary: Bool
+    public let isSubmodule: Bool
+    public let stats: ChangeStats
+
+    /// 64 hex characters over the file's status and its three object ids, so a file marked viewed
+    /// becomes unviewed the moment the agent touches it again.
+    public let contentHash: String
+
+    /// Diff lines, near enough for the client to reserve scroll space before the diff arrives.
+    public let estimatedLineCount: Int
+
+    public let isViewed: Bool
+
+    /// Whether the file's diff will come back as a prefix, known before it is asked for.
+    public let isTruncated: Bool
+
+    /// A hint for the highlighter, inferred from the extension. Absent when nothing is claimed.
+    public let language: String?
+
+    public init(
+        id: FileID,
+        path: String,
+        oldPath: String?,
+        status: FileStatus,
+        isBinary: Bool,
+        isSubmodule: Bool,
+        stats: ChangeStats,
+        contentHash: String,
+        estimatedLineCount: Int,
+        isViewed: Bool,
+        isTruncated: Bool,
+        language: String?
+    ) {
+        self.id = id
+        self.path = path
+        self.oldPath = oldPath
+        self.status = status
+        self.isBinary = isBinary
+        self.isSubmodule = isSubmodule
+        self.stats = stats
+        self.contentHash = contentHash
+        self.estimatedLineCount = estimatedLineCount
+        self.isViewed = isViewed
+        self.isTruncated = isTruncated
+        self.language = language
+    }
+}
+
+/// One file's diff, and enough about the file's size for the client to know whether more exists.
+public struct FileDiff: Hashable, Codable, Sendable {
+
+    public let file: FileChange
+    public let hunks: [Hunk]
+
+    /// Total lines on each side, which is what makes "can this hunk expand downwards" answerable
+    /// without asking the server.
+    public let oldLineCount: Int
+    public let newLineCount: Int
+
+    public let isTruncated: Bool
+
+    /// Why, in words a reader can act on, and only when `isTruncated`.
+    public let truncationReason: String?
+
+    public init(
+        file: FileChange,
+        hunks: [Hunk],
+        oldLineCount: Int,
+        newLineCount: Int,
+        isTruncated: Bool,
+        truncationReason: String?
+    ) {
+        self.file = file
+        self.hunks = hunks
+        self.oldLineCount = oldLineCount
+        self.newLineCount = newLineCount
+        self.isTruncated = isTruncated
+        self.truncationReason = truncationReason
+    }
+}
+
+/// A repository the user has explicitly enabled.
+///
+/// Explicitly is the operative word: nothing is served that was not added by hand, which is what
+/// makes an opaque identifier resolvable against a registry rather than against the filesystem.
+public struct Project: Hashable, Codable, Sendable {
+
+    public let id: ProjectID
+    public let name: String
+    public let isVisible: Bool
+    public let worktreeCount: Int
+    public let dirtyWorktreeCount: Int
+
+    public init(id: ProjectID, name: String, isVisible: Bool, worktreeCount: Int, dirtyWorktreeCount: Int) {
+        self.id = id
+        self.name = name
+        self.isVisible = isVisible
+        self.worktreeCount = worktreeCount
+        self.dirtyWorktreeCount = dirtyWorktreeCount
+    }
+}
+
+/// One checkout of a project.
+public struct Worktree: Hashable, Codable, Sendable {
+
+    public let id: WorktreeID
+    public let projectId: ProjectID
+    public let projectName: String
+
+    /// The short branch name, absent when the checkout is detached.
+    public let branch: String?
+
+    public let isPrimary: Bool
+    public let isDetached: Bool
+    public let isLocked: Bool
+
+    /// Whether HEAD names a commit yet. Everything compares against the empty tree when it does not.
+    public let hasUnbornHead: Bool
+
+    /// Set from the phone, and the only one of the three names a person chose deliberately.
+    public let alias: String?
+
+    /// Derived from the agent's own session transcript, best effort and never blocking.
+    public let suggestedAlias: String?
+
+    /// Resolved once on the server so both apps and every list agree on what this worktree is
+    /// called: `alias`, else `suggestedAlias`, else the branch, else the directory.
+    public let displayName: String
+
+    public let directoryName: String
+    public let isPinned: Bool
+    public let stats: ChangeStats
+    public let lastModified: Date
+
+    /// Moves whenever anything in the worktree moves.
+    public let revision: String
+
+    public init(
+        id: WorktreeID,
+        projectId: ProjectID,
+        projectName: String,
+        branch: String?,
+        isPrimary: Bool,
+        isDetached: Bool,
+        isLocked: Bool,
+        hasUnbornHead: Bool,
+        alias: String?,
+        suggestedAlias: String?,
+        displayName: String,
+        directoryName: String,
+        isPinned: Bool,
+        stats: ChangeStats,
+        lastModified: Date,
+        revision: String
+    ) {
+        self.id = id
+        self.projectId = projectId
+        self.projectName = projectName
+        self.branch = branch
+        self.isPrimary = isPrimary
+        self.isDetached = isDetached
+        self.isLocked = isLocked
+        self.hasUnbornHead = hasUnbornHead
+        self.alias = alias
+        self.suggestedAlias = suggestedAlias
+        self.displayName = displayName
+        self.directoryName = directoryName
+        self.isPinned = isPinned
+        self.stats = stats
+        self.lastModified = lastModified
+        self.revision = revision
+    }
+}

@@ -204,6 +204,53 @@ struct GitInvocationTests {
         #expect(vector.last.map { Data($0) } == bytes)
     }
 
+    // MARK: - Hashing the working tree
+
+    @Test
+    func `when worktree files are hashed then the paths go in on standard input`() {
+        // given
+        let paths = [RepositoryRelativePath("src/one.txt"), RepositoryRelativePath("src/two.txt")]
+
+        // when
+        let vector = arguments(of: .hashWorktreeFiles(paths: paths))
+
+        // then — one process for the whole change set. A thousand-file worktree refreshing every
+        // 400 ms cannot afford a process per file, and reading and hashing the bytes ourselves
+        // would be the real I/O the batch exists to avoid.
+        #expect(vector.suffix(2) == ["hash-object", "--stdin-paths"])
+    }
+
+    @Test
+    func `given ordinary paths when hashing then standard input is one path per line`() {
+        // given
+        let paths = [RepositoryRelativePath("a.txt"), RepositoryRelativePath("dir/b.txt")]
+
+        // when
+        let input = GitInvocation.standardInput(for: .hashWorktreeFiles(paths: paths))
+
+        // then
+        #expect(input.map { String(decoding: $0, as: UTF8.self) } == "a.txt\ndir/b.txt\n")
+    }
+
+    @Test
+    func `given a path with a newline in it when hashing then it is quoted rather than split in two`() {
+        // given — `--stdin-paths` reads one path per line, so a path containing a newline is two
+        // paths to git and the whole batch shifts by one from there on.
+        let paths = [RepositoryRelativePath("od\nd.txt"), RepositoryRelativePath("after.txt")]
+
+        // when
+        let input = GitInvocation.standardInput(for: .hashWorktreeFiles(paths: paths))
+
+        // then — git unquotes a line that starts with a double quote, using C escapes.
+        #expect(input.map { String(decoding: $0, as: UTF8.self) } == "\"od\\nd.txt\"\nafter.txt\n")
+    }
+
+    @Test
+    func `given a command that reads nothing when asked for its input then there is none`() {
+        // given - when - then
+        #expect(GitInvocation.standardInput(for: .worktreeStatus) == nil)
+    }
+
     // MARK: - The environment every child process is given
 
     @Test
