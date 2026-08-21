@@ -1,3 +1,4 @@
+import AppKit
 import ServerMacUi
 import SwiftUI
 
@@ -7,16 +8,32 @@ import SwiftUI
 /// window — `LSUIElement` is true — so the menu bar extra is the whole of its presence.
 public struct GranitaMacScene: Scene {
 
+    @State private var composition = MacComposition()
+
     public init() {}
 
     public var body: some Scene {
+        // Declared BEFORE the Settings scene, and that order is load-bearing. See `SettingsOpener`.
+        Window(Text(verbatim: ""), id: Self.openerWindowId) {
+            SettingsOpener(requests: composition.settingsRequests)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+
         MenuBarExtra {
-            MenuBarContent(onQuit: { NSApplication.shared.terminate(nil) })
+            MenuBarContent(
+                state: composition.model.serverState,
+                onOpenSettings: { composition.requestSettings() },
+                onQuit: { NSApplication.shared.terminate(nil) }
+            )
         } label: {
-            // A MenuBarExtra label renders Text and Image reliably and little else, so the
-            // dirty-worktree count will arrive here as a Text beside the icon rather than as a
-            // badge modifier.
-            Image(systemName: "arrow.trianglehead.branch")
+            MenuBarLabel(state: composition.model.serverState)
+        }
+
+        Settings {
+            GranitaSettingsScreen(model: composition.model)
         }
     }
+
+    static let openerWindowId = "granita.settings.opener"
 }

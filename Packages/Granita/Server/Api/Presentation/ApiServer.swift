@@ -1,6 +1,10 @@
-import CoreBrandingDomain
+import Foundation
 import Hummingbird
+import NIOCore
 import NIOTransportServices
+
+import CoreBrandingDomain
+import ServerApiDomain
 
 #if canImport(Network)
 import Network
@@ -40,15 +44,56 @@ public enum ApiServer {
     /// through `NIOTSListenerBootstrap`, and it fails hard rather than silently if handed a plain
     /// socket bootstrap. It is also the code path that carries TLS options, so the identity work in
     /// M3 lands here without changing the shape.
-    public static func make(configuration: ApiServerConfiguration) -> some ApplicationProtocol {
+    /// - Parameter onRunning: Called once the listener is up, with the address it ended up on.
+    ///   `nil` when the channel cannot say, which the caller has to treat as a state rather than
+    ///   paper over: with a Bonjour bind the port is the system's choice, so it is not knowable
+    ///   from the configuration.
+    public static func make(
+        configuration: ApiServerConfiguration,
+        onRunning: @escaping @Sendable (ServerEndpoint?) async -> Void
+    ) -> some ApplicationProtocol {
         Application(
             router: GranitaRouter.build(configuration.dependencies),
             configuration: ApplicationConfiguration(
                 address: bindAddress(for: configuration.binding),
                 serverName: Branding.productName
             ),
+            onServerRunning: { channel in
+                await onRunning(endpoint(of: channel, for: configuration.binding))
+            },
+
             eventLoopGroupProvider: .shared(NIOTSEventLoopGroup(loopCount: 1))
         )
+    }
+
+    private static func endpoint(of channel: any Channel, for binding: ApiServerBinding) async -> ServerEndpoint? {
+        guard let port = await boundPort(of: channel) else { return nil }
+        switch binding {
+        case .hostname(let host, _):
+            return ServerEndpoint(host: host, port: port)
+        case .bonjourService:
+            // The service name is what the phone browses for; what belongs on a status line beside
+            // a port is the name that resolves to this Mac.
+            return ServerEndpoint(host: MachineName.localHost, port: port)
+        }
+    }
+
+    /// **TRAP.** A channel bound to a network endpoint has **no** `localAddress`: there is no POSIX
+    /// socket under it, so the obvious reading comes back `nil` and a status line built from it
+    /// says the server is up but nowhere. The port lives on the `NWListener` the system bound —
+    /// which is the same object that chose it, since a Bonjour service endpoint hands that choice
+    /// to the system.
+    ///
+    /// Read on the event loop and reduced to a number there, so nothing from Network crosses back.
+    private static func boundPort(of channel: any Channel) async -> Int? {
+        let listened = try? await channel
+            .getOption(NIOTSChannelOptions.listener)
+            .map { listener in listener?.port?.rawValue }
+            .get()
+        if let port = listened ?? nil {
+            return Int(port)
+        }
+        return channel.localAddress?.port
     }
 
     private static func bindAddress(for binding: ApiServerBinding) -> BindAddress {

@@ -80,7 +80,13 @@ struct GranitaServer {
         do {
             try await ApiServer.make(
                 configuration: ApiServerConfiguration(dependencies: dependencies, binding: binding)
-            ).runService()
+            ) { endpoint in
+                // With a Bonjour bind the port is the system's choice, so this is the first moment
+                // anything knows it — and it is the number to curl.
+                guard let endpoint else { return log("listening, but the port is not knowable") }
+                log("listening on \(endpoint.host):\(endpoint.port)")
+            }
+            .runService()
         } catch {
             log("stopped: \(error)")
             exit(1)
@@ -130,18 +136,14 @@ struct GranitaServer {
         }
     }
 
-    /// `/usr/bin/git` first, then whatever Xcode's tooling points at, then the path.
-    ///
-    /// The first is the shim every Mac has; the second is what a machine with the command line
-    /// tools but no `/usr/bin/git` resolves to. Being wrong here is the one failure that makes
-    /// every other part of this useless, so it is checked rather than assumed.
+    /// Being wrong here is the one failure that makes every other part of this useless, so it is
+    /// checked rather than assumed — and shared with the menu bar app, which must run the same one.
     private static func gitExecutablePath() -> String {
-        let candidates = ["/usr/bin/git", "/opt/homebrew/bin/git", "/usr/local/bin/git"]
-        for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate) {
-            return candidate
+        guard let found = GitExecutablePath.firstAvailable(among: GitExecutablePath.defaultCandidates) else {
+            log("no git binary found; tried \(GitExecutablePath.defaultCandidates.joined(separator: ", "))")
+            return "/usr/bin/git"
         }
-        log("no git binary found; tried \(candidates.joined(separator: ", "))")
-        return "/usr/bin/git"
+        return found
     }
 
     private static func log(_ message: String) {
@@ -186,7 +188,7 @@ private struct Arguments {
         wantsHelp = arguments.contains("--help") || arguments.contains("-h")
         isInsecureHttp = arguments.contains("--insecure-http")
         port = value(after: "--port").flatMap(Int.init) ?? Branding.defaultPort
-        serviceName = value(after: "--service-name") ?? ProcessInfo.processInfo.hostName
+        serviceName = value(after: "--service-name") ?? MachineName.computer
         projectToAdd = value(after: "--add-project")
         wantsToken = arguments.contains("--issue-token")
         storeUrl = value(after: "--store").map { URL(filePath: $0) }

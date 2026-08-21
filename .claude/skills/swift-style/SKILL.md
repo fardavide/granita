@@ -123,8 +123,9 @@ the expression.
 
 - **Semantic colours only**, no hardcoded hex. Light and dark are both first-class, and there is a
   colourblind-safe palette toggle, so a hardcoded colour is three bugs rather than one.
-- `@Observable` view models, injected through the view's init. No `ObservableObject` or `@Published`
-  in new code.
+- `@Observable` state, injected through a screen's init — **one model per unit, never one per
+  view**, and nothing named `…ViewModel` in new code. See the `architecture` skill. No
+  `ObservableObject` or `@Published` anywhere.
 - Keep views small. Push logic into the view model — a `Ui` module should contain nothing a test
   would want to reach.
 - **Theme the system control rather than hand-rolling one.** When a design shows a control, find the

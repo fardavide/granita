@@ -383,7 +383,13 @@ let package = Package(
 
         .target(
             name: "ServerMacUi",
-            dependencies: ["CoreBrandingDomain", "ServerWorktreesDomain", "ServerStoreDomain", "CoreDiffDomain"],
+            dependencies: [
+                "CoreBrandingDomain",
+                "ServerApiDomain",
+                "ServerWorktreesDomain",
+                "ServerStoreDomain",
+                "CoreDiffDomain"
+            ],
             path: "Server/Mac/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -395,6 +401,7 @@ let package = Package(
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
                 "ServerMacUi",
+                "ServerApiDomain",
                 "ServerApiPresentation",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
@@ -405,6 +412,12 @@ let package = Package(
                 "ServerWatchData"
             ],
             path: "Server/Mac/Presentation",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .testTarget(
+            name: "ServerMacPresentationTests",
+            dependencies: ["ServerMacPresentation", "ServerApiDomain"],
+            path: "Server/Mac/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 

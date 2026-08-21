@@ -71,6 +71,19 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.5 — 2026-08-21
+- **The Mac app now serves.** Granita on the Mac was an icon with a Quit item; the server it is
+  supposed to run only existed in a terminal. Launching it now starts the same backend in-process
+  and advertises it on the local network, and the menu says where — `MacBook-Pro.local:53614` — so
+  "is it up" is answerable by looking rather than by opening Activity Monitor.
+- **Settings opens from the menu, with a connection log in it.** Every device that reaches this Mac
+  leaves a row saying what happened to it: served, and which device, or turned away with the reason
+  — no pairing token, a token this Mac never issued, too many attempts, or an app speaking a newer
+  version than this Mac serves. It is what makes a phone that will not connect explainable without
+  attaching a debugger. A device that keeps polling keeps one row rather than filling all fifty.
+- **The Mac advertises the name you gave the Mac.** It was announcing itself as whatever the network
+  currently reverse-resolved to — on Davide's connection, `customer.mlnnita1.isp.starlink.com`.
+
 ### 0.0.4 — 2026-08-21
 - **Coming back to Granita from the background no longer claims local network access is off.** iOS
   tears down the app's connection to the discovery daemon while it is suspended, and every browser
