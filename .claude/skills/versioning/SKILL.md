@@ -13,6 +13,11 @@ The version lives in **one place**: `MARKETING_VERSION` under `settingGroups.sha
 `project.yml`. Both app targets inherit it, so a bump is a one-line edit followed by
 `make project` to regenerate the committed Xcode project.
 
+**A second constant tracks it**, and a test fails until it does: the server's fallback version in
+`CoreBrandingDomain`, which is what the API reports when it is run from a terminal rather than an
+app bundle and there is no `CFBundleShortVersionString` to read. Bump both together — `make test`
+will tell you if you forget, but only after the rest of the work is done.
+
 | Bump | When | Who initiates |
 |---|---|---|
 | Patch `0.0.X` | Bug fixes, corrections, internal work with a user-visible effect | Agent, by default |
