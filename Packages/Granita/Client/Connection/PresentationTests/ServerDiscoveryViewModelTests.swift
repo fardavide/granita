@@ -42,6 +42,35 @@ struct ServerDiscoveryViewModelTests {
     }
 
     @Test
+    func `given nothing was found when the reader searches again then it is looking once more`() async {
+        // given — the browse went quiet and the Mac was plugged in afterwards. Without this the
+        // reader's only recourse is to kill the app.
+        let scenario = Scenario(states: [.searching, .found([])])
+        await scenario.sut.start()
+
+        // when
+        scenario.sut.searchAgain()
+
+        // then
+        #expect(scenario.sut.state == .searching)
+    }
+
+    @Test
+    func `given a browse is running when the reader searches again then a fresh attempt replaces it`() {
+        // given
+        let scenario = Scenario(states: [])
+        let before = scenario.sut.attempt
+
+        // when
+        scenario.sut.searchAgain()
+
+        // then — the screen keys its task on this, so changing it is what tears the running browse
+        // down and puts a new one in its place. Asking the old stream to start over would not make a
+        // new browser, and a new browser is the whole mechanism.
+        #expect(scenario.sut.attempt != before)
+    }
+
+    @Test
     func `given a server disappears when searching then the list empties without erroring`() async {
         // given — a Mac going to sleep is the common case, not an error.
         let mac = DiscoveredServer(id: "MacBook", name: "MacBook")

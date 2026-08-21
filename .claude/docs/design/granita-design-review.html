@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<!--
+  Granita design review, 21 August 2026, drawn against 0.0.4.
+
+  This is working material for screens that are NOT yet built, not documentation. When a section is
+  implemented its frames are deleted from this file, because the built screen is then pinned by its
+  own snapshot baselines and a second drawing of it can only go stale. §1 has already gone that way.
+  When §2, §3 and §4 are built, this file goes with them.
+
+  The durable half is ../design.md, which keeps every call and the alternative it beat.
+
+  Imported from the Claude Design project "Granita" and flattened to plain HTML: the .dc.html
+  template's one interpolated value (the annotation toggle) is resolved to its default, and the
+  generated runtime that resolved it is deliberately not vendored.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @media print { body { background: #fff } }
+  a { color: #6B5B3E; text-decoration: underline; text-underline-offset: 2px }
+  a:hover { color: #23211E }
+  body { margin: 0 }
+</style>
+</head>
+<body>
+
+
+<div style="background:#F4F2EE;width:1608px;box-sizing:border-box;padding:80px 64px 200px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;color:#23211E;-webkit-font-smoothing:antialiased">
+<div style="width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:96px">
+
+  <!-- ══ MASTHEAD ══ -->
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:end;border-bottom:1px solid #D8D2C6;padding-bottom:40px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">Granita 0.0.4 &nbsp;·&nbsp; design review &nbsp;·&nbsp; 21 August 2026</div>
+      <h1 style="font-size:52px;line-height:1.04;font-weight:400;letter-spacing:-0.02em;margin:0 0 20px">One screen judged,<br>three screens drawn.</h1>
+      <p style="font-size:19px;line-height:1.55;margin:0;max-width:44ch;color:#4A463F">Everything here stays inside the system idiom: semantic colours, SF Symbols, stock controls. Where a control is wrong I name the right one. Where the specification cannot be drawn at 390pt I say so and show the measurement.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Drawn against</div>
+      <div style="font-size:15px;line-height:1.7;color:#4A463F">iPhone 13 Pro, 390 × 844pt — the layout the snapshot suite asserts.<br>iPad Pro 11″ landscape, 1194 × 834pt.<br>Dynamic Type Large and xxLarge, side by side.<br>Rows carry real fields from <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffModels.swift</span>.</div>
+    </div>
+  </div>
+
+  <!-- ══ THE FOUR PREMISES ══ -->
+  <div>
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:28px">The four premises you asked me to test</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#D8D2C6;border:1px solid #D8D2C6">
+      <div style="background:#FBFAF7;padding:28px 26px 30px">
+        <div style="font-size:13px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:14px">DOES NOT FIT</div>
+        <div style="font-size:18px;line-height:1.4;margin-bottom:12px">Six fields on one iPhone row</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#6A655C">Four survive at Large, three at xxLarge. The project name is the one that has to go, and grouped mode is what makes that affordable.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:28px 26px 30px">
+        <div style="font-size:13px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#7A6A2E;letter-spacing:0.04em;margin-bottom:14px">FITS, WITH A RULE</div>
+        <div style="font-size:18px;line-height:1.4;margin-bottom:12px">A compacted path inside a sheet</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#6A655C">Only if it head-truncates and the indent clamps at depth 4. At depth 4 with 60 characters you read the last 30. That is enough.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:28px 26px 30px">
+        <div style="font-size:13px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#7A6A2E;letter-spacing:0.04em;margin-bottom:14px">FITS, NOT AS DRAWN</div>
+        <div style="font-size:18px;line-height:1.4;margin-bottom:12px">Two nested backgrounds behind mono text</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#6A655C">In light, yes, at a 3× alpha ratio. In dark, no — the word highlight has to be carried by the text, not the background.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:28px 26px 30px">
+        <div style="font-size:13px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:14px">DOES NOT FIT</div>
+        <div style="font-size:18px;line-height:1.4;margin-bottom:12px">Wrap-off code plus two gutters at 390pt</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#6A655C">Two number columns leave 41 characters of code. One column leaves 51. Neither is 80. Horizontal scroll is the primary interaction, not a fallback.</div>
+      </div>
+    </div>
+    <p style="font-size:16.5px;line-height:1.65;color:#4A463F;margin:28px 0 0;max-width:82ch">The sticky file header does fit, and it is the only one of the four I would not change. It costs 28pt once the toolbar is set to hide on scroll, which is 3% of the screen for the one thing that tells the reader where they are.</p>
+  </div>
+
+  <!-- §1, server discovery, was implemented in 0.0.6 and its frames were removed with it. The
+     calls it settled live on in ../design.md; what pins the built screen now is the committed
+     snapshot baselines under Apps/GranitaMobileSnapshotTests/__Snapshots__. -->
+
+<!-- ══════════ §2 ══════════ -->
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section two · first drawing · M4</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The worktree sidebar</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">Six fields do not fit. What fits is <strong style="font-weight:400">two lines and a trailing time</strong>, and the thing that makes it fit is deciding that the four name sources are really two: a name that means something, and a machine string.</p>
+    </div>
+  </div>
+
+  <!-- 2.1 THE ROW -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+
+      <!-- grouped, Large -->
+      <div>
+        <div style="width:390px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text','Helvetica Neue',sans-serif;color:#000">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:6px 20px 10px">
+            <div style="font-family:-apple-system,'SF Pro Display',sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.4px">Worktrees</div>
+            <div style="font-size:19px;color:#007AFF;padding-bottom:8px">⋯</div>
+          </div>
+
+          <div style="padding:8px 16px 0">
+            <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:0 16px 7px">Pinned</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">TLS pinning</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">granita · 12 files ·</span>
+                  <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+248</span>
+                  <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−31</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">4m</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:20px 16px 7px">granita</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">Make the diff scroll never reflow above the reader's finger</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">34 files ·</span>
+                  <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+1,204</span>
+                  <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−318</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">22m</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">feat/session-index</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">3 files ·</span>
+                  <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+47</span>
+                  <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−6</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">2h</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24;color:rgba(60,60,67,0.6)">main</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">primary checkout · no changes</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">3d</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:20px 16px 7px">aura</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:15px;font-family:ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:-0.2px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">detached · 8 files ·</span>
+                  <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+96</span>
+                  <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−204</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">5h</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">Fix the coverage script's 3.13 warning</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">1 file ·</span>
+                  <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+2</span>
+                  <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−2</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">1d</span>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:13px;color:rgba(60,60,67,0.6);padding:12px 16px 0;line-height:1.35">6 worktrees with no changes are hidden. <span style="color:#007AFF">Show them</span></div>
+          </div>
+          <div style="height:24px"></div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">grouped by project · Large</div>
+      </div>
+
+      <!-- grouped, xxLarge -->
+      <div>
+        <div style="width:390px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text','Helvetica Neue',sans-serif;color:#000">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:6px 20px 10px">
+            <div style="font-family:-apple-system,'SF Pro Display',sans-serif;font-size:41px;font-weight:700;letter-spacing:-0.4px">Worktrees</div>
+            <div style="font-size:23px;color:#007AFF;padding-bottom:8px">⋯</div>
+          </div>
+          <div style="padding:8px 16px 0">
+            <div style="font-size:16px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.03em;padding:0 16px 7px">Pinned</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:10px 16px 12px">
+                <div style="font-size:21px;font-weight:600;letter-spacing:-0.35px;line-height:1.2">TLS pinning</div>
+                <div style="display:flex;align-items:baseline;gap:7px;margin-top:3px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6)">12 files ·</span>
+                  <span style="font-size:17px;color:#248A3D;font-variant-numeric:tabular-nums">+248</span>
+                  <span style="font-size:17px;color:#D70015;font-variant-numeric:tabular-nums">−31</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">4m</span>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:16px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.03em;padding:20px 16px 7px">granita</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:10px 16px 12px">
+                <div style="font-size:21px;font-weight:600;letter-spacing:-0.35px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Make the diff scroll never reflow above the reader's finger</div>
+                <div style="display:flex;align-items:baseline;gap:7px;margin-top:4px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6)">34 files ·</span>
+                  <span style="font-size:17px;color:#248A3D;font-variant-numeric:tabular-nums">+1,204</span>
+                  <span style="font-size:17px;color:#D70015;font-variant-numeric:tabular-nums">−318</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">22m</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:10px 16px 12px">
+                <div style="font-size:21px;font-weight:600;letter-spacing:-0.35px;line-height:1.2">feat/session-index</div>
+                <div style="display:flex;align-items:baseline;gap:7px;margin-top:3px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6)">3 files ·</span>
+                  <span style="font-size:17px;color:#248A3D;font-variant-numeric:tabular-nums">+47</span>
+                  <span style="font-size:17px;color:#D70015;font-variant-numeric:tabular-nums">−6</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">2h</span>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:16px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.03em;padding:20px 16px 7px">aura</div>
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:10px 16px 12px">
+                <div style="font-size:18px;font-family:ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:-0.2px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</div>
+                <div style="display:flex;align-items:baseline;gap:7px;margin-top:4px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6)">detached ·</span>
+                  <span style="font-size:17px;color:#248A3D;font-variant-numeric:tabular-nums">+96</span>
+                  <span style="font-size:17px;color:#D70015;font-variant-numeric:tabular-nums">−204</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:17px;color:rgba(60,60,67,0.6);font-variant-numeric:tabular-nums">5h</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:120px"></div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">the same list at xxLarge · file count is what goes</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 a &nbsp;·&nbsp; FOUR NAMES, ONE ROW</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Two tiers, and the font carries it</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">The reader does not need to know which of four fields won. They need to know one thing: <em>can I trust this string to tell me what the agent did?</em> An alias can. A session summary can. A branch name usually can. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</span> never can. So there are two tiers, not four.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> Render the fallback tier in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;background:#EAE6DC;padding:1px 5px;border-radius:3px">.monospaced</span> and tail-truncate it &mdash; the opposite of the Mac list in &sect;1d, and for the opposite reason. A Bonjour name differs at its end, so the end has to survive; a generated directory name is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">bridge-cse</span> followed by a ULID, and the ULID is noise while <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">bridge-cse</span> is the only mnemonic in the string. So the front survives here. Everything else stays proportional. Monospace says &ldquo;machine string, there is no meaning in here&rdquo; without spending a colour, and it is already this app's word for <em>code</em>. One font-design switch encodes the whole question. No glyph, no badge, no accent.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Alias against suggestion needs nothing at all: they are different <em>kinds</em> of string and read as such. &ldquo;TLS pinning&rdquo; is a title. &ldquo;Make the diff scroll never reflow above the reader's finger&rdquo; is a sentence. Nobody will mistake one for the other, and a badge distinguishing them would be answering a question no reader has.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Truncate the suggestion in the view, not on the wire.</strong> Keep the server's 60 characters — the rename sheet prefills with them and wants all of it. Display it at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.lineLimit(2)</span>, which at 390pt is about 44 characters of headline. Two lines is the ceiling because three makes a 90pt row and a list of five of those is a wall of prose.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> An SF Symbol per source — four glyphs to learn, three of which are noise. Italics for suggestions: in a list, italic reads as an error or a placeholder. Showing the directory name as a <em>second</em> line under a branch name: it is the one string the reader never wants, given twice the space of the one they do.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a list of things people named, with the occasional machine string that visibly did not get named. The unnamed ones should feel slightly unfinished, because they are.</p>
+    </div>
+  </div>
+
+  <!-- 2.2 THE SECOND LINE / PIN / FLAGS -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div>
+      <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:34px 36px 38px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#8A8378;margin-bottom:22px">Row anatomy at 390pt · what drops, in order</div>
+        <div style="width:358px;background:#fff;border:1px solid rgba(60,60,67,0.16);border-radius:10px;padding:9px 16px 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;margin-bottom:30px">
+          <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">TLS pinning</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+            <span style="font-size:13px;color:rgba(60,60,67,0.6)">granita ·</span>
+            <span style="font-size:13px;color:rgba(60,60,67,0.6)">12 files ·</span>
+            <span style="font-size:13px;color:#248A3D">+248</span><span style="font-size:13px;color:#D70015">−31</span>
+            <span style="flex:1"></span>
+            <span style="font-size:13px;color:rgba(60,60,67,0.6)">4m</span>
+          </div>
+          <div style="position:absolute;left:16px;top:-9px;width:1px;height:9px;background:#C9B98F"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:28px 1fr 1fr;gap:0 20px;font-size:15px;line-height:1.55">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">1</div>
+          <div style="padding-bottom:12px"><strong style="font-weight:400">displayName</strong>, headline, 2 lines</div>
+          <div style="padding-bottom:12px;color:#6A655C">never drops — it is the row</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">2</div>
+          <div style="padding-bottom:12px"><strong style="font-weight:400">lastModified</strong>, trailing, tabular</div>
+          <div style="padding-bottom:12px;color:#6A655C">never drops — 2 to 3 characters, and it is the sort key</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">3</div>
+          <div style="padding-bottom:12px"><strong style="font-weight:400">+n −m</strong>, semantic green and red</div>
+          <div style="padding-bottom:12px;color:#6A655C">never drops — it is how big the read is</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">4</div>
+          <div style="padding-bottom:12px"><strong style="font-weight:400">filesChanged</strong></div>
+          <div style="padding-bottom:12px;color:#6A655C">first to go, at xxLarge with four-digit stats</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">5</div>
+          <div style="padding-bottom:12px"><strong style="font-weight:400">projectName</strong></div>
+          <div style="padding-bottom:12px;color:#6A655C">absent in grouped mode; the section header has it</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#8A8378;padding-top:3px">6</div>
+          <div><strong style="font-weight:400">isPinned</strong></div>
+          <div style="color:#6A655C">never on the row in grouped mode; the section has it</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 b, f &nbsp;·&nbsp; PINS AND FLAGS</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Pinned section: confirmed, with one addition</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">A single Pinned section above the project sections is right, and the objection is real — a worktree does appear away from its siblings. The fix is one field, not a different structure: <strong style="font-weight:400">a pinned row keeps its project name on line two even in grouped mode.</strong> Then it is not orphaned, it is annotated, and the reader can see it belongs to <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">granita</span> while sitting above <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">granita</span>. Look at the two frames above: the pinned row is the only one in grouped mode carrying a project name, and that difference is the explanation.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Floating a pin to the top of its own project section — you still have to find the project, which is the work the pin exists to skip. And duplicating the row in both places: a row that appears twice is a worse bug than a row that appears once in a surprising place.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Because the section carries the pin, <strong style="font-weight:400">no pin glyph on the row in grouped mode</strong>. Flat mode has no header to carry it, so there the pin appears as a leading <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">pin.fill</span> at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.caption2</span>, secondary. One or the other, never both.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">Of the four git flags, one and a half earn pixels</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">isPrimary earns a word.</strong> &ldquo;Primary checkout&rdquo; on line two is exactly the reader's own mental model: this is the one the agent <em>did not</em> work in. It also explains why that row usually has no changes, which is otherwise the most confusing row in the list.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">isDetached earns a word conditionally</strong> — only when <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">displayName</span> fell through to the directory name. Then it is not a flag, it is the answer to &ldquo;why is this row a random string?&rdquo;. When there is an alias, detachment is irrelevant to reading a diff and stays off.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">hasUnbornHead earns the stats slot,</strong> not a flag: &ldquo;no commits yet&rdquo; where <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">+n −m</span> would be. Everything compares against the empty tree, so the real numbers are the whole repository and they are a lie about what changed.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">isLocked earns nothing, ever.</strong> It is git plumbing with no bearing on reading a diff, and v1 cannot prune worktrees, which is the only operation it would block.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the row is telling you how long this will take and how fresh it is, and nothing else.</p>
+    </div>
+  </div>
+
+  <!-- 2.3 THE MODE CONTROL + FLAT -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="width:390px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif;color:#000">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:6px 20px 10px">
+            <div style="font-family:-apple-system,'SF Pro Display',sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.4px">Worktrees</div>
+            <div style="font-size:19px;color:#007AFF;padding-bottom:8px">⋯</div>
+          </div>
+          <div style="padding:8px 16px 0">
+            <div style="background:#fff;border-radius:12px;overflow:hidden">
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">TLS pinning</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <svg width="8" height="11" viewBox="0 0 8 11" style="display:block;flex:0 0 8px;margin-bottom:1px"><path d="M4 11 L3.05 6.25 A2.55 2.55 0 1 1 4.95 6.25 Z" fill="rgba(60,60,67,0.6)"></path></svg>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">granita · 12 files ·</span>
+                  <span style="font-size:13px;color:#248A3D">+248</span><span style="font-size:13px;color:#D70015">−31</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">4m</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">Make the diff scroll never reflow above the reader's finger</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">granita · 34 files ·</span>
+                  <span style="font-size:13px;color:#248A3D">+1,204</span><span style="font-size:13px;color:#D70015">−318</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">22m</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">feat/session-index</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">granita · 3 files ·</span>
+                  <span style="font-size:13px;color:#248A3D">+47</span><span style="font-size:13px;color:#D70015">−6</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">2h</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:15px;font-family:ui-monospace,'SF Mono',Menlo,monospace;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">aura · detached ·</span>
+                  <span style="font-size:13px;color:#248A3D">+96</span><span style="font-size:13px;color:#D70015">−204</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">5h</span>
+                </div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+              <div style="padding:9px 16px 10px">
+                <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;line-height:1.24">Fix the coverage script's 3.13 warning</div>
+                <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">aura · 1 file ·</span>
+                  <span style="font-size:13px;color:#248A3D">+2</span><span style="font-size:13px;color:#D70015">−2</span>
+                  <span style="flex:1"></span>
+                  <span style="font-size:13px;color:rgba(60,60,67,0.6)">1d</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="height:320px"></div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">flat · project promoted onto line 2 · pin becomes a glyph</div>
+      </div>
+      <div>
+        <div style="width:390px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:rgba(0,0,0,0.28);font-family:-apple-system,'SF Pro Text',sans-serif;position:relative">
+          <div style="filter:blur(0.5px);opacity:0.5">
+            <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600;background:#F2F2F7"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+            <div style="background:#F2F2F7;padding:6px 20px 10px;font-family:-apple-system,'SF Pro Display',sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.4px">Worktrees</div>
+            <div style="background:#F2F2F7;height:660px"></div>
+          </div>
+          <div style="position:absolute;top:70px;right:14px;width:262px;background:rgba(249,249,249,0.94);backdrop-filter:blur(20px);border-radius:14px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,0.22)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;font-size:17px;letter-spacing:-0.2px"><span>Grouped by project</span><span style="color:#000">✓</span></div>
+            <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;font-size:17px;letter-spacing:-0.2px;color:rgba(0,0,0,0.9)"><span>Most recent first</span><span style="opacity:0"></span></div>
+            <div style="height:6px;background:rgba(60,60,67,0.08)"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 15px;font-size:17px;letter-spacing:-0.2px"><span>Show worktrees with<br>no changes</span><span style="font-size:15px;color:rgba(60,60,67,0.3)">○</span></div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">the mode control, as a toolbar Menu</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 c &nbsp;·&nbsp; WHICH CONTROL</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Not a segmented Picker. A toolbar Menu.</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">This is the &ldquo;which system control&rdquo; answer, and it is the strongest single recommendation in section two.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">A segmented Picker is a permanent 32pt band at the top of the list, plus its own 16pt of padding — 48pt of every scroll, forever, spent on a preference that is set once and then never touched again. It also lands directly above the &ldquo;Pinned&rdquo; section header, so the first thing the reader sees is two rows of chrome before any content.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> One toolbar <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;background:#EAE6DC;padding:1px 5px;border-radius:3px">Menu</span> holding a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;background:#EAE6DC;padding:1px 5px;border-radius:3px">Picker</span> with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.pickerStyle(.inline)</span> — the mode stays a Picker in code, and the two options render as checkable rows. The clincher is that there is a <em>third</em> preference (open call 3, below) and probably a fourth, and three toggles cannot be three segmented controls, but they are three menu rows without a redesign. On iPad the same menu sits in the sidebar's toolbar.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">And yes — flat mode promotes the project name.</strong> It moves onto line two ahead of the file count, where the section header used to be. That is the one field the list cannot lose, because without it a flat list of agent sentences has no idea what codebase it is talking about.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Sections in a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.searchable</span> scope bar — a scope bar filters, and this does not filter. A leading-edge sidebar toggle button: two states with no labels, so the reader has to press it to learn what it does.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> Mail's sort menu. You touch it in week one and then forget it exists.</p>
+    </div>
+  </div>
+  <!-- 2.4 RENAME SHEET -->
+  <div style="display:grid;grid-template-columns:1fr;gap:34px">
+    <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+      <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;min-width:0">
+
+        <!-- A: suggestion offered -->
+        <div>
+          <div style="width:390px;height:520px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#3A3A3C;position:relative;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <div style="height:74px;background:#2C2C2E"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:452px;background:#F2F2F7;border-radius:14px 14px 0 0;overflow:hidden">
+              <div style="display:flex;justify-content:center;padding:6px 0 0"><div style="width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,0.3)"></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 12px">
+                <span style="font-size:17px;color:#007AFF">Cancel</span>
+                <span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Rename</span>
+                <span style="font-size:17px;font-weight:600;color:#007AFF">Save</span>
+              </div>
+              <div style="padding:0 16px">
+                <div style="background:#fff;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.3);flex:1;letter-spacing:-0.2px">feat/tls-pinning</span>
+                </div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.35;padding:7px 16px 0">Empty means the derived name. This worktree will show as <span style="font-weight:600;color:rgba(60,60,67,0.85)">feat/tls-pinning</span>.</div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:22px 16px 7px">From the agent's session</div>
+                <div style="background:#fff;border-radius:12px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:12px;padding:11px 16px">
+                    <span style="font-size:17px;line-height:1.3;letter-spacing:-0.2px;flex:1;color:#000">Add TLS certificate pinning to the pairing handshake</span>
+                    <span style="font-size:17px;color:#007AFF;flex:0 0 auto">Use</span>
+                  </div>
+                </div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.35;padding:7px 16px 0">Taken from the Claude Code session that ran here. Editing it is expected.</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">a · a suggestion exists</div>
+        </div>
+
+        <!-- B: no suggestion -->
+        <div>
+          <div style="width:390px;height:520px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#3A3A3C;position:relative;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <div style="height:74px;background:#2C2C2E"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:452px;background:#F2F2F7;border-radius:14px 14px 0 0;overflow:hidden">
+              <div style="display:flex;justify-content:center;padding:6px 0 0"><div style="width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,0.3)"></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 12px">
+                <span style="font-size:17px;color:#007AFF">Cancel</span>
+                <span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Rename</span>
+                <span style="font-size:17px;font-weight:600;color:rgba(60,60,67,0.3)">Save</span>
+              </div>
+              <div style="padding:0 16px">
+                <div style="background:#fff;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px">
+                  <span style="font-size:17px;color:rgba(60,60,67,0.3);flex:1;letter-spacing:-0.2px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</span>
+                </div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.35;padding:7px 16px 0">This worktree is detached and has no session Granita could read, so its only name is its directory. Anything you type here replaces it.</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">b · nothing to suggest</div>
+        </div>
+
+        <!-- C: clearing -->
+        <div>
+          <div style="width:390px;height:520px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#3A3A3C;position:relative;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <div style="height:74px;background:#2C2C2E"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:452px;background:#F2F2F7;border-radius:14px 14px 0 0;overflow:hidden">
+              <div style="display:flex;justify-content:center;padding:6px 0 0"><div style="width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,0.3)"></div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px 12px">
+                <span style="font-size:17px;color:#007AFF">Cancel</span>
+                <span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Rename</span>
+                <span style="font-size:17px;font-weight:600;color:#007AFF">Save</span>
+              </div>
+              <div style="padding:0 16px">
+                <div style="background:#fff;border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px">
+                  <span style="font-size:17px;flex:1;letter-spacing:-0.2px;color:#000">TLS pinning<span style="display:inline-block;width:1.5px;height:19px;background:#007AFF;vertical-align:-4px;margin-left:1px"></span></span>
+                  <span style="font-size:17px;color:rgba(60,60,67,0.3)">⊗</span>
+                </div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.35;padding:7px 16px 0">Clear the field and save to go back to <span style="font-weight:600;color:rgba(60,60,67,0.85)">feat/tls-pinning</span>.</div>
+                <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:22px 16px 7px">From the agent's session</div>
+                <div style="background:#fff;border-radius:12px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:12px;padding:11px 16px">
+                    <span style="font-size:17px;line-height:1.3;letter-spacing:-0.2px;flex:1">Add TLS certificate pinning to the pairing handshake</span>
+                    <span style="font-size:17px;color:#007AFF;flex:0 0 auto">Use</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">c · undoing an alias you set</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 d &nbsp;·&nbsp; THE RENAME SHEET</div>
+        <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">The footer previews the result, so &ldquo;clear&rdquo; needs no explaining</h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">One <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.sheet</span> at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.presentationDetents([.medium])</span>, a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NavigationStack</span> inside it, Cancel and Save. Nothing here is a new control.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The one idea worth keeping.</strong> The section footer always states what the row will read after Save, and it updates live as the field changes. That single sentence answers all three of your cases at once. An empty field is not a mystery — the footer says <em>&ldquo;will show as feat/tls-pinning&rdquo;</em>. The placeholder is the derived name, so an empty field even <em>looks</em> like the fallback it will produce.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Clearing an alias needs no destructive button.</strong> The field's clear glyph plus Save is the whole gesture, and the footer confirms it before the tap. A red &ldquo;Remove alias&rdquo; row would put a destructive treatment on an operation that touches no git state and is reversible in four seconds.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Do not prefill with the suggestion.</strong> The specification says prefilled; I would offer it instead. A prefilled field means the reader's first act is to select-all and delete 51 characters on a phone keyboard, and it hides the difference between &ldquo;I accepted the agent's summary&rdquo; and &ldquo;I named this&rdquo;. Offering it as a tappable row costs one tap for the accept case and saves the delete for every other case. The <em>row</em> shows the suggestion at full length — two lines if it needs them — because this is the only place in the app where all 60 characters are worth reading.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">With no suggestion, the section is absent and the footer says why in the reader's terms: no session, or detached, or both. That turns an empty sheet into an explanation.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> An <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.alert</span> with a text field — it cannot hold a two-line suggestion, cannot show a live footer, and gets clipped by the keyboard. A full-screen push: renaming is a four-second job and does not deserve a navigation event.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> renaming a photo album. You are never unsure what will be on the row when you let go.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2.5 STATES + OPEN CALL 3 -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div style="width:390px;height:430px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="padding:6px 20px 10px;font-family:-apple-system,'SF Pro Display',sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.4px">Worktrees</div>
+          <div style="height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 40px;text-align:center">
+            <div style="font-size:44px;color:#8E8E93;margin-bottom:14px">⌸</div>
+            <div style="font-size:20px;font-weight:600;letter-spacing:-0.3px;margin-bottom:6px">No projects yet</div>
+            <div style="font-size:15px;line-height:1.35;color:rgba(60,60,67,0.6)">Add a repository in Granita's menu bar item on your Mac, under Projects. It will appear here straight away.</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">no projects enabled · no button, on purpose</div>
+      </div>
+      <div>
+        <div style="width:390px;height:430px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:6px 20px 10px"><div style="font-family:-apple-system,'SF Pro Display',sans-serif;font-size:34px;font-weight:700;letter-spacing:-0.4px">Worktrees</div><div style="font-size:19px;color:#007AFF;padding-bottom:8px">⋯</div></div>
+          <div style="height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 40px;text-align:center">
+            <div style="font-size:42px;color:#8E8E93;margin-bottom:14px">✓</div>
+            <div style="font-size:20px;font-weight:600;letter-spacing:-0.3px;margin-bottom:6px">Nothing to review</div>
+            <div style="font-size:15px;line-height:1.35;color:rgba(60,60,67,0.6);margin-bottom:18px">All 9 worktrees across granita and aura are clean.</div>
+            <div style="font-size:17px;color:#007AFF">Show them anyway</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">enabled, nothing dirty · the count reconciles</div>
+      </div>
+      <div>
+        <div style="width:390px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif;padding-bottom:16px">
+          <div style="font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.04em;padding:18px 32px 7px">granita</div>
+          <div style="margin:0 16px;background:#fff;border-radius:12px;overflow:hidden">
+            <div style="padding:9px 16px 10px">
+              <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px">Rewrite the whole diff pipeline</div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                <span style="font-size:13px;color:rgba(60,60,67,0.6)">312 files ·</span>
+                <span style="font-size:13px;color:#248A3D;font-variant-numeric:tabular-nums">+18,402</span>
+                <span style="font-size:13px;color:#D70015;font-variant-numeric:tabular-nums">−9,114</span>
+                <span style="flex:1"></span><span style="font-size:13px;color:rgba(60,60,67,0.6)">8m</span>
+              </div>
+            </div>
+            <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+            <div style="padding:9px 16px 10px">
+              <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px">Try the Xcode 26 toolchain</div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                <span style="font-size:13px;color:rgba(60,60,67,0.6)">no changes</span>
+                <span style="flex:1"></span><span style="font-size:13px;color:rgba(60,60,67,0.6)">2d</span>
+              </div>
+            </div>
+            <div style="height:0.5px;background:rgba(60,60,67,0.29);margin-left:16px"></div>
+            <div style="padding:9px 16px 10px;opacity:1">
+              <div style="font-size:17px;font-weight:600;letter-spacing:-0.25px;color:rgba(60,60,67,0.6)">main</div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin-top:2px">
+                <span style="font-size:13px;color:rgba(60,60,67,0.6)">primary checkout · no commits yet</span>
+                <span style="flex:1"></span><span style="font-size:13px;color:rgba(60,60,67,0.6)">2d</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">312 files beside zero · crop · no dimming</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 e &nbsp;·&nbsp; STATES &nbsp;+&nbsp; OPEN CALL 3</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Hide the quiet ones, and say how many you hid</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation for open call 3.</strong> Hide worktrees with no changes by default, and put the count in the list's footer as a tappable line: <em>&ldquo;6 worktrees with no changes are hidden. Show them.&rdquo;</em> — visible in the grouped frame above. That kills your own objection: the list now <em>states</em> what it is hiding, so the number in the menu bar and the number on the phone reconcile on screen instead of contradicting each other silently. The permanent version of the same switch lives in the toolbar menu.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Showing them dimmed — dimming reads as disabled, and a reader who taps a dimmed row and gets a working screen learns to distrust dimming everywhere else in the app. Showing them in a collapsed &ldquo;Quiet&rdquo; section: a section header per project plus a Quiet section per project is more chrome than content on a slow day.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">The four states, briefly</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">No projects enabled.</strong> A <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ContentUnavailableView</span> with no action, because there is nothing on this device to tap. The description names the exact menu — &ldquo;Granita's menu bar item, under Projects&rdquo; — so the sentence <em>is</em> the instruction. A disabled button, or one that opens a &ldquo;do this on your Mac&rdquo; modal, would be a control that cannot act.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">Enabled but all clean.</strong> Same control, and here the action is real: &ldquo;Show them anyway&rdquo; reveals the hidden clean worktrees. The count in the description is what makes this state trustworthy rather than alarming.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">One project only.</strong> Not a special case. Leave grouped mode on and let the single section header be the project name — it costs 28pt once and it is the only place that name appears. Auto-switching to flat would make the list change shape when a second project is added, which is a worse surprise than a redundant header.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400">312 files beside zero.</strong> No treatment needed beyond writing &ldquo;no changes&rdquo; where the numbers would be. The numbers are already tabular and already coloured; a 312-file row is visually heavier than a clean one without any help, and that is the correct hierarchy — the big one is the one you came for.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> an inbox that has already thrown away the newsletters and told you it did.</p>
+    </div>
+  </div>
+
+  <!-- 2.6 IPAD -->
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+    <div>
+      <div style="width:840px;aspect-ratio:1194/834;container-type:inline-size;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#F2F2F7;display:flex;font-family:-apple-system,'SF Pro Text',sans-serif;color:#000">
+        <div style="flex:0 0 26.8%;background:#F2F2F7;border-right:0.5px solid rgba(60,60,67,0.2);display:flex;flex-direction:column">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:2.6% 4% 1.6%">
+            <div style="font-family:-apple-system,'SF Pro Display',sans-serif;font-size:2.1cqw;font-weight:700;letter-spacing:-0.02em">Worktrees</div>
+            <div style="font-size:1.5cqw;color:#007AFF">⋯</div>
+          </div>
+          <div style="padding:0 3.4%">
+            <div style="font-size:1.05cqw;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.05em;padding:0 3% 0.6%">Pinned</div>
+            <div style="background:#fff;border-radius:0.9cqw;padding:0.9cqw 1.2cqw">
+              <div style="font-size:1.35cqw;font-weight:600;letter-spacing:-0.01em">TLS pinning</div>
+              <div style="display:flex;gap:0.4cqw;align-items:baseline;margin-top:0.15cqw"><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">granita ·</span><span style="font-size:1.05cqw;color:#248A3D">+248</span><span style="font-size:1.05cqw;color:#D70015">−31</span><span style="flex:1"></span><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">4m</span></div>
+            </div>
+            <div style="font-size:1.05cqw;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.05em;padding:1.6% 3% 0.6%">granita</div>
+            <div style="background:#fff;border-radius:0.9cqw;overflow:hidden">
+              <div style="padding:0.9cqw 1.2cqw;background:#007AFF">
+                <div style="font-size:1.35cqw;font-weight:600;color:#fff;letter-spacing:-0.01em">Make the diff scroll never reflow above the reader's finger</div>
+                <div style="display:flex;gap:0.4cqw;align-items:baseline;margin-top:0.15cqw"><span style="font-size:1.05cqw;color:rgba(255,255,255,0.85)">34 files ·</span><span style="font-size:1.05cqw;color:#fff">+1,204</span><span style="font-size:1.05cqw;color:rgba(255,255,255,0.85)">−318</span><span style="flex:1"></span><span style="font-size:1.05cqw;color:rgba(255,255,255,0.85)">22m</span></div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+              <div style="padding:0.9cqw 1.2cqw">
+                <div style="font-size:1.35cqw;font-weight:600;letter-spacing:-0.01em">feat/session-index</div>
+                <div style="display:flex;gap:0.4cqw;align-items:baseline;margin-top:0.15cqw"><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">3 files ·</span><span style="font-size:1.05cqw;color:#248A3D">+47</span><span style="font-size:1.05cqw;color:#D70015">−6</span><span style="flex:1"></span><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">2h</span></div>
+              </div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+              <div style="padding:0.9cqw 1.2cqw">
+                <div style="font-size:1.35cqw;font-weight:600;color:rgba(60,60,67,0.6);letter-spacing:-0.01em">main</div>
+                <div style="display:flex;gap:0.4cqw;align-items:baseline;margin-top:0.15cqw"><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">primary checkout · no changes</span><span style="flex:1"></span><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">3d</span></div>
+              </div>
+            </div>
+            <div style="font-size:1.05cqw;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.05em;padding:1.6% 3% 0.6%">aura</div>
+            <div style="background:#fff;border-radius:0.9cqw;padding:0.9cqw 1.2cqw">
+              <div style="font-size:1.2cqw;font-family:ui-monospace,'SF Mono',Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">bridge-cse_01W9sY8PbT2Du1dFGeYGcwWo</div>
+              <div style="display:flex;gap:0.4cqw;align-items:baseline;margin-top:0.25cqw"><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">detached ·</span><span style="font-size:1.05cqw;color:#248A3D">+96</span><span style="font-size:1.05cqw;color:#D70015">−204</span><span style="flex:1"></span><span style="font-size:1.05cqw;color:rgba(60,60,67,0.6)">5h</span></div>
+            </div>
+            <div style="font-size:1.05cqw;color:rgba(60,60,67,0.6);padding:1.2cqw 3% 0;line-height:1.35">6 with no changes are hidden. <span style="color:#007AFF">Show them</span></div>
+          </div>
+        </div>
+        <div style="flex:1;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 12%">
+          <div style="font-size:4cqw;color:#8E8E93;margin-bottom:1.2cqw">▤</div>
+          <div style="font-size:1.9cqw;font-weight:600;letter-spacing:-0.02em;margin-bottom:0.4cqw">Choose a worktree</div>
+          <div style="font-size:1.35cqw;line-height:1.35;color:rgba(60,60,67,0.6)">Its changed files and their diffs appear here.</div>
+        </div>
+      </div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">iPad 1194 × 834 · column one at 320pt · nothing selected</div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§2 &nbsp;·&nbsp; IPAD</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">320pt makes the same row work harder, not differently</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">A <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NavigationSplitView</span> sidebar is 320pt at this size class — <em>narrower</em> than the iPhone's 390. So the iPad is the harder layout for this row, not the easier one, and the drop order in the table above is what saves it: the 58-character suggestion goes to three lines at 320pt unless the line limit holds it at two, and the file count is the first thing the second line loses.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Two things the iPad gets for free by using the right control. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NavigationLink</span> draws no chevron in a sidebar and instead gives the selected row the tinted selection you can see on the second row — which is also the answer to §1's chevron. And the empty detail column is a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ContentUnavailableView</span>, the same control as every other empty state in the app.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> Mail with the mailbox list open. The sidebar is a place you look, not a place you work.</p>
+    </div>
+  </div>
+  <!-- ══════════ §3 ══════════ -->
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section three · first drawing · M5</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The file selector</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">Keep the sheet. One attribute turns it from a modal into a drawer, and that is what answers open call 1. Seven statuses become four colour treatments, and the viewed checkbox stops being a checkbox in here.</p>
+    </div>
+  </div>
+
+  <!-- 3.1 THE SHEET -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;position:relative;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <!-- diff visible behind -->
+          <div style="position:absolute;inset:0;background:#fff">
+            <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 16px 8px;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+              <span style="font-size:17px;color:#007AFF">‹</span>
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.3px;flex:1">TLS pinning</span>
+              <span style="font-size:15px;color:#007AFF">12 files</span>
+            </div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:16px;color:#000;padding-top:4px">
+              <div style="display:flex;background:rgba(116,116,128,0.09);padding:3px 0"><span style="width:34px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">@@</span><span style="color:rgba(60,60,67,0.6)">func handshake(with endpoint:)</span></div>
+              <div style="display:flex"><span style="width:34px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">142</span><span>    let trust = try await verify(</span></div>
+              <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:34px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">143</span><span>+       pinnedTo: <span style="background:rgba(52,199,89,0.26)">spki</span>,</span></div>
+              <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:34px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)"></span><span>−       pinnedTo: <span style="background:rgba(255,59,48,0.26)">nil</span>,</span></div>
+              <div style="display:flex"><span style="width:34px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">144</span><span>    )</span></div>
+            </div>
+          </div>
+          <!-- scrim is deliberately absent -->
+          <div style="position:absolute;left:0;right:0;bottom:0;height:470px;background:#F2F2F7;border-radius:14px 14px 0 0;box-shadow:0 -1px 0 rgba(60,60,67,0.2),0 -18px 40px rgba(0,0,0,0.10);overflow:hidden">
+            <div style="display:flex;justify-content:center;padding:6px 0 0"><div style="width:36px;height:5px;border-radius:3px;background:rgba(60,60,67,0.3)"></div></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px 6px">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Files</span>
+              <span style="font-size:15px;color:#007AFF">⋯</span>
+            </div>
+            <div style="padding:2px 8px 0;font-size:15px">
+              <!-- depth 0 compacted -->
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packages/Granita</span>
+              </div>
+              <!-- depth 1 -->
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 22px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1">Client</span>
+              </div>
+              <!-- depth 2 -->
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 36px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1">Connection</span>
+              </div>
+              <!-- depth 3 compacted, head truncated -->
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 50px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Domain</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 64px;min-height:34px;box-sizing:border-box">
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:rgba(60,60,67,0.6);width:11px">M</span>
+                <span style="flex:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(60,60,67,0.6)">DiscoveryState.swift</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+12</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−3</span>
+                <span style="font-size:13px;color:#007AFF;width:14px;text-align:center">✓</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 64px;min-height:34px;box-sizing:border-box">
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:#248A3D;width:11px">A</span>
+                <span style="flex:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PinnedCertificate.swift</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+84</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−0</span>
+                <span style="width:14px"></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 50px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▸</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1">Ui</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+31</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−18</span>
+                <span style="font-size:13px;color:#007AFF;width:14px;text-align:center">✓</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 22px;min-height:32px;box-sizing:border-box">
+                <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 36px;min-height:34px;box-sizing:border-box">
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:rgba(60,60,67,0.6);width:11px">M</span>
+                <span style="flex:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">DiffModels.swift</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+26</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−0</span>
+                <span style="width:14px"></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 36px;min-height:34px;box-sizing:border-box">
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:#C93400;width:11px">C</span>
+                <span style="flex:1;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WordDiff.swift</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+184</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−7</span>
+                <span style="width:14px"></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 8px;min-height:34px;box-sizing:border-box">
+                <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:rgba(60,60,67,0.6);width:11px">M</span>
+                <span style="flex:1;letter-spacing:-0.2px">project.yml</span>
+                <span style="font-size:12px;color:#248A3D;font-variant-numeric:tabular-nums">+3</span><span style="font-size:12px;color:#D70015;font-variant-numeric:tabular-nums">−1</span>
+                <span style="width:14px"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">medium detent · no scrim · the diff still scrolls behind it</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:26px;min-width:0">
+        <!-- anatomy blowup -->
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:28px 30px 30px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#8A8378;margin-bottom:18px">the hardest row in the product, measured</div>
+          <div style="width:374px;background:#F2F2F7;border:1px solid rgba(60,60,67,0.16);border-radius:8px;padding:8px 8px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative">
+            <div style="display:flex;align-items:center;gap:6px;padding:7px 8px 7px 64px;min-height:32px;box-sizing:border-box">
+              <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden">&hellip;ServerDiscoveryViewSnapshotTests</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:0;margin-top:10px;width:374px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378">
+            <div style="width:72px;border-top:1px solid #C9B98F;padding-top:4px;text-align:center">56pt indent<br>clamped at 4</div>
+            <div style="width:22px;border-top:1px solid #C9B98F;padding-top:4px;text-align:center">▾</div>
+            <div style="flex:1;border-top:1px solid #C9B98F;padding-top:4px;text-align:center">≈284pt ⇒ 33 characters, head-truncated</div>
+          </div>
+          <p style="font-family:Georgia,serif;font-size:15px;line-height:1.6;color:#4A463F;margin:20px 0 0;max-width:52ch">The real string is 77 characters: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;overflow-wrap:anywhere">Apps/GranitaMobileSnapshotTests/__Snapshots__/ServerDiscoveryViewSnapshotTests</span>, compacted to one row by <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">FileTree.compacted</span>. You see the last 32. That is the answer to §3a: it fits, and what you read is the end.</p>
+        </div>
+        <!-- status legend -->
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:28px 30px 30px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#8A8378;margin-bottom:18px">seven statuses, four treatments</div>
+          <div style="display:grid;grid-template-columns:26px 1fr;gap:10px 12px;font-family:Georgia,serif;font-size:15px;line-height:1.5;align-items:baseline">
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;color:#248A3D">A</span><span><strong style="font-weight:400">added, untracked</strong> — green. To a reader of uncommitted work the difference is git bookkeeping, so they share the treatment and differ only in the accessibility label.</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;color:rgba(60,60,67,0.6)">M<span style="opacity:0.4">T</span></span><span><strong style="font-weight:400">modified, typeChanged</strong> — no colour at all. Modified is four rows in five; colouring the default case spends the palette on the thing that carries no information. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">T</span> keeps its own letter and inherits the silence.</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;color:#D70015">D</span><span><strong style="font-weight:400">deleted</strong> — red, matching the deletion tint in the diff below it.</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;color:#3634A3">R</span><span><strong style="font-weight:400">renamed</strong> — indigo. Not green: a rename adds no code, and reading it as an addition is the mistake this letter exists to prevent.</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;color:#C93400">C</span><span><strong style="font-weight:400">conflicted</strong> — orange, and the only status that also survives into the file header in the diff. It is the one status that means <em>you must look at this</em>.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§3 a, b &nbsp;+&nbsp; OPEN CALL 1</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Keep the sheet. Make it a drawer, not a modal.</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation for open call 1.</strong> The selector earns its screen, but not as a modal. Add <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;background:#EAE6DC;padding:1px 5px;border-radius:3px">.presentationBackgroundInteraction(.enabled(upThrough: .medium))</span> and drop the dimming. Now the diff keeps scrolling behind the sheet, tapping a file jumps the scroll <em>with the list still open</em>, and the reader can walk a change set file by file without a dismiss-present cycle between each one. That is a materially different tool from the modal version, and it is one modifier.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: a jump-to-file Menu in the diff toolbar.</strong> It is cheaper and I nearly recommended it. It loses on three counts. A <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">Menu</span> cannot indent, so directory grouping — which you locked — cannot be expressed in it. It cannot scroll to 300 items usefully and cannot be searched. And it cannot show <em>viewed</em> across the whole set, which is the selector's second job and the only place the reader can see how much is left. A menu answers &ldquo;jump&rdquo;; it does not answer &ldquo;where am I in this review&rdquo;.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">What survives on the row, in order</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400">name → status → viewed → stats.</strong> The stats go first when width runs out, because the file header in the diff repeats them 200ms later. Then viewed collapses into the name going secondary — a dimmed filename already means &ldquo;done&rdquo; and needs no glyph. The floor is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">M ServerDiscoveryView.swift</span>, and at 390pt inside a sheet at depth 3 that leaves about 200pt for the name, which is 24 characters. Most Swift filenames in this repository are longer than that, so the name head-truncates too: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">…DiscoveryViewSnapshotTests.swift</span>.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The status letter and the viewed mark can share a row, but not an edge.</strong> Status leads, because it is part of the file's identity and it aligns into a column the eye can scan down. Viewed trails. Putting both on the trailing edge is exactly the two-checkboxes problem you predicted.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">And the viewed mark is not a control in here.</strong> A 32pt row inside a sheet cannot hold two tap targets without generating mis-taps, and the row's job is to jump. It is a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">checkmark</span> that reports state. The toggle lives in the diff's file header, where the reader is when they finish a file.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the Photos album drawer: a thing you pull up, use, and leave up.</p>
+    </div>
+  </div>
+
+  <!-- 3.2 FLAT + STATES -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif;padding:8px 8px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px 10px"><span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Files</span><span style="font-size:15px;color:#007AFF">⋯</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;min-height:34px;box-sizing:border-box">
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:rgba(60,60,67,0.6);width:11px">M</span>
+            <span style="flex:1;font-size:15px;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left"><span style="color:rgba(60,60,67,0.6);font-size:13px">Packages/Granita/Client/Connection/Domain/</span>DiscoveryState.swift</span>
+            <span style="font-size:13px;color:#007AFF;width:14px;text-align:center">✓</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;min-height:34px;box-sizing:border-box">
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:#248A3D;width:11px">A</span>
+            <span style="flex:1;font-size:15px;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left"><span style="color:rgba(60,60,67,0.6);font-size:13px">Packages/Granita/Client/Connection/Domain/</span>PinnedCertificate.swift</span>
+            <span style="width:14px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;min-height:34px;box-sizing:border-box">
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:#C93400;width:11px">C</span>
+            <span style="flex:1;font-size:15px;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left"><span style="color:rgba(60,60,67,0.6);font-size:13px">Packages/Granita/Core/Diff/Domain/</span>WordDiff.swift</span>
+            <span style="width:14px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;min-height:34px;box-sizing:border-box">
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;color:rgba(60,60,67,0.6);width:11px">M</span>
+            <span style="flex:1;font-size:15px;letter-spacing:-0.2px">project.yml</span>
+            <span style="width:14px"></span>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">flat · same row, two-tone label, head-truncated</div>
+      </div>
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif;padding:8px 8px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px 10px"><span style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Files</span><span style="font-size:15px;color:#007AFF">⋯</span></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 8px;min-height:32px;box-sizing:border-box">
+            <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Packages/Granita/Server/Api</span>
+            <span style="font-size:12px;color:#248A3D">+412</span><span style="font-size:12px;color:#D70015">−96</span>
+            <span style="font-size:13px;color:#007AFF;width:14px;text-align:center">✓</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 8px;min-height:32px;box-sizing:border-box">
+            <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▸</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1">Sessions</span>
+            <span style="font-size:12px;color:#248A3D">+188</span><span style="font-size:12px;color:#D70015">−12</span>
+            <span style="width:14px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:7px 8px;min-height:32px;box-sizing:border-box">
+            <span style="width:12px;font-size:10px;color:rgba(60,60,67,0.6)">▸</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px;color:rgba(60,60,67,0.75);flex:1">Worktrees</span>
+            <span style="font-size:12px;color:rgba(60,60,67,0.3)">78 files</span>
+            <span style="width:14px"></span>
+          </div>
+          <div style="height:0.5px;background:rgba(60,60,67,0.22);margin:8px 8px"></div>
+          <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.4;padding:2px 10px">Showing the first 1,000 of 1,314 changed files. The rest are not served.</div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">300+ files · aggregated, auto-collapsed, truncation as a footer</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§3 c, d, e &nbsp;·&nbsp; DIRECTORIES, FLAT, STATES</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">A directory aggregates only while it is shut</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Yes to both halves of §3c, with a rule that keeps them from fighting. A collapsed directory carries the summed <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">+n −m</span> of everything inside it; an expanded one carries none, because its children are right there with their own numbers and the parent's total becomes noise you have to mentally subtract. Same for viewed: a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">checkmark</span> on the directory when every descendant is viewed, at either state, because &ldquo;this whole subtree is done&rdquo; is the most useful thing the tree can tell you. Above roughly 20 children a directory arrives collapsed, which is what makes the 80-directory case readable.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">§3d: same row, different label.</strong> Not a different design. The path splits into two runs in one <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">Text</span>: the directory prefix secondary at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.footnote</span>, the filename primary at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.subheadline</span>, head-truncated so the prefix erodes and the filename never does. The status column, the stats and the viewed mark are untouched, which is the point — one row implementation, two labels.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">One changed file.</strong> No tree. At three files or fewer, or a single directory, render flat and do not offer the toggle — a tree over one file is two rows of ceremony for one row of content.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">Over 1,000 files.</strong> A plain footer line, not an alert. The server already returns <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">isTruncated</span> and a reason; print the reason. Say &ldquo;not served&rdquo; rather than &ldquo;load more&rdquo;, because <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">WorktreeLimits.standard</span> will not serve them and a button that cannot succeed is worse than a sentence.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400">Everything viewed.</strong> Not a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ContentUnavailableView</span> — the files are still there and still openable. The list renders normally with every name secondary and every check set, and the footer says &ldquo;All 12 files viewed&rdquo;. The reader's next move is to leave, and the app should not congratulate them.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the Xcode navigator, minus the parts of the Xcode navigator nobody uses on a phone.</p>
+    </div>
+  </div>
+  <!-- ══════════ §4 ══════════ -->
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section four · first drawing · M5</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The continuous diff</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">The sticky header survives. One gutter column survives; two do not. The nested backgrounds survive in light and have to be rescued by the text in dark. And focus mode should be cut on iPhone.</p>
+    </div>
+  </div>
+
+  <!-- 4.1 THE SCROLL -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;position:relative;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-size:15px;font-weight:600"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <!-- STUCK FILE HEADER -->
+          <div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:28px;background:rgba(242,242,247,0.94);border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:11px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:rgba(60,60,67,0.6);width:9px">M</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Client/Connection/Ui/ServerDiscoveryView.swift</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#248A3D">+9</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#D70015">−11</span>
+            <span style="font-size:12px;color:rgba(60,60,67,0.3)">○</span>
+          </div>
+          <!-- code -->
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:17px;color:#000">
+            <div style="display:flex;background:rgba(116,116,128,0.09);border-bottom:0.5px solid rgba(60,60,67,0.14)">
+              <span style="flex:1;padding:2px 0 2px 8px;color:rgba(60,60,67,0.6);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">private func list(of servers: [DiscoveredServer])</span>
+              <span style="padding:2px 10px;color:#007AFF;font-size:11px">↕</span>
+            </div>
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">84</span><span style="white-space:pre">    List(servers) { server in</span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">      <span style="background:rgba(255,59,48,0.28);color:#000">Button {</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">        <span style="background:rgba(255,59,48,0.28);color:#000">onSelect(server)</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">      } <span style="background:rgba(255,59,48,0.28);color:#000">label: {</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">        <span style="background:rgba(255,59,48,0.28);color:#000">LabeledContent {</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">85</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">      <span style="background:rgba(52,199,89,0.28);color:#000">NavigationLink(value: server) {</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">86</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">        Label(server.name, systemImage:</span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">87</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">          .<span style="background:rgba(52,199,89,0.28);color:#000">lineLimit(2)</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">88</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">          .<span style="background:rgba(52,199,89,0.28);color:#000">truncationMode(.middle)</span></span></div>
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">89</span><span style="white-space:pre">      }</span></div>
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">90</span><span style="white-space:pre">    }</span></div>
+            <div style="display:flex;background:rgba(116,116,128,0.09);border-top:0.5px solid rgba(60,60,67,0.14);border-bottom:0.5px solid rgba(60,60,67,0.14)">
+              <span style="flex:1;padding:2px 0 2px 8px;color:rgba(60,60,67,0.6);font-size:10.5px">public var body: some View</span>
+              <span style="padding:2px 10px;color:#007AFF;font-size:11px">↕</span>
+            </div>
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">41</span><span style="white-space:pre">        .navigationTitle("Granita")</span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">42</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">        .<span style="background:rgba(52,199,89,0.28);color:#000">navigationDestination(for: Discovere</span></span></div>
+          </div>
+          <!-- IN-FLOW FILE HEADER -->
+          <div style="padding:12px 12px 10px;background:#F2F2F7;border-top:0.5px solid rgba(60,60,67,0.29);border-bottom:0.5px solid rgba(60,60,67,0.29);margin-top:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:rgba(60,60,67,0.6)">▾</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/DiffModels.swift</span>
+              <span style="font-size:14px;color:#007AFF">○</span>
+              <span style="font-size:15px;color:#007AFF">⋯</span>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:7px;padding-left:19px;margin-top:2px">
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(60,60,67,0.6)">modified</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#248A3D">+26</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#D70015">−0</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(60,60,67,0.3)">· Swift · 1 hunk</span>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:17px">
+            <div style="display:flex;background:rgba(116,116,128,0.09);border-bottom:0.5px solid rgba(60,60,67,0.14)"><span style="flex:1;padding:2px 0 2px 8px;color:rgba(60,60,67,0.6);font-size:10.5px">public struct WordSegment</span><span style="padding:2px 10px;color:#007AFF;font-size:11px">↕</span></div>
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">61</span><span style="white-space:pre">    public let text: String</span></div>
+          </div>
+          <!-- COLLAPSED BARS -->
+          <div style="border-top:0.5px solid rgba(60,60,67,0.29)">
+            <div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;background:#fff;border-bottom:0.5px solid rgba(60,60,67,0.2)">
+              <span style="font-size:11px;color:rgba(60,60,67,0.6)">▸</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:rgba(60,60,67,0.6);width:9px">M</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;color:rgba(60,60,67,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Server/Api/Presentation/ApiRoutes.swift</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:rgba(60,60,67,0.3)">viewed 4 minutes ago</div>
+              </div>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#248A3D">+412</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#D70015">−96</span>
+              <span style="font-size:12px;color:#007AFF">✓</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;background:#fff;border-bottom:0.5px solid rgba(60,60,67,0.2)">
+              <span style="font-size:11px;color:rgba(60,60,67,0.6)">▸</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:rgba(60,60,67,0.6);width:9px">M</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/UnifiedDiffParser.swift</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:rgba(60,60,67,0.6)">1,558 lines · Load diff</div>
+              </div>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#248A3D">+1,240</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#D70015">−318</span>
+              <span style="font-size:12px;color:rgba(60,60,67,0.3)">○</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;background:#fff;border-bottom:0.5px solid rgba(60,60,67,0.2)">
+              <span style="font-size:11px;color:rgba(60,60,67,0.18)">▸</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:#248A3D;width:9px">A</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Art/icon/granita-tinted.svg</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:rgba(60,60,67,0.6)">binary · no diff to show</div>
+              </div>
+              <span style="font-size:12px;color:rgba(60,60,67,0.3)">○</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;background:#fff">
+              <span style="font-size:11px;color:rgba(60,60,67,0.18)">▸</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:#3634A3;width:9px">R</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Sessions/Data/SessionIndex.swift</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:rgba(60,60,67,0.6)">renamed from SessionStore.swift · no content change</div>
+              </div>
+              <span style="font-size:12px;color:rgba(60,60,67,0.3)">○</span>
+            </div>
+          </div>
+          <!-- pill -->
+          <div style="position:absolute;left:0;right:0;bottom:34px;display:flex;justify-content:center">
+            <div style="background:rgba(28,28,30,0.92);color:#fff;font-size:13px;font-weight:600;padding:8px 16px;border-radius:20px;letter-spacing:-0.1px;box-shadow:0 6px 20px rgba(0,0,0,0.24)">Changes available</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">390 × 844 · sticky header, one gutter, wrap off, no toolbar</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:26px">
+        <!-- gutter measurement -->
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:28px 30px 30px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#8A8378;margin-bottom:18px">§4b · the gutter, measured at 390pt</div>
+          <div style="width:374px;background:#fff;border:1px solid rgba(60,60,67,0.16);border-radius:8px;overflow:hidden;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:17px;margin-bottom:8px">
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3);background:rgba(116,116,128,0.05)">142</span><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3);background:rgba(116,116,128,0.05)">142</span><span style="white-space:pre;overflow:hidden">    let trust = try await verify(cert</span></div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378;margin-bottom:22px">two columns · 78pt of gutter · <strong style="color:#B4453C">41 characters of code</strong></div>
+          <div style="width:374px;background:#fff;border:1px solid rgba(60,60,67,0.16);border-radius:8px;overflow:hidden;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:17px;margin-bottom:8px">
+            <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3);background:rgba(116,116,128,0.05)">142</span><span style="white-space:pre;overflow:hidden">    let trust = try await verify(certificate</span></div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378">one column · 39pt · <strong style="color:#3E7C4A">51 characters</strong> · still not 80</div>
+        </div>
+        <!-- word segments across palettes -->
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:28px 30px 30px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;color:#8A8378;margin-bottom:18px">§4c · what &ldquo;stronger&rdquo; is, in three palettes</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="width:374px;border:1px solid rgba(60,60,67,0.16);border-radius:6px;overflow:hidden;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:18px;background:#fff">
+                <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">.font(.footnote.weight(.<span style="background:rgba(255,59,48,0.28);color:#000">semibold</span>))</span></div>
+                <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">88</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">.font(.footnote.weight(.<span style="background:rgba(52,199,89,0.28);color:#000">bold</span>))</span></div>
+              </div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378;margin-top:5px">light · row 10% → segment 28% · text stays at 55% outside the segment</div>
+            </div>
+            <div>
+              <div style="width:374px;border:1px solid rgba(84,84,88,0.6);border-radius:6px;overflow:hidden;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:18px;background:#000">
+                <div style="display:flex;background:rgba(255,69,58,0.16)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(235,235,245,0.3)"></span><span style="white-space:pre;color:rgba(235,235,245,0.5)">.font(.footnote.weight(.<span style="background:rgba(255,69,58,0.34);color:#fff;font-weight:600">semibold</span>))</span></div>
+                <div style="display:flex;background:rgba(48,209,88,0.16)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(235,235,245,0.3)">88</span><span style="white-space:pre;color:rgba(235,235,245,0.5)">.font(.footnote.weight(.<span style="background:rgba(48,209,88,0.34);color:#fff;font-weight:600">bold</span>))</span></div>
+              </div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378;margin-top:5px">dark · the <strong style="color:#23211E">text</strong> carries it: 50% → 100% white. Backgrounds alone fail here.</div>
+            </div>
+            <div>
+              <div style="width:374px;border:1px solid rgba(60,60,67,0.16);border-radius:6px;overflow:hidden;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:18px;background:#fff">
+                <div style="display:flex;background:rgba(255,149,0,0.12)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">.font(.footnote.weight(.<span style="background:rgba(255,149,0,0.34);color:#000">semibold</span>))</span></div>
+                <div style="display:flex;background:rgba(0,122,255,0.10)"><span style="width:26px;text-align:right;padding-right:8px;color:rgba(60,60,67,0.3)">88</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">.font(.footnote.weight(.<span style="background:rgba(0,122,255,0.26);color:#000">bold</span>))</span></div>
+              </div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:#8A8378;margin-top:5px">colourblind · blue additions, orange deletions · same two ratios</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§4 a &nbsp;·&nbsp; THE FILE HEADER</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Sticky, and it costs 28pt — but only if the toolbar goes</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">It has to stick. It is the only thing that answers &ldquo;where am I&rdquo; after thirty seconds of scrolling, and the alternative — reading the path off the nearest hunk heading — is not an answer because hunk headings are function names, which repeat.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Two forms, one header.</strong> In flow it is two lines: path, then status, stats, language and hunk count. Pinned it reduces to a single 28pt line — collapse chevron, status letter, head-truncated path, stats, viewed toggle. Nothing is lost that the reader needs while <em>inside</em> a file; the second line is orientation for arriving, not for staying.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Then the toolbar has to hide on scroll.</strong> Your arithmetic was right: sticky header plus gutter plus toolbar is most of a phone. Sticky header alone is 28pt of 844, or 3%. So <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;background:#EAE6DC;padding:1px 5px;border-radius:3px">.toolbarVisibility(.hidden, for: .navigationBar)</span> while scrolling down, restored on scroll up — and the Files button comes back with it. The frame is drawn with the toolbar gone, because that is the state the reader is in 95% of the time.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Implementation that keeps your no-reflow rule intact: one <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">Section</span> per file in a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">LazyVStack(pinnedViews: .sectionHeaders)</span>. Pinning is a rendering position, not a layout change, so nothing above the finger moves.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Putting the path in the navigation title and updating it as files pass — it fights the toolbar-hiding above, and a title that changes while you scroll is the single most reflow-<em>feeling</em> thing you can do to a reader even when nothing reflows. Also rejected: a floating path chip. It is a sticky header that has given up its collapse control and its stats.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">One gutter column on the phone. Both on iPad.</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">SF Mono at 11pt advances 6.6pt per character. A four-digit number is 26.4pt; with 9pt of trailing space and 4pt of leading inset, one column is 39pt and two are 78pt. At 390pt with a 12pt trailing inset, that is <strong style="font-weight:400">51 characters of code with one column and 41 with two</strong>. Neither reaches 80, which is the honest headline of this whole section — but 41 is not a diff viewer, it is a keyhole.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Keep the new number.</strong> The reader is reading the current state of the file and will go looking for line <em>N</em> in the working copy; the old number is only useful for talking to someone about the previous state, which v1 cannot do — there are no comments and no export. On a deletion row the column is blank, and the row tint already says which side it is. Width is computed per file from its own maximum line number, so a 200-line file gets a 3-digit gutter and 8 more characters of code.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> A single interleaved column showing whichever number exists — it looks like one sequence and is two, so scanning it produces wrong line numbers with total confidence. And shrinking to 10pt to fit two columns: 57 characters, and code you have to squint at, which is the opposite of the product's purpose.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> reading code in Xcode with the navigator shut. The gutter is furniture; the code is the room.</p>
+    </div>
+  </div>
+
+  <!-- 4.2 SEGMENTS, COLLAPSED, EXPAND, STATES -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:17px">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:11px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-size:11px;font-weight:600;color:#C93400;width:9px">C</span>
+            <span style="font-size:11.5px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/WordDiff.swift</span>
+            <span style="font-family:-apple-system,sans-serif;font-size:10px;font-weight:600;color:#C93400;background:rgba(255,149,0,0.16);padding:2px 6px;border-radius:4px">CONFLICTED</span>
+          </div>
+          <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">61</span><span style="white-space:pre">    let segments = pair(old, new)</span></div>
+          <div style="display:flex;background:rgba(255,149,0,0.16)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">62</span><span style="white-space:pre;font-weight:600;color:#7A4A00">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span></div>
+          <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">63</span><span style="white-space:pre">    return segments.merged()</span></div>
+          <div style="display:flex;background:rgba(255,149,0,0.16)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">64</span><span style="white-space:pre;font-weight:600;color:#7A4A00">=======</span></div>
+          <div style="display:flex"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">65</span><span style="white-space:pre">    return segments.collapsed()</span></div>
+          <div style="display:flex;background:rgba(255,149,0,0.16)"><span style="width:30px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">66</span><span style="white-space:pre;font-weight:600;color:#7A4A00">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feat/word-diff</span></div>
+          <div style="display:flex;background:rgba(116,116,128,0.09);border-top:0.5px solid rgba(60,60,67,0.14);padding:3px 0"><span style="flex:1;padding-left:8px;color:rgba(60,60,67,0.6);font-size:10.5px">Showing the first 2,000 of 12,480 lines</span></div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">conflict markers + a server-truncated tail</div>
+      </div>
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:11px;color:rgba(60,60,67,0.18)">▸</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;color:rgba(60,60,67,0.6);width:9px">M</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Packages/Granita</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(60,60,67,0.6)">submodule</span>
+          </div>
+          <div style="padding:14px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.6;color:rgba(60,60,67,0.6)">
+            <div>a97bda7 → 4ce6701</div>
+            <div style="color:rgba(60,60,67,0.3);margin-top:2px">A submodule pointer moved. Granita does not read inside it.</div>
+          </div>
+          <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+          <div style="padding:14px 16px;text-align:center">
+            <div style="font-size:34px;color:#8E8E93;line-height:1;margin-bottom:8px">✓</div>
+            <div style="font-size:17px;font-weight:600;letter-spacing:-0.3px">Nothing to review</div>
+            <div style="font-size:13px;color:rgba(60,60,67,0.6);line-height:1.35;margin-top:2px">This worktree has no uncommitted changes.</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">submodule · and the empty worktree below it</div>
+      </div>
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:13px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Client/Connection/Ui/ServerDiscoveryView.swift</span>
+            <span style="font-size:19px;color:#007AFF">◉</span>
+            <span style="font-size:19px;color:#007AFF">⋯</span>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;line-height:20px">
+            <div style="display:flex;background:rgba(116,116,128,0.09)"><span style="flex:1;padding:3px 0 3px 8px;color:rgba(60,60,67,0.6);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">private func list(of servers:)</span><span style="padding:3px 12px;color:#007AFF">↕</span></div>
+            <div style="display:flex"><span style="width:34px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">84</span><span style="white-space:pre">    List(servers)</span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:34px;text-align:right;padding-right:9px;color:rgba(60,60,67,0.3)">85</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">      <span style="background:rgba(52,199,89,0.28);color:#000">Navigation</span></span></div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">xxLarge · chrome scales, code does not · 32 characters</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§4 c, d, e, f &nbsp;·&nbsp; TINTS, BARS, EXPANSION, EDGES</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">In dark mode the segment is carried by the text</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">&ldquo;Stronger&rdquo; is a ratio, not a colour. Row tint at 10% of the semantic green or red; segment at 28%. Below about 3× the segment stops being a second layer and becomes a slightly damp patch — and in dark mode, where the base tint has to sit at 16% just to be visible against black, there is no headroom left above it. Two nested backgrounds is the premise that does not survive dark mode.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">So invert the emphasis there.</strong> Unchanged runs on a changed line drop to <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.secondary</span>; the changed run goes to full-strength label. The eye finds the bright text, not the darker box. It works in light too — the swatches above use it in all three palettes — and it is the only treatment that survives the colourblind palette, where orange on white is already low-contrast.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Underlining the changed run — it collides with whatever the syntax highlighter does and disappears under a descender. Bold: SF Mono keeps its advance when bold, so it is technically safe, but bold already means &ldquo;keyword&rdquo; to anyone who reads code, and this repository highlights per side.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">A collapsed bar must say why it is shut</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">44pt, and four things: status letter, head-truncated path, stats, and — the one you have not specified — <strong style="font-weight:400">the reason</strong>. &ldquo;viewed 4 minutes ago&rdquo;, &ldquo;1,558 lines · Load diff&rdquo;, &ldquo;binary · no diff to show&rdquo;, &ldquo;renamed from SessionStore.swift · no content change&rdquo;. Without the reason, the reader has to open a file to learn there was nothing in it, which is the exact cost collapsing was supposed to save. With it, a run of six bars is readable at a glance and three of the six never need opening.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">A binary file and a rename-with-no-content-change get no chevron at all. There is nothing behind them, and a disclosure control that discloses nothing is the smallest possible lie.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">Expansion lives on the trailing edge of the hunk header</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">The hunk header is already a full-width band at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">quaternarySystemFill</span> carrying git's section heading — which is the most useful free string in the whole diff, and the reason the header does not read as content. Put the expand control at its trailing edge in a 44pt hit area. Not the leading edge: that is the gutter's column, and a glyph there reads as a line number. &ldquo;Expand all&rdquo; goes in the file header's <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">Menu</span>, not on screen — one visible expand control per hunk is already one per 20 rows.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Conflict markers get the orange row and the file gets a badge.</strong> They arrive as ordinary diff lines, so the parser's <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">conflictMarker</span> kind is the only thing that makes them findable — a full-width warning tint, the marker text at semibold, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">CONFLICTED</span> in the file header so the reader knows before they scroll. This is the one status worth a badge.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a long page of code with signposts, where the signposts are quieter than the code.</p>
+    </div>
+  </div>
+  <!-- 4.3 OPEN CALL 2 + FOCUS MODE -->
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:26px;align-items:flex-start">
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:11px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/DiffModels.swift</span>
+            <span style="font-size:16px;color:#007AFF">○</span>
+            <span style="font-size:16px;color:#007AFF">⋯</span>
+          </div>
+          <div style="padding:12px 14px 14px">
+            <div style="font-family:Georgia,serif;font-size:13.5px;line-height:1.5;color:#4A463F">The circle is the only writer. Tapping it marks the file viewed against its content hash and collapses it.</div>
+          </div>
+          <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+          <div style="background:rgba(249,249,249,0.98);padding:6px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;font-size:15px"><span>Mark viewed</span><span style="color:rgba(60,60,67,0.6)">◉</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;font-size:15px"><span>Mark everything above as viewed</span><span style="color:rgba(60,60,67,0.6)">⇡</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;font-size:15px"><span>Expand all hunks</span><span style="color:rgba(60,60,67,0.6)">↕</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;font-size:15px"><span>Open on its own</span><span style="color:rgba(60,60,67,0.6)">⤢</span></div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">a · tapped, with inference on demand — recommended</div>
+      </div>
+      <div>
+        <div style="width:374px;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;font-family:-apple-system,'SF Pro Text',sans-serif;opacity:0.92">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:11px;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/DiffModels.swift</span>
+            <span style="font-family:-apple-system,sans-serif;font-size:10px;color:rgba(60,60,67,0.6);background:rgba(116,116,128,0.12);padding:2px 6px;border-radius:4px">SEEN</span>
+          </div>
+          <div style="padding:12px 14px 14px">
+            <div style="font-family:Georgia,serif;font-size:13.5px;line-height:1.5;color:#4A463F">Scrolling past the end of the file sets it. There is no control, so there is also no way to say &ldquo;I scrolled past that by accident&rdquo;.</div>
+          </div>
+          <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+          <div style="padding:12px 14px;background:rgba(255,59,48,0.06)">
+            <div style="font-family:Georgia,serif;font-size:13.5px;line-height:1.5;color:#8A3028">A flick through 40 files marks 40 files read. The content hash then keeps them read until the agent touches them again.</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">b · inferred from scrolling — rejected</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">OPEN CALL 2 &nbsp;+&nbsp; §4 g</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Tapped. But put inference behind a menu item.</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> The tap is the only writer. This app has exactly one job — telling you whether you have read the code — and an inferred &ldquo;viewed&rdquo; that fires on a fast flick is the app lying about the only thing it is for. Content-hash keying makes a <em>stale</em> mark self-correcting, which is elegant; it does nothing about a mark that was wrong when it was written.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">The middle ground is worth having, though, because scrolling past thirty small files and tapping thirty circles is real work: <strong style="font-weight:400">&ldquo;Mark everything above as viewed&rdquo;</strong> in the file header's menu. Inference on demand — the reader asserts it, so it is still their claim.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Inference with an undo — undo on a state that was set silently is a control for a mistake the reader does not know they made. And a hybrid that infers only for files under 20 lines: two rules for one flag, and the reader cannot tell which one applied.</p>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:32px 0 18px;letter-spacing:-0.01em">Cut focus mode on iPhone. Keep it on iPad, where it is free.</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">On iPad focus mode is not a feature, it is the third column — you get it by having a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NavigationSplitView</span> at all. It earns its existence there by costing nothing.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">On iPhone it is a second reading surface with its own scroll state, its own gutter, its own previous/next chrome, and its own bugs — for a reader whose continuous scroll already has a collapse control and a file list one tap away. I would cut it from M5 and see whether anyone asks. If it does ship, it must not be the tap target on the file header: <strong style="font-weight:400">tapping a header with a chevron on it has to collapse the file</strong>, or the chevron is decoration. Focus mode belongs in that header's menu, drawn above as &ldquo;Open on its own&rdquo;.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> your own claim about your own reading. Nothing in this app should ever tell you that you read something you did not read.</p>
+    </div>
+  </div>
+
+  <!-- 4.4 IPAD PAYOFF -->
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+    <div>
+      <div style="width:840px;aspect-ratio:1194/834;container-type:inline-size;border:1px solid rgba(60,60,67,0.22);border-radius:14px;overflow:hidden;background:#fff;display:flex;font-family:-apple-system,'SF Pro Text',sans-serif;color:#000">
+        <!-- col 1 -->
+        <div style="flex:0 0 26.8%;background:#F2F2F7;border-right:0.5px solid rgba(60,60,67,0.2)">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:2.4% 4% 1.4%">
+            <div style="font-size:1.6cqw;font-weight:700;letter-spacing:-0.02em">Worktrees</div>
+            <div style="font-size:1.3cqw;color:#007AFF">⋯</div>
+          </div>
+          <div style="padding:0 3.4%">
+            <div style="font-size:0.95cqw;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.05em;padding:0 3% 0.5%">Pinned</div>
+            <div style="background:#007AFF;border-radius:0.8cqw;padding:0.8cqw 1.1cqw">
+              <div style="font-size:1.25cqw;font-weight:600;color:#fff">TLS pinning</div>
+              <div style="display:flex;gap:0.35cqw;align-items:baseline;margin-top:0.1cqw"><span style="font-size:0.95cqw;color:rgba(255,255,255,0.85)">granita ·</span><span style="font-size:0.95cqw;color:#fff">+248</span><span style="font-size:0.95cqw;color:rgba(255,255,255,0.85)">−31</span><span style="flex:1"></span><span style="font-size:0.95cqw;color:rgba(255,255,255,0.85)">4m</span></div>
+            </div>
+            <div style="font-size:0.95cqw;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.05em;padding:1.5% 3% 0.5%">granita</div>
+            <div style="background:#fff;border-radius:0.8cqw;overflow:hidden">
+              <div style="padding:0.8cqw 1.1cqw"><div style="font-size:1.25cqw;font-weight:600">Make the diff scroll never reflow above the reader's finger</div><div style="display:flex;gap:0.35cqw;align-items:baseline;margin-top:0.1cqw"><span style="font-size:0.95cqw;color:rgba(60,60,67,0.6)">34 files ·</span><span style="font-size:0.95cqw;color:#248A3D">+1,204</span><span style="font-size:0.95cqw;color:#D70015">−318</span><span style="flex:1"></span><span style="font-size:0.95cqw;color:rgba(60,60,67,0.6)">22m</span></div></div>
+              <div style="height:0.5px;background:rgba(60,60,67,0.2)"></div>
+              <div style="padding:0.8cqw 1.1cqw"><div style="font-size:1.25cqw;font-weight:600">feat/session-index</div><div style="display:flex;gap:0.35cqw;align-items:baseline;margin-top:0.1cqw"><span style="font-size:0.95cqw;color:rgba(60,60,67,0.6)">3 files ·</span><span style="font-size:0.95cqw;color:#248A3D">+47</span><span style="font-size:0.95cqw;color:#D70015">−6</span><span style="flex:1"></span><span style="font-size:0.95cqw;color:rgba(60,60,67,0.6)">2h</span></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- col 2 -->
+        <div style="flex:0 0 26.8%;background:#fff;border-right:0.5px solid rgba(60,60,67,0.2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:2.4% 4% 1.4%">
+            <div style="font-size:1.6cqw;font-weight:700;letter-spacing:-0.02em">Files</div>
+            <div style="font-size:1.3cqw;color:#007AFF">⋯</div>
+          </div>
+          <div style="padding:0 2.4%;font-size:1.2cqw">
+            <div style="display:flex;align-items:center;gap:0.5cqw;padding:0.55cqw 0.7cqw"><span style="width:1cqw;font-size:0.85cqw;color:rgba(60,60,67,0.6)">▾</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:1.05cqw;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packages/Granita</span></div>
+            <div style="display:flex;align-items:center;gap:0.5cqw;padding:0.55cqw 0.7cqw 0.55cqw 1.9cqw"><span style="width:1cqw;font-size:0.85cqw;color:rgba(60,60,67,0.6)">▾</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:1.05cqw;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Client/Connection/Ui</span></div>
+            <div style="display:flex;align-items:center;gap:0.6cqw;padding:0.5cqw 0.7cqw 0.5cqw 3.1cqw;background:rgba(0,122,255,0.10);border-radius:0.5cqw"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;font-weight:600;color:rgba(60,60,67,0.6);width:0.9cqw">M</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">ServerDiscoveryView.swift</span><span style="font-size:0.95cqw;color:#248A3D">+9</span><span style="font-size:0.95cqw;color:#D70015">−11</span><span style="width:1cqw"></span></div>
+            <div style="display:flex;align-items:center;gap:0.5cqw;padding:0.55cqw 0.7cqw 0.55cqw 1.9cqw"><span style="width:1cqw;font-size:0.85cqw;color:rgba(60,60,67,0.6)">▾</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:1.05cqw;color:rgba(60,60,67,0.75);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain</span></div>
+            <div style="display:flex;align-items:center;gap:0.6cqw;padding:0.5cqw 0.7cqw 0.5cqw 3.1cqw"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;font-weight:600;color:rgba(60,60,67,0.6);width:0.9cqw">M</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">DiffModels.swift</span><span style="font-size:0.95cqw;color:#248A3D">+26</span><span style="font-size:0.95cqw;color:#D70015">−0</span><span style="width:1cqw"></span></div>
+            <div style="display:flex;align-items:center;gap:0.6cqw;padding:0.5cqw 0.7cqw 0.5cqw 3.1cqw"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;font-weight:600;color:#C93400;width:0.9cqw">C</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WordDiff.swift</span><span style="font-size:0.95cqw;color:#248A3D">+184</span><span style="font-size:0.95cqw;color:#D70015">−7</span><span style="width:1cqw"></span></div>
+            <div style="display:flex;align-items:center;gap:0.6cqw;padding:0.5cqw 0.7cqw"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;font-weight:600;color:rgba(60,60,67,0.6);width:0.9cqw">M</span><span style="flex:1;color:rgba(60,60,67,0.6)">project.yml</span><span style="font-size:0.95cqw;color:#007AFF;width:1cqw;text-align:center">✓</span></div>
+          </div>
+        </div>
+        <!-- col 3 -->
+        <div style="flex:1;background:#fff">
+          <div style="display:flex;align-items:center;gap:0.7cqw;padding:1.1cqw 1.2cqw;background:#F2F2F7;border-bottom:0.5px solid rgba(60,60,67,0.29)">
+            <span style="font-size:0.9cqw;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:1.05cqw;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Client/Connection/Ui/ServerDiscoveryView.swift</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;color:#248A3D">+9</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;color:#D70015">−11</span>
+            <span style="font-size:1.2cqw;color:#007AFF">○</span><span style="font-size:1.2cqw;color:#007AFF">⋯</span>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.98cqw;line-height:1.55cqw">
+            <div style="display:flex;background:rgba(116,116,128,0.09);border-bottom:0.5px solid rgba(60,60,67,0.14)"><span style="flex:1;padding:0.2cqw 0 0.2cqw 0.8cqw;color:rgba(60,60,67,0.6);font-size:0.92cqw">private func list(of servers: [DiscoveredServer]) -&gt; some View</span><span style="padding:0.2cqw 1cqw;color:#007AFF">↕</span></div>
+            <div style="display:flex"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">83</span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">83</span><span style="white-space:pre">    private func list(of servers: [DiscoveredServer]) -&gt; some View {</span></div>
+            <div style="display:flex"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">84</span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">84</span><span style="white-space:pre">        List(servers) { server in</span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">85</span><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">            <span style="background:rgba(255,59,48,0.28);color:#000">Button {</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">86</span><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">                <span style="background:rgba(255,59,48,0.28);color:#000">onSelect(server)</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">87</span><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">            } <span style="background:rgba(255,59,48,0.28);color:#000">label: {</span></span></div>
+            <div style="display:flex;background:rgba(255,59,48,0.10)"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">88</span><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="white-space:pre;color:rgba(0,0,0,0.55)">                <span style="background:rgba(255,59,48,0.28);color:#000">LabeledContent {</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">85</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">            <span style="background:rgba(52,199,89,0.28);color:#000">NavigationLink(value: server) {</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">86</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">                Label(server.name, systemImage: "laptopcomputer")</span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">87</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">                    .<span style="background:rgba(52,199,89,0.28);color:#000">lineLimit(2)</span></span></div>
+            <div style="display:flex;background:rgba(52,199,89,0.10)"><span style="width:2.6cqw;padding-right:0.7cqw"></span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">88</span><span style="white-space:pre;color:rgba(0,0,0,0.55)">                    .<span style="background:rgba(52,199,89,0.28);color:#000">truncationMode(.middle)</span></span></div>
+            <div style="display:flex"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">89</span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">89</span><span style="white-space:pre">            }</span></div>
+            <div style="display:flex"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">90</span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">90</span><span style="white-space:pre">        }</span></div>
+            <div style="display:flex"><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">91</span><span style="width:2.6cqw;text-align:right;padding-right:0.7cqw;color:rgba(60,60,67,0.3)">91</span><span style="white-space:pre">    }</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.7cqw;padding:1.1cqw 1.2cqw;background:#F2F2F7;border-top:0.5px solid rgba(60,60,67,0.29);border-bottom:0.5px solid rgba(60,60,67,0.29);margin-top:0.8cqw">
+            <span style="font-size:0.9cqw;color:rgba(60,60,67,0.6)">▾</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:1.05cqw;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left">Core/Diff/Domain/DiffModels.swift</span>
+            <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;color:#248A3D">+26</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:0.95cqw;color:#D70015">−0</span>
+            <span style="font-size:1.2cqw;color:#007AFF">○</span><span style="font-size:1.2cqw;color:#007AFF">⋯</span>
+          </div>
+        </div>
+      </div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">iPad 1194 × 834 · 320 / 320 / 554 · both gutters, and the diff is the §1 fix</div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">§4 &nbsp;·&nbsp; IPAD</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">554pt of code is where this product is actually pleasant</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Three columns at 320 / 320 / 554. The diff column gets 554pt, which at 11pt SF Mono with both gutters is 72 characters — the first layout in the app where wrap-off is not a compromise. Both line-number columns survive here, which is the whole reason the phone can afford to drop one: the two devices are not showing the same gutter, and that is fine, because a line number is a lookup key rather than content.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Two consequences worth stating. The selector column is permanently visible, so the medium-detent sheet exists only on iPhone — one code path, two presentations, and the tree view itself is identical. And the third column is where focus mode lives, reached by selecting a file in column two rather than by tapping a header.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">The diff in the frame is the fix from §1, which is not a joke: it is the shortest demonstration that the product works. You would have found that row bug from the phone.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a review tool. The phone version should feel like the same tool, carried.</p>
+    </div>
+  </div>
+
+  <!-- ══ CLOSING ══ -->
+  <div style="border-top:2px solid #23211E;padding-top:44px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:44px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Closing</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">Every call, in one place</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">Ten decisions, each with what it replaces. The four in bold are the ones I would argue about if you disagree; the rest I would concede.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:64px 1fr 1fr;gap:0;border-top:1px solid #D8D2C6;font-size:15.5px;line-height:1.55">
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§1 d</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">NavigationLink, not LabeledContent + Button</strong></div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">Fixes a shipped bug. Middle truncation, two lines.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§1 a</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Variable-colour symbol effect instead of a spinner; a Search Again button on nothing-found</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">Rejected a progress bar over a timeout. Bonjour has no deadline to draw.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§1 c</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">The system's error string goes to the bottom in tertiary monospace; policy errors route to localNetworkDenied</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">Rejected an alert, and rejected hiding the string behind a disclosure.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§1 e</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Constrain every iPad state to a 420pt centred column</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">Rejected a split-view shell before pairing.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§2 a</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Monospace the fallback name; leave the other three alone</strong></div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">Rejected four glyphs, and rejected italics. Two tiers, one font switch, no colour.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§2 c</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">A toolbar Menu, not a segmented Picker</strong></div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">48pt of every scroll for a preference set once — and there is a third toggle coming.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§2 d</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Offer the suggestion as a row; never prefill. The footer previews the resulting name, live</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">This is the one place I contradict the specification outright.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">Call 1</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Keep the iPhone selector; make it a non-dimming drawer the diff scrolls behind</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">A toolbar Menu cannot indent, cannot search, cannot show viewed.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">Call 2</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Viewed is tapped only; inference behind &ldquo;mark everything above&rdquo;</strong></div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">The content hash fixes stale marks, not wrong ones.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">Call 3</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Hide worktrees with no changes, and print the hidden count as a tappable footer</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">The list states what it hides, so the menu bar count reconciles on screen.</div>
+      <div style="padding:16px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378;border-bottom:1px solid #E4DFD4">§4 g</div>
+      <div style="padding:16px 24px 16px 0;border-bottom:1px solid #E4DFD4">Cut focus mode on iPhone; keep it as the iPad third column</div>
+      <div style="padding:16px 0;color:#6A655C;border-bottom:1px solid #E4DFD4">A second reading surface with its own bugs, for a scroll that already collapses.</div>
+    </div>
+    <div style="margin-top:56px;padding:32px 36px;background:#FBFAF7;border:1px solid #D8D2C6;max-width:900px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">What I could not decide from here</div>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px">Two things need a real device and a real change set rather than another round of frames.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px"><strong style="font-weight:400">The code point size.</strong> Everything in §4 is measured at 11pt because that is what makes 51 characters fit. Whether 11pt is readable to you at arm's length on a 6.1&Prime; screen is not a thing I can judge from a drawing, and it moves every number in that section. Set it on the device first, then let the gutter follow.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0">And <strong style="font-weight:400">whether wrap-off survives at all on the phone</strong>. I have argued that horizontal scroll is the primary interaction rather than a fallback, and I believe it — but a two-axis scroll inside a vertical scroll that must never reflow is the single hardest gesture in this product, and it is the one thing here that a frame genuinely cannot tell you. Build the wrap-off scroll first, before the collapsed bars and before focus mode. If it does not feel right, character wrapping becomes the default and half of §4b stops mattering.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

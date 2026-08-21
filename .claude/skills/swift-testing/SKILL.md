@@ -133,8 +133,20 @@ like one that works.
 
 ### Recording and reading failures
 
-- Record **locally**: delete the baseline and run; the first pass writes it and fails, a re-run
-  compares. **Never record on CI** — that turns the test into a recorder of whatever the code does.
+```bash
+make snapshots         # render and compare against the committed baselines
+make record-snapshots  # re-record all of them after a deliberate design change
+```
+
+- Record **locally**. `make record-snapshots` deletes the baselines and runs the suite **twice**: the
+  first pass writes each missing baseline and fails that same run, so only the second pass tells you
+  what was written renders stably. **Never record on CI** — that turns the test into a recorder of
+  whatever the code does.
+- **A re-record is a design change, and needs the design to have changed first.** If baselines move
+  and `.claude/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
+  the baseline. See the `design` skill.
+- **Review every changed PNG by eye before committing.** Re-recording is the one operation in this
+  repository that can make a wrong screen permanently correct.
 - Baselines live in `__Snapshots__/<source file name>/`. The directory is named after the **source
   file**, not the test type, so renaming a test file orphans its baselines.
 - Mismatches are written to `__SnapshotFailures__/` (gitignored) and CI turns them into one

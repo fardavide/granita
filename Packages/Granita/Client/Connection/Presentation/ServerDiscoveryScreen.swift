@@ -1,9 +1,9 @@
-import ClientConnectionDomain
-import ClientConnectionUi
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
 #endif
+
+import ClientConnectionUi
 
 /// Binds the discovery view model to the view.
 ///
@@ -12,26 +12,25 @@ import UIKit
 public struct ServerDiscoveryScreen: View {
 
     @State private var viewModel: ServerDiscoveryViewModel
-    private let onSelect: (DiscoveredServer) -> Void
 
-    public init(
-        viewModel: ServerDiscoveryViewModel,
-        onSelect: @escaping (DiscoveredServer) -> Void
-    ) {
+    public init(viewModel: ServerDiscoveryViewModel) {
         // Pinned in @State rather than held as a plain `let`: the composition root rebuilds this
         // screen on every parent re-evaluation, and a plain property would swap the displayed model
         // while the running .task kept driving the discarded one.
         _viewModel = State(initialValue: viewModel)
-        self.onSelect = onSelect
     }
 
     public var body: some View {
         ServerDiscoveryView(
             state: viewModel.state,
-            onSelect: onSelect,
+            onSearchAgain: viewModel.searchAgain,
             onOpenSettings: openSettings
         )
-        .task { await viewModel.start() }
+        // Keyed on the attempt so that searching again is a *new browser* rather than a new reading
+        // of the dead one: SwiftUI cancels the running task, which tears the browse down, and starts
+        // this one over. A dead browser is dead for good, and Search Again is tapped precisely when
+        // the reader has one.
+        .task(id: viewModel.attempt) { await viewModel.start() }
     }
 
     private func openSettings() {

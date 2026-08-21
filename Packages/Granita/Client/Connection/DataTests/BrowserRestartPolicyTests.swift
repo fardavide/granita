@@ -29,10 +29,35 @@ struct BrowserRestartPolicyTests {
 
         // then — anything we cannot attribute stays a failure, so a real fault is never disguised as
         // a permission problem the reader would go looking for in Settings.
-        #expect(state != .localNetworkDenied)
-        if case .failed = state {} else {
-            Issue.record("expected a failure state, got \(state)")
-        }
+        #expect(state == .failed(diagnostic: "\(error.localizedDescription)\nNWError 50"))
+    }
+
+    @Test
+    func `given an unfamiliar dns error when the browser waits then it is reported as a failure`() {
+        // given — the resolver has many codes and only two of them are about permission. This is the
+        // waiting path's version of the same question the death path answers below.
+        let error = NWError.dns(-65_563)
+
+        // when
+        let state = BrowserRestartPolicy.stateWhileWaiting(on: error)
+
+        // then
+        #expect(state == .failed(diagnostic: "\(error.localizedDescription)\nNWError -65563"))
+    }
+
+    @Test
+    func `given a defunct connection when the browser waits then the reader is told nothing yet`() {
+        // given — this code is the one that means two different things: a refusal seen by a browser
+        // that was not the app's first, or a process that has just been resumed. A browser waiting on
+        // it is about to die, and the death is where the two get told apart by counting.
+        let error = NWError.dns(-65569)
+
+        // when
+        let state = BrowserRestartPolicy.stateWhileWaiting(on: error)
+
+        // then — reporting it here reached the screen ahead of the counting and put a failure in
+        // front of a reader whose network was fine. Searching is what is actually true.
+        #expect(state == .searching)
     }
 
     @Test
@@ -94,18 +119,21 @@ struct BrowserRestartPolicyTests {
     @Test
     func `given an unrelated error when the browser dies then it is reported as a failure`() {
         // given
+        let error = NWError.posix(.ENETDOWN)
         var sut = BrowserRestartPolicy()
 
         // when
-        let restart = sut.restart(after: .posix(.ENETDOWN))
+        let restart = sut.restart(after: error)
 
         // then — a fault we cannot attribute is shown as itself. Calling it a refusal would send the
         // reader to a Settings switch that is already on.
-        #expect(restart.report == .failed(NWError.posix(.ENETDOWN).localizedDescription))
+        #expect(restart.report == .failed(
+            diagnostic: "\(error.localizedDescription)\nNWError 50"
+        ))
     }
 
     @Test
-    func `given an unfamiliar dns error when the browser dies then it is reported as a failure`() {
+    func `given an unfamiliar dns error when the browser dies then the code goes with the sentence`() {
         // given — the two codes this file is about are not the only ones the resolver has.
         let error = NWError.dns(-65_563)
         var sut = BrowserRestartPolicy()
@@ -113,8 +141,11 @@ struct BrowserRestartPolicyTests {
         // when
         let restart = sut.restart(after: error)
 
-        // then
-        #expect(restart.report == .failed(error.localizedDescription))
+        // then — Network.framework's own sentence is true of every failure there has ever been, so
+        // the code is the only part of it a developer can act on. Here the reader is the developer.
+        #expect(restart.report == .failed(
+            diagnostic: "\(error.localizedDescription)\nNWError -65563"
+        ))
     }
 
     @Test
