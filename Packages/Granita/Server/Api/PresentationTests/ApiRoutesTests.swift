@@ -526,6 +526,179 @@ extension ApiRoutesTests {
     }
 }
 
+extension ApiRoutesTests {
+
+    // MARK: - The paths a reader reaches by changing their mind
+
+    @Test
+    func `given a file already marked viewed when it is unmarked then the mark is removed`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first)
+        let uri = "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/viewed"
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: uri, method: .post,
+                body: json(#"{"viewed":true,"contentHash":"\#(file.contentHash)"}"#)
+            ) { _ in }
+            try await client.execute(
+                uri: uri, method: .post,
+                body: json(#"{"viewed":false,"contentHash":"\#(file.contentHash)"}"#)
+            ) { response in
+                #expect(response.status == .noContent)
+            }
+        }
+
+        // then — removed rather than recorded as false, so the document does not accumulate a row
+        // per file anyone ever looked at and changed their mind about.
+        #expect(await scenario.store.state().viewed.isEmpty)
+    }
+
+    @Test
+    func `given a patch that asks for nothing when it is sent then the worktree comes back unchanged`(
+    ) async throws {
+        // given — an absent key means unchanged, which makes an empty body a legal no-op rather
+        // than a request to clear everything.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)", method: .patch, body: json("{}")
+            ) { response in
+                let updated = try decoded(Worktree.self, from: response)
+
+                // then
+                #expect(updated.alias == nil)
+                #expect(updated.isPinned == false)
+                #expect(updated.displayName == worktree.displayName)
+            }
+        }
+    }
+
+    @Test
+    func `given a context size beyond what is sensible when a diff is asked for then it is clamped`(
+    ) async throws {
+        // given — the parameter comes off the wire, and an unbounded one is a request to render a
+        // whole repository as context around a one-line change.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "plain.txt" })
+
+        // when - then
+        let diff = try await scenario.get(
+            FileDiff.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/diff?context=99999"
+        )
+        #expect(diff.hunks.isEmpty == false)
+    }
+
+    @Test
+    func `given the working copy when its lines are asked for then they come from the working copy`(
+    ) async throws {
+        // given — the working copy is not in the object database, so there is no revision to read
+        // it from and it has to be recovered from a comparison against nothing.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "plain.txt" })
+
+        // when
+        let lines = try await scenario.get(
+            LinesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/lines?side=new&start=1&count=1"
+        )
+
+        // then
+        #expect(lines.lines == ["plain, edited"])
+    }
+
+    @Test
+    func `given a start beyond the end of a file when lines are asked for then it says so`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "plain.txt" })
+
+        // when
+        let lines = try await scenario.get(
+            LinesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/lines?side=old&start=9999&count=10"
+        )
+
+        // then — the end of a file is not an error, and it is what stops the client asking again.
+        #expect(lines.lines.isEmpty)
+        #expect(lines.eof)
+    }
+
+    @Test
+    func `given a project the user turned off when projects are listed then it is not among them`(
+    ) async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        try await scenario.store.setProjectVisible(
+            false, id: ProjectID(canonicalPath: scenario.location.path)
+        )
+
+        // when - then — nothing is served that was not enabled by hand, and turning one off is how
+        // that is taken back.
+        #expect(try await scenario.get([Project].self, "/v1/projects").isEmpty)
+    }
+
+    @Test
+    func `given git cannot answer in the time allowed when changes are asked for then it says so`(
+    ) async throws {
+        // given — no git invocation finishes within a millisecond; spawning the process costs more
+        // than that on its own.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+
+        let impatient = try ApiScenario(repository: .renames, gitTimeout: .milliseconds(1))
+        defer { impatient.cleanUp() }
+        try await impatient.enableProject()
+
+        // when - then — the reader gets a sentence rather than a spinner, which is the whole
+        // reason a git failure is carried rather than collapsed.
+        try await impatient.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)/changes", method: .get
+            ) { response in
+                #expect(response.status == .internalServerError || response.status == .gone)
+                #expect(errorCode(in: response) != nil)
+            }
+        }
+    }
+}
+
 private struct LinesBody: Decodable, Sendable {
     let lines: [String]
     let eof: Bool

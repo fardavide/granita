@@ -311,7 +311,12 @@ public enum GranitaRouter {
         }
     }
 
-    private static func gitFailure(_ error: any Error) -> ApiError {
+    /// Which code the phone is shown when git refuses.
+    ///
+    /// Not private, because the mapping *is* the contract: each of these puts a different screen in
+    /// front of a reader, and contriving five separate HTTP failures to exercise five branches
+    /// tests the plumbing rather than the mapping.
+    static func gitFailure(_ error: any Error) -> ApiError {
         guard let error = error as? GitError else {
             return ApiError(.gitFailure, message: "\(error)")
         }

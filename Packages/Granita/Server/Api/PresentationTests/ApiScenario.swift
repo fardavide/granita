@@ -26,7 +26,11 @@ struct ApiScenario {
     let pairing: Pairing
     let location: RepositoryLocation
 
-    init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
+    init(
+        repository: FixtureRepository,
+        requiresAuthentication: Bool = false,
+        gitTimeout: Duration = ProcessGitClient.defaultTimeout
+    ) throws {
         storeDirectory = URL.temporaryDirectory
             .appending(path: "granita-api-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
@@ -37,7 +41,7 @@ struct ApiScenario {
         let git = ProcessGitClient(
             executablePath: "/usr/bin/git",
             outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
-            timeout: ProcessGitClient.defaultTimeout
+            timeout: gitTimeout
         )
         let service = WorktreeService(git: git, limits: .standard)
         let location = try repository.location()
