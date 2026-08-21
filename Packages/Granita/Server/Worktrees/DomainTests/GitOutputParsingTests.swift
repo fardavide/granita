@@ -195,6 +195,95 @@ struct GitOutputParsingTests {
         #expect(conflicted == [RepositoryRelativePath("both.txt"), RepositoryRelativePath("second.txt")])
     }
 
+    // MARK: - Output that is not what was expected
+
+    @Test
+    func `given nothing at all when parsed then every format answers with nothing`() {
+        // given — a clean worktree, a repository with no worktrees to list, a merge with no
+        // conflicts. Each is the ordinary case rather than an error.
+        let empty = Data()
+
+        // when - then
+        #expect(WorktreeListParser.parse(empty).isEmpty)
+        #expect(RawChangeParser.parse(empty).isEmpty)
+        #expect(NumstatParser.parse(empty).isEmpty)
+        #expect(StatusParser.conflictedPaths(empty).isEmpty)
+        #expect(UntrackedPathParser.parse(empty).isEmpty)
+    }
+
+    @Test
+    func `given a raw record with no path after it when parsed then it is dropped rather than guessed`() {
+        // given — a stream cut short by the output cap ends mid-record, which is what the cap
+        // promised rather than corruption.
+        let output = nulSeparated([":100644 100644 aaa bbb M", "first.txt", ":100644 100644 ccc ddd M"])
+
+        // when
+        let changes = RawChangeParser.parse(output)
+
+        // then
+        #expect(changes.map(\.path.text) == ["first.txt"])
+    }
+
+    @Test
+    func `given a rename with only one of its two paths when parsed then it is dropped`() {
+        // given
+        let output = nulSeparated([":100644 100644 aaa bbb R100", "only-the-old-one.txt"])
+
+        // when - then — a rename needs both paths, and inventing the missing one puts a file in
+        // the list under a name it does not have.
+        #expect(RawChangeParser.parse(output).isEmpty)
+    }
+
+    @Test
+    func `given a metadata field that is too short when parsed then the record is skipped`() {
+        // given
+        let output = nulSeparated([":100644 100644", ":100644 100644 aaa bbb M", "real.txt"])
+
+        // when
+        let changes = RawChangeParser.parse(output)
+
+        // then
+        #expect(changes.map(\.path.text) == ["real.txt"])
+    }
+
+    @Test
+    func `given a numstat field with too few parts when parsed then it is skipped`() {
+        // given
+        let output = nulSeparated(["garbage", "1\t2\treal.txt"])
+
+        // when
+        let records = NumstatParser.parse(output)
+
+        // then
+        #expect(records.map(\.path.text) == ["real.txt"])
+    }
+
+    @Test
+    func `given a worktree attribute this version does not know when parsed then the worktree survives`() {
+        // given — git adds attributes over time, and one we do not recognise is not a reason to
+        // lose the worktree it belongs to.
+        let output = nulSeparated([
+            "worktree /a", "HEAD aaa", "branch refs/heads/one", "somethingnew whatever", "",
+            "worktree /b", "bare", ""
+        ])
+
+        // when
+        let records = WorktreeListParser.parse(output)
+
+        // then
+        #expect(records.map(\.location.path) == ["/a", "/b"])
+        #expect(records[1].isBare)
+    }
+
+    @Test
+    func `given an unmerged record too short to hold a path when parsed then nothing is invented`() {
+        // given
+        let output = nulSeparated(["u UU N... 100644"])
+
+        // when - then
+        #expect(StatusParser.conflictedPaths(output).isEmpty)
+    }
+
     // MARK: - ls-files --others -z
 
     @Test

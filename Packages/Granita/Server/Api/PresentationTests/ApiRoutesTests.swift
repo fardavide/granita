@@ -359,6 +359,178 @@ struct ApiRoutesTests {
     }
 }
 
+extension ApiRoutesTests {
+
+    // MARK: - The rest of the surface
+
+    @Test
+    func `given an enabled project when projects are listed then its worktrees are counted`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+
+        // when
+        let projects = try await scenario.get([Project].self, "/v1/projects")
+
+        // then — dirty means there is something to read, which is the only reason to open one.
+        #expect(projects.count == 1)
+        #expect(projects[0].worktreeCount == 1)
+        #expect(projects[0].dirtyWorktreeCount == 1)
+    }
+
+    @Test
+    func `given a project that is not enabled when its worktrees are asked for then it is refused`(
+    ) async throws {
+        // given — the server declines to serve a project nobody enabled, rather than declining to
+        // say whether it exists.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        try await scenario.store.setProjectVisible(
+            false,
+            id: ProjectID(canonicalPath: scenario.location.path)
+        )
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            let id = ProjectID(canonicalPath: scenario.location.path).rawValue
+            try await client.execute(uri: "/v1/worktrees?projectID=\(id)", method: .get) { response in
+                #expect(response.status == .forbidden)
+                #expect(errorCode(in: response) == "projectNotVisible")
+            }
+        }
+    }
+
+    @Test
+    func `given several files when their diffs are asked for at once then all of them come back`(
+    ) async throws {
+        // given — opening a forty-file worktree must not be forty-one round trips, so the client
+        // prefetches; the server answers them four git processes at a time.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let ids = changes.files.map(\.id.rawValue).joined(separator: ",")
+
+        // when
+        let diffs = try await scenario.get(
+            [FileDiff].self,
+            "/v1/worktrees/\(worktree.id.rawValue)/diffs?fileIDs=\(ids)&context=3"
+        )
+
+        // then — in the order asked for, so a prefetch arrives in the order it will be scrolled.
+        #expect(diffs.map(\.file.id.rawValue) == changes.files.map(\.id.rawValue))
+    }
+
+    @Test
+    func `given a file when its committed side is asked for then the lines come back with an end marker`(
+    ) async throws {
+        // given — context expansion is client-owned state: no single stateless parameter can say
+        // "hunk two expanded up and hunk five expanded down", so the client splices raw lines.
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first { $0.path == "new.txt" })
+
+        // when
+        let lines = try await scenario.get(
+            LinesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/lines?side=old&start=1&count=2"
+        )
+
+        // then
+        #expect(lines.lines == ["alpha", "beta"])
+        #expect(lines.eof == false)
+    }
+
+    @Test
+    func `given a file identifier this worktree does not have when a diff is asked for then it is gone`(
+    ) async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let unknown = FileID(repositoryRelativePath: "never/existed.txt").rawValue
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)/files/\(unknown)/diff",
+                method: .get
+            ) { response in
+                #expect(response.status == .gone)
+                #expect(errorCode(in: response) == "fileGone")
+            }
+        }
+    }
+
+    @Test
+    func `given a body that is not what the route expects when sent then it says so plainly`(
+    ) async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)",
+                method: .patch,
+                body: ByteBuffer(string: "not json")
+            ) { response in
+                #expect(response.status == .badRequest)
+                #expect(errorCode(in: response) == "badRequest")
+            }
+        }
+    }
+
+    @Test
+    func `given five failed attempts from one source when a sixth arrives then it is rate limited`(
+    ) async throws {
+        // given — per source rather than globally, so one phone with a stale token cannot lock the
+        // others out of the Mac.
+        let scenario = try ApiScenario(repository: .renames, requiresAuthentication: true)
+        defer { scenario.cleanUp() }
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            for _ in 0..<5 {
+                try await client.execute(
+                    uri: "/v1/projects",
+                    method: .get,
+                    headers: [.authorization: "Bearer wrong"]
+                ) { response in
+                    #expect(response.status == .unauthorized)
+                }
+            }
+            try await client.execute(
+                uri: "/v1/projects",
+                method: .get,
+                headers: [.authorization: "Bearer wrong"]
+            ) { response in
+                #expect(response.status == .tooManyRequests)
+                #expect(errorCode(in: response) == "rateLimited")
+            }
+        }
+    }
+}
+
+private struct LinesBody: Decodable, Sendable {
+    let lines: [String]
+    let eof: Bool
+}
+
 // MARK: - Reading responses
 
 /// Mirrors of the response bodies, decoded rather than shared, so a route quietly changing shape

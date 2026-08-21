@@ -70,6 +70,7 @@ public struct WorktreeService: Sendable {
 
         var files: [FileChange] = []
         var paths: [FileID: RepositoryRelativePath] = [:]
+        var oldPaths: [FileID: RepositoryRelativePath] = [:]
         var total = ChangeStats.zero
         for (index, entry) in kept.enumerated() {
             let id = FileID(repositoryRelativePathBytes: entry.path.bytes)
@@ -96,6 +97,7 @@ public struct WorktreeService: Sendable {
                 language: LanguageHint.forPath(entry.path.text)
             ))
             paths[id] = entry.path
+            oldPaths[id] = entry.oldPath
             total = total + entry.stats
         }
 
@@ -104,7 +106,8 @@ public struct WorktreeService: Sendable {
             stats: total,
             files: files,
             isTruncated: entries.count > limits.maximumChangedFiles,
-            paths: paths
+            paths: paths,
+            oldPaths: oldPaths
         )
     }
 
@@ -304,18 +307,27 @@ public struct WorktreeChangeSet: Hashable, Sendable {
     /// path up here.
     public let paths: [FileID: RepositoryRelativePath]
 
+    /// Where a renamed file used to be.
+    ///
+    /// Its own map because the two sides of a rename live at two paths, and the committed side is
+    /// only readable at the old one — `show HEAD:<new path>` fails outright, which is what
+    /// expanding context above a hunk in a renamed file would do on every attempt.
+    public let oldPaths: [FileID: RepositoryRelativePath]
+
     public init(
         revision: String,
         stats: ChangeStats,
         files: [FileChange],
         isTruncated: Bool,
-        paths: [FileID: RepositoryRelativePath]
+        paths: [FileID: RepositoryRelativePath],
+        oldPaths: [FileID: RepositoryRelativePath]
     ) {
         self.revision = revision
         self.stats = stats
         self.files = files
         self.isTruncated = isTruncated
         self.paths = paths
+        self.oldPaths = oldPaths
     }
 }
 

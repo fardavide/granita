@@ -204,6 +204,201 @@ struct WorktreeServiceTests {
         #expect(changeSet.isTruncated)
     }
 
+    // MARK: - Files that have no content to hash
+
+    @Test
+    func `given a deleted file when the change set is built then it is not offered to the hasher`(
+    ) async throws {
+        // given — there is nothing on disk to hash, and asking git for it fails the **whole**
+        // batch rather than that line, which loses every object id after it too.
+        let scenario = Scenario(
+            raw: [":100644 000000 aaa 0000000 D", "gone.txt", ":100644 100644 bbb 0000000 M", "here.txt"],
+            numstat: ["0\t3\tgone.txt", "1\t1\there.txt"],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: ["9999999999999999999999999999999999999999"]
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then — one id was asked for, and it belongs to the file that still exists.
+        let deleted = try #require(changeSet.files.first { $0.path == "gone.txt" })
+        let present = try #require(changeSet.files.first { $0.path == "here.txt" })
+        #expect(deleted.contentHash != present.contentHash)
+        #expect(changeSet.stats == ChangeStats(filesChanged: 2, insertions: 1, deletions: 4))
+    }
+
+    @Test
+    func `given a submodule when the change set is built then it is marked and never hashed`(
+    ) async throws {
+        // given — a gitlink is a directory as far as this Mac is concerned, and the hasher refuses
+        // a directory the same way it refuses a file that is gone.
+        let scenario = Scenario(
+            raw: [":160000 160000 aaa bbb M", "vendor/sub"],
+            numstat: ["1\t1\tvendor/sub"],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: []
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changeSet.files[0].isSubmodule)
+    }
+
+    @Test
+    func `given a binary file when the change set is built then it is marked rather than counted`(
+    ) async throws {
+        // given — git writes a dash where a count would go, and reading that as zero claims a
+        // binary file did not change.
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa 0000000 M", "photo.png"],
+            numstat: ["-\t-\tphoto.png"],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: [String(repeating: "a", count: 40)]
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changeSet.files[0].isBinary)
+        #expect(changeSet.files[0].language == nil)
+    }
+
+    @Test
+    func `given a source file when the change set is built then the highlighter gets a hint`(
+    ) async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa 0000000 M", "Sources/Thing.swift"],
+            numstat: ["2\t1\tSources/Thing.swift"],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: [String(repeating: "b", count: 40)]
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then — a guess, and absent rather than wrong when the extension says nothing.
+        #expect(changeSet.files[0].language == "swift")
+        #expect(changeSet.files[0].estimatedLineCount == 3)
+    }
+
+    // MARK: - One file's diff
+
+    @Test
+    func `given a diff longer than the limit when it is asked for then a prefix comes back and says so`(
+    ) async throws {
+        // given — SPEC §5.4 wants a diff too large shown as a prefix rather than refused: a file
+        // nobody can open is worse than the first part of one.
+        let diff = """
+            diff --git a/big.txt b/big.txt
+            index aaa..bbb 100644
+            --- a/big.txt
+            +++ b/big.txt
+            @@ -1,3 +1,3 @@
+            -one
+            +ONE
+             two
+            @@ -20,2 +20,2 @@
+            -three
+            +THREE
+            """
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa 0000000 M", "big.txt"],
+            numstat: ["2\t2\tbig.txt"],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: [String(repeating: "c", count: 40)],
+            fileDiff: diff,
+            limits: WorktreeLimits(maximumChangedFiles: 1_000, maximumDiffLines: 3, truncatedDiffLines: 3)
+        )
+        let file = try #require(
+            try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first
+        )
+
+        // when
+        let produced = try await scenario.sut.fileDiff(
+            for: file,
+            at: RepositoryRelativePath("big.txt"),
+            in: scenario.location,
+            contextLines: 3
+        )
+
+        // then — whole hunks, so a truncated diff never stops halfway through one, and a reason a
+        // person can act on rather than a silent short answer.
+        #expect(produced.isTruncated)
+        #expect(produced.truncationReason?.isEmpty == false)
+        #expect(produced.hunks.count == 1)
+    }
+
+    @Test
+    func `given an untracked file when its diff is asked for then it is compared against nothing`(
+    ) async throws {
+        // given — there is no side in the revision to compare it with.
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: ["fresh.txt"],
+            status: [],
+            worktreeObjectIds: [String(repeating: "d", count: 40)]
+        )
+        let file = try #require(
+            try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first
+        )
+
+        // when
+        _ = try await scenario.sut.fileDiff(
+            for: file,
+            at: RepositoryRelativePath("fresh.txt"),
+            in: scenario.location,
+            contextLines: 3
+        )
+
+        // then
+        let received = await scenario.git.received
+        #expect(received.contains(.untrackedFileDiff(path: RepositoryRelativePath("fresh.txt"), contextLines: 3)))
+    }
+
+    @Test
+    func `given git refuses when the change set is built then the failure is not swallowed`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: [],
+            status: [],
+            worktreeObjectIds: [],
+            failure: .commandFailed(
+                command: .worktreeStatus,
+                exitCode: 128,
+                standardError: "fatal: not a git repository"
+            )
+        )
+
+        // when
+        var thrown: GitError?
+        do {
+            _ = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+        } catch {
+            thrown = error
+        }
+
+        // then — carried up with git's own words rather than turned into an empty change set, which
+        // would read on a phone as "this worktree is clean".
+        guard case .commandFailed(_, _, let standardError) = thrown else {
+            Issue.record("expected git's refusal, got \(String(describing: thrown))")
+            return
+        }
+        #expect(standardError.contains("not a git repository"))
+    }
+
     // MARK: - Scenario
 
     private struct Scenario {
@@ -220,6 +415,8 @@ struct WorktreeServiceTests {
             status: [String],
             worktreeObjectIds: [String],
             revision: GitRevision = .head,
+            fileDiff: String = "",
+            failure: GitError? = nil,
             limits: WorktreeLimits = .standard
         ) {
             git = FakeGitClient(
@@ -230,8 +427,9 @@ struct WorktreeServiceTests {
                     .untrackedPaths: nulSeparated(untracked),
                     .worktreeStatus: nulSeparated(status)
                 ],
-                failures: [:],
-                hashedObjectIds: worktreeObjectIds
+                failures: failure.map { [.worktreeStatus: $0] } ?? [:],
+                hashedObjectIds: worktreeObjectIds,
+                anyFileDiff: Data(fileDiff.utf8)
             )
             sut = WorktreeService(git: git, limits: limits)
         }

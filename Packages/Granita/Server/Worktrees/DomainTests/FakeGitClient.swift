@@ -12,12 +12,19 @@ actor FakeGitClient: GitClient {
     private let outputs: [GitCommand: Data]
     private let failures: [GitCommand: GitError]
     private let hashedObjectIds: [String]
+    private let anyFileDiff: Data
     private(set) var received: [GitCommand] = []
 
-    init(outputs: [GitCommand: Data], failures: [GitCommand: GitError], hashedObjectIds: [String]) {
+    init(
+        outputs: [GitCommand: Data],
+        failures: [GitCommand: GitError],
+        hashedObjectIds: [String],
+        anyFileDiff: Data = Data()
+    ) {
         self.outputs = outputs
         self.failures = failures
         self.hashedObjectIds = hashedObjectIds
+        self.anyFileDiff = anyFileDiff
     }
 
     func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
@@ -34,6 +41,13 @@ actor FakeGitClient: GitClient {
                 isTruncated: false
             )
         }
-        return GitOutput(standardOutput: outputs[command] ?? Data(), isTruncated: false)
+        // Answered by kind for the same reason: the path a diff is asked for is chosen by the
+        // caller under test, and a test that has to restate it asserts the plumbing twice.
+        switch command {
+        case .fileDiff, .untrackedFileDiff:
+            return GitOutput(standardOutput: anyFileDiff, isTruncated: false)
+        default:
+            return GitOutput(standardOutput: outputs[command] ?? Data(), isTruncated: false)
+        }
     }
 }

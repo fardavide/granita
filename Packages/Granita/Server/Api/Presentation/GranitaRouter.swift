@@ -179,12 +179,15 @@ public enum GranitaRouter {
             }
 
             let side = DiffSide(rawValue: request.uri.queryParameters["side"].map(String.init) ?? "new") ?? .new
+            // A rename has two paths and the committed side only exists at the old one, so asking
+            // for `HEAD:<new path>` fails outright rather than returning nothing.
+            let readFrom = side == .old ? (changes.oldPaths[file] ?? path) : path
             let start = request.uri.queryParameters["start"].flatMap { Int($0) } ?? 1
             let count = min(500, request.uri.queryParameters["count"].flatMap { Int($0) } ?? 100)
 
             do {
                 let read = try await dependencies.service.lines(
-                    of: path,
+                    of: readFrom,
                     side: side,
                     start: start,
                     count: count,
