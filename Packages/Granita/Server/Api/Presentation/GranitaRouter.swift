@@ -3,6 +3,7 @@ import Hummingbird
 
 import CoreBrandingDomain
 import CoreDiffDomain
+import ServerApiDomain
 import ServerGitDomain
 import ServerStoreDomain
 import ServerWorktreesDomain
@@ -15,6 +16,10 @@ public struct ApiDependencies: Sendable {
     public let store: any Store
     public let pairing: Pairing
     public let failedAttempts: FailedAttempts
+
+    /// Where every refusal goes, so the Advanced panel can say why a phone is not getting in.
+    public let connectionLog: any ConnectionLog
+
     public let serverVersion: String
 
     /// Whether a request has to prove who it is.
@@ -29,6 +34,7 @@ public struct ApiDependencies: Sendable {
         store: any Store,
         pairing: Pairing,
         failedAttempts: FailedAttempts,
+        connectionLog: any ConnectionLog,
         serverVersion: String,
         requiresAuthentication: Bool
     ) {
@@ -37,6 +43,7 @@ public struct ApiDependencies: Sendable {
         self.store = store
         self.pairing = pairing
         self.failedAttempts = failedAttempts
+        self.connectionLog = connectionLog
         self.serverVersion = serverVersion
         self.requiresAuthentication = requiresAuthentication
     }
@@ -346,10 +353,16 @@ struct AuthenticationMiddleware: RouterMiddleware {
         context: BasicRequestContext,
         next: (Request, BasicRequestContext) async throws -> Response
     ) async throws -> Response {
+        let source = request.head.authority ?? "unknown"
+
         // A client that speaks a newer contract is refused before anything else looks at the
         // request, because everything after this point assumes it understands what it was sent.
         if let sent = request.headers[.init("X-Granita-Api-Version")!].flatMap({ Int($0) }),
            sent > GranitaRouter.apiVersion {
+            await dependencies.connectionLog.record(
+                source: source,
+                outcome: .refused(.unsupportedApiVersion(sent: sent))
+            )
             throw ApiError(.unsupportedApiVersion, message: "this Mac serves version \(GranitaRouter.apiVersion)")
         }
 
@@ -357,8 +370,8 @@ struct AuthenticationMiddleware: RouterMiddleware {
             return try await next(request, context)
         }
 
-        let source = request.head.authority ?? "unknown"
         if await dependencies.failedAttempts.isBlocked(source: source) {
+            await dependencies.connectionLog.record(source: source, outcome: .refused(.rateLimited))
             throw ApiError(.rateLimited, message: "too many failed attempts; wait a minute")
         }
 
@@ -369,13 +382,18 @@ struct AuthenticationMiddleware: RouterMiddleware {
 
         let devices = await dependencies.store.state().devices
         guard let offered,
-              devices.contains(where: { TokenHash.matches(TokenHash.of(offered), $0.tokenHash) })
+              let device = devices.first(where: { TokenHash.matches(TokenHash.of(offered), $0.tokenHash) })
         else {
             await dependencies.failedAttempts.record(source: source)
+            await dependencies.connectionLog.record(
+                source: source,
+                outcome: .refused(offered == nil ? .noToken : .unknownToken)
+            )
             throw ApiError(.unauthorized, message: "pair this device first")
         }
 
         await dependencies.failedAttempts.clear(source: source)
+        await dependencies.connectionLog.record(source: source, outcome: .accepted(device: device.name))
         return try await next(request, context)
     }
 }

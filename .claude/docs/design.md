@@ -1,9 +1,12 @@
 # Design
 
 The client's four screens, judged and drawn. This is the authority on **what the phone and the iPad
-look like and why**; [`design/granita-design-review.html`](design/granita-design-review.html) is the
-same review as drawings, and is worth opening for anything in §2–§4, which are screens that do not
-exist yet and whose frames carry measurements this prose only summarises.
+look like and why**, and it is the half that lasts.
+
+The drawings do not. [`design/granita-design-review.html`](design/granita-design-review.html) is
+working material for the screens still to be built — open it for §2, §3 and §4, whose frames carry
+measurements this prose only summarises — and each section is **deleted from it as it is
+implemented**. §1's frames have already gone; what pins that screen now is its snapshot baselines.
 
 Reviewed against 0.0.4 on 21 August 2026, at iPhone 13 Pro 390 × 844pt and iPad Pro 11″ landscape
 1194 × 834pt, at Dynamic Type Large and xxLarge.

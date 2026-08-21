@@ -698,19 +698,121 @@ reads the raw JSON and checks it parses as ISO 8601, so a framework upgrade that
 seconds-since-epoch is a red test rather than a phone showing every worktree as modified in 1970.
 Pinning the encoder explicitly is worth doing when M3 next touches this module.
 
-## The client's screens are designed, and the design is a document in this repository
+## Claude Design is asked with baselines and prose, and nothing is uploaded to it
+
+Oltre's design loop is the model this borrows from, and its central part transfers unchanged: the
+ask is a **round trip** rather than a hand-off, so the session that writes the prompt waits for the
+frames and then builds them. The `design-handoff` skill carries that.
+
+**Two parts do not transfer, and they are the decision.**
+
+**The prompt is not a file here.** Oltre commits one per round trip under `.claude/prompts/`, as a
+dated record of what was asked. Granita tried that and Davide rejected it the same day: *"You give
+prompt in chat in code block, not in files. If we need to attach image, you place them on desktop."*
+He is right about what the artefact is. A prompt is pasted once, into another tool, within the
+minute — putting it behind a pull request puts a review gate in front of a clipboard, and on `main`
+here that means four required checks. What is worth keeping is the **answer**, which this file and
+the docs already have a home for. The cost accepted is that the exact wording of an ask is not
+recoverable later; the calls it produced are, and those are what get re-read.
+
+**And Oltre lifts its own colour tokens** into a Claude Design project so a frame is composed from
+the same palette the app draws with.
+Granita has no design-system module and will not grow one for v1 — the palette is semantic system
+colours, the icons are SF Symbols, and every control on screen is a stock one. There is nothing to
+upload, and uploading a synthesised stand-in would be worse than nothing: it would invite frames
+built from a vocabulary the app does not have, and `swift-style` already forbids both the hardcoded
+colour and the hand-rolled control that would be needed to build them. So the prompt names the
+idiom instead, and asks for decisions inside it — hierarchy, what a row says, what an empty state
+offers, which of two readings wins — rather than for a look.
+
+**What goes over as the drawing is the committed snapshot corpus**, copied to the Desktop to be
+attached, all four layouts of each state. The alternative considered was a hand-drawn mock, which
+is faster and is an unchecked claim about what the app looks like; a baseline is the only image of
+this app that something re-renders and compares. It is also why a screen built from a returned frame
+lands with its baselines in the same pull request: they are what makes fidelity checkable later
+rather than asserted once.
+
+The cost is accepted and named: a surface with no snapshot suite — the Mac settings window, today —
+can only be described, so what comes back for it is a first drawing rather than a review. Those two
+kinds of ask are numbered separately inside a prompt rather than blurred together.
+
+## One model per unit, not one per view
+
+Davide's correction, 2026-08-21, on seeing a `MenuBarViewModel` and a `ConnectionLogViewModel` land
+beside each other in the same module: **a state object per view is a vertical split wearing a
+layer's name.** The menu bar item and the Settings window are two views onto one running server, and
+splitting that server's state across as many objects as there are places it is drawn puts the seam
+in the wrong direction — a screen, rather than a layer.
+
+So a unit's `Presentation` holds **one** `@Observable` model, named for the unit rather than for a
+screen: `ServerMacModel` carries what the server is doing and who has reached it, and the four
+Settings tabs M3 still has to build add properties to it rather than a type each. Views stay
+stateless and are handed values, which is unchanged — that direction was already settled when
+`Presentation` was put above `Ui`.
+
+The cost is a type that grows, and it is worth naming: if one model stops being readable, the split
+is by **layer concern** — what it wraps — and never by which screen happens to draw it. What is
+gone is the reflex that a new screen needs a new state object.
+
+The phone still has `ServerDiscoveryViewModel` from M1, and it is deliberately left alone rather
+than swept: the rule is written here and in the architecture skill, and each module converts as it
+is next opened. M4 reopens the client's connection feature and converts it there.
+
+## The composition root is its own module, and coverage is measured over what a test can reach
+
+Two things landed together because the first is what makes the second expressible.
+
+**`ServerAppPresentation`, which the spec's §3 tree does not list.** The menu bar app's wiring lived
+in `Server/Mac/Presentation` beside the model it builds. That module was then both a feature's
+presentation layer and a composition root — one of them full of things a test constructs, the other
+full of things no test can. It is now split the way the client already was: `Client/App/Presentation`
+has always been the phone's composition root, and `Server/App/Presentation` is the Mac's. The
+feature module loses its `Data` dependencies with it, so `Presentation` no longer sees `Data`
+anywhere except in the two roots and the executable — which is what the layer rule always said.
+
+**Then the coverage gate.** Adding the Mac's first test target pulled `ServerMacUi` and the
+composition root into the unit denominator for the first time and dropped the Unit row 11.7 points
+in one pull request. Nothing had got worse: a SwiftUI body needs a renderer and a SwiftPM test
+target is hostless, and no test constructs a composition root, so those lines are uncoverable by
+construction rather than uncovered by neglect. The number moved because a module was linked into a
+test binary — a fact about the target graph, and the same class of dilution that scoped the Snapshot
+row to the view layers.
+
+So the Unit and All rows are now measured over **what a host test can reach**: the package, minus
+view bodies, minus the composition roots. It is the mirror of the Snapshot row's scope rather than a
+new idea, and the gate un-judges a redefined row for exactly one run, which is the mechanism that
+exists for this.
+
+`granita-server` was already exempt by accident — an executable target is not linked into a test
+binary, so its composition root has never been measured at all. Naming the directories makes that
+the same decision for all three rather than a property of how one of them is packaged.
+
+**What this leaves open, deliberately.** A macOS view layer is now measured by nothing: the Snapshot
+kind is the iOS target, and there is no macOS equivalent. That is tracked in `status.md` and it is
+owed before the Settings window grows its other three tabs — each one is a screen that a host test
+cannot execute, and the Unit row will keep drifting down until a kind exists that renders them.
+Screens composed in `Presentation` have the same problem in miniature and are counted today, which
+is the honest reading: they are reachable in principle, and nothing renders them yet.
+
+## The calls outlive the drawings, and the drawings are deleted as they are built
 
 The four client screens were reviewed and redrawn on 21 August 2026, against 0.0.4 as shipped. The
-result lives in [`design.md`](design.md), with the drawings beside it in [`design/`](design/), and
-the `design` skill makes consulting it binding before any client SwiftUI.
+calls live in [`design.md`](design.md) and the `design` skill makes consulting them binding before
+any client SwiftUI. The frames live in [`design/`](design/) **only until the screen exists**.
 
-Kept as a **document rather than as a link to the design tool**, because a review whose alternatives
-are only in someone's session gets re-litigated the first time an agent has a different idea. Every
-call in it names what it beat, for exactly the reason the entries in this file do.
+Two halves with opposite lifetimes, and conflating them is the mistake this entry exists to prevent.
+The prose is **kept**, because a review whose alternatives are only in someone's session gets
+re-litigated the first time an agent has a different idea — every call names what it beat, for the
+same reason the entries in this file do. The frames are **working material**, and are removed by the
+pull request that implements their section. Davide, 2026-08-21: *"We're not saving design as a
+documentation, we're saving actual design for the upcoming implementation. Once implemented, they
+are gone."*
 
-The frames under `design/uploads/` are copies of the 0.0.4 baselines taken at import time, not
-pointers at the live ones. They are the record of the defects the review annotates, and the live
-baselines now show the fixes — a symlink would have quietly rewritten the evidence.
+What replaces a deleted frame is not nothing: it is the committed snapshot baselines, which are the
+only artefact that can be compared against what was returned. A drawing kept beside them is a second
+answer to a question that now has a real one, and the two drift.
+
+§1's frames went this way in 0.0.6, with the screen. §2, §3 and §4 remain because they are not built.
 
 ### The rename sheet offers the session suggestion; it does not prefill it
 

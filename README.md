@@ -71,7 +71,7 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
-### 0.0.5 — 2026-08-21
+### 0.0.6 — 2026-08-21
 - **The list of Macs no longer drops its arrow onto a second line.** A long device name pushed the
   row's disclosure arrow underneath the name, left-aligned, nowhere near where an arrow belongs. The
   row is a proper navigation row now, so the arrow stays on the trailing edge at every text size —
@@ -91,6 +91,19 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
   It now says permission first.
 - **On iPad, the screen stops being a stretched phone.** Everything sits in a centred column instead
   of a name at one end of the display and its arrow 900 points away at the other.
+
+### 0.0.5 — 2026-08-21
+- **The Mac app now serves.** Granita on the Mac was an icon with a Quit item; the server it is
+  supposed to run only existed in a terminal. Launching it now starts the same backend in-process
+  and advertises it on the local network, and the menu says where — `MacBook-Pro.local:53614` — so
+  "is it up" is answerable by looking rather than by opening Activity Monitor.
+- **Settings opens from the menu, with a connection log in it.** Every device that reaches this Mac
+  leaves a row saying what happened to it: served, and which device, or turned away with the reason
+  — no pairing token, a token this Mac never issued, too many attempts, or an app speaking a newer
+  version than this Mac serves. It is what makes a phone that will not connect explainable without
+  attaching a debugger. A device that keeps polling keeps one row rather than filling all fifty.
+- **The Mac advertises the name you gave the Mac.** It was announcing itself as whatever the network
+  currently reverse-resolved to — on Davide's connection, `customer.mlnnita1.isp.starlink.com`.
 
 ### 0.0.4 — 2026-08-21
 - **Coming back to Granita from the background no longer claims local network access is off.** iOS

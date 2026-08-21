@@ -2,11 +2,12 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.5.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.6.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
 The client is now **designed** rather than improvised: all four screens were reviewed and redrawn
 against 0.0.4 on 2026-08-21, and [`design.md`](design.md) is the authority on what they look like.
-Discovery — the only one of the four that exists — has been brought in line with it.
+Discovery — the only one of the four that exists — has been brought in line with it. The Mac's own
+surfaces are **not** in that review and still have no frames.
 
 The two halves find each other **on real hardware**: the Mac serves `/v1/health` and advertises over
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
@@ -25,7 +26,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | — | Delivery — Xcode Cloud archives `main` to TestFlight (iOS) | **done** |
 | M1 | Diff parser, display columns, word diff; path grouping into a tree | **done** |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
-| M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | |
+| M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
 | M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | |
 | M6 | Live updates, accessibility, ship | |
@@ -62,6 +63,11 @@ The spec's milestones, each ending in something runnable and a green suite, with
   still, nothing-found and failure both offer a real retry, the failure's advice is ours with the
   system's diagnostic demoted to small print, and every state sits in a 420pt centred measure on
   iPad. §2–§4 are drawn and waiting for M4 and M5.
+- **The menu bar app, serving.** It embeds the same backend, advertises under the name the Mac is
+  actually called, reports `host:port` in its menu, and opens a Settings window from a status item
+  under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up. Its Advanced
+  tab is the connection log: the last fifty attempts to reach this Mac, each with the reason it was
+  served or turned away, coalesced so one polling phone cannot fill it.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment
@@ -73,8 +79,8 @@ current and resolve, and the module graph compiles.
 Still unverified, because each needs code that does not exist yet:
 
 - Highlightr's throughput on a 200-line Swift block, measured on device (M5).
-- The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` on macOS 26, and login-item
-  registration (M3).
+- Login-item registration (M3). The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` is
+  now implemented and verified on macOS 26.
 - Character-wrapping height arithmetic against measured heights (M5).
 - Self-signed identity plus pinned trust evaluation against App Transport Security on device (M4).
 
@@ -96,26 +102,51 @@ sets up delivery.
 
 ## What to pick up next
 
-**M3, the menu bar app.** M2 is done and the backend is real: a terminal can enable a repository
-and read every endpoint. What it cannot do is any of the things that need a window or a Keychain.
+**M3, the menu bar app, one slice down and four to go.** The Mac app now runs the same backend the
+executable runs, advertises it, says where it is listening, and has a Settings window whose Advanced
+tab shows the last fifty connection attempts with the reason each was turned away. The
+`MenuBarExtra` plus `Settings` trap is implemented and verified; `Host.current().localizedName` and
+the missing `localAddress` were the two things that only running it could have found.
 
-M3 is `ServerMacUi` and `ServerMacPresentation` plus the shell: the menu bar item and its state,
-Settings with explicit project enabling, the login item, the connection log, wake-from-sleep rebind,
-and the two things M2 deliberately left at the door — **the TLS identity in the Keychain** and
-**pairing with a QR code**, which SPEC §12 puts in M3 and which are why `--insecure-http` exists.
-Acceptance is pairing from a real device on the LAN and hitting the API.
+What is left, in the order it was planned:
 
-Two smaller things M2 left for whoever is next in these modules:
+2. **Settings, the other three tabs.** Enabling a project by picking a folder, the visibility
+   toggle, the paired devices with revoke. The store already holds all of it. A reader-facing
+   surface, so it goes through the design round trip first.
+3. **The login item, and rebinding after wake from sleep.**
+4. **The TLS identity** — self-signed P-256, ten years, SAN over the Bonjour hostname and every
+   local IP, in the login Keychain.
+5. **Pairing** — the QR carrying `granita://pair`, the six-word fallback, and the code lifecycle
+   wired to the `Pairing` actor that already exists. Acceptance for the milestone is pairing from a
+   real device on the LAN and reading the API, and that is what earns the minor version.
 
-- **Resolving the git binary** (`/usr/bin/git`, then `xcrun -f git`, then `PATH`). The executable is
-  a constructor parameter and the CLI probes three fixed paths; the `xcrun` step is itself a
-  subprocess and wants its own seam.
+**Owed before slice 2: a macOS snapshot kind.** The Mac's views are measured by no test kind at all
+— the snapshot suite is the iOS target — so every screen the Settings window gains is code nothing
+renders. The gate tolerates that today because the Unit and All rows were rescoped in the same pull
+request that created the gap, and a rescoped row is unjudged for one run. It will not tolerate the
+three remaining tabs. The design round trip returns frames, and a screen built from a frame lands
+with its baselines: that is the pull request the macOS kind belongs in.
+
+Smaller things still open in these modules:
+
+- **The `xcrun -f git` step.** Both composition roots now share one probe of three fixed paths;
+  `xcrun` is itself a subprocess and still wants its own seam.
 - **Pinning the JSON encoder.** Timestamps are ISO 8601 because that is the framework's default, and
   a test asserts the raw shape so a change is red rather than silent. Setting it deliberately is a
   small job for the next change in the API module.
+- **The store's lock file.** SPEC §9 wants one beside the document so a standalone `granita-server`
+  and the menu bar app cannot both hold it; today both will happily open the same file.
+- **The dirty-worktree count** beside the menu bar icon. It needs enabled projects to count, so it
+  belongs with the Projects tab.
 
 ## Waiting on Davide
 
+- **The first design round trip, which only he can start**, and which M4 and M5 are now behind. The
+  prompt went over in chat: a review of the discovery screen against its 24 baselines, and a first
+  drawing of the worktree sidebar, the file selector and the continuous diff. Until the frames come
+  back, no branch touching those screens becomes a pull request — see the `design-handoff` skill.
+  What is *not* blocked is everything underneath them: the API client, the view models, the mappers
+  and their tests, which no frame can be authoritative about.
 - **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
   the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
   hardware is the true one: whether a browser that iOS really is withholding permission from dies

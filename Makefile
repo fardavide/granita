@@ -59,6 +59,15 @@ record-snapshots: ## Re-record every snapshot baseline after a deliberate design
 	@$(MAKE) --no-print-directory snapshots
 	@echo "Baselines re-recorded and verified stable. Review every changed PNG before committing."
 
+.PHONY: run-mac
+run-mac: ## Build and launch the menu bar app, signed for this machine
+	@# Signed and Debug, unlike `make build`. macOS 15+ tracks program identity by code signature
+	@# for local network privacy, so an unsigned build cannot register a Bonjour service at all —
+	@# which is most of what there is to see here.
+	xcodebuild build -project $(PROJECT) -scheme GranitaMac -configuration Debug \
+		-destination 'platform=macOS' -derivedDataPath .build/mac -quiet
+	open .build/mac/Build/Products/Debug/Granita.app
+
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures
 	./Scripts/make-fixture-repo.sh

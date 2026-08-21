@@ -4,6 +4,7 @@ import HummingbirdTesting
 
 import CoreBrandingDomain
 import CoreDiffDomain
+import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
 import ServerGitDomain
@@ -24,6 +25,7 @@ struct ApiScenario {
     let store: JsonDocumentStore
     let storeDirectory: URL
     let pairing: Pairing
+    let connectionLog: InMemoryConnectionLog
     let location: RepositoryLocation
 
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
@@ -43,6 +45,7 @@ struct ApiScenario {
         let location = try repository.location()
 
         pairing = Pairing(store: store, now: { Date() })
+        connectionLog = InMemoryConnectionLog(now: { Date() })
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
                 store: store,
@@ -56,11 +59,18 @@ struct ApiScenario {
             store: store,
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
+            connectionLog: connectionLog,
             serverVersion: "0.0.4",
             requiresAuthentication: requiresAuthentication
         )
         application = Application(router: GranitaRouter.build(dependencies))
         self.location = location
+    }
+
+    /// What the Advanced panel would be showing, newest attempt first.
+    func recordedAttempts() async -> [ConnectionAttempt] {
+        var readings = await connectionLog.attempts().makeAsyncIterator()
+        return await readings.next() ?? []
     }
 
     /// Enables the fixture repository, the way `--add-project` does.
@@ -135,6 +145,7 @@ extension ApiScenario {
             store: store,
             pairing: Pairing(store: store, now: { Date() }),
             failedAttempts: FailedAttempts(now: { Date() }),
+            connectionLog: InMemoryConnectionLog(now: { Date() }),
             serverVersion: serverVersion,
             requiresAuthentication: false
         )

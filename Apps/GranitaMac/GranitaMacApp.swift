@@ -1,4 +1,4 @@
-import ServerMacPresentation
+import ServerAppPresentation
 import SwiftUI
 
 /// Thin `@main` shell. Everything worth testing lives in the package, so this file holds the one

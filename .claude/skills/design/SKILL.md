@@ -14,6 +14,11 @@ when_to_use: >
 [`../../docs/design.md`](../../docs/design.md), and the drawings are
 [`../../docs/design/granita-design-review.html`](../../docs/design/granita-design-review.html).
 
+This skill is the **answers**. [`design-handoff`](../design-handoff/SKILL.md) is the **round trip** —
+when a screen needs a design, what the prompt carries, and the rule that no pull request touching a
+screen opens before its frames exist. Reach for that one when a surface has *no* answer yet; reach
+for this one when it has.
+
 Read the relevant section of `design.md` **before** the first line of SwiftUI, not after. Every call
 in it carries the alternative it beat, so a change that re-opens one is re-litigating something
 settled — say so and stop rather than quietly picking the other option.
@@ -71,18 +76,23 @@ request.
 
 ## Changing the design
 
-The design is a document, not a suggestion, and it changes the same way the architecture does:
+Where a returned call *goes* is `design-handoff`'s table, and it is not repeated here. What this
+skill adds is what to do when the design is already written and the code cannot honour it:
 
 1. If a drawing cannot be built as drawn, say what you measured and what it cost — the review is
    full of measurements precisely so a later one can contradict it.
-2. Record the new call in `design.md` **with the alternative it replaces**, and note the departure in
-   `decisions.md` if it also moves away from `SPEC.md`.
-3. Re-record the snapshot baselines (`swift-testing` skill) so the committed frames and the document
-   agree.
+2. Record the new call in `design.md` **with the alternative it replaces**.
+3. Re-record the baselines (`swift-testing` skill) so the committed frames and the document agree.
+   A baseline that moves while `design.md` does not is the screen drifting, not the design.
 
-**Do not edit `design/granita-design-review.html` or the frames under `design/uploads/`.** They are
-an imported record of 0.0.4 as reviewed, including the defects being annotated; the images there are
-copies and must never be repointed at the live snapshot baselines, which now show the fixes.
+**The frames are working material and they expire.** `.claude/docs/design/` holds drawings for
+screens that are **not built yet**, and a section's frames are **deleted in the pull request that
+implements it** — the built screen is pinned from then on by its snapshot baselines, and a drawing
+kept beside them is a second answer to a question that now has a real one. §1's frames are already
+gone that way. Do not edit what remains; build it, then remove it.
+
+The prose in `design.md` does **not** expire. It keeps every call and the alternative it beat, which
+is what stops a settled question being re-opened once the drawing is gone.
 
 ## Sections and where they land
 

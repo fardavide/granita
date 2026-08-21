@@ -25,6 +25,7 @@ it is not a history browser.
 | `/architecture` | The module tree, which layer may import which, composition roots, typed identifiers, adding a dependency |
 | `/design` | **Any client SwiftUI** — which screen, which control, what truncates which way, what an empty state may offer |
 | `/swift-style` | Swift 6 and SwiftUI conventions — concurrency, optionality, typed errors, naming, member ordering |
+| `/design-handoff` | Anything a reader looks at: the round trip to Claude Design, and the rule that **no pull request touching a screen opens before its frames exist** |
 | `/swift-testing` | Swift Testing, the Scenario fixture, handwritten fakes, the golden diff corpus |
 | `/git-invocation` | Running `git` — argument vectors, `-z` parsing, and the six behaviours that are not obvious |
 | `/generated-files` | The Xcode project, the diff fixtures and the icons: how to regenerate, what CI gates |
@@ -74,7 +75,7 @@ pipeline.
 **`Presentation` depends on `Ui`, not the other way round.** `Ui` is the inner view layer —
 stateless views that take what they render and report what happened. `Presentation` owns the view
 models and composes screens from them. Only three modules import a `Data` target, because wiring
-implementations into protocols is their job: `ClientAppPresentation`, `ServerMacPresentation`, and
+implementations into protocols is their job: `ClientAppPresentation`, `ServerAppPresentation`, and
 the `granita-server` executable.
 
 ## Conventions that differ from defaults

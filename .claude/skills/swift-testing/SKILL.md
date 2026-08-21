@@ -182,6 +182,12 @@ Rules that follow:
   good for is the comparison *between* kinds on one module.
 - **Do not "fix" a number by moving snapshot tests into the package.** A SwiftPM test target is
   hostless and renders blank; the split is the reason the numbers mean anything.
+- **The Unit and All rows are measured over what a host test can reach** — the package, minus view
+  bodies and minus the composition roots. A SwiftUI body needs a renderer and a SwiftPM test target
+  is hostless; no test constructs a composition root. Counted, those lines make the number move when
+  a module is first linked into a test binary, which is a fact about the target graph. **A macOS
+  view layer is therefore measured by nothing until a macOS snapshot kind exists** — that is owed,
+  and it is what the Mac's Settings tabs need before they land.
 - **The Snapshot row is measured over the view layers alone.** A rendered view executes no
   repository and no parser, so every line of those the phone app happens to link is one a snapshot
   can never cover. Measured over the whole package the row fell whenever domain code was added
