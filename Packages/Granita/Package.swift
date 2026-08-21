@@ -332,10 +332,20 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // What the server is doing and who has reached it — the two things the menu bar item and
+        // the Advanced panel render. A Domain target because both the API, which produces them,
+        // and the Mac's view layer, which draws them, have to name the same types.
+        .target(
+            name: "ServerApiDomain",
+            path: "Server/Api/Domain",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "ServerApiPresentation",
             dependencies: [
                 "CoreBrandingDomain",
+                "ServerApiDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerGitDomain",
@@ -350,6 +360,7 @@ let package = Package(
             name: "ServerApiPresentationTests",
             dependencies: [
                 "ServerApiPresentation",
+                "ServerApiDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerGitDomain",

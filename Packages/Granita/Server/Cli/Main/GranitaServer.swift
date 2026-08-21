@@ -53,6 +53,9 @@ struct GranitaServer {
             store: store,
             pairing: Pairing(store: store, now: { Date() }),
             failedAttempts: FailedAttempts(now: { Date() }),
+            // The terminal has stderr for this; the log is here because the menu bar app draws it
+            // and both composition roots build the same dependencies.
+            connectionLog: InMemoryConnectionLog(now: { Date() }),
             serverVersion: Branding.serverVersion,
             // Plaintext means every token on the wire is already everyone's, so demanding one would
             // be theatre. The flag exists so a TLS problem can never leave code unreviewable, and
