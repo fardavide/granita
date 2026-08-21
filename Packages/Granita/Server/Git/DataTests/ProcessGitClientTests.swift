@@ -7,7 +7,14 @@ import ServerGitDomain
 /// Driven against the repositories `make fixtures` builds under `.fixtures/`, with the real git
 /// binary. There is nothing to fake here — the whole point of this type is what the binary does,
 /// and every behaviour below was a defect in some earlier design of it.
-@Suite("Process git client")
+///
+/// Serialised for the same reason the API suite is: these spawn real git processes, one of them
+/// deliberately kills one mid-flight, and running them alongside everything else saturates a CI
+/// runner into timing every invocation out.
+///
+/// Serialised for the same reason the API suite is, with one of its own: one test here kills a git
+/// process mid-flight, which is not something to do beside two dozen others that are mid-flight too.
+@Suite("Process git client", .serialized)
 struct ProcessGitClientTests {
 
     // MARK: - Reading an answer back

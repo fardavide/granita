@@ -9,7 +9,20 @@ import ServerStoreDomain
 
 /// SPEC §12's acceptance for M2: every endpoint answered correctly against the real git binary,
 /// including the rename, conflict and unborn-HEAD cases.
-@Suite("Api routes")
+///
+/// Serialised, because these drive **real git processes** and Swift Testing runs tests in parallel
+/// by default. Two dozen suites each spawning several subprocesses saturates a CI runner in a way
+/// a laptop hides: every invocation then sits out its full ten-second budget and is torn down, so
+/// `rev-parse --show-toplevel` fails as a timeout and takes the whole suite with it. The contention
+/// is over the machine, not over anything these tests share, which is exactly what this trait is
+/// for.
+///
+/// Serialised, because these drive **real git processes** and Swift Testing runs tests in parallel
+/// by default. Two dozen of them spawning subprocesses at once contends for a CI runner in a way a
+/// laptop hides, and the failure it produces is every invocation sitting out its full ten-second
+/// budget — so `rev-parse --show-toplevel` fails as a timeout. The contention is over the machine
+/// rather than over anything these tests share, which is what this trait is for.
+@Suite("Api routes", .serialized)
 struct ApiRoutesTests {
 
     // MARK: - Before a phone can say who it is
