@@ -1,30 +1,34 @@
 ---
 name: design-handoff
-description: How Granita asks Claude Design for a screen and takes the answer back — the round trip, what the prompt must carry, why the screens sent are the committed snapshot baselines, why no design system is uploaded, and where a returned call ends up.
+description: How Granita asks Claude Design for a screen and takes the answer back — that no pull request touching a screen opens before the frames exist, the round trip, what the prompt must carry, why the screens sent are the committed snapshot baselines, why no design system is uploaded, and where a returned call ends up.
 when_to_use: >
   Consult before building or redrawing anything a reader looks at — a phone screen, a state a reader
-  can land in, the Mac settings window — and whenever Davide says "hand this to Design", "ask
-  Design", or asks for a design review. Also when a design comes back and has to be recorded.
+  can land in, the Mac settings window — and BEFORE opening any pull request that touches one, since
+  that is the thing this skill forbids while a design is outstanding. Also whenever Davide says
+  "hand this to Design", "ask Design", or asks for a design review, and when a design comes back and
+  has to be recorded.
 ---
 
 # Design handoff
 
 ## It is a round trip, not a hand-off
 
-A hand-off ends a session: you write the prompt and stop. A design round trip does not. The session
-that asks **waits for the answer and then builds it**, so the prompt is written in the middle of the
-work rather than at the end of it, and the reply to Davide is the prompt in a fenced code block,
-ready to paste, and nothing else after it.
+A hand-off ends the work: you write the prompt and the thing you were building is somebody else's
+now. A design round trip does not. The screen is still this work's to build — the prompt is written
+in the **middle** of it, and what happens next is waiting, not handing over. The reply to Davide is
+the prompt in a fenced code block, ready to paste, and nothing else after it.
 
-That asymmetry is the whole shape:
-
-| | Who acts next | Where the session ends |
+| | Who acts next | What happens to the work |
 |---|---|---|
-| Session → Davide, for something only he can do | Davide | the session is over |
-| Session → Claude Design | Design answers, then this session builds | the session continues |
+| → Davide, for something only he can do | Davide | it is his now |
+| → Claude Design | Design answers | it comes back here, unstarted, and is built then |
+
+Waiting can outlast a session, and that is fine — the point is that **nothing about the screen is
+built while the wait is on**, not that one conversation stays open. What the next section says
+about pull requests follows from exactly that.
 
 Claude Design does not write code and does not read this repository. It returns frames and an
-argument. Turning either into Swift is this session's job, and so is being faithful to it.
+argument. Turning either into Swift is this side's job, and so is being faithful to it.
 
 ## What needs a design, and what does not
 
@@ -40,8 +44,35 @@ The test is one question: **is there a design this code could be wrong about?**
 The rule is not "is it big". A five-word empty state is a design; a whole settings tab of stock
 form rows, specified control by control in `SPEC.md` §9, mostly is not.
 
-**Do not ship a reader-facing screen with no design behind it.** If one is genuinely needed before
-Design can answer, say so in the pull request rather than quietly deciding it at the keyboard.
+## No pull request for a screen until its design has come back
+
+**A branch that touches a reader-facing screen does not become a pull request before the frames
+exist.** Not as a draft, not as "the structure, styling to follow", not as a scaffold with a to-do
+in it. Davide, 2026-08-21, on Oltre having done exactly this: *"opened a PR while not having designs
+yet: this should never happen."*
+
+The reason is that a pull request is the point at which a decision stops being provisional. Layout,
+hierarchy, which control, what a row drops first — those get decided the moment the code is written,
+and a PR asks Davide to review them as though they were considered. He then has two bad options:
+approve a design nobody designed, or block a green branch on a round trip that had not been started.
+The frames arriving afterwards do not fix it either, because now they are being fitted to code
+rather than the other way round.
+
+So the order is fixed, and it is the whole reason the round trip is a round trip:
+
+1. Prompt, in the reply, in a code block.
+2. Wait. The session does something else, or it ends.
+3. Frames come back and are recorded.
+4. **Then** the branch, the screen, its baselines, and the pull request.
+
+Two things this does not forbid. Work that a frame cannot be authoritative about — a view model, a
+repository, a mapper, a domain type, a test — is ordinary work and goes through ordinary pull
+requests whenever it is ready; pushing the logic down so the view layer is thin is the right move
+while a design is outstanding, not a workaround. And a screen with genuinely nothing to design about
+it, judged by the table above, does not need a round trip at all.
+
+If a screen is genuinely blocked on a design that has not been asked for yet, **the answer is to
+write the prompt, not to open the pull request and flag it.** Say plainly that the work is waiting.
 
 ## The design language is Apple's, and that constrains the ask
 
