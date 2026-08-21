@@ -107,6 +107,12 @@ Two smaller things M2 left for whoever is next in these modules:
 
 ## Waiting on Davide
 
+- **The first design round trip, which only he can start**, and which M4 and M5 are now behind. The
+  prompt went over in chat: a review of the discovery screen against its 24 baselines, and a first
+  drawing of the worktree sidebar, the file selector and the continuous diff. Until the frames come
+  back, no branch touching those screens becomes a pull request — see the `design-handoff` skill.
+  What is *not* blocked is everything underneath them: the API client, the view models, the mappers
+  and their tests, which no frame can be authoritative about.
 - **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
   the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
   hardware is the true one: whether a browser that iOS really is withholding permission from dies

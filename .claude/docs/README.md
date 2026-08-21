@@ -10,6 +10,7 @@ choice was made belongs here.
 | [`decisions.md`](decisions.md) | Why each choice was made and what it beat — including every deliberate departure from `SPEC.md` |
 | [`status.md`](status.md) | Milestones, what exists, what Davide still owns |
 | [`verification.md`](verification.md) | What the spec's verify-first pass found against the real environment, with numbers |
+| [`design/`](design/) | Frames as Claude Design returned them; the calls they carry live in prose alongside |
 
 [`../../SPEC.md`](../../SPEC.md) is the specification itself, and it is the authority on *what* to
 build. `decisions.md` is the authority on where this repository knowingly differs from it.
