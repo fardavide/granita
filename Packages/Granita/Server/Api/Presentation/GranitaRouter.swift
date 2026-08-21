@@ -69,8 +69,8 @@ public enum GranitaRouter {
     /// worktree being forty-one round trips; it is not to run forty subprocesses.
     private static let concurrentGitProcesses = 4
 
-    public static func build(_ dependencies: ApiDependencies) -> Router<BasicRequestContext> {
-        let router = Router()
+    public static func build(_ dependencies: ApiDependencies) -> Router<GranitaRequestContext> {
+        let router = Router(context: GranitaRequestContext.self)
 
         // Unauthenticated, deliberately, along with pairing: a phone that cannot yet prove who it
         // is still has to be able to find out whether it is talking to a Granita of a version it
@@ -79,13 +79,32 @@ public enum GranitaRouter {
             HealthResponse(serverVersion: dependencies.serverVersion)
         }
 
+        // Unauthenticated by necessity and therefore rate limited by necessity: this is the one
+        // route an attacker on the network may reach, and a two-minute code is short enough to be
+        // worth guessing at network speed.
         router.post("/v1/pair") { request, context -> PairResponse in
+            let source = context.source
+            if await dependencies.failedAttempts.isBlocked(source: source) {
+                await dependencies.connectionLog.record(source: source, outcome: .refused(.rateLimited))
+                throw ApiError(.rateLimited, message: "too many failed attempts; wait a minute")
+            }
+
             let body = try await decoded(PairRequest.self, from: request, context: context)
-            return try await dependencies.pairing.redeem(
-                code: body.code,
-                deviceName: body.deviceName,
-                platform: body.platform
-            )
+            do {
+                let paired = try await dependencies.pairing.redeem(
+                    code: body.code,
+                    deviceName: body.deviceName,
+                    platform: body.platform
+                )
+                await dependencies.failedAttempts.clear(source: source)
+                await dependencies.connectionLog.record(
+                    source: source,
+                    outcome: .paired(device: body.deviceName)
+                )
+                return paired
+            } catch let refused as PairingRefusal {
+                throw await refusal(refused, from: source, dependencies: dependencies)
+            }
         }
 
         let authenticated = router.group().add(middleware: AuthenticationMiddleware(dependencies: dependencies))
@@ -292,14 +311,14 @@ public enum GranitaRouter {
         min(50, max(0, request.uri.queryParameters["context"].flatMap { Int($0) } ?? 3))
     }
 
-    private static func worktreeId(from context: BasicRequestContext) throws -> WorktreeID {
+    private static func worktreeId(from context: GranitaRequestContext) throws -> WorktreeID {
         guard let raw = context.parameters.get("worktreeId") else {
             throw ApiError(.badRequest, message: "no worktree was named")
         }
         return WorktreeID(rawValue: raw)
     }
 
-    private static func fileId(from context: BasicRequestContext) throws -> FileID {
+    private static func fileId(from context: GranitaRequestContext) throws -> FileID {
         guard let raw = context.parameters.get("fileId") else {
             throw ApiError(.badRequest, message: "no file was named")
         }
@@ -309,12 +328,43 @@ public enum GranitaRouter {
     private static func decoded<Body: Decodable>(
         _ type: Body.Type,
         from request: Request,
-        context: BasicRequestContext
+        context: GranitaRequestContext
     ) async throws -> Body {
         do {
             return try await request.decode(as: Body.self, context: context)
         } catch {
             throw ApiError(.badRequest, message: "that request body could not be read")
+        }
+    }
+
+    /// Records a refused pairing and says what to answer with.
+    ///
+    /// **The wire cannot tell the two refusals apart and the log must.** An unauthenticated caller
+    /// that learns "that was a real code, just late" from "that was never a code" has an oracle for
+    /// whether it is guessing in the right shape — so both come back as `pairingExpired`, while the
+    /// Advanced panel, whose only reader is the person standing at the Mac, gets the difference.
+    private static func refusal(
+        _ error: PairingRefusal,
+        from source: String,
+        dependencies: ApiDependencies
+    ) async -> ApiError {
+        switch error {
+        case .noSuchCode:
+            await dependencies.failedAttempts.record(source: source)
+            await dependencies.connectionLog.record(source: source, outcome: .refused(.pairingCodeUnknown))
+            return ApiError(.pairingExpired, message: "that pairing code has expired or was already used")
+        case .codeExpired:
+            await dependencies.failedAttempts.record(source: source)
+            await dependencies.connectionLog.record(source: source, outcome: .refused(.pairingCodeExpired))
+            return ApiError(.pairingExpired, message: "that pairing code has expired or was already used")
+        case .notRecordable(let reason):
+            // Not the caller's fault and not counted against it: the code was right and this Mac
+            // could not write the device down.
+            await dependencies.connectionLog.record(
+                source: source,
+                outcome: .refused(.pairingNotRecordable(reason: reason))
+            )
+            return ApiError(.gitFailure, message: "could not record the pairing: \(reason)")
         }
     }
 
@@ -350,10 +400,10 @@ struct AuthenticationMiddleware: RouterMiddleware {
 
     func handle(
         _ request: Request,
-        context: BasicRequestContext,
-        next: (Request, BasicRequestContext) async throws -> Response
+        context: GranitaRequestContext,
+        next: (Request, GranitaRequestContext) async throws -> Response
     ) async throws -> Response {
-        let source = request.head.authority ?? "unknown"
+        let source = context.source
 
         // A client that speaks a newer contract is refused before anything else looks at the
         // request, because everything after this point assumes it understands what it was sent.

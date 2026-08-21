@@ -71,6 +71,30 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.7 — 2026-08-21
+- **Your Mac now serves over TLS, under a certificate only it has.** Granita generates its own
+  ten-year identity the first time it runs, keeps it in your login Keychain, and serves everything
+  under it. The certificate names the Mac by its `.local` name and by every address it answers on,
+  so it works whether or not your network carries Bonjour between Wi-Fi and Ethernet.
+- **A device pairs by scanning, or by typing six words.** The pairing link carries the fingerprint of
+  that certificate, so a phone that has paired once will only ever talk to the Mac it paired with —
+  something else answering on the same address is refused rather than trusted. When there is no
+  camera to hand, six words do the same job: they are a second code for the same pairing, not a
+  rendering of the first, and typing them in capitals with spaces works.
+- **A pairing code is good for two minutes and one device.** Whichever way it is spent — scanned or
+  typed — the other way stops working at the same moment, so a photograph of a code taken over your
+  shoulder is worth nothing by the time anyone finds it.
+- **Guessing at a pairing code stops after five tries a minute.** Counted per device rather than
+  per Mac, so one phone with a stale code cannot lock the others out.
+- **The connection log says which of the two things went wrong.** A code that was never issued and a
+  code that arrived too late used to look identical in the Advanced panel. They are separate rows
+  now — one means type it again, the other means be quicker — while the phone is still told the same
+  thing either way, because a device that has not proved who it is should not learn which.
+- **The Mac re-advertises itself after it wakes up.** A closed lid used to leave the phone unable to
+  find the Mac until Granita was quit and reopened, with nothing anywhere saying why.
+- **The log now records where a request came from.** It was showing the address the request was
+  sent *to*, which is the same for every device on the network, so two phones were indistinguishable.
+
 ### 0.0.6 — 2026-08-21
 - **The list of Macs no longer drops its arrow onto a second line.** A long device name pushed the
   row's disclosure arrow underneath the name, left-aligned, nowhere near where an arrow belongs. The

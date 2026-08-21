@@ -3,11 +3,11 @@ import Foundation
 
 import ServerStoreDomain
 
-/// Issues one-time pairing codes and turns them into tokens.
+/// Offers pairings and turns them into tokens.
 ///
-/// An actor because a code is single use, and "check it then spend it" is exactly the sequence two
-/// concurrent requests must not interleave — a code accepted twice is a second device paired from
-/// one scan of the same QR.
+/// An actor because a pairing is single use, and "check it then spend it" is exactly the sequence
+/// two concurrent requests must not interleave — a code accepted twice is a second device paired
+/// from one photograph of the same QR.
 public actor Pairing {
 
     /// SPEC §8's window. Long enough to point a camera at a screen, short enough that a photograph
@@ -16,30 +16,58 @@ public actor Pairing {
 
     private let store: any Store
     private let now: @Sendable () -> Date
-    private var issued: [String: Date] = [:]
+    private var outstanding: [Offer] = []
 
     public init(store: any Store, now: @escaping @Sendable () -> Date) {
         self.store = store
         self.now = now
     }
 
-    /// A fresh code, and the six words that stand in for it when there is no camera.
-    public func issueCode() -> (code: String, spokenCode: String) {
-        let code = Self.randomHexadecimal(bytes: 16)
-        issued[code] = now()
-        return (code, Self.spoken(for: code))
+    /// How many pairings are waiting to be redeemed. Read by a test; the housekeeping it checks is
+    /// what stops a pairing sheet opened fifty times from leaving fifty live codes behind.
+    public var outstandingCount: Int {
+        outstanding.count
     }
 
-    /// Spends a code and returns the token to hand back, or refuses.
+    /// A fresh pairing: a code for the camera, and six words for when there is not one.
+    ///
+    /// **Two credentials, one pairing.** The words are not a rendering of the code — they are
+    /// independently random, because a code short enough to read aloud is not a code long enough
+    /// to put in a QR, and each is spent by redeeming either.
+    public func invite() -> PairingCode {
+        outstanding.removeAll { now().timeIntervalSince($0.offeredAt) > Self.codeLifetime }
+
+        let offer = Offer(
+            code: Self.randomHexadecimal(bytes: 16),
+            spokenCode: SpokenWords.code(),
+            offeredAt: now()
+        )
+        outstanding.append(offer)
+        return PairingCode(
+            code: offer.code,
+            spokenCode: offer.spokenCode,
+            expiresAt: offer.offeredAt.addingTimeInterval(Self.codeLifetime)
+        )
+    }
+
+    /// Spends a pairing and returns the token to hand back, or says why not.
+    ///
+    /// Refuses in two distinguishable ways, which the wire deliberately does not repeat: an
+    /// unauthenticated caller told apart "never a code" from "a code, too late" has an oracle for
+    /// whether it is guessing in the right shape at all. The connection log carries the difference
+    /// instead, where the only reader is the person standing at the Mac.
     public func redeem(
-        code: String,
+        code offered: String,
         deviceName: String,
         platform: String
-    ) async throws(ApiError) -> PairResponse {
-        guard let issuedAt = issued.removeValue(forKey: code),
-              now().timeIntervalSince(issuedAt) <= Self.codeLifetime
-        else {
-            throw ApiError(.pairingExpired, message: "that pairing code has expired or was already used")
+    ) async throws(PairingRefusal) -> PairResponse {
+        let typed = SpokenWords.normalised(offered)
+        guard let index = outstanding.firstIndex(where: { $0.code == offered || $0.spokenCode == typed }) else {
+            throw .noSuchCode
+        }
+        let offer = outstanding.remove(at: index)
+        guard now().timeIntervalSince(offer.offeredAt) <= Self.codeLifetime else {
+            throw .codeExpired
         }
 
         let token = Self.randomHexadecimal(bytes: 32)
@@ -53,7 +81,7 @@ public actor Pairing {
         do {
             try await store.add(device: device)
         } catch {
-            throw ApiError(.gitFailure, message: "could not record the pairing: \(error)")
+            throw .notRecordable(reason: reason(for: error))
         }
         return PairResponse(token: token, deviceId: device.id, serverInstanceId: Self.instanceId)
     }
@@ -62,19 +90,58 @@ public actor Pairing {
     /// one advertising the same service name.
     public static let instanceId = UUID().uuidString
 
+    private func reason(for error: StoreError) -> String {
+        switch error {
+        case .notWritable(let reason): reason
+        case .documentIsFromANewerVersion: "a newer version of Granita wrote this Mac's data"
+        }
+    }
+
     private static func randomHexadecimal(bytes count: Int) -> String {
         (0..<count).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
     }
 
-    /// Six words from a code, for when the camera is unavailable.
-    private static func spoken(for code: String) -> String {
-        let words = ["amber", "basil", "cedar", "delta", "ember", "fjord", "glass", "harbor",
-                     "indigo", "jasper", "kelp", "lantern", "meadow", "nectar", "opal", "pepper"]
-        return code.prefix(6).map { character in
-            words[Int(String(character), radix: 16) ?? 0]
-        }.joined(separator: "-")
+    /// One pairing, and both ways of spending it.
+    private struct Offer {
+        let code: String
+        let spokenCode: String
+        let offeredAt: Date
     }
 }
+
+/// What a phone is shown in order to pair.
+public struct PairingCode: Hashable, Sendable {
+
+    /// What the QR carries — long, and never typed by anyone.
+    public let code: String
+
+    /// Six words shown under it, for when the camera is unavailable. Redeems the same pairing.
+    public let spokenCode: String
+
+    public let expiresAt: Date
+
+    public init(code: String, spokenCode: String, expiresAt: Date) {
+        self.code = code
+        self.spokenCode = spokenCode
+        self.expiresAt = expiresAt
+    }
+}
+
+public enum PairingRefusal: Error, Hashable, Sendable {
+
+    /// Not a code this Mac issued — mistyped, meant for another Mac, or already spent.
+    case noSuchCode
+
+    /// A code this Mac did issue, offered after its two minutes were up.
+    case codeExpired
+
+    /// The pairing itself was fine and the device could not be written down, so it is refused
+    /// rather than reported as paired — a phone holding a token this Mac has no record of is a
+    /// phone that is quietly locked out forever.
+    case notRecordable(reason: String)
+}
+
+// MARK: -
 
 enum TokenHash {
 

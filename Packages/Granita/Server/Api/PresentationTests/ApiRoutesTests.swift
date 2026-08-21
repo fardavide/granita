@@ -82,7 +82,7 @@ struct ApiRoutesTests {
         // given
         let scenario = try ApiScenario(repository: .main, requiresAuthentication: true)
         defer { scenario.cleanUp() }
-        let issued = await scenario.pairing.issueCode()
+        let issued = await scenario.pairing.invite()
 
         // when - then — a code single-use is what stops a photograph of the QR pairing a second
         // device long after the first one walked away with it.
@@ -107,7 +107,7 @@ struct ApiRoutesTests {
         let scenario = try ApiScenario(repository: .main, requiresAuthentication: true)
         defer { scenario.cleanUp() }
         try await scenario.enableProject()
-        let issued = await scenario.pairing.issueCode()
+        let issued = await scenario.pairing.invite()
 
         // when - then
         try await scenario.application.test(.router) { client in

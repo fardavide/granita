@@ -34,7 +34,7 @@ struct ConnectionLogRecordingTests {
         let scenario = try ApiScenario(repository: .main, requiresAuthentication: true)
         defer { scenario.cleanUp() }
         let paired = try await scenario.pairing.redeem(
-            code: await scenario.pairing.issueCode().code,
+            code: await scenario.pairing.invite().code,
             deviceName: "Davide's iPhone",
             platform: "ios"
         )

@@ -887,3 +887,125 @@ both readings.
   The composition root clamps the stack instead, and the snapshot suite clamps on the same side so
   the baselines assert what ships. Rejected: hand-rolling the header inside the column, which buys
   exact alignment by giving up a system control.
+
+## The X.509 encoder is ours, and the fourth dependency it beat was already in the graph
+
+`swift-certificates` would have written the self-signed certificate in a dozen lines, and it is
+**already resolved** — `swift-nio-extras` pulls it, so naming the product adds nothing to
+`Package.resolved`. That is the same argument that admitted `NIOTransportServices`, and it was
+rejected here.
+
+The difference is what the dependency is *for*. `SPEC.md` §8 mandates the bind that only
+NIOTransportServices can do, so that one is the spec's choice rather than a convenience. Nothing
+mandates a certificate library, and "it happens to be in the graph today" is a property of
+Hummingbird's transitive dependencies, not a decision this project made — the day nio-extras drops
+it, a core capability acquires a real fourth dependency retroactively. The rule is that a fourth is
+a conversation with Davide, and a conversation cannot be had by noticing something in a lockfile.
+
+What was bought instead is a few hundred bytes of DER in a `Domain` module, whose output is checked
+by **Security.framework itself** rather than by our own reader: the suite hands the certificate to
+`SecCertificateCreateWithData`, matches the key inside it against the key that signed it, evaluates
+it as its own anchor under a real TLS policy, and asserts the system's own hostname matcher against
+a name the certificate covers and one it does not. A byte wrong anywhere and the signature does not
+verify. The SPKI fingerprint is asserted against an `openssl`-produced vector rather than against
+this encoder, because the whole failure mode is an encoder that agrees with itself.
+
+## macOS refuses a ten-year TLS certificate, which is why pinning replaces evaluation
+
+Apple's 398-day cap on TLS server certificates is documented as not applying to roots a human
+added. It **does** apply to one handed to `SecTrust` programmatically as its own anchor: evaluated
+under `SecPolicyCreateSSL`, the ten-year identity comes back
+`Certificate exceeds maximum temporal validity period` however correct everything else about it is.
+
+So SPEC §8's ten years and SPEC §8's pinning are one decision rather than two, and it matters for
+M4: the phone's `URLSessionDelegate` must **replace** the default evaluation with a fingerprint
+comparison, not run both. A client that did both would refuse every Granita there has ever been,
+and the only symptom would be a handshake that fails.
+
+Found by running it, and now asserted by a test that expects that exact refusal — so a macOS which
+changes its mind turns the suite red rather than leaving a comment nobody re-reads.
+
+## The identity's handle is its common name, because the Keychain discards the one we choose
+
+Two Keychain behaviours cost a fingerprint that changed on every launch, which is every paired
+device silently locked out — the key is what they pin.
+
+**A certificate's label is derived from its subject common name.** `SecItemAdd` accepts a
+`kSecAttrLabel` for a certificate and throws it away; the file-based keychain writes the common name
+instead. Searching back for the label we chose therefore found nothing, and each run generated a new
+identity, stored it, and served it.
+
+**A `kSecClassIdentity` search does not filter on the key attributes it documents.** The obvious
+repair — tag the private key and search identities by that tag — returned Davide's *Apple
+Development* identity on the first try, whose RSA key then failed to read as P-256 three calls
+later. The class is searchable; the filter is not applied.
+
+So the certificate's **common name is the handle**, and it is `Granita` rather than the Mac's name:
+renaming a Mac, or moving it to another network, must not orphan the identity. Every address this
+Mac answers on goes in the subject alternative names, which is where RFC 5280 puts them and where
+every modern client looks. The search is over certificates — where the label filter does work and
+where the result can be asked for as bytes rather than as a `CFTypeRef` needing an unchecked cast —
+and the private key is paired to it afterwards with `SecIdentityCreateWithCertificate`.
+
+Two more Keychain facts are pinned in comments beside the code because each has one symptom and no
+explanation: every query must say `kSecUseDataProtectionKeychain: false`, or the modern keychain
+answers and refuses any ad-hoc-signed binary with `errSecMissingEntitlement`; and the private key is
+**generated inside** the Keychain rather than imported, because `SecItemAdd` refuses a `SecKey` made
+by `SecKeyCreateWithData` with `errSecInvalidItemRef`. The second is the better design anyway — the
+private half never exists outside the Keychain, and this process only ever asks it to sign.
+
+## The identity is never regenerated, and a stale address is the price
+
+The certificate names every address the Mac had when it was created. Those change; the certificate
+does not. Chasing them would rotate the pinned key every time the Mac joined a network, which
+unpairs every device that has ever connected — a far worse failure than a subject alternative name
+that no longer resolves, because the client matches on the pinned key rather than on the name.
+
+## The six words are a second credential, not a rendering of the code
+
+An earlier draft derived the spoken code from the first six hexadecimal characters of the real one
+and had no way to redeem it. That is not a fallback: it is a decoration under a QR that cannot be
+typed in.
+
+The words are now independently random and redeem the same pairing — spending either spends both,
+so a photographed QR is worthless once the words have been used. The list is **128 words rather than
+16**, because six words from sixteen is 24 bits: five guesses a minute from one address would take
+years, and a hundred addresses on one network would not. 128 gives 42 bits, and the words are chosen
+to be readable across a room — nothing homophonous, nothing a letter apart, no contested spellings.
+
+What is typed is normalised before it is compared: nobody types the hyphens, and somebody reading
+six words off a screen capitalises the first.
+
+## Both pairing refusals answer the same way on the wire and differently in the log
+
+`/v1/pair` is the one route an unpaired device may reach, so it is the one route an attacker may
+reach. A caller told apart "that was never a code" from "that was a code, too late" has an oracle
+for whether it is guessing in the right shape at all, so both come back `pairingExpired`.
+
+The connection log gets the difference, because its only reader is the person standing at the Mac
+and the two mean different things to them — type it again, against be quicker. That panel is the
+reason the distinction is worth keeping at all rather than collapsing at the source.
+
+## The `Host` header is not a source address, and the rate limit was counting the wrong thing
+
+SPEC §8 asks for five failed attempts per minute **per source address**. The M2 implementation used
+`request.head.authority`, which is what the client dialled — the same string for every device on the
+network. So the limit was global, one misconfigured phone could lock out every other device, and the
+connection log's "source" column said where each request went rather than where it came from.
+
+The router now carries its own request context over `RemoteAddressRequestContext`, reading the peer
+address off the channel. Confirmed against a real bound listener rather than the in-process test
+client, which has no channel and reports nothing — and confirmed to be able to fail, by making the
+accessor return a constant and watching the test go red.
+
+## `--pair` reissues, because a code cannot be asked for from outside the process
+
+Pairing codes live in the actor serving requests, so there is no way for a second invocation of
+`granita-server` to hand one out — and there is no QR in a terminal. `--pair` therefore prints an
+invitation at startup and a fresh one as each expires.
+
+It exists so the TLS and pairing path is exercisable before the pairing screen is designed, which is
+what let this slice be verified end to end: `curl --pinnedpubkey` over the advertised port, the
+six-word code redeemed for a token, and an authenticated route read back. Noisy by design; it is a
+debugging flag on a debugging tool, and two minutes is not long enough to fumble a phone out of a
+pocket.

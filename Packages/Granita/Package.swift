@@ -102,6 +102,22 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // What the two halves must agree on about pairing: the fingerprint the phone pins and the
+        // URL that carries it. A Core module because the Mac writes both and the phone reads them,
+        // and a disagreement about either is a device that cannot connect and cannot say why.
+        .target(
+            name: "CorePairingDomain",
+            dependencies: ["CoreBrandingDomain"],
+            path: "Core/Pairing/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "CorePairingDomainTests",
+            dependencies: ["CorePairingDomain", "CoreBrandingDomain"],
+            path: "Core/Pairing/DomainTests",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "CoreTreeDomain",
             dependencies: ["CoreDiffDomain"],
@@ -280,6 +296,35 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // The TLS identity this Mac serves under. A feature of its own rather than part of the API,
+        // because the certificate is built by pure arithmetic that a host test can check byte for
+        // byte, while the Keychain it lives in is reachable from no test at all — and those two
+        // want to be on opposite sides of a protocol.
+        .target(
+            name: "ServerIdentityDomain",
+            dependencies: ["CorePairingDomain"],
+            path: "Server/Identity/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ServerIdentityDomainTests",
+            dependencies: ["ServerIdentityDomain", "CorePairingDomain"],
+            path: "Server/Identity/DomainTests",
+            swiftSettings: [swift6]
+        ),
+        .target(
+            name: "ServerIdentityData",
+            dependencies: ["ServerIdentityDomain", "CorePairingDomain", "CoreBrandingDomain"],
+            path: "Server/Identity/Data",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ServerIdentityDataTests",
+            dependencies: ["ServerIdentityData", "ServerIdentityDomain", "CorePairingDomain"],
+            path: "Server/Identity/DataTests",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "ServerWorktreesDomain",
             dependencies: ["ServerGitDomain", "CoreDiffDomain", "CoreTreeDomain"],
@@ -346,9 +391,11 @@ let package = Package(
             dependencies: [
                 "CoreBrandingDomain",
                 "ServerApiDomain",
+                "ServerIdentityDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerGitDomain",
+                "CorePairingDomain",
                 "CoreDiffDomain",
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services")
@@ -361,9 +408,11 @@ let package = Package(
             dependencies: [
                 "ServerApiPresentation",
                 "ServerApiDomain",
+                "ServerIdentityDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerGitDomain",
+                "CorePairingDomain",
                 // The acceptance tests compose the real implementations and drive the real git
                 // binary against the fixture repositories, which is what SPEC §12 asks M2 to
                 // prove. A test target is the one place outside a composition root where mixing
@@ -426,6 +475,8 @@ let package = Package(
                 "CoreDiffDomain",
                 "ServerApiDomain",
                 "ServerApiPresentation",
+                "ServerIdentityDomain",
+                "ServerIdentityData",
                 "ServerMacPresentation",
                 "ServerMacUi",
                 "ServerWorktreesDomain",
@@ -434,7 +485,8 @@ let package = Package(
                 "ServerGitDomain",
                 "ServerGitData",
                 "ServerSessionsData",
-                "ServerWatchData"
+                "ServerWatchData",
+                "CorePairingDomain"
             ],
             path: "Server/App/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
@@ -446,7 +498,10 @@ let package = Package(
             name: "ServerCliMain",
             dependencies: [
                 "CoreBrandingDomain",
+                "ServerApiDomain",
                 "ServerApiPresentation",
+                "ServerIdentityDomain",
+                "ServerIdentityData",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerStoreData",
@@ -454,6 +509,7 @@ let package = Package(
                 "ServerGitData",
                 "ServerSessionsData",
                 "ServerWatchData",
+                "CorePairingDomain",
                 "CoreDiffDomain"
             ],
             path: "Server/Cli/Main",
