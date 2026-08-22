@@ -106,19 +106,26 @@ COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
 
 # Files a host test cannot execute for a reason that is not a layer and not a composition root.
 #
-# Both are Keychain stores, and the bar each met is the same: the code must be unrunnable from
-# `swift test` *by construction*, not merely untested. A SwiftPM test binary is unsigned and has no
-# keychain of its own, so the only way to run either at all is to write into a real one — which is
-# why each sits behind a protocol, why everything downstream is tested against a fake, and why the
-# Mac's was verified by running the server instead. See `decisions.md` and the "Verified against the
-# real environment" section of `status.md`.
+# The bar each one met is the same, and it is deliberately high: the code must be unrunnable from
+# `swift test` *by construction*, not merely untested. Two are Keychain stores — a SwiftPM test
+# binary is unsigned and has no keychain of its own, so the only way to run either at all is to write
+# into a real one, which is why each sits behind a protocol, why everything downstream is tested
+# against a fake, and why the Mac's was verified by running the server instead.
+#
+# The third is the login item, and it meets the same bar for the same shape of reason. Every line of
+# it goes through `SMAppService.mainApp`, which is the *running main bundle* — in a test process that
+# is the unsigned test runner, so `register()` would either fail for want of a signature or write the
+# test binary into the developer's real Login Items. There is no version of running this that is not
+# a side effect on the machine.
 #
 # Named per file rather than per directory, deliberately: `Server/Identity/Data` also holds the
-# interface enumeration and `Client/Connection/Data` holds the whole API client, both of which a
-# host test does reach and does cover, and exempting either directory would stop measuring them.
+# interface enumeration, `Client/Connection/Data` holds the whole API client, and `Server/Mac/Data`
+# holds the git probe — all three a host test does reach and does cover, and exempting any of those
+# directories would stop measuring them.
 UNREACHABLE_FILES = {
     "Server/Identity/Data/KeychainServerIdentityStore.swift",
     "Client/Connection/Data/KeychainPairingTokenStore.swift",
+    "Server/Mac/Data/ServiceLoginItemRegistry.swift",
 }
 
 # What each kind's percentage is measured over, and the name that says so in the summary.
@@ -160,6 +167,15 @@ UNREACHABLE_FILES = {
 # it had been failing — higher, not lower. Lines that leave a denominator and take the percentage
 # *up* were dragging it down by being unreachable, not by being untested.
 #
+# `…-no-keychain-…` became `…-no-system-services-…` when the login item joined the set, and that one
+# needs its own justification because it *does* raise the number and it was added by the very pull
+# request it unblocked. The bar is the one above and not the arithmetic: `ServiceLoginItemRegistry`
+# is every line a call on `SMAppService.mainApp`, which in a test process is the unsigned test
+# runner, so running it means writing the test binary into the developer's real Login Items. It had
+# been invisible rather than judged — nothing in the package linked `Server/Mac/Data` until that
+# module got a test target — so this is a definition catching up with a module that had just entered
+# the scope, which is the same story as the two before it.
+#
 # The two narrowing scopes are named constants rather than repeated literals, and that is not
 # tidiness: the filter below selects on this exact string, so a rename spelled in one place and not
 # the other stops narrowing anything at all — silently, and in the direction that looks like good
@@ -167,7 +183,7 @@ UNREACHABLE_FILES = {
 # are what said so.
 DEFAULT_SCOPE = "package"
 VIEWS_SCOPE = "views-drawing-only"
-HOST_REACHABLE_SCOPE = "host-reachable-no-keychain-no-screens"
+HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 
