@@ -1449,6 +1449,10 @@ scene.
 
 Each of these produces a picture that looks plausible and asserts less than it appears to.
 
+**And the one that could not be fixed at all: the Mac's baselines are recorded on the CI runner.**
+See the entry below; it inverts a rule this project states plainly elsewhere, and it is the only
+option of four that survives the measurement.
+
 **A baseline inherits the display's backing scale, so one recorded on a Retina Mac can never pass on
 a runner.** This is the one that actually turned CI red, and it is the most important of the four
 because the failure names nothing: twelve baselines, `Newly-taken snapshot@(620.0, 560.0) does not
@@ -1532,6 +1536,51 @@ yet. `ConnectionLogView` has only its empty state, because a populated row draws
 `.relative` and a baseline of it would read differently every day — that is a change to the row and
 lands with §6. `GranitaSettingsScreen` is composed by nothing, because rendering it needs the four
 fakes the package's test target holds and an app bundle cannot import them.
+
+## The Mac's snapshot baselines are recorded on the CI runner, and the phone's are not
+
+The `swift-testing` skill says it in as many words: **record locally, never on CI**, because a
+recorder on CI turns the suite into a record of whatever the code currently does. That rule stands
+for the phone. For the Mac it is inverted, and the reason is two numbers rather than a preference.
+
+With the raster pinned and both sides rendering 1240 × 1120, the same code still produced different
+pictures on this Mac and on a runner:
+
+| | share of pixels differing by more than 64 levels |
+|---|---|
+| Cross-machine drift, identical code | **0.737%** |
+| A real one-word copy change, same machine | **0.162%** |
+
+**The noise is four and a half times the signal.** There is no `precision` between them: any budget
+loose enough to absorb the drift is four times looser than a changed word, so the suite would go
+green on exactly the class of change it exists to catch. The skill's own calibration story — 0.98
+was rejected because it hid a changed sentence — is this same argument, and it points the same way
+here.
+
+The cause is the window's **backing scale**, which is not the bitmap's. A Retina laptop lays text out
+on a 2× grid and a headless runner on a 1×, glyph positions snap differently, and the layout has
+already happened by the time anything is rasterised. `NSWindow.backingScaleFactor` is derived from
+the screen and there is no API to set it. Pinning the raster — which this project does, and which was
+necessary — cannot reach it.
+
+So the runner is the only machine whose renders are reproducible on the machine that gates them, and
+`Scripts/adopt-mac-baselines.py` takes them out of the job's own diff artefact. Davide chose this on
+22 August 2026 over three alternatives: gating the Mac suite locally only, which leaves a check
+nobody runs; dropping the image assertions, which gives up checking the design was built as drawn;
+and giving the runner a virtual 2× display, which is fragile infrastructure on a hosted runner and
+could not be verified without several more round trips.
+
+**What it costs is that `make snapshots-mac` is red on a developer's Mac, permanently and by
+design.** That is a loaded gun pointing at the next session, whose obvious move is to re-record
+locally and "fix" it — which makes every pull request red instead. Three things are arranged against
+that: `make record-snapshots` no longer touches the Mac's baselines at all, `make snapshots-mac`'s
+help text and comment say the red run is expected, and the adoption script's docstring carries the
+measurement. The target is still worth running locally for its diff report, which is what shows a
+person what moved.
+
+**The rule that does not change is that a picture nobody looked at is not a baseline.** Adopting a
+runner's render is accepting an image sight-unseen unless someone opens it, so the script prints
+every file it writes and says so.
 
 ## The General tab re-reads the login item's status, because `register()` succeeding means very little
 
