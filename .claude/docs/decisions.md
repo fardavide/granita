@@ -1700,6 +1700,36 @@ environment, so the pinned `en_US_POSIX` reaches it. Worth writing down because 
 invisible: both spellings are correct, both look deliberate, and only a cross-machine run says which
 one a baseline is holding.
 
+## The coverage gate's first true red, and the two holes it found
+
+Three of its reds have been noise — measured, and recorded above. This one was not, and telling them
+apart took the same method both times: measure both sides locally, through `coverage.py`'s own scope
+filter, and read the per-file export.
+
+**The Unit row went *up* +0.2 while `All tests` regions fell 0.9%**, which is far outside the ~0.3%
+spread. That divergence is the signature: the unit profile is `swift test`, and the merged profile
+also links the Mac app, so a module the package does not link is invisible to the first and counted
+at zero by the second.
+
+**`Server/Mac/Data` was that module.** Nothing in the package depended on it — the composition root
+is an app target — so `ProcessGitInstallations` had no test and no row in the unit export to say so.
+It now has a test target of its own, which is the fix for both: the failures each carry git's own
+words, and that is the whole point of the row they feed.
+
+**And `GranitaSettingsScreen` was the second**, in the views scope and rendered by nothing, so every
+line the Advanced tab added to it went straight into the denominator. It is now rendered with six
+fakes held in the snapshot bundle, which is the same trade the `Api` and `Mac` suites already make:
+test targets cannot import each other, and the alternative ships doubles in the binary a reader
+installs.
+
+**Two things that baseline cannot do, stated so they are not assumed.** It does not capture the tab
+bar — a `TabView` hosted in a plain window draws the selected pane and no picker, because the
+segments come from the `Settings` scene and a test bundle has none, so tab order and symbols stay
+reviewed in code like the accent tint. And the model must be **driven** first: the screen does not
+start the server, the composition root does, so a screen rendered straight after construction reports
+`.starting` whatever it was handed — a baseline named "serving" showing "Starting…" asserts the
+opposite of its own name, which is what the first attempt at it did.
+
 ## A new Mac baseline needs a placeholder pushed first, because a missing one never reaches the artefact
 
 The adoption round trip — push, let `Snapshot tests (macOS)` fail, `gh run download … -n
