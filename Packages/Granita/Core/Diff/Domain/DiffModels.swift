@@ -253,6 +253,50 @@ public struct FileDiff: Hashable, Codable, Sendable {
     }
 }
 
+/// Which side of a comparison raw lines are read from.
+public enum DiffSide: String, Codable, Hashable, Sendable, CaseIterable {
+    case old
+    case new
+}
+
+/// What a worktree's change route answers with: the stats and the file list from **one** comparison,
+/// never hunks.
+public struct WorktreeChanges: Hashable, Codable, Sendable {
+
+    /// Moves whenever anything in the worktree moves, and is what the phone polls.
+    public let revision: String
+
+    public let stats: ChangeStats
+    public let files: [FileChange]
+
+    /// Whether more files changed than this worktree serves at once.
+    public let isTruncated: Bool
+
+    public init(revision: String, stats: ChangeStats, files: [FileChange], isTruncated: Bool) {
+        self.revision = revision
+        self.stats = stats
+        self.files = files
+        self.isTruncated = isTruncated
+    }
+}
+
+/// A window of one side of a file, read verbatim so the client can splice it into its own hunks.
+///
+/// Context expansion is client-owned state: a single stateless parameter cannot express "hunk 2
+/// expanded up and hunk 5 expanded down", so the server hands over lines and holds no position.
+public struct FileLines: Hashable, Codable, Sendable {
+
+    public let lines: [String]
+
+    /// Whether the window reached the end of that side.
+    public let eof: Bool
+
+    public init(lines: [String], eof: Bool) {
+        self.lines = lines
+        self.eof = eof
+    }
+}
+
 /// A repository the user has explicitly enabled.
 ///
 /// Explicitly is the operative word: nothing is served that was not added by hand, which is what

@@ -1,6 +1,7 @@
 import Foundation
 import Hummingbird
 
+import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiffDomain
 import ServerApiDomain
@@ -143,11 +144,11 @@ public enum GranitaRouter {
             return updated
         }
 
-        authenticated.get("/v1/worktrees/:worktreeId/changes") { request, context -> ChangesResponse in
+        authenticated.get("/v1/worktrees/:worktreeId/changes") { request, context -> WorktreeChanges in
             let id = try worktreeId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
             let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
-            return ChangesResponse(
+            return WorktreeChanges(
                 revision: changes.revision,
                 stats: changes.stats,
                 files: changes.files,
@@ -195,7 +196,7 @@ public enum GranitaRouter {
             return only
         }
 
-        authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/lines") { request, context -> LinesResponse in
+        authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/lines") { request, context -> FileLines in
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
@@ -219,7 +220,7 @@ public enum GranitaRouter {
                     count: count,
                     in: resolved.location
                 )
-                return LinesResponse(lines: read.lines, eof: read.isAtEnd)
+                return FileLines(lines: read.lines, eof: read.isAtEnd)
             } catch {
                 throw gitFailure(error)
             }
@@ -407,7 +408,7 @@ struct AuthenticationMiddleware: RouterMiddleware {
 
         // A client that speaks a newer contract is refused before anything else looks at the
         // request, because everything after this point assumes it understands what it was sent.
-        if let sent = request.headers[.init("X-Granita-Api-Version")!].flatMap({ Int($0) }),
+        if let sent = request.headers[.init(Branding.apiVersionHeader)!].flatMap({ Int($0) }),
            sent > GranitaRouter.apiVersion {
             await dependencies.connectionLog.record(
                 source: source,

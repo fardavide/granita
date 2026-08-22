@@ -1,6 +1,8 @@
 import CryptoKit
 import Foundation
 
+import CoreApiDomain
+import CorePairingDomain
 import ServerStoreDomain
 
 /// Offers pairings and turns them into tokens.

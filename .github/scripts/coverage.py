@@ -79,18 +79,20 @@ COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
 
 # Files a host test cannot execute for a reason that is not a layer and not a composition root.
 #
-# One so far, and the bar for a second is the same as the bar for this one: the code must be
-# unrunnable from `swift test` *by construction*, not merely untested. A SwiftPM test binary is
-# unsigned and has no keychain of its own, so the only way to run the Keychain store at all is to
-# write into the developer's real login keychain — which is why it sits behind
-# `ServerIdentityStore`, why everything downstream is tested against a fake, and why it was verified
-# by running the server instead. See `decisions.md` and the "Verified against the real environment"
-# section of `status.md`.
+# Both are Keychain stores, and the bar each met is the same: the code must be unrunnable from
+# `swift test` *by construction*, not merely untested. A SwiftPM test binary is unsigned and has no
+# keychain of its own, so the only way to run either at all is to write into a real one — which is
+# why each sits behind a protocol, why everything downstream is tested against a fake, and why the
+# Mac's was verified by running the server instead. See `decisions.md` and the "Verified against the
+# real environment" section of `status.md`.
 #
 # Named per file rather than per directory, deliberately: `Server/Identity/Data` also holds the
-# interface enumeration, which a host test does reach and does cover, and exempting the directory
-# would stop measuring it.
-UNREACHABLE_FILES = {"Server/Identity/Data/KeychainServerIdentityStore.swift"}
+# interface enumeration and `Client/Connection/Data` holds the whole API client, both of which a
+# host test does reach and does cover, and exempting either directory would stop measuring them.
+UNREACHABLE_FILES = {
+    "Server/Identity/Data/KeychainServerIdentityStore.swift",
+    "Client/Connection/Data/KeychainPairingTokenStore.swift",
+}
 
 # What each kind's percentage is measured over, and the name that says so in the summary.
 #
@@ -111,15 +113,21 @@ UNREACHABLE_FILES = {"Server/Identity/Data/KeychainServerIdentityStore.swift"}
 # target graph rather than about the tests. Drawing code is judged by the Snapshot row instead,
 # which is the mirror of this rule: that row excludes everything a rendered view cannot execute.
 #
-# The scope's name changed from `reachable` to `host-reachable` when UNREACHABLE_FILES was added,
-# and the rename is the point rather than a tidy-up: the gate compares two numbers only when both
-# were taken the same way, so renaming is how a redefinition declares itself and leaves these two
-# rows unjudged for exactly one run instead of failing the pull request that redefines them.
+# The scope's name has changed twice, and each rename is the point rather than a tidy-up: the gate
+# compares two numbers only when both were taken the same way, so renaming is how a redefinition
+# declares itself and leaves these two rows unjudged for exactly one run instead of failing the pull
+# request that redefines them. `reachable` became `host-reachable` when UNREACHABLE_FILES was added
+# for the Mac's Keychain store, and `host-reachable-no-keychain` when the phone's joined it — the
+# name now says what the set actually is rather than leaving one member unmentioned.
 #
 # The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
 # nothing until a macOS snapshot kind exists. See status.md.
 DEFAULT_SCOPE = "package"
-SCOPES = {"snapshot": "views", "unit": "host-reachable", "all": "host-reachable"}
+SCOPES = {
+    "snapshot": "views",
+    "unit": "host-reachable-no-keychain",
+    "all": "host-reachable-no-keychain"
+}
 
 
 # --- collect -----------------------------------------------------------------------------------
