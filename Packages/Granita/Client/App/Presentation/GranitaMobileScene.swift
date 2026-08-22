@@ -16,14 +16,16 @@ public struct GranitaMobileScene: Scene {
 
     public var body: some Scene {
         WindowGroup {
-            // Selecting a Mac is pairing, and pairing needs a viewfinder — the scanner and its
-            // screen have no frames, so the rows link to a destination this stack does not have and
-            // tapping one does nothing, which is what tapping one already did.
+            // The stack, and nothing about where its rows lead — `ServerDiscoveryScreen` declares
+            // that itself, because the module that offers a link is the one that must know where it
+            // goes. This root used to be where the destination would have gone, and the destination
+            // was simply absent: tapping the Mac a reader opened the app to read answered with
+            // silence, and it shipped. See `CLAUDE.md` and `.claude/docs/decisions.md`.
             //
-            // The client behind that screen is built and tested and is deliberately **not wired
-            // here**: `MacPairing` reads a Mac's health, spends a code and keeps the token, and it
-            // is composed by the pull request that draws the screen calling it. Wiring it now would
-            // put a dependency in this root that nothing on screen can reach.
+            // The client behind the real pairing screen is built and tested and is deliberately
+            // **not wired here**: `MacPairing` reads a Mac's health, spends a code and keeps the
+            // token, and it is composed by the pull request that draws the screen calling it.
+            // Wiring it now would put a dependency in this root that nothing on screen can reach.
             NavigationStack {
                 ServerDiscoveryScreen(
                     model: ClientConnectionModel(browsing: BonjourServerDiscovery())

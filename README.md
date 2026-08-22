@@ -71,7 +71,7 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
-### 0.0.12 — 2026-08-22
+### 0.0.13 — 2026-08-22
 - **Settings has an Advanced tab, and it is last.** It holds the rows you set once and the one button
   you hope never to press — which is exactly why the connection log moved out of it in 0.0.11.
 - **The git row runs git rather than pointing at it.** Granita picks the first git it finds that is
@@ -83,6 +83,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
   the confirmation repeats it as consequences rather than nouns: each paired device has to pair
   again. If the reset cannot be written, nothing is destroyed and the count still says so.
 - **The data folder is one click from Finder**, for when the document is worth looking at by hand.
+
+### 0.0.12 — 2026-08-22
+- **Tapping your Mac used to do nothing at all. Now it tells you why.** The row was a navigation row
+  with a chevron and nothing behind it, so the one thing you open the app to do answered with
+  silence — no screen, no message, nothing to distinguish it from a broken app. It now opens a screen
+  saying Granita can find your Mac but cannot connect to it yet, because pairing needs the camera and
+  that screen is still being built. **Shipping a control that looks like it works and does not is not
+  something this app will do again**; when the work behind something is not finished, it says so.
 
 ### 0.0.11 — 2026-08-22
 - **The connection log has its own tab.** It was sharing Advanced with the button that erases
