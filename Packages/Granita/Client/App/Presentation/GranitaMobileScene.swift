@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientConnectionData
+import ClientConnectionDomain
 import ClientConnectionPresentation
 import ClientConnectionUi
 import CorePairingDomain
@@ -38,16 +39,18 @@ public struct GranitaMobileScene: Scene {
     private func model() -> ClientConnectionModel {
         ClientConnectionModel(
             browsing: BonjourServerDiscovery(),
-            tokens: KeychainPairingTokenStore(),
-            // One session per Mac, pinned to the key its own pairing link carried. Built here and
-            // not held, because the fingerprint arrives with the link and a session built for one
-            // Mac must be incapable of reaching another.
-            handshake: { link in
-                HttpServerPairing(
-                    macAt: address(of: link),
-                    transport: UrlSessionHttpTransport(pinnedTo: link.fingerprint)
-                )
-            }
+            joining: MacPairing(
+                tokens: KeychainPairingTokenStore(),
+                // One session per Mac, pinned to the key its own pairing link carried. Built here
+                // and not held, because the fingerprint arrives with the link and a session built
+                // for one Mac must be incapable of reaching another.
+                handshake: { link in
+                    HttpServerPairing(
+                        macAt: address(of: link),
+                        transport: UrlSessionHttpTransport(pinnedTo: link.fingerprint)
+                    )
+                }
+            )
         )
     }
 }

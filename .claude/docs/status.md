@@ -98,7 +98,9 @@ The spec's milestones, each ending in something runnable and a green suite, with
   against the Mac's real router in one process, pairing with a code the Mac issued and with the six
   words under it, and driving the partial update through all three of its states.
 - **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
-  client is named `…ViewModel` any more. It carries the browse, the handshake and the set of Macs
+  client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
+  method on the model — the model holds the outcome, not the sequence. It carries the browse, the
+  join and the set of Macs
   this phone holds a token for — which is what the discovery list's *Recent* and *Other Macs*
   sections will be ordered by, once the Mac's Bonjour TXT record carries the instance identifier
   that joins the two.

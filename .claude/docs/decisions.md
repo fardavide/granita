@@ -1228,6 +1228,33 @@ that answers before pairing exists — which is the route's whole reason for exi
 Which end is behind is named rather than reported as "the versions differ", because one of them is
 fixed by opening the App Store and the other by opening a Mac.
 
+## Joining a Mac is a use case, and the coverage gate is what said so
+
+The first draft put the sequence — read the contract, spend the code, write the token down — on
+`ClientConnectionModel`, which is a `Presentation` type. It looked reasonable and it was a layer
+violation: a view model orchestrating three protocols is a use case wearing a screen's name, and the
+rule that use cases orchestrate exists precisely so that the thing worth testing is not sitting in
+the layer that is hardest to reach.
+
+**The Snapshot coverage row is what caught it**, and it caught it as a number rather than as an
+opinion. That row is scoped to the layers that draw, which includes `Presentation` because a screen
+is composed there — so ninety lines of pairing logic that no rendered baseline could ever execute
+joined its denominator and dropped it twelve points. The reflex is to rescope the row; the honest
+reading is that the row was right and the code was in the wrong place.
+
+So `MacPairing` is a `Domain` type over the two protocols it needs, returning a `PairingOutcome`
+rather than throwing — three of the four endings are not errors in any useful sense, and a caller
+that had to catch them would be deciding which of its `catch` blocks was really a success. The model
+keeps what a screen reads: not started, joining, finished. `MacJoining` is the protocol between them,
+and it earns its place the ordinary way — the model's tests drive one fake instead of the two
+collaborators underneath it, which is the difference between a test about the screen and a second
+copy of the test below.
+
+Rejected: scoping the Snapshot row to `Ui` alone. It would have passed the gate today by redefining
+a number rather than by fixing what the number was reporting, which is the failure signature the
+`swift-testing` skill names — and it would have stopped counting screen composition, which is
+drawing code a baseline genuinely does execute.
+
 ## A pairing that succeeds and cannot be written down is its own outcome
 
 The Mac keeps a hash of the token and the phone keeps the only copy, so a `SecItemAdd` that fails

@@ -7,8 +7,9 @@ import CorePairingDomain
 
 @testable import ClientConnectionPresentation
 
-/// One model for the unit: the browse and the handshake are two views onto the same question, which
-/// is which Mac this phone is talking to.
+/// One model for the unit: the browse and the join are two views onto the same question, which is
+/// which Mac this phone is talking to. What the sequence *is* belongs to `MacPairing`; what this
+/// holds is where it got to.
 @Suite("Client connection model")
 struct ClientConnectionModelTests {
 
@@ -96,124 +97,53 @@ struct ClientConnectionModelTests {
     // MARK: - Joining one
 
     @Test
-    func `given a Mac that agrees when pairing then the token is the only thing kept`() async {
+    func `given a Mac that agrees when it is joined then the outcome is what the screen reads`() async {
         // given
-        let scenario = Scenario(pairing: .success(aPairedDevice))
+        let scenario = Scenario()
 
         // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
+        await scenario.sut.join(aLink, as: anIphone)
 
-        // then — the Mac keeps a hash and this is the only copy of the token there is, so a pairing
-        // that reported success without writing it down would lock the phone out silently.
-        #expect(scenario.sut.pairing == .paired(aPairedDevice.serverInstanceId))
-        #expect(await scenario.tokens.saved == [aPairedDevice.serverInstanceId: aPairedDevice.token])
+        // then
+        #expect(scenario.sut.pairing == .finished(.paired(aPairedDevice)))
     }
 
     @Test
-    func `given a Mac that agrees when pairing then it joins the Macs this phone knows`() async {
+    func `given a Mac that agrees when it is joined then it joins the Macs this phone knows`() async {
         // given
-        let scenario = Scenario(pairing: .success(aPairedDevice))
+        let scenario = Scenario()
 
         // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
+        await scenario.sut.join(aLink, as: anIphone)
 
-        // then — what the discovery list's two sections are ordered by.
+        // then — what the discovery list's two sections will be ordered by, without waiting for the
+        // Keychain to be read again.
         #expect(scenario.sut.pairedServers == [aPairedDevice.serverInstanceId])
     }
 
     @Test
-    func `given a Mac serving another contract when pairing then the code is never spent`() async {
-        // given — a code lasts two minutes and works once, so learning about skew after spending it
-        // costs the reader a walk back to the Mac for another one.
-        let scenario = Scenario(
-            servingApiVersion: Branding.apiVersion - 1,
-            pairing: .success(aPairedDevice)
-        )
-
-        // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
-
-        // then
-        #expect(scenario.sut.pairing == .wrongContract(.macIsBehind(serving: Branding.apiVersion - 1)))
-        #expect(await scenario.server.codesOffered.isEmpty)
-        #expect(await scenario.tokens.saved.isEmpty)
-    }
-
-    @Test
-    func `given a code the Mac refused when pairing then the phone does not guess why`() async {
-        // given — the Mac answers the same way whether the code never existed or merely ran out, on
-        // purpose. Inventing the distinction back on this side would put a sentence on screen that
-        // the Mac deliberately declined to say.
-        let scenario = Scenario(pairing: .failure(.pairingExpired))
-
-        // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
-
-        // then
-        #expect(scenario.sut.pairing == .failed(.pairingExpired))
-    }
-
-    @Test
-    func `given five failures in a minute when pairing again then the wait is what is reported`() async {
+    func `given a Mac that refuses when it is joined then no Mac is recorded as known`() async {
         // given
-        let scenario = Scenario(pairing: .failure(.rateLimited))
+        let scenario = Scenario(joining: .refused(.pairingExpired))
 
         // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
+        await scenario.sut.join(aLink, as: anIphone)
 
         // then
-        #expect(scenario.sut.pairing == .failed(.rateLimited))
-    }
-
-    @Test
-    func `given the Keychain refuses when pairing succeeds then that is its own outcome`() async {
-        // given — the worst state there is: the Mac now has a device record for a credential this
-        // phone does not hold, so the reader has to revoke it there before trying again. Reporting
-        // it as an ordinary failure would send them round the same loop forever.
-        let scenario = Scenario(
-            pairing: .success(aPairedDevice),
-            keychainRefusing: .refused(status: -34018)
-        )
-
-        // when
-        await scenario.sut.pair(using: aLink, as: anIphone)
-
-        // then
-        #expect(scenario.sut.pairing == .tokenNotStored(.refused(status: -34018)))
+        #expect(scenario.sut.pairing == .finished(.refused(.pairingExpired)))
         #expect(scenario.sut.pairedServers.isEmpty)
     }
 
     @Test
-    func `given tokens for two Macs when the history is read then both are known`() async {
+    func `given tokens already in the Keychain when the history is read then the model carries them`() async {
         // given
-        let scenario = Scenario(holdingTokens: [
-            ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22"):
-                PairingToken(rawValue: "1f0e4d7c6b5a4938"),
-            ServerInstanceId(rawValue: "77DDEE00-2222-4B3F-91A0-C4D5E6F70088"):
-                PairingToken(rawValue: "2a3b4c5d6e7f8091")
-        ])
+        let scenario = Scenario(alreadyPaired: [aPairedDevice.serverInstanceId])
 
         // when
         await scenario.sut.loadPairingHistory()
 
         // then
-        #expect(scenario.sut.pairedServers == [
-            ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22"),
-            ServerInstanceId(rawValue: "77DDEE00-2222-4B3F-91A0-C4D5E6F70088")
-        ])
-    }
-
-    @Test
-    func `given a Keychain that will not enumerate when the history is read then the list still shows`() async {
-        // given — the history only orders the list. Refusing to show the Macs that are actually on
-        // the network because a sort key is unavailable is the worse screen.
-        let scenario = Scenario(keychainRefusing: .unreadable)
-
-        // when
-        await scenario.sut.loadPairingHistory()
-
-        // then
-        #expect(scenario.sut.pairedServers.isEmpty)
+        #expect(scenario.sut.pairedServers == [aPairedDevice.serverInstanceId])
     }
 }
 
@@ -222,28 +152,15 @@ struct ClientConnectionModelTests {
 private struct Scenario {
 
     let sut: ClientConnectionModel
-    let tokens: FakePairingTokenStore
-    let server: FakeServerPairing
 
     init(
         discovering states: [DiscoveryState] = [],
-        servingApiVersion apiVersion: Int = Branding.apiVersion,
-        pairing: Result<PairedDevice, ApiFailure> = .success(aPairedDevice),
-        holdingTokens held: [ServerInstanceId: PairingToken] = [:],
-        keychainRefusing refusal: PairingTokenStoreFailure? = nil
+        joining outcome: PairingOutcome = .paired(aPairedDevice),
+        alreadyPaired known: Set<ServerInstanceId> = []
     ) {
-        tokens = refusal.map(FakePairingTokenStore.init(refusing:)) ?? FakePairingTokenStore(holding: held)
-        server = FakeServerPairing(
-            answeringHealth: .success(
-                HealthResponse(name: "Granita", apiVersion: apiVersion, serverVersion: "0.0.9")
-            ),
-            answeringPairing: pairing
-        )
-        let mac = server
         sut = ClientConnectionModel(
             browsing: FakeServerDiscovery(states: states),
-            tokens: tokens,
-            handshake: { _ in mac }
+            joining: FakeMacJoining(outcome: outcome, known: known)
         )
     }
 }

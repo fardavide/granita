@@ -9,33 +9,17 @@ import CorePairingDomain
 /// question — which Mac is this phone talking to — and splitting them across two objects would put
 /// the seam where a screen is rather than where a layer is. The discovery list, the pairing sheet
 /// and the paired/unpaired sections all read this.
+///
+/// It holds outcomes and never sequences. Reading a Mac's health, spending the code and writing the
+/// token down is one operation over three protocols, and that belongs in the layer that owns them.
 @Observable
 public final class ClientConnectionModel {
 
-    /// How far an attempt to join a Mac has got.
+    /// How far an attempt to join a Mac has got, from this screen's point of view.
     public enum PairingState: Hashable, Sendable {
-
         case notStarted
-
-        /// Reading `/v1/health`, **before** the single-use code is spent. A code offered to a Mac
-        /// this phone cannot read is a code wasted for a reason the reader never sees.
-        case checkingTheContract
-
-        /// The two ends do not speak the same contract, and nothing was spent finding out.
-        case wrongContract(ApiCompatibility)
-
-        case pairing
-
-        case paired(ServerInstanceId)
-
-        case failed(ApiFailure)
-
-        /// Paired, and the token could not be written down.
-        ///
-        /// The worst outcome there is, and it earns a case of its own: the Mac now has a device
-        /// record for a credential this phone does not hold, so the reader has to revoke it there
-        /// before pairing again.
-        case tokenNotStored(PairingTokenStoreFailure)
+        case joining
+        case finished(PairingOutcome)
     }
 
     public private(set) var discovery: DiscoveryState = .idle
@@ -66,20 +50,11 @@ public final class ClientConnectionModel {
     }
 
     private let browsing: any ServerDiscovering
-    private let tokens: any PairingTokenStore
-    private let handshake: (PairingLink) -> any ServerPairing
+    private let joining: any MacJoining
 
-    /// - Parameter handshake: builds the client for one Mac. A closure rather than a stored client,
-    ///   because a pinned session is per Mac: the fingerprint arrives with the link, and a session
-    ///   built for one Mac must be unable to reach another.
-    public init(
-        browsing: any ServerDiscovering,
-        tokens: any PairingTokenStore,
-        handshake: @escaping (PairingLink) -> any ServerPairing
-    ) {
+    public init(browsing: any ServerDiscovering, joining: any MacJoining) {
         self.browsing = browsing
-        self.tokens = tokens
-        self.handshake = handshake
+        self.joining = joining
     }
 
     /// Consumes discovery updates until the stream ends or the surrounding task is cancelled.
@@ -102,41 +77,17 @@ public final class ClientConnectionModel {
     }
 
     /// Reads which Macs this phone has paired with before.
-    ///
-    /// Silent on failure by design: a Keychain that will not enumerate costs an ordering, and
-    /// refusing to show the Macs that are actually on the network because of it would be a worse
-    /// screen than an unordered list.
     public func loadPairingHistory() async {
-        pairedServers = (try? await tokens.pairedServers()) ?? []
+        pairedServers = await joining.alreadyPaired()
     }
 
-    /// Spends a pairing code and keeps the only copy of what it buys.
-    ///
-    /// The contract is checked first and the code is spent second, in that order and never the
-    /// other way round: a code is single use and lasts two minutes, so discovering the skew
-    /// afterwards costs the reader a trip back to the Mac for another one.
-    public func pair(using link: PairingLink, as device: PairingDevice) async {
-        let server = handshake(link)
-        pairing = .checkingTheContract
-        do {
-            let health = try await server.health()
-            guard health.compatibility == .sameContract else {
-                pairing = .wrongContract(health.compatibility)
-                return
-            }
-
-            pairing = .pairing
-            let paired = try await server.pair(with: link.code, as: device)
-            do {
-                try await tokens.save(paired.token, issuedBy: paired.serverInstanceId)
-            } catch {
-                pairing = .tokenNotStored(error)
-                return
-            }
+    /// Joins the Mac a scanned link points at, and records what came of it.
+    public func join(_ link: PairingLink, as device: PairingDevice) async {
+        pairing = .joining
+        let outcome = await joining.pair(with: link, as: device)
+        if case .paired(let paired) = outcome {
             pairedServers.insert(paired.serverInstanceId)
-            pairing = .paired(paired.serverInstanceId)
-        } catch {
-            pairing = .failed(error)
         }
+        pairing = .finished(outcome)
     }
 }
