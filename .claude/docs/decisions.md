@@ -1700,6 +1700,77 @@ environment, so the pinned `en_US_POSIX` reaches it. Worth writing down because 
 invisible: both spellings are correct, both look deliberate, and only a cross-machine run says which
 one a baseline is holding.
 
+## A new Mac baseline needs a placeholder pushed first, because a missing one never reaches the artefact
+
+The adoption round trip — push, let `Snapshot tests (macOS)` fail, `gh run download … -n
+snapshot-diffs-mac`, `Scripts/adopt-mac-baselines.py` — works for a baseline that **changed** and
+silently does nothing for one that is **new**. The report is built from `__SnapshotFailures__`, and
+swift-snapshot-testing does not write there when there is no reference: it records the image into
+`__Snapshots__` and fails that run instead. So the artefact for a first run of a new test is the
+script's own "no snapshot mismatches were captured" placeholder, and there is nothing to adopt.
+
+**So a new baseline lands in two commits.** The first pushes this machine's renders as placeholders,
+which turns "no reference" into a mismatch; the second replaces all of them with the runner's. Both
+commits say which they are, because a placeholder left behind is exactly the locally-recorded baseline
+this whole arrangement exists to prevent — and it would be green on the run that introduced it and red
+on every run after.
+
+Rejected: recording on CI with `record: true` behind an environment variable, which is the same
+"suite that cannot fail" the `swift-testing` skill forbids, aimed at a narrower target. And rejected:
+teaching `snapshot-report.py` to emit a section for a newly-recorded image, which cannot work — the
+job's checkout is what the report reads, and a newly-recorded image is only ever on the runner's disk
+inside a directory the failing step does not upload.
+
+Written down because the failure is silent in the worst way: the script prints `0 baseline(s)
+adopted`, which reads like "nothing needed adopting" rather than "there was nothing to adopt".
+
+## Advanced ships without its Diagnostics half, because Granita has no logging at all
+
+Design §7 draws a verbose switch and an **Open in Console** button beside it, with the footnote
+*verbose logging records every request and every git invocation until you turn it off*. Both were
+built on a premise nobody had checked: there is **no logging anywhere in this product**. Not a
+`Logger`, not an `os.log`, not a print — the whole package, searched.
+
+So the switch would turn on nothing and the button would open a Console filtered to a subsystem that
+never writes. A control over an absent subsystem is worse than an absent control: it reads as a
+feature, it is pressed, and what it reports is silence that looks like "nothing is wrong".
+
+**They land with the logging they describe**, which is its own slice — a seam in `Domain`, an
+`os.Logger` behind it, and call sites at the request boundary and at every git invocation, because
+that is what the footnote promises. Advanced ships now with the two rows that stand on their own: git,
+and the data folder with Reset.
+
+**And Console cannot be filtered from outside, which is settled before that slice starts.**
+`Console.app` registers **no URL scheme** — its `Info.plist` has no `CFBundleURLTypes` at all — so
+nothing can hand it a predicate. Davide chose, on 22 August 2026, that the button opens Console and
+puts the predicate on the pasteboard, so one paste finishes it. What that beat: opening Console
+unfiltered, which is the exact failure the review says the button exists to prevent — *a level control
+with no route to the log leaves a person choosing how much of something they cannot find*; and running
+`log stream` in Terminal, which is genuinely filtered and leaves the reader in a different app,
+holding a process this one does not own.
+
+**The lock-file row is absent for the same shape of reason**: SPEC §9's lock file is not built, so the
+row that reads its refusal has nothing to read.
+
+## Reset is a store method, and a refused one leaves the count telling the truth
+
+`Store.reset()` rather than the tab deleting the document, because the store owns what the document
+means and is the actor that serialises writes against it. It goes through the same atomic replace as
+every other mutation: a reset that cleared this process's memory and left the file alone would restore
+everything it claimed to destroy at the next launch, which is the one outcome nobody would think to
+check for.
+
+**It is all four records rather than a choice of them** — projects, devices, aliases and pins, viewed
+marks. A reset that left one behind would leave the reader believing the rest went too, and the record
+most likely to be left is the one that matters: a project still enabled is a repository still being
+served.
+
+**The model swallows a refusal and re-reads the counts, which is deliberate.** A full disk or a
+document from a newer Granita means nothing was destroyed. Because the sentence above the button is
+counted from the store rather than remembered, re-reading it leaves that sentence describing what is
+still there — and a tab that answered a failed reset with "nothing is stored" would be lying about the
+one thing on this pane that is the security boundary.
+
 ## The Connections row's `Pair…` button lands with Devices, not with the row
 
 Design §6 gives a refused row the one affordance a served row does not have — `Pair…` for no token,

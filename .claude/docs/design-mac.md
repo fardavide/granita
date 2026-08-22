@@ -28,7 +28,7 @@ becomes.
 | §4 | Projects | drawn, not built |
 | §5 | Devices | drawn, not built |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**, with baselines. The `Pair…` affordance is blocked behind §5, which is the door it opens, so the frames stay until then |
-| §7 | Advanced | drawn, not built |
+| §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
 and the answers are below rather than in the review because neither came from a drawing.
@@ -339,6 +339,13 @@ someone else's logs; there is one reader here and he wants either the normal amo
 Beside it, **Open in Console**, filtered to Granita's subsystem — and the button matters more than
 the switch, because a level control with no route to the log leaves a person choosing how much of
 something they cannot find.
+
+> **Neither is built, and the reason is that there is nothing to switch.** Granita writes no log at
+> all — no `Logger`, no `os.log`, anywhere. Both rows land with the logging layer they describe.
+> Two things are settled in advance: the filter reaches Console **on the pasteboard**, because
+> `Console.app` registers no URL scheme and cannot be handed a predicate; and what the verbose
+> switch turns on is what the footnote already promises — every request and every git invocation.
+> See [`decisions.md`](decisions.md).
 
 **git gets a version, not just a path.** `GitExecutablePath` picks the first of three candidates that
 is executable, and the interesting question is never which won but whether the one that won works.

@@ -38,11 +38,13 @@ final class MacComposition {
 
     init() {
         let store = JsonDocumentStore(fileUrl: Self.storeUrl)
+        // A path with no binary at it surfaces as git being unavailable, with git's own words,
+        // which is the failure the Advanced panel is there to show. Kept in a `let` because that
+        // panel prints it beside the version it got by running it.
+        let gitPath = GitExecutablePath.firstAvailable(among: GitExecutablePath.defaultCandidates)
+            ?? "/usr/bin/git"
         let git = ProcessGitClient(
-            executablePath: GitExecutablePath.firstAvailable(among: GitExecutablePath.defaultCandidates)
-                // A path with no binary at it surfaces as git being unavailable, with git's own
-                // words, which is the failure the Advanced panel is there to show.
-                ?? "/usr/bin/git",
+            executablePath: gitPath,
             outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
             timeout: ProcessGitClient.defaultTimeout
         )
@@ -92,6 +94,9 @@ final class MacComposition {
             restarts: rebinds,
             connectionLog: log,
             loginItems: ServiceLoginItemRegistry(),
+            gitInstallations: ProcessGitInstallations(git: git, executablePath: gitPath),
+            store: store,
+            dataFolderUrl: Self.storeUrl.deletingLastPathComponent(),
             now: { Date() }
         )
 
