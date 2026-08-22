@@ -491,12 +491,18 @@ let package = Package(
             path: "Server/Mac/Domain",
             swiftSettings: [swift6]
         ),
+        .testTarget(
+            name: "ServerMacDomainTests",
+            dependencies: ["ServerMacDomain"],
+            path: "Server/Mac/DomainTests",
+            swiftSettings: [swift6]
+        ),
 
         // The one implementation of the above. `SMAppService` is a framework call, so it cannot
         // live in `Domain`, and it is not the API's business either.
         .target(
             name: "ServerMacData",
-            dependencies: ["ServerMacDomain"],
+            dependencies: ["ServerMacDomain", "ServerGitDomain"],
             path: "Server/Mac/Data",
             swiftSettings: [swift6]
         ),
@@ -531,7 +537,13 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerMacPresentationTests",
-            dependencies: ["ServerMacPresentation", "ServerApiDomain", "ServerMacDomain"],
+            dependencies: [
+                "ServerMacPresentation",
+                "CoreDiffDomain",
+                "ServerApiDomain",
+                "ServerMacDomain",
+                "ServerStoreDomain"
+            ],
             path: "Server/Mac/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),

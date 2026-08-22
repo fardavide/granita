@@ -71,6 +71,25 @@ public struct GranitaSettingsScreen: View {
                 }
                 .task { await model.followConnections() }
             }
+
+            Tab("Advanced", systemImage: "gearshape.2") {
+                AdvancedSettingsView(
+                    git: model.gitInstallation,
+                    dataFolderUrl: model.dataFolderUrl,
+                    projectCount: model.storedProjectCount,
+                    deviceCount: model.storedDeviceCount,
+                    onRevealDataFolder: { Self.reveal(model.dataFolderUrl) },
+                    onResetAllData: { Task { await model.resetAllData() } }
+                )
+                .task {
+                    // Both on opening rather than at launch. Running git is a subprocess and the
+                    // counts are a disk read, and neither is worth doing for a tab nobody has
+                    // looked at — while both are worth re-doing every time this one is, because
+                    // git can be installed and projects added while Granita is running.
+                    await model.loadGitInstallation()
+                    await model.loadStoredCounts()
+                }
+            }
         }
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
     }
@@ -85,6 +104,12 @@ public struct GranitaSettingsScreen: View {
 
     private static func open(_ url: URL) {
         NSWorkspace.shared.open(url)
+    }
+
+    /// Finder, with the folder selected rather than opened, which is what "Reveal" means everywhere
+    /// else on this machine.
+    private static func reveal(_ url: URL) {
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     /// Privacy & Security › Local Network, and Login Items, addressed directly. Without the first

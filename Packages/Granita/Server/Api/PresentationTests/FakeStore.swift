@@ -68,6 +68,11 @@ actor FakeStore: Store {
         stored = replacing(devices: stored.devices.filter { $0.id != id })
     }
 
+    func reset() throws(StoreError) {
+        try refuseIfAsked()
+        stored = .empty
+    }
+
     private func refuseIfAsked() throws(StoreError) {
         if let failure {
             throw failure

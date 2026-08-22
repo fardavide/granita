@@ -1,8 +1,10 @@
 import Foundation
 import Testing
 
+import CoreDiffDomain
 import ServerApiDomain
 import ServerMacDomain
+import ServerStoreDomain
 
 @testable import ServerMacPresentation
 
@@ -106,6 +108,95 @@ struct ServerMacModelTests {
         #expect(scenario.sut.connectionAttempts == [refused, accepted])
     }
 
+    // MARK: - What Advanced reports
+
+    @Test
+    func `given Advanced is opened when git is asked for then it says which one and what version`() async {
+        // given — the row runs git rather than reporting the path that won, because a path that is
+        // executable and broken looks exactly like a working one until something runs it.
+        let scenario = Scenario(git: .available(version: "2.52.0", path: "/opt/homebrew/bin/git"))
+
+        // when
+        await scenario.sut.loadGitInstallation()
+
+        // then
+        #expect(scenario.sut.gitInstallation == .available(version: "2.52.0", path: "/opt/homebrew/bin/git"))
+    }
+
+    @Test
+    func `given git cannot be run when Advanced is opened then the row carries git's own words`() async {
+        // given — the rule the whole git API already follows, and the one failure a reader can
+        // actually act on: the command line tools point at a developer directory that is not there.
+        let scenario = Scenario(git: .unavailable(reason: "xcrun: error: invalid active developer path"))
+
+        // when
+        await scenario.sut.loadGitInstallation()
+
+        // then
+        #expect(scenario.sut.gitInstallation == .unavailable(reason: "xcrun: error: invalid active developer path"))
+    }
+
+    @Test
+    func `given nothing has asked yet when Advanced is drawn then git reads as still being checked`() {
+        // given - when - then — a row that appears a moment after the pane does reads as a glitch,
+        // so the state before the answer is drawn rather than hidden.
+        #expect(Scenario().sut.gitInstallation == .checking)
+    }
+
+    @Test
+    func `given projects and devices when Advanced is opened then Reset says what it would destroy`() async {
+        // given — the sentence above the button is what makes the button proportionate, and it is
+        // counted from the store rather than guessed.
+        let scenario = Scenario(
+            projects: [storedProject(named: "Granita"), storedProject(named: "Oltre")],
+            devices: [storedDevice(named: "iPhone"), storedDevice(named: "iPad")]
+        )
+
+        // when
+        await scenario.sut.loadStoredCounts()
+
+        // then
+        #expect(scenario.sut.storedProjectCount == 2)
+        #expect(scenario.sut.storedDeviceCount == 2)
+    }
+
+    @Test
+    func `given a store with things in it when it is reset then everything goes and the counts follow`() async {
+        // given
+        let scenario = Scenario(
+            projects: [storedProject(named: "Granita")],
+            devices: [storedDevice(named: "iPhone")]
+        )
+        await scenario.sut.loadStoredCounts()
+
+        // when
+        await scenario.sut.resetAllData()
+
+        // then — the counts are re-read rather than assumed, so a refused reset leaves the sentence
+        // describing what is still there.
+        #expect(await scenario.store.resets == 1)
+        #expect(scenario.sut.storedProjectCount == 0)
+        #expect(scenario.sut.storedDeviceCount == 0)
+    }
+
+    @Test
+    func `given a store that will not write when a reset is asked for then the counts stay truthful`() async {
+        // given — the disk is full, or the document is one a newer Granita wrote. Either way
+        // nothing was destroyed, and a tab that then said "no projects" would be lying about the
+        // one thing here that matters.
+        let scenario = Scenario(
+            projects: [storedProject(named: "Granita")],
+            storeFailure: .notWritable(reason: "The volume is out of space.")
+        )
+        await scenario.sut.loadStoredCounts()
+
+        // when
+        await scenario.sut.resetAllData()
+
+        // then
+        #expect(scenario.sut.storedProjectCount == 1)
+    }
+
     // MARK: - Opening at login, as the General tab draws it
 
     @Test
@@ -203,24 +294,47 @@ private struct Scenario {
     let sut: ServerMacModel
     let loginItems: FakeLoginItemRegistry
     let restarts: FakeServerRestarting
+    let store: FakeStore
 
     init(
         states: [ServerRunState] = [],
         readings: [[ConnectionAttempt]] = [],
         opensAtLogin: Bool = false,
         loginItemFailure: LoginItemFailure? = nil,
+        git: GitInstallation = .checking,
+        projects: [StoredProject] = [],
+        devices: [StoredDevice] = [],
+        storeFailure: StoreError? = nil,
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
         restarts = FakeServerRestarting()
+        store = FakeStore(projects: projects, devices: devices, failure: storeFailure)
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
             connectionLog: FakeConnectionLog(readings: readings),
             loginItems: loginItems,
+            gitInstallations: FakeGitInstallations(installation: git),
+            store: store,
+            dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }
         )
     }
+}
+
+private func storedProject(named name: String) -> StoredProject {
+    StoredProject(id: ProjectID(canonicalPath: "/\(name)"), path: "/\(name)", name: name, isVisible: true)
+}
+
+private func storedDevice(named name: String) -> StoredDevice {
+    StoredDevice(
+        id: name,
+        name: name,
+        platform: "iOS",
+        tokenHash: "hash-\(name)",
+        pairedAt: Date(timeIntervalSince1970: 1)
+    )
 }
 
 private struct FakeServerHost: ServerHosting {
