@@ -466,6 +466,12 @@ let package = Package(
                 "ServerGitData",
                 "ServerStoreData",
                 "ServerSessionsData",
+                // The phone's client, against the Mac's routes, in one process. The wire contract
+                // now has one definition in `Core` and both halves name it, which is a claim no
+                // suite that sees only one half can check — so the one place the two meet is a
+                // test target, where mixing them is the point rather than a leak.
+                "ClientConnectionData",
+                "ClientConnectionDomain",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
                 // Same package as Hummingbird itself, so this adds no dependency: it is the

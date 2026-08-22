@@ -93,7 +93,10 @@ The spec's milestones, each ending in something runnable and a green suite, with
   route SPEC §8 serves. Refusals arrive as a typed domain error the phone has a screen for and never
   as a status code, the contract version travels on every request, and a Mac serving an older
   contract is caught by `/v1/health` **before** a two-minute single-use code is spent on it. The
-  token goes into the Keychain, per Mac, and is the only copy there is.
+  token goes into the Keychain, per Mac, and is the only copy there is. **The two halves are proven
+  against each other**, not each against its own idea of the contract: the phone's real client runs
+  against the Mac's real router in one process, pairing with a code the Mac issued and with the six
+  words under it, and driving the partial update through all three of its states.
 - **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
   client is named `…ViewModel` any more. It carries the browse, the handshake and the set of Macs
   this phone holds a token for — which is what the discovery list's *Recent* and *Other Macs*

@@ -1169,6 +1169,15 @@ the phone must tolerate one it has never heard of, which are different types wit
 names; the client's four-line private decoder is not the duplication worth removing, and the
 enumeration is.
 
+**And the claim is checked rather than asserted.** "Both halves name the same type" is exactly the
+kind of statement a suite that only ever sees one half cannot prove, so the phone's real client now
+runs against the Mac's real router in one process — nothing faked below the routes, nothing faked
+above them, and the pinned `URLSession` as the single substitution, because it is the one thing on
+the path that is not about the contract. It pairs with a code the Mac issued and with the six words
+under it, reads a worktree's changes and one file's diff and its raw lines, and drives the partial
+update through all three of its states. Removing the explicit null from the encoder turns it red with
+the symptom this entry describes: an alias the reader has just deleted coming back.
+
 ## Timestamps are ISO 8601 because both ends say so, not because a framework does
 
 M2 left this open deliberately: the date format on the wire was whatever Hummingbird's encoder
