@@ -71,6 +71,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.12 — 2026-08-22
+- **Tapping your Mac used to do nothing at all. Now it tells you why.** The row was a navigation row
+  with a chevron and nothing behind it, so the one thing you open the app to do answered with
+  silence — no screen, no message, nothing to distinguish it from a broken app. It now opens a screen
+  saying Granita can find your Mac but cannot connect to it yet, because pairing needs the camera and
+  that screen is still being built. **Shipping a control that looks like it works and does not is not
+  something this app will do again**; when the work behind something is not finished, it says so.
+
 ### 0.0.11 — 2026-08-22
 - **The connection log has its own tab.** It was sharing Advanced with the button that erases
   everything, which is a bad place for the one panel you open while annoyed. It is now *Connections*,

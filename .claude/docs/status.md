@@ -2,7 +2,16 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.11.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.12.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**The app no longer has a dead control in it.** From 0.0.4 to 0.0.11, tapping a Mac in the discovery
+list did *nothing at all* — the rows were `NavigationLink`s and no module declared a destination for
+them. It shipped, and a comment in the composition root said so in as many words. Tapping now opens a
+screen that says Granita can find the Mac and cannot connect to it yet, and the destination lives
+beside the rows that link to it rather than in the root. **The rule is stated in the files that load
+unconditionally** — the global `CLAUDE.md`, this repository's, and `/design`'s binding rules — rather
+than in a skill, which is only read when something reaches for it. What is still owed is the
+behavioural test that would have caught it, which needs the `ui` target this project has never had.
 
 **The connection log is a tab of its own and has been relaid out.** It was sharing Advanced with
 `Reset All Data`, which is a bad place for the one panel opened under pressure. Its row drops the
@@ -37,7 +46,8 @@ The two halves find each other **on real hardware**: the Mac serves `/v1/health`
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
-Selecting a Mac still does nothing on screen, and now that is the **only** thing missing. The phone
+Selecting a Mac now says why it cannot connect rather than doing nothing, and pairing is the **only**
+thing missing behind it. The phone
 has the whole client built and tested behind that tap: it reads a Mac's health, refuses to pair when
 the two ends speak different contracts, spends a pairing code, keeps the token in the Keychain, and
 reads every route SPEC §8 serves. What it has no way to start is the camera — the QR scanner and the
