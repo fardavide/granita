@@ -3,6 +3,14 @@ import Foundation
 /// One attempt by something on the network to reach this Mac, and what came of it.
 public struct ConnectionAttempt: Identifiable, Hashable, Sendable {
 
+    /// SPEC §9's fifty, as many as the panel ever holds. A phone retrying every second fills that in
+    /// under a minute, and what is wanted then is the last minute rather than the first.
+    ///
+    /// Here rather than on the log that enforces it, because the panel's footer says the number out
+    /// loud — *the last 50 attempts* — and the view cannot see the implementation. Two copies of it
+    /// is a footer that goes on claiming fifty after the log has been changed to hold something else.
+    public static let logCapacity = 50
+
     public let id: UUID
     public let at: Date
 
@@ -12,11 +20,21 @@ public struct ConnectionAttempt: Identifiable, Hashable, Sendable {
 
     public let outcome: ConnectionOutcome
 
-    public init(id: UUID, at: Date, source: String, outcome: ConnectionOutcome) {
+    /// How many times this exact thing has happened in a row, from this source.
+    ///
+    /// One where nothing has repeated. The log coalesces a run of identical outcomes into a single
+    /// row so that one polling phone cannot bury the row explaining another, and without this number
+    /// that is also how four hundred attempts come to look like one. A phone that tried once and a
+    /// phone that has been hammering this Mac for ten minutes are different problems, and the panel
+    /// is the only place they are told apart.
+    public let occurrences: Int
+
+    public init(id: UUID, at: Date, source: String, outcome: ConnectionOutcome, occurrences: Int) {
         self.id = id
         self.at = at
         self.source = source
         self.outcome = outcome
+        self.occurrences = occurrences
     }
 }
 

@@ -2,7 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.10.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.11.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**The connection log is a tab of its own and has been relaid out.** It was sharing Advanced with
+`Reset All Data`, which is a bad place for the one panel opened under pressure. Its row drops the
+word "Refused", carries the address the attempt came from and **how many times it happened** — the
+coalescing was folding four hundred attempts into a row that looked like one — and a footer says how
+far back the panel goes and how full it is. The `Pair…` affordance a refusal is meant to offer is
+**blocked behind the Devices tab**, which is the door it opens, so §6's frames stay in the review
+until then.
+
+The reason it could be photographed at all is that the row's elapsed time is now a value it is
+handed. It was `Text(_:style: .relative)`, measured against the moment of rendering, so the macOS
+kind landed with only this panel's empty state.
 
 **The Mac now has a snapshot kind**, which it never had — every Settings surface was code that nothing
 rendered, and the frames were drawn at 1:1 precisely so they could become the baselines. It is a
@@ -106,9 +118,11 @@ The spec's milestones, each ending in something runnable and a green suite, with
   outside the process while Stage Manager is on.
 - **The menu bar app, serving.** It embeds the same backend, advertises under the name the Mac is
   actually called, reports `host:port` in its menu, and opens a Settings window from a status item
-  under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up. Its Advanced
-  tab is the connection log: the last fifty attempts to reach this Mac, each with the reason it was
-  served or turned away, coalesced so one polling phone cannot fill it.
+  under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up.
+- **The connection log, on a Connections tab of its own.** The last fifty attempts to reach this Mac,
+  each with the reason it was served or turned away, coalesced so one polling phone cannot fill it
+  and **counted** so the coalescing cannot hide how hard one is trying. Eight baselines across four
+  states, which needed the row to stop deriving its own elapsed time.
 - **The phone's half of the wire.** One definition of every payload both ends name, in `Core` rather
   than one copy per side — including the partial-update body whose absent-versus-null trap SPEC §8
   marks, now encoded and decoded by the same type. Over it: a pinned `URLSession` that can reach
@@ -189,12 +203,10 @@ What is left is **screens, and their frames have now arrived.** The Mac round tr
 2026-08-21 and its calls are recorded in [`design-mac.md`](design-mac.md), so nothing here is blocked
 on a design any more:
 
-- **Settings, and it is four more tabs rather than three.** The review gives the connection log its
-  own tab and puts Advanced last, so that the panel opened while annoyed is not one mis-click from
-  `Reset All Data`. Enabling a project by picking a folder, the visibility toggle, the paired devices
-  with revoke, the login item. The store already holds all of it and `PairingInvitations` already
-  assembles what the Devices tab draws — the work is the drawing. **The port row is deleted**: a
-  service bind hands the port to the system, so General shows the address with a copy button instead.
+- **Settings, and three tabs are left.** General and Connections are built; **Projects, Devices and
+  Advanced are not.** Enabling a project by picking a folder and the visibility toggle, the paired
+  devices with revoke, the verbose switch and `Reset All Data`. The store already holds all of it and
+  `PairingInvitations` already assembles what the Devices tab draws — the work is the drawing.
 - **The pairing QR.** The link and the six words exist and are exercised through
   `granita-server --pair`; what is missing is the picture of one. It is the largest thing in the app
   at 236–244pt square, and it is what sets the window to 620 × 560pt.

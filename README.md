@@ -71,6 +71,18 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.11 — 2026-08-22
+- **The connection log has its own tab.** It was sharing Advanced with the button that erases
+  everything, which is a bad place for the one panel you open while annoyed. It is now *Connections*,
+  and Advanced keeps the settings you touch once.
+- **A row says how many times it happened.** The log folds a device repeating itself into a single
+  row so one polling phone cannot bury the row explaining another — and, until now, that also turned
+  four hundred attempts into something that looked like one. *Tried once* and *has been hammering
+  this Mac for ten minutes* are different problems, and the row now tells them apart.
+- **Each row is shorter and says more.** The word "Refused" is gone, because the mark beside it
+  already says so forty-five times down a list; the space pays for the address the attempt came from
+  and the count. Underneath, a footer says how far back the panel goes and how full it is.
+
 ### 0.0.10 — 2026-08-22
 - **The Mac's Settings window has a General tab.** It shows the address this Mac is serving on, with
   a button that copies it, and it says who chose the port — macOS does, when Granita advertises
