@@ -73,10 +73,10 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ### 0.0.9 — 2026-08-22
 - **Nothing on screen has changed, and that is the whole entry.** This build carries the half of
-  pairing that lives on the phone: it can ask a Mac which version it speaks before spending a code
-  on it, spend the code, keep the token in the Keychain where only this device can read it, and read
-  every route the Mac serves. What is still missing is the camera screen that starts it, so there is
-  nothing new to tap yet.
+  pairing that lives on the phone: the code to ask a Mac which version it speaks before spending a
+  code on it, spend the code, keep the token in the Keychain where only this device can read it, and
+  read every route the Mac serves. What is still missing is the camera screen that starts it, so
+  none of it is reachable yet and there is nothing new to tap.
 - **A Mac running an older Granita will say so instead of half-working.** The phone checks the
   contract version before it offers to pair rather than after, so a mismatch costs a sentence rather
   than a pairing code — which lasts two minutes and works once.

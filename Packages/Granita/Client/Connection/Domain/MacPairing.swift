@@ -1,26 +1,16 @@
 import CorePairingDomain
 
-/// Joining a Mac, as the layer above it needs to see the capability.
-///
-/// A protocol so the model that drives a screen can be tested against one fake rather than against
-/// the two collaborators underneath it — which is the difference between a test about the screen's
-/// state and a second copy of the test below.
-public protocol MacJoining: Sendable {
-
-    /// Spends a pairing code and keeps the only copy of what it buys.
-    func pair(with link: PairingLink, as device: PairingDevice) async -> PairingOutcome
-
-    /// Every Mac this phone holds a token for.
-    func alreadyPaired() async -> Set<ServerInstanceId>
-}
-
 /// Joining a Mac, from a scanned link to a token this phone can use.
 ///
 /// Three steps that only make sense together — read the contract, spend the code, write the token
 /// down — so they are one operation rather than three a caller has to remember the order of. It
 /// lives here, over protocols this module owns, because orchestrating I/O is not something a view
-/// layer should be doing: what `Presentation` holds is the outcome, not the sequence.
-public struct MacPairing: MacJoining {
+/// layer should be doing: what `Presentation` will hold is the outcome, not the sequence.
+///
+/// Not behind a protocol. It would need one the day a screen drives it and wants a double for the
+/// whole sequence — but that screen does not exist, and an abstraction whose only implementation is
+/// the real one is a name the reader has to learn for nothing.
+public struct MacPairing: Sendable {
 
     private let tokens: any PairingTokenStore
 

@@ -317,6 +317,29 @@ class TestRender:
         )
         return out.read_text()
 
+    def test_given_a_redefined_all_scope_when_rendering_then_no_uncovered_trend_is_claimed(self, tmp_path):
+        # The table skips a redefined row and so does the gate. The uncovered-lines line has to skip
+        # it too, or it subtracts across two different file sets and reports the redefinition as a
+        # change in the code — in the one report whose whole design principle is comparing like
+        # with like.
+        text = self.render(
+            tmp_path,
+            summary({"all": entry((80, 100), (40, 50), scope="host-reachable-no-keychain")}),
+            summary({"all": entry((90, 100), (45, 50), scope="host-reachable")}),
+        )
+
+        assert "**20 uncovered lines** across the project." in text
+        assert "than the baseline" not in text
+
+    def test_given_the_same_all_scope_when_rendering_then_the_uncovered_trend_is_reported(self, tmp_path):
+        text = self.render(
+            tmp_path,
+            summary({"all": entry((80, 100), (40, 50), scope="host-reachable")}),
+            summary({"all": entry((90, 100), (45, 50), scope="host-reachable")}),
+        )
+
+        assert "10 more than the baseline" in text
+
     def test_given_a_summary_when_rendering_then_every_kind_has_a_row(self, tmp_path):
         text = self.render(tmp_path, summary({"unit": entry((8, 10), (4, 5))}), None)
 

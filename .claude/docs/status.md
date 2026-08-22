@@ -18,11 +18,16 @@ Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBoo
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
 Selecting a Mac still does nothing on screen, and now that is the **only** thing missing. The phone
-has the whole client behind that tap: it reads a Mac's health, refuses to pair when the two ends
-speak different contracts, spends a pairing code, keeps the token in the Keychain, and reads every
-route SPEC §8 serves. What it has no way to start is the camera — the QR scanner and the pairing
-screen have no frames, and the `design-handoff` rule forbids a pull request touching a screen that
-has none.
+has the whole client built and tested behind that tap: it reads a Mac's health, refuses to pair when
+the two ends speak different contracts, spends a pairing code, keeps the token in the Keychain, and
+reads every route SPEC §8 serves. What it has no way to start is the camera — the QR scanner and the
+pairing screen have no frames, and the `design-handoff` rule forbids a pull request touching a screen
+that has none.
+
+**So the client is wired up to the seam rather than into the app.** The composition root builds the
+browse and nothing else; `MacPairing` is composed by the pull request that draws the screen calling
+it. That is deliberate: a dependency wired into a root that no screen can reach is code nothing can
+be measured against, which is what the coverage gate said in as many words.
 
 ## Milestones
 
@@ -99,11 +104,11 @@ The spec's milestones, each ending in something runnable and a green suite, with
   words under it, and driving the partial update through all three of its states.
 - **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
   client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
-  method on the model — the model holds the outcome, not the sequence. It carries the browse, the
-  join and the set of Macs
-  this phone holds a token for — which is what the discovery list's *Recent* and *Other Macs*
-  sections will be ordered by, once the Mac's Bonjour TXT record carries the instance identifier
-  that joins the two.
+  method on the model, and the model carries only the browse: the pairing surface lands with the
+  screen that reads it, because a property no screen has agreed to is a property nothing can be
+  measured against. `MacPairing.alreadyPaired()` is what the discovery list's *Recent* and *Other
+  Macs* sections will be ordered by, once the Mac's Bonjour TXT record carries the instance
+  identifier that joins a discovered Mac to a stored token.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment

@@ -2,6 +2,7 @@ import Foundation
 
 import ClientConnectionDomain
 import CoreApiDomain
+import CorePairingDomain
 
 /// The two routes a phone may reach before it has a token.
 ///
@@ -13,6 +14,24 @@ public struct HttpServerPairing: ServerPairing {
 
     public init(macAt baseUrl: URL, transport: any HttpTransport) {
         client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .unauthenticated)
+    }
+
+    /// Built from the link the camera read.
+    ///
+    /// Turning a host and a port into an address is this layer's job rather than the composition
+    /// root's: it is the only layer that knows the scheme is `https` because the Mac serves TLS, and
+    /// the only one with a test that can watch where a request actually went.
+    ///
+    /// A host that will not go into a URL is a scanned code that is damaged, and the fallback treats
+    /// it as one — an address nothing answers on, which surfaces as "could not reach your Mac"
+    /// rather than as a crash. That is the same sentence a reader gets from pointing the camera at
+    /// the right screen on the wrong network, which is the closest true thing this app can say.
+    public init(mac link: PairingLink, transport: any HttpTransport) {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = link.host
+        components.port = link.port
+        self.init(macAt: components.url ?? URL(filePath: "/nowhere"), transport: transport)
     }
 
     public func health() async throws(ApiFailure) -> HealthResponse {

@@ -1,26 +1,19 @@
 import Observation
 
 import ClientConnectionDomain
-import CorePairingDomain
 
-/// Everything the phone knows about Macs nearby and about joining one.
+/// What the phone knows about Macs nearby.
 ///
 /// **One model for the unit, not one per screen.** Discovery and pairing are two views onto the same
-/// question — which Mac is this phone talking to — and splitting them across two objects would put
-/// the seam where a screen is rather than where a layer is. The discovery list, the pairing sheet
-/// and the paired/unpaired sections all read this.
+/// question — which Mac is this phone talking to — so when the pairing sheet exists it reads this
+/// rather than bringing a second state object with it.
 ///
-/// It holds outcomes and never sequences. Reading a Mac's health, spending the code and writing the
-/// token down is one operation over three protocols, and that belongs in the layer that owns them.
+/// It carries only the browse today, deliberately. `MacPairing` in `Domain` is what joins a Mac, and
+/// it is built and tested; nothing on this side calls it because there is no scanner and no pairing
+/// sheet to call it from, and a property no screen reads is a property no screen has agreed to.
+/// The pairing surface lands here in the pull request that draws the screen.
 @Observable
 public final class ClientConnectionModel {
-
-    /// How far an attempt to join a Mac has got, from this screen's point of view.
-    public enum PairingState: Hashable, Sendable {
-        case notStarted
-        case joining
-        case finished(PairingOutcome)
-    }
 
     public private(set) var discovery: DiscoveryState = .idle
 
@@ -32,29 +25,10 @@ public final class ClientConnectionModel {
     /// finding anything.
     public private(set) var attempt = 0
 
-    public private(set) var pairing: PairingState = .notStarted
-
-    /// Which Macs this phone holds a token for.
-    ///
-    /// This is the data the design's *Recent* and *Other Macs* sections are built from. What is
-    /// still missing is the **join**: a discovered Mac is a Bonjour instance name, a token is keyed
-    /// by the Mac's own instance identifier, and nothing carries the second to the phone until
-    /// SPEC §8's TXT record does. Until then the list ships as the single unlabelled section the
-    /// design says it degrades to, and this is loaded, correct and not yet joinable.
-    public private(set) var pairedServers: Set<ServerInstanceId> = []
-
-    /// Whether the reader is looking at something they can act on rather than something to wait out.
-    /// The view offers a route into Settings when this is true.
-    public var isPermissionRefused: Bool {
-        discovery == .localNetworkDenied
-    }
-
     private let browsing: any ServerDiscovering
-    private let joining: any MacJoining
 
-    public init(browsing: any ServerDiscovering, joining: any MacJoining) {
+    public init(browsing: any ServerDiscovering) {
         self.browsing = browsing
-        self.joining = joining
     }
 
     /// Consumes discovery updates until the stream ends or the surrounding task is cancelled.
@@ -74,20 +48,5 @@ public final class ClientConnectionModel {
     public func searchAgain() {
         discovery = .searching
         attempt += 1
-    }
-
-    /// Reads which Macs this phone has paired with before.
-    public func loadPairingHistory() async {
-        pairedServers = await joining.alreadyPaired()
-    }
-
-    /// Joins the Mac a scanned link points at, and records what came of it.
-    public func join(_ link: PairingLink, as device: PairingDevice) async {
-        pairing = .joining
-        let outcome = await joining.pair(with: link, as: device)
-        if case .paired(let paired) = outcome {
-            pairedServers.insert(paired.serverInstanceId)
-        }
-        pairing = .finished(outcome)
     }
 }

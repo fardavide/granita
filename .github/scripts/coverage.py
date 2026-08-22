@@ -294,6 +294,18 @@ def uncovered_lines(summary: dict) -> int | None:
     return counter["count"] - counter["covered"]
 
 
+def comparable(current: dict, baseline: dict, category: str) -> bool:
+    """Whether two runs measured that kind over the same files.
+
+    The gate asks this before judging a row. Anything that puts two runs' numbers side by side has
+    to ask it too, or it reports the redefinition as a change in the code.
+    """
+    def scope(summary: dict) -> str:
+        return summary.get("categories", {}).get(category, {}).get("scope", DEFAULT_SCOPE)
+
+    return scope(current) == scope(baseline)
+
+
 # --- gate --------------------------------------------------------------------------------------
 
 
@@ -394,7 +406,11 @@ def render(args: argparse.Namespace) -> int:
     lines += [verdict_sentence(verdict), ""]
 
     missed = uncovered_lines(current)
-    base_missed = uncovered_lines(baseline) if has_baseline else None
+    # Only against a baseline that counted the same files. Everything else in this report compares
+    # like with like — the table skips a redefined row and so does the gate — and this line was the
+    # one place that did not, so a run which changed what `all` measures printed a subtraction
+    # across two different file sets and called it a trend.
+    base_missed = uncovered_lines(baseline) if has_baseline and comparable(current, baseline, "all") else None
     if missed is not None:
         # Spelled out rather than arrowed: fewer uncovered lines is the good direction, and a "▼"
         # next to a number reads as a regression however it is meant.

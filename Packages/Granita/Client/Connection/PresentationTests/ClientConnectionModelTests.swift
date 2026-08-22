@@ -1,28 +1,21 @@
 import Testing
 
 import ClientConnectionDomain
-import CoreApiDomain
-import CoreBrandingDomain
-import CorePairingDomain
 
 @testable import ClientConnectionPresentation
 
-/// One model for the unit: the browse and the join are two views onto the same question, which is
-/// which Mac this phone is talking to. What the sequence *is* belongs to `MacPairing`; what this
-/// holds is where it got to.
+/// One model for the unit. It carries the browse today; the pairing surface arrives with the screen
+/// that reads it, and what joins a Mac is asserted where it lives, in `MacPairingTests`.
 @Suite("Client connection model")
 struct ClientConnectionModelTests {
 
-    // MARK: - Finding a Mac
-
     @Test
-    func `given nothing has happened when created then nothing is claimed about either half`() {
+    func `given nothing has happened when created then it is idle`() {
         // given - when
         let scenario = Scenario(discovering: [])
 
         // then
         #expect(scenario.sut.discovery == .idle)
-        #expect(scenario.sut.pairing == .notStarted)
     }
 
     @Test
@@ -48,7 +41,6 @@ struct ClientConnectionModelTests {
 
         // then
         #expect(scenario.sut.discovery == .localNetworkDenied)
-        #expect(scenario.sut.isPermissionRefused)
     }
 
     @Test
@@ -91,59 +83,6 @@ struct ClientConnectionModelTests {
 
         // then
         #expect(scenario.sut.discovery == .found([]))
-        #expect(scenario.sut.isPermissionRefused == false)
-    }
-
-    // MARK: - Joining one
-
-    @Test
-    func `given a Mac that agrees when it is joined then the outcome is what the screen reads`() async {
-        // given
-        let scenario = Scenario()
-
-        // when
-        await scenario.sut.join(aLink, as: anIphone)
-
-        // then
-        #expect(scenario.sut.pairing == .finished(.paired(aPairedDevice)))
-    }
-
-    @Test
-    func `given a Mac that agrees when it is joined then it joins the Macs this phone knows`() async {
-        // given
-        let scenario = Scenario()
-
-        // when
-        await scenario.sut.join(aLink, as: anIphone)
-
-        // then — what the discovery list's two sections will be ordered by, without waiting for the
-        // Keychain to be read again.
-        #expect(scenario.sut.pairedServers == [aPairedDevice.serverInstanceId])
-    }
-
-    @Test
-    func `given a Mac that refuses when it is joined then no Mac is recorded as known`() async {
-        // given
-        let scenario = Scenario(joining: .refused(.pairingExpired))
-
-        // when
-        await scenario.sut.join(aLink, as: anIphone)
-
-        // then
-        #expect(scenario.sut.pairing == .finished(.refused(.pairingExpired)))
-        #expect(scenario.sut.pairedServers.isEmpty)
-    }
-
-    @Test
-    func `given tokens already in the Keychain when the history is read then the model carries them`() async {
-        // given
-        let scenario = Scenario(alreadyPaired: [aPairedDevice.serverInstanceId])
-
-        // when
-        await scenario.sut.loadPairingHistory()
-
-        // then
-        #expect(scenario.sut.pairedServers == [aPairedDevice.serverInstanceId])
     }
 }
 
@@ -153,29 +92,7 @@ private struct Scenario {
 
     let sut: ClientConnectionModel
 
-    init(
-        discovering states: [DiscoveryState] = [],
-        joining outcome: PairingOutcome = .paired(aPairedDevice),
-        alreadyPaired known: Set<ServerInstanceId> = []
-    ) {
-        sut = ClientConnectionModel(
-            browsing: FakeServerDiscovery(states: states),
-            joining: FakeMacJoining(outcome: outcome, known: known)
-        )
+    init(discovering states: [DiscoveryState]) {
+        sut = ClientConnectionModel(browsing: FakeServerDiscovery(states: states))
     }
 }
-
-private let aPairedDevice = PairedDevice(
-    token: PairingToken(rawValue: "1f0e4d7c6b5a49382736251403f2e1d0"),
-    deviceId: DeviceId(rawValue: "8C4F2A11-0000-4E5D-9A3B-77F1C0DE0001"),
-    serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
-)
-
-private let aLink = PairingLink(
-    host: "davides-macbook-pro.local",
-    port: 59144,
-    code: "9d41e0c7a2b85f36",
-    fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
-)
-
-private let anIphone = PairingDevice(name: "Davide's iPhone", platform: "iOS")

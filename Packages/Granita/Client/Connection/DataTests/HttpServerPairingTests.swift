@@ -5,6 +5,7 @@ import ClientConnectionData
 import ClientConnectionDomain
 import CoreApiDomain
 import CoreBrandingDomain
+import CorePairingDomain
 
 /// The two routes a phone may reach before it has a token, and therefore the two an attacker on the
 /// network may reach as well.
@@ -63,6 +64,55 @@ struct HttpServerPairingTests {
         // will misread, and a header it never sends cannot be refused.
         let request = try #require(await scenario.transport.sent.first)
         #expect(request.headers[Branding.apiVersionHeader] == String(Branding.apiVersion))
+    }
+
+    // MARK: - Where a scanned link points
+
+    @Test
+    func `given a link the camera read when pairing then the request goes where the link said`() async throws {
+        // given — the composition root used to build this address, which put URL construction in the
+        // one layer no test can reach.
+        let scenario = Scenario(
+            mac: PairingLink(
+                host: "mac-studio.local",
+                port: 61022,
+                code: "9d41e0c7a2b85f36",
+                fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+            ),
+            status: 200,
+            json: acceptedPairing
+        )
+
+        // when
+        _ = try await scenario.sut.pair(with: "code", as: PairingDevice(name: "iPhone", platform: "iOS"))
+
+        // then — https because the Mac serves TLS, and the port the link named rather than a default.
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.scheme == "https")
+        #expect(request.url.host() == "mac-studio.local")
+        #expect(request.url.port == 61022)
+        #expect(request.url.path() == "/v1/pair")
+    }
+
+    @Test
+    func `given a link whose host cannot go in a url then it addresses nothing rather than trapping`() async {
+        // given — a damaged scan. The reader is pointing at the right screen and it is not working,
+        // which is a sentence, not a crash.
+        let scenario = Scenario(
+            mac: PairingLink(
+                host: "not a host",
+                port: 61022,
+                code: "9d41e0c7a2b85f36",
+                fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+            ),
+            status: 200,
+            json: acceptedPairing
+        )
+
+        // when - then
+        await #expect(throws: Never.self) {
+            _ = try? await scenario.sut.pair(with: "code", as: PairingDevice(name: "iPhone", platform: "iOS"))
+        }
     }
 
     // MARK: - Pairing
@@ -201,6 +251,12 @@ private struct Scenario {
     init(status: Int, json: String) {
         transport = FakeHttpTransport(status: status, json: json)
         sut = HttpServerPairing(macAt: macAddress, transport: transport)
+    }
+
+    /// Addressed the way the app addresses it: from the link the camera read.
+    init(mac link: PairingLink, status: Int, json: String) {
+        transport = FakeHttpTransport(status: status, json: json)
+        sut = HttpServerPairing(mac: link, transport: transport)
     }
 
     init(failing failure: ApiFailure) {
