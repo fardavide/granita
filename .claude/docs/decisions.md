@@ -1557,11 +1557,38 @@ green on exactly the class of change it exists to catch. The skill's own calibra
 was rejected because it hid a changed sentence — is this same argument, and it points the same way
 here.
 
-The cause is the window's **backing scale**, which is not the bitmap's. A Retina laptop lays text out
-on a 2× grid and a headless runner on a 1×, glyph positions snap differently, and the layout has
-already happened by the time anything is rasterised. `NSWindow.backingScaleFactor` is derived from
-the screen and there is no API to set it. Pinning the raster — which this project does, and which was
-necessary — cannot reach it.
+### What is actually known about the cause, and what is not
+
+Worth separating, because the first account written here asserted a mechanism that the measurements
+only partly support, and a confident wrong story is what stops the next person looking.
+
+**Established.** The runner's window renders at 1× and this laptop's at 2×: before the raster was
+pinned, identical code produced 620 × 560 there and 1240 × 1120 here, and
+`bitmapImageRepForCachingDisplay` takes its resolution from the window's backing scale. A hosted
+macOS runner is headless. `NSWindow.backingScaleFactor` is derived from the screen and has no setter,
+so pinning the raster — necessary, and done — cannot reach it.
+
+**Also established, by measuring the images rather than reasoning about them:**
+
+- Both sides are genuine 2× rasters afterwards. Among blocks sitting on a content edge, the share
+  that are a single flat colour is 1.1% on the runner and 34.9% here; a doubled 1× image would be
+  ~100%. The runner is not upscaling.
+- The residual is not a whole-image shift. Rolling this laptop's image one device pixel up improves
+  the mean absolute difference from 1.42 to 1.08 — so there is roughly half a point of vertical
+  offset — and leaves most of the difference in place.
+- It concentrates in the two smallest text lines. The worst rows are the footnote captions, at mean
+  absolute differences of 32–40 out of 255, while the rest of the pane is close.
+
+**Not established.** That glyphs "snap to a different grid" was the first explanation offered here and
+it is an inference, not a finding. It fits the offset and the concentration in small text, and the
+edge-block figures above sit awkwardly with it: this machine produces the *coarser* image of the two,
+which grid-snapping does not predict. The backing-scale difference is the only environmental
+difference actually demonstrated, and it is plausibly upstream of the rest — but the mechanism is
+open.
+
+Settling it would need a Mac with a 1× display, or a virtual display attached to the runner. It was
+not bought, because no decision turns on it: the drift is four and a half times a real change
+whatever produces it.
 
 So the runner is the only machine whose renders are reproducible on the machine that gates them, and
 `Scripts/adopt-mac-baselines.py` takes them out of the job's own diff artefact. Davide chose this on

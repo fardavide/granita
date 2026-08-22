@@ -144,8 +144,8 @@ make record-snapshots  # re-record all of them after a deliberate design change
   written renders stably. **Never record the phone's on CI** — that turns the test into a recorder of
   whatever the code does.
 - **For the Mac, that rule is inverted, and `make snapshots-mac` is expected to be red on your
-  machine.** A Retina laptop lays text out on a 2× backing grid and a headless runner on a 1×, so the
-  same code draws different pictures: the drift is 0.737% of pixels against 0.162% for a real
+  machine.** A headless runner's window renders at 1× and a Retina laptop's at 2×, and the same code
+  draws measurably different pictures: the drift is 0.737% of pixels against 0.162% for a real
   one-word change, and no tolerance separates them. Push, let `Snapshot tests (macOS)` fail, then
   `gh run download <id> -n snapshot-diffs-mac -D <dir>` and `Scripts/adopt-mac-baselines.py <dir>`.
   **Do not re-record the Mac's locally to make it green** — that is what turns every pull request

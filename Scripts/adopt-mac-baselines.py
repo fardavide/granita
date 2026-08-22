@@ -8,10 +8,14 @@ follows — record locally, never on CI — and the reason is measured rather th
     a real one-word copy change      0.162%
 
 The noise is four and a half times the signal, so no tolerance exists that catches a changed word
-without also hiding one. The cause is the window's backing scale: a Retina laptop lays text out on a
-2x grid and a headless runner on a 1x grid, glyph positions snap differently, and `NSWindow`'s scale
-is derived from the screen with no API to pin it. Pinning the *bitmap* raster — which this project
-does — fixes the image size and cannot fix the layout that happened before it.
+without also hiding one.
+
+What is demonstrated about the cause is that the runner's window renders at 1x and a Retina laptop's
+at 2x — before the raster was pinned, the same code produced 620 x 560 there and 1240 x 1120 here —
+and that `NSWindow.backingScaleFactor` comes from the screen with no API to pin it. Pinning the
+*bitmap* raster, which this project does, fixes the image size and not whatever the backing scale
+does upstream of it. The exact mechanism is open; see `decisions.md`, which separates the measured
+from the inferred.
 
 So the runner is the one machine whose renders are reproducible on the machine that gates them, and
 its output is what gets committed.
