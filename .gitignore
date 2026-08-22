@@ -37,8 +37,11 @@ __pycache__/
 .venv-coverage/
 .coverage-baseline/
 
-# Snapshot mismatches — freshly rendered images, written per failing run
+# Snapshot mismatches — freshly rendered images, written per failing run.
+# The Mac's matter more than the phone's: `make snapshots-mac` is red on a developer's machine by
+# design, so this directory is written on every local run and is never the thing to commit.
 Apps/GranitaMobileSnapshotTests/__SnapshotFailures__/
+Apps/GranitaMacSnapshotTests/__SnapshotFailures__/
 
 # Xcode-resolved dependency checkouts. CI creates this via -clonedSourcePackagesDirPath;
 # it is a build artefact and must never be committed.

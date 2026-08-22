@@ -491,13 +491,29 @@ let package = Package(
             path: "Server/Mac/Domain",
             swiftSettings: [swift6]
         ),
+        .testTarget(
+            name: "ServerMacDomainTests",
+            dependencies: ["ServerMacDomain"],
+            path: "Server/Mac/DomainTests",
+            swiftSettings: [swift6]
+        ),
 
         // The one implementation of the above. `SMAppService` is a framework call, so it cannot
         // live in `Domain`, and it is not the API's business either.
         .target(
             name: "ServerMacData",
-            dependencies: ["ServerMacDomain"],
+            dependencies: ["ServerMacDomain", "ServerGitDomain"],
             path: "Server/Mac/Data",
+            swiftSettings: [swift6]
+        ),
+        // Not only for the tests. Until this target existed nothing in the package linked
+        // `ServerMacData`, so the only profile that saw it was the merged one — where the Mac app
+        // links it and no test exercises it, which is a module counted at zero and invisible in the
+        // unit row that would have said so.
+        .testTarget(
+            name: "ServerMacDataTests",
+            dependencies: ["ServerMacData", "ServerMacDomain", "ServerGitDomain"],
+            path: "Server/Mac/DataTests",
             swiftSettings: [swift6]
         ),
 
@@ -531,7 +547,13 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerMacPresentationTests",
-            dependencies: ["ServerMacPresentation", "ServerApiDomain", "ServerMacDomain"],
+            dependencies: [
+                "ServerMacPresentation",
+                "CoreDiffDomain",
+                "ServerApiDomain",
+                "ServerMacDomain",
+                "ServerStoreDomain"
+            ],
             path: "Server/Mac/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),

@@ -75,14 +75,17 @@ enum GitInvocation {
             exitCode == 0 || exitCode == 1
         case .headCommit:
             exitCode == 0 || exitCode == 1
-        case .isInsideWorkTree, .repositoryRoot, .currentBranch, .worktrees, .untrackedPaths,
-             .worktreeStatus, .hashWorktreeFiles:
+        case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .worktrees,
+             .untrackedPaths, .worktreeStatus, .hashWorktreeFiles:
             exitCode == 0
         }
     }
 
     private static func subcommandArguments(for command: GitCommand) -> [[UInt8]] {
         switch command {
+        case .version:
+            encoded(["--version"])
+
         case .isInsideWorkTree:
             encoded(["rev-parse", "--is-inside-work-tree"])
 

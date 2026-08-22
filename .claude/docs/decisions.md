@@ -1700,6 +1700,127 @@ environment, so the pinned `en_US_POSIX` reaches it. Worth writing down because 
 invisible: both spellings are correct, both look deliberate, and only a cross-machine run says which
 one a baseline is holding.
 
+## The coverage gate's first true red, and the two holes it found
+
+Three of its reds have been noise — measured, and recorded above. This one was not, and telling them
+apart took the same method both times: measure both sides locally, through `coverage.py`'s own scope
+filter, and read the per-file export.
+
+**The Unit row went *up* +0.2 while `All tests` regions fell 0.9%**, which is far outside the ~0.3%
+spread. That divergence is the signature: the unit profile is `swift test`, and the merged profile
+also links the Mac app, so a module the package does not link is invisible to the first and counted
+at zero by the second.
+
+**`Server/Mac/Data` was that module.** Nothing in the package depended on it — the composition root
+is an app target — so `ProcessGitInstallations` had no test and no row in the unit export to say so.
+It now has a test target of its own, which is the fix for both: the failures each carry git's own
+words, and that is the whole point of the row they feed.
+
+**And `GranitaSettingsScreen` was the second**, in the views scope and rendered by nothing, so every
+line the Advanced tab added to it went straight into the denominator. It is now rendered with six
+fakes held in the snapshot bundle, which is the same trade the `Api` and `Mac` suites already make:
+test targets cannot import each other, and the alternative ships doubles in the binary a reader
+installs.
+
+**Closing the first hole opened a third, and it is a scope correction rather than a gap.** Giving
+`Server/Mac/Data` a test target linked it into the unit profile for the first time — which brought
+`ServiceLoginItemRegistry` with it, at **0 of 15 regions and 0 of 25 lines**. It had never been
+judged, only invisible.
+
+It is exempted, on the bar `UNREACHABLE_FILES` already sets and not on the arithmetic: every line of
+it is a call on `SMAppService.mainApp`, which is the *running main bundle* — in a test process, the
+unsigned test runner. Running it means either failing for want of a signature or writing the test
+binary into the developer's real Login Items. That is the same class as the two Keychain stores,
+which are exempt because a SwiftPM test binary is unsigned and has no keychain: **unrunnable by
+construction, not merely untested.**
+
+The honesty check this project applies to a rescoping is whether it flatters a number, and this one
+*does* raise it — 90.4% to 91.4% — which is why the justification is the bar rather than the
+direction. The distinguishing fact is that the file entered the scope and was exempted in the same
+breath, rather than having been measured and then excused. The scope string is renamed from
+`…-no-keychain-…` to `…-no-system-services-…`, so the Unit and All rows go unjudged for one run and
+rejoin on the next `main` run. That is the third time these rows have been unjudged, which is a real
+cost and is named here rather than left to be discovered.
+
+**Two things that baseline cannot do, stated so they are not assumed.** It does not capture the tab
+bar — a `TabView` hosted in a plain window draws the selected pane and no picker, because the
+segments come from the `Settings` scene and a test bundle has none, so tab order and symbols stay
+reviewed in code like the accent tint. And the model must be **driven** first: the screen does not
+start the server, the composition root does, so a screen rendered straight after construction reports
+`.starting` whatever it was handed — a baseline named "serving" showing "Starting…" asserts the
+opposite of its own name, which is what the first attempt at it did.
+
+## A new Mac baseline needs a placeholder pushed first, because a missing one never reaches the artefact
+
+The adoption round trip — push, let `Snapshot tests (macOS)` fail, `gh run download … -n
+snapshot-diffs-mac`, `Scripts/adopt-mac-baselines.py` — works for a baseline that **changed** and
+silently does nothing for one that is **new**. The report is built from `__SnapshotFailures__`, and
+swift-snapshot-testing does not write there when there is no reference: it records the image into
+`__Snapshots__` and fails that run instead. So the artefact for a first run of a new test is the
+script's own "no snapshot mismatches were captured" placeholder, and there is nothing to adopt.
+
+**So a new baseline lands in two commits.** The first pushes this machine's renders as placeholders,
+which turns "no reference" into a mismatch; the second replaces all of them with the runner's. Both
+commits say which they are, because a placeholder left behind is exactly the locally-recorded baseline
+this whole arrangement exists to prevent — and it would be green on the run that introduced it and red
+on every run after.
+
+Rejected: recording on CI with `record: true` behind an environment variable, which is the same
+"suite that cannot fail" the `swift-testing` skill forbids, aimed at a narrower target. And rejected:
+teaching `snapshot-report.py` to emit a section for a newly-recorded image, which cannot work — the
+job's checkout is what the report reads, and a newly-recorded image is only ever on the runner's disk
+inside a directory the failing step does not upload.
+
+Written down because the failure is silent in the worst way: the script prints `0 baseline(s)
+adopted`, which reads like "nothing needed adopting" rather than "there was nothing to adopt".
+
+## Advanced ships without its Diagnostics half, because Granita has no logging at all
+
+Design §7 draws a verbose switch and an **Open in Console** button beside it, with the footnote
+*verbose logging records every request and every git invocation until you turn it off*. Both were
+built on a premise nobody had checked: there is **no logging anywhere in this product**. Not a
+`Logger`, not an `os.log`, not a print — the whole package, searched.
+
+So the switch would turn on nothing and the button would open a Console filtered to a subsystem that
+never writes. A control over an absent subsystem is worse than an absent control: it reads as a
+feature, it is pressed, and what it reports is silence that looks like "nothing is wrong".
+
+**They land with the logging they describe**, which is its own slice — a seam in `Domain`, an
+`os.Logger` behind it, and call sites at the request boundary and at every git invocation, because
+that is what the footnote promises. Advanced ships now with the two rows that stand on their own: git,
+and the data folder with Reset.
+
+**And Console cannot be filtered from outside, which is settled before that slice starts.**
+`Console.app` registers **no URL scheme** — its `Info.plist` has no `CFBundleURLTypes` at all — so
+nothing can hand it a predicate. Davide chose, on 22 August 2026, that the button opens Console and
+puts the predicate on the pasteboard, so one paste finishes it. What that beat: opening Console
+unfiltered, which is the exact failure the review says the button exists to prevent — *a level control
+with no route to the log leaves a person choosing how much of something they cannot find*; and running
+`log stream` in Terminal, which is genuinely filtered and leaves the reader in a different app,
+holding a process this one does not own.
+
+**The lock-file row is absent for the same shape of reason**: SPEC §9's lock file is not built, so the
+row that reads its refusal has nothing to read.
+
+## Reset is a store method, and a refused one leaves the count telling the truth
+
+`Store.reset()` rather than the tab deleting the document, because the store owns what the document
+means and is the actor that serialises writes against it. It goes through the same atomic replace as
+every other mutation: a reset that cleared this process's memory and left the file alone would restore
+everything it claimed to destroy at the next launch, which is the one outcome nobody would think to
+check for.
+
+**It is all four records rather than a choice of them** — projects, devices, aliases and pins, viewed
+marks. A reset that left one behind would leave the reader believing the rest went too, and the record
+most likely to be left is the one that matters: a project still enabled is a repository still being
+served.
+
+**The model swallows a refusal and re-reads the counts, which is deliberate.** A full disk or a
+document from a newer Granita means nothing was destroyed. Because the sentence above the button is
+counted from the store rather than remembered, re-reading it leaves that sentence describing what is
+still there — and a tab that answered a failed reset with "nothing is stored" would be lying about the
+one thing on this pane that is the security boundary.
+
 ## The Connections row's `Pair…` button lands with Devices, not with the row
 
 Design §6 gives a refused row the one affordance a served row does not have — `Pair…` for no token,

@@ -5,6 +5,15 @@
 /// call site, and a backend that is not a subprocess can implement the same vocabulary.
 public enum GitCommand: Hashable, Sendable {
 
+    /// Which git this is, and therefore whether the one that was found can be run at all.
+    ///
+    /// The only case here that asks about the **installation** rather than about a repository, and
+    /// the reason it exists is that `GitExecutablePath` picks the first of three candidates that is
+    /// executable — where the interesting question is never which of the three won, but whether the
+    /// one that won works. A path that is executable and broken looks identical to a good one until
+    /// something runs it.
+    case version
+
     /// Whether this directory is inside a checkout at all.
     case isInsideWorkTree
 

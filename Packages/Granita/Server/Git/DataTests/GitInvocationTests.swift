@@ -29,6 +29,16 @@ struct GitInvocationTests {
     }
 
     @Test
+    func `when git's own version is asked for then it is asked of the binary rather than of a checkout`() {
+        // given - when
+        let vector = arguments(of: .version)
+
+        // then — the only question here that is about the *installation* rather than about a
+        // repository, which is why Advanced can ask it from a folder that is not one.
+        #expect(vector.suffix(1) == ["--version"])
+    }
+
+    @Test
     func `when rev-parse is built then it carries no diff-family flag`() {
         // given - when
         let vector = arguments(of: .repositoryRoot)

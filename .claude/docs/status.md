@@ -2,7 +2,15 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.12.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.13.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**Advanced is built, and it is last.** The git row runs git rather than reporting which of three
+candidate paths won — that is the whole point of it, because a path that is executable and broken
+looks exactly like a working one until something runs it — and in failure it carries git's own
+standard error. Beside it the data folder with a Reveal, and `Reset All Data` counting what it would
+destroy before it does. **Its Diagnostics half is deliberately absent**: the verbose switch and *Open
+in Console* describe logging that **does not exist anywhere in this product**, so both land with a
+logging layer rather than as controls over nothing. The lock-file row waits on the lock file.
 
 **The app no longer has a dead control in it.** From 0.0.4 to 0.0.11, tapping a Mac in the discovery
 list did *nothing at all* — the rows were `NavigationLink`s and no module declared a destination for
@@ -129,6 +137,11 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - **The menu bar app, serving.** It embeds the same backend, advertises under the name the Mac is
   actually called, reports `host:port` in its menu, and opens a Settings window from a status item
   under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up.
+- **The Mac's Advanced tab.** Which git this Mac would run and whether running it works, the data
+  folder with a Reveal, and `Reset All Data` — which counts what exists, repeats it as consequences
+  in the confirmation, and leaves the count truthful when the reset could not be written. `Store`
+  grew a `reset()`, so forgetting everything is one atomic replace rather than a file deleted behind
+  the actor that owns it. Eight baselines.
 - **The connection log, on a Connections tab of its own.** The last fifty attempts to reach this Mac,
   each with the reason it was served or turned away, coalesced so one polling phone cannot fill it
   and **counted** so the coalescing cannot hide how hard one is trying. Eight baselines across four
@@ -213,10 +226,14 @@ What is left is **screens, and their frames have now arrived.** The Mac round tr
 2026-08-21 and its calls are recorded in [`design-mac.md`](design-mac.md), so nothing here is blocked
 on a design any more:
 
-- **Settings, and three tabs are left.** General and Connections are built; **Projects, Devices and
-  Advanced are not.** Enabling a project by picking a folder and the visibility toggle, the paired
-  devices with revoke, the verbose switch and `Reset All Data`. The store already holds all of it and
-  `PairingInvitations` already assembles what the Devices tab draws — the work is the drawing.
+- **Settings, and two tabs are left.** General, Connections and Advanced are built; **Projects and
+  Devices are not.** Enabling a project by picking a folder and the visibility toggle; the paired
+  devices with revoke and the QR. The store already holds all of it and `PairingInvitations` already
+  assembles what the Devices tab draws — the work is the drawing.
+- **A logging layer, which nothing has needed until now.** Advanced's verbose switch and its route
+  into Console are the first thing that does, and both are blocked on it. The Console filter travels
+  **on the pasteboard**, because `Console.app` registers no URL scheme and cannot be handed a
+  predicate; that is settled and recorded.
 - **The pairing QR.** The link and the six words exist and are exercised through
   `granita-server --pair`; what is missing is the picture of one. It is the largest thing in the app
   at 236–244pt square, and it is what sets the window to 620 × 560pt.

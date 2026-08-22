@@ -3,6 +3,7 @@ import Observation
 
 import ServerApiDomain
 import ServerMacDomain
+import ServerStoreDomain
 
 /// What the Mac app knows, in one place.
 ///
@@ -31,10 +32,29 @@ public final class ServerMacModel {
     /// this initial value, which is a placeholder and not a claim.
     public private(set) var loginItem: LoginItemState = .off
 
+    /// Which git this Mac would run. `.checking` until Advanced has opened and asked, because
+    /// asking runs a subprocess.
+    public private(set) var gitInstallation: GitInstallation = .checking
+
+    /// What a reset would destroy, counted from the store rather than guessed.
+    ///
+    /// Two numbers rather than the whole state: this tab counts what exists in order to make one
+    /// sentence proportionate to one button, and holding a copy of everything the store knows in
+    /// order to say "two" would be a second source of truth for the thing that is the security
+    /// boundary.
+    public private(set) var storedProjectCount = 0
+    public private(set) var storedDeviceCount = 0
+
+    /// Where the document lives, for the row that reveals it. A fact rather than a lookup: the
+    /// composition root already had to know it in order to open the store.
+    public let dataFolderUrl: URL
+
     private let host: any ServerHosting
     private let restarts: any ServerRestarting
     private let connectionLog: any ConnectionLog
     private let loginItems: any LoginItemRegistry
+    private let gitInstallations: any GitInstallations
+    private let store: any Store
     private let now: @Sendable () -> Date
 
     public init(
@@ -42,12 +62,18 @@ public final class ServerMacModel {
         restarts: any ServerRestarting,
         connectionLog: any ConnectionLog,
         loginItems: any LoginItemRegistry,
+        gitInstallations: any GitInstallations,
+        store: any Store,
+        dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
     ) {
         self.host = host
         self.restarts = restarts
         self.connectionLog = connectionLog
         self.loginItems = loginItems
+        self.gitInstallations = gitInstallations
+        self.store = store
+        self.dataFolderUrl = dataFolderUrl
         self.now = now
     }
 
@@ -77,6 +103,29 @@ public final class ServerMacModel {
         for await reading in await connectionLog.attempts() {
             connectionAttempts = reading
         }
+    }
+
+    /// Runs the git that was found, which is the only way to learn whether it works.
+    public func loadGitInstallation() async {
+        gitInstallation = await gitInstallations.current()
+    }
+
+    /// Counts what a reset would destroy.
+    public func loadStoredCounts() async {
+        let state = await store.state()
+        storedProjectCount = state.projects.count
+        storedDeviceCount = state.devices.count
+    }
+
+    /// Forgets everything, at the reader's request and after a confirmation that counted it.
+    ///
+    /// A refusal is swallowed rather than surfaced, and that is a decision rather than an
+    /// oversight: the counts are **re-read** afterwards, so a reset that could not be written
+    /// leaves the sentence above the button describing what is still there. A tab that said "no
+    /// projects" over a full disk would be lying about the one thing here that matters.
+    public func resetAllData() async {
+        try? await store.reset()
+        await loadStoredCounts()
     }
 
     /// Asks the system where the login item actually stands, which is the only place that knows.

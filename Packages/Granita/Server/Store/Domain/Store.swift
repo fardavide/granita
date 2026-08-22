@@ -22,6 +22,14 @@ public protocol Store: Sendable {
 
     func add(device: StoredDevice) async throws(StoreError)
     func removeDevice(id: String) async throws(StoreError)
+
+    /// Forgets everything: every project, every device, every alias, every pin, every mark.
+    ///
+    /// Advanced's one-way door, and it is all four records rather than a choice of them. A reset
+    /// that left one behind would leave the reader believing the rest went too, and the record most
+    /// likely to be left is the one that matters — a project still enabled is a repository still
+    /// being served.
+    func reset() async throws(StoreError)
 }
 
 /// A repository the user enabled by hand.

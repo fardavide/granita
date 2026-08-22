@@ -191,6 +191,49 @@ struct JsonDocumentStoreTests {
     }
 
     @Test
+    func `given a store with everything in it when it is reset then all four of its records go`() async throws {
+        // given — Advanced's one-way door. It has to be all four, because a reset that left one
+        // behind would leave the reader believing the rest went too.
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+        let worktree = WorktreeID(canonicalPath: "/tmp/repo")
+        try await scenario.sut.add(project: StoredProject(
+            id: ProjectID(canonicalPath: "/tmp/repo"), path: "/tmp/repo", name: "repo", isVisible: true
+        ))
+        try await scenario.sut.add(device: StoredDevice(
+            id: "phone", name: "iPhone", platform: "iOS",
+            tokenHash: "aaa", pairedAt: Date(timeIntervalSince1970: 1)
+        ))
+        try await scenario.sut.setAlias("Feature", for: worktree)
+        try await scenario.sut.setViewed(true, file: FileID(repositoryRelativePath: "a.txt"), contentHash: "hash")
+
+        // when
+        try await scenario.sut.reset()
+
+        // then
+        #expect(await scenario.sut.state() == .empty)
+    }
+
+    @Test
+    func `given a store that has been reset when it is read again then the document on disk is empty too`(
+    ) async throws {
+        // given — the state this actor holds in memory and the document beside it have to agree,
+        // or the next launch restores everything the reset claimed to destroy.
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+        try await scenario.sut.add(project: StoredProject(
+            id: ProjectID(canonicalPath: "/tmp/repo"), path: "/tmp/repo", name: "repo", isVisible: true
+        ))
+
+        // when
+        try await scenario.sut.reset()
+
+        // then
+        let reopened = JsonDocumentStore(fileUrl: scenario.fileUrl)
+        #expect(await reopened.state().projects.isEmpty)
+    }
+
+    @Test
     func `given a file unmarked when it is written then no row is left behind for it`() async throws {
         // given — a row per file anyone ever looked at and changed their mind about is a document
         // that only grows.

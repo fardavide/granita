@@ -126,6 +126,14 @@ public actor JsonDocumentStore: Store {
         ))
     }
 
+    public func reset() throws(StoreError) {
+        // Through `write` like every other mutation, so the reset is atomic and lands on disk
+        // rather than only in this actor. A reset that cleared memory and left the document alone
+        // would restore everything it claimed to destroy at the next launch, which is the one
+        // outcome nobody would think to check for.
+        try write(.empty)
+    }
+
     // MARK: - Disk
 
     private func readFromDisk() -> StoredState {

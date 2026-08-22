@@ -31,6 +31,14 @@ The artifact is what the `Snapshot tests (macOS)` job uploads when it fails. Dow
 
     gh run download <run-id> -n snapshot-diffs-mac -D <dir>
 
+**A NEW baseline needs a placeholder pushed before this can adopt anything.** The report is built
+from `__SnapshotFailures__`, and snapshot-testing does not write there when there is no reference —
+it records into `__Snapshots__` and fails that run instead. So a first run of a new test uploads the
+"no snapshot mismatches were captured" placeholder and this script prints `0 baseline(s) adopted`,
+which reads like "nothing needed adopting" rather than "there was nothing to adopt". Commit this
+machine's renders first to turn "no reference" into a mismatch, then run this to replace them. See
+`decisions.md`.
+
 Every image is written **only** if it differs from what is already committed, and the script prints
 what it changed — because adopting a runner's render is accepting a picture nobody has looked at,
 and the list is what makes the review possible.
