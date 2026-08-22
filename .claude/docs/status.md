@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.8.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.9.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
 **Both halves are now designed.** The client's four screens were reviewed and redrawn against 0.0.4
 on 2026-08-21 ([`design.md`](design.md)); the Mac's seven surfaces were drawn for the first time on
@@ -17,9 +17,17 @@ The two halves find each other **on real hardware**: the Mac serves `/v1/health`
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
-Selecting a Mac still does nothing: the phone has no API client beyond health and no pairing. What
-changed is the other end — the Mac now serves the whole read API **over TLS**, under an identity it
-generated for itself, and a device pairs with it by scanning a link or typing six words.
+Selecting a Mac still does nothing on screen, and now that is the **only** thing missing. The phone
+has the whole client built and tested behind that tap: it reads a Mac's health, refuses to pair when
+the two ends speak different contracts, spends a pairing code, keeps the token in the Keychain, and
+reads every route SPEC §8 serves. What it has no way to start is the camera — the QR scanner and the
+pairing screen have no frames, and the `design-handoff` rule forbids a pull request touching a screen
+that has none.
+
+**So the client is wired up to the seam rather than into the app.** The composition root builds the
+browse and nothing else; `MacPairing` is composed by the pull request that draws the screen calling
+it. That is deliberate: a dependency wired into a root that no screen can reach is code nothing can
+be measured against, which is what the coverage gate said in as many words.
 
 ## Milestones
 
@@ -32,7 +40,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M1 | Diff parser, display columns, word diff; path grouping into a tree | **done** |
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
-| M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | |
+| M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
 | M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | |
 | M6 | Live updates, accessibility, ship | |
 
@@ -83,6 +91,24 @@ The spec's milestones, each ending in something runnable and a green suite, with
   under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up. Its Advanced
   tab is the connection log: the last fifty attempts to reach this Mac, each with the reason it was
   served or turned away, coalesced so one polling phone cannot fill it.
+- **The phone's half of the wire.** One definition of every payload both ends name, in `Core` rather
+  than one copy per side — including the partial-update body whose absent-versus-null trap SPEC §8
+  marks, now encoded and decoded by the same type. Over it: a pinned `URLSession` that can reach
+  exactly one Mac, a client for the two routes that answer before pairing, and one for every read
+  route SPEC §8 serves. Refusals arrive as a typed domain error the phone has a screen for and never
+  as a status code, the contract version travels on every request, and a Mac serving an older
+  contract is caught by `/v1/health` **before** a two-minute single-use code is spent on it. The
+  token goes into the Keychain, per Mac, and is the only copy there is. **The two halves are proven
+  against each other**, not each against its own idea of the contract: the phone's real client runs
+  against the Mac's real router in one process, pairing with a code the Mac issued and with the six
+  words under it, and driving the partial update through all three of its states.
+- **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
+  client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
+  method on the model, and the model carries only the browse: the pairing surface lands with the
+  screen that reads it, because a property no screen has agreed to is a property nothing can be
+  measured against. `MacPairing.alreadyPaired()` is what the discovery list's *Recent* and *Other
+  Macs* sections will be ordered by, once the Mac's Bonjour TXT record carries the instance
+  identifier that joins a discovered Mac to a stored token.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment
@@ -105,11 +131,16 @@ Still unverified, because each needs code that does not exist yet:
 - Login-item registration (M3). The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` is
   now implemented and verified on macOS 26.
 - Character-wrapping height arithmetic against measured heights (M5).
-- **Pinned trust evaluation against App Transport Security on a real iPhone (M4).** The Mac's half
-  is done and proven; what a device has not yet said is whether a `URLSessionDelegate` comparing the
-  fingerprint satisfies ATS. `decisions.md` records the constraint M4 inherits: the default
-  evaluation must be **replaced**, not added to, because macOS refuses a ten-year certificate
-  outright.
+- **Pinned trust evaluation against App Transport Security on a real iPhone (M4).** Both halves now
+  exist — the Mac's identity and the phone's `URLSessionDelegate` — and what a device has not yet
+  said is whether a delegate that compares the fingerprint instead of evaluating satisfies ATS.
+  `decisions.md` records the constraint: the default evaluation must be **replaced**, not added to,
+  because the OS refuses a ten-year certificate outright.
+- **The phone's Keychain, at all.** `KeychainPairingTokenStore` has never been run. A SwiftPM test
+  binary is unsigned and has no keychain, and the screen that would reach it on a device does not
+  exist yet — so unlike the Mac's identity store, which was proven by running the server, this one
+  is asserted only by the fake behind its protocol. The first pairing on hardware is what confirms
+  it.
 - **Waking from sleep, seen on hardware.** The rebinding loop is asserted against a fake, and
   `NSWorkspace.didWakeNotification` reaching it is not something a host test can produce.
 
@@ -175,9 +206,8 @@ Smaller things still open in these modules:
 
 - **The `xcrun -f git` step.** Both composition roots now share one probe of three fixed paths;
   `xcrun` is itself a subprocess and still wants its own seam.
-- **Pinning the JSON encoder.** Timestamps are ISO 8601 because that is the framework's default, and
-  a test asserts the raw shape so a change is red rather than silent. Setting it deliberately is a
-  small job for the next change in the API module.
+- ~~**Pinning the JSON encoder.**~~ Done. Both the request context and the phone's decoder now say
+  `.iso8601` in as many words, so a dependency changing its default moves neither end silently.
 - **The store's lock file.** SPEC §9 wants one beside the document so a standalone `granita-server`
   and the menu bar app cannot both hold it; today both will happily open the same file. The design
   review declined to draw the held case and said why: **it is a question for Davide, not a designer.**
@@ -188,10 +218,14 @@ Smaller things still open in these modules:
   ten-second budget — so the number cannot be produced on a tick. **Time it on a real machine before
   building it**: tens of milliseconds means cache and refresh on a slow timer, seconds means the
   count goes behind opening the menu and the label is the icon alone.
-- **The Bonjour TXT record.** SPEC §8 wants `apiVersion` and a stable `serverInstanceID` in it so a
-  phone can tell its paired Mac from another one. `NWEndpoint.service` carries no TXT record, so
-  this needs a way in through the same bind rather than a second `NWListener` — which is the trap
-  §8 exists to warn about. The instance identifier is already in the `/v1/pair` response.
+- **The Bonjour TXT record**, which now blocks something concrete. SPEC §8 wants `apiVersion` and a
+  stable `serverInstanceID` in it so a phone can tell its paired Mac from another one.
+  `NWEndpoint.service` carries no TXT record, so this needs a way in through the same bind rather
+  than a second `NWListener` — which is the trap §8 exists to warn about. The instance identifier is
+  already in the `/v1/pair` response, and the phone now holds a token against it: what is missing is
+  the **join**, because a discovered Mac is only a Bonjour instance name. Until the record carries
+  it, design §1's *Recent* and *Other Macs* sections cannot be built and the list ships as the single
+  unlabelled section that section says it degrades to.
 - **Revoking a device** has a store method and no route. It belongs with the Devices tab, which is
   the only place that would call it.
 
@@ -204,12 +238,11 @@ Smaller things still open in these modules:
   this machine — the simulator does not implement local network privacy at all. Until the phone has
   a pairing screen, the way to try it is `make run` with `--pair`: it prints a `granita://pair` link
   and six words every two minutes, and the fingerprint on that line is what the phone must pin.
-- **The first design round trip, which only he can start**, and which M4 and M5 are now behind. The
-  prompt went over in chat: a review of the discovery screen against its 24 baselines, and a first
-  drawing of the worktree sidebar, the file selector and the continuous diff. Until the frames come
+- **A design for the QR scanner and the pairing screen**, which is now the only thing between the
+  phone and a paired Mac. Everything behind that screen is built and tested; what has no frames is
+  the viewfinder, the six-word fallback field, and what a reader sees while a code is being spent
+  and when it is refused. The client round trip of 2026-08-21 did not include them. Until they come
   back, no branch touching those screens becomes a pull request — see the `design-handoff` skill.
-  What is *not* blocked is everything underneath them: the API client, the view models, the mappers
-  and their tests, which no frame can be authoritative about.
 - **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
   the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
   hardware is the true one: whether a browser that iOS really is withholding permission from dies

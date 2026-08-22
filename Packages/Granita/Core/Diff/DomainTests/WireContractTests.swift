@@ -172,6 +172,114 @@ struct WireContractTests {
         #expect(object?["isViewed"] as? Bool == true)
     }
 
+    // MARK: - The partial update, whose three states two of JSON's cannot tell apart
+
+    @Test
+    func `given an unchanged alias when encoded then the key is absent rather than null`() throws {
+        // given
+        let patch = WorktreePatch(alias: .unchanged, isPinned: true)
+
+        // when
+        let object = try #require(
+            try JSONSerialization.jsonObject(with: try JSONEncoder().encode(patch)) as? [String: Any]
+        )
+
+        // then — the Mac reads absence as "leave the alias alone", so writing an explicit null here
+        // would clear a name the reader never touched.
+        #expect(object.keys.sorted() == ["isPinned"])
+    }
+
+    @Test
+    func `given a cleared alias when encoded then the key is present and null`() throws {
+        // given
+        let patch = WorktreePatch(alias: .cleared, isPinned: nil)
+
+        // when
+        let encoded = String(decoding: try JSONEncoder().encode(patch), as: UTF8.self)
+
+        // then — null is the only way to say "drop the alias and go back to the derived name", and
+        // it has to be distinguishable from the case above by more than intent.
+        #expect(encoded == #"{"alias":null}"#)
+    }
+
+    @Test
+    func `given a new alias when encoded then it travels under its own key`() throws {
+        // given
+        let patch = WorktreePatch(alias: .set("the bridge slice"), isPinned: false)
+
+        // when
+        let object = try #require(
+            try JSONSerialization.jsonObject(with: try JSONEncoder().encode(patch)) as? [String: Any]
+        )
+
+        // then
+        #expect(object["alias"] as? String == "the bridge slice")
+        #expect(object["isPinned"] as? Bool == false)
+    }
+
+    @Test(arguments: [WorktreePatch.AliasChange.unchanged, .cleared, .set("named by hand")])
+    func `given any of the three alias states when round-tripped then it survives`(
+        alias: WorktreePatch.AliasChange
+    ) throws {
+        // given — one type writes this and reads it, so the round trip is the whole contract: the
+        // phone's encoder and the Mac's decoder cannot drift apart if there is only one of each.
+        let patch = WorktreePatch(alias: alias, isPinned: nil)
+
+        // when
+        let decoded = try JSONDecoder().decode(
+            WorktreePatch.self,
+            from: try JSONEncoder().encode(patch)
+        )
+
+        // then
+        #expect(decoded == patch)
+    }
+
+    // MARK: - The read payloads
+
+    @Test
+    func `given the diff sides when encoded then their names are exactly the agreed ones`() {
+        // given - when
+        let encoded = DiffSide.allCases.map(\.rawValue).sorted()
+
+        // then — these go into a query string, so a renamed case is a request the Mac silently
+        // answers from the wrong side of the comparison.
+        #expect(encoded == ["new", "old"])
+    }
+
+    @Test
+    func `given a worktree's changes when round-tripped then they survive with camelCase keys`() throws {
+        // given
+        let changes = WorktreeChanges(
+            revision: "9f1c2d",
+            stats: ChangeStats(filesChanged: 2, insertions: 7, deletions: 3),
+            files: [],
+            isTruncated: true
+        )
+
+        // when
+        let data = try JSONEncoder().encode(changes)
+
+        // then
+        #expect(try JSONDecoder().decode(WorktreeChanges.self, from: data) == changes)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object.keys.sorted() == ["files", "isTruncated", "revision", "stats"])
+    }
+
+    @Test
+    func `given raw lines when round-tripped then they survive with camelCase keys`() throws {
+        // given
+        let lines = FileLines(lines: ["import Foundation", "", "let value = 1"], eof: false)
+
+        // when
+        let data = try JSONEncoder().encode(lines)
+
+        // then
+        #expect(try JSONDecoder().decode(FileLines.self, from: data) == lines)
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object.keys.sorted() == ["eof", "lines"])
+    }
+
     @Test
     func `given change stats when summed then they add up across files`() {
         // given

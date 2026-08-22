@@ -1,8 +1,10 @@
-import CoreBrandingDomain
 import Foundation
 import Hummingbird
 import HummingbirdTesting
 import Testing
+
+import CoreApiDomain
+import CoreBrandingDomain
 
 @testable import ServerApiPresentation
 

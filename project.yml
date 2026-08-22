@@ -33,7 +33,7 @@ packages:
 # .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.8
+    MARKETING_VERSION: 0.0.9
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second

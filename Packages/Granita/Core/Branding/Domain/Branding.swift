@@ -31,6 +31,13 @@ public enum Branding {
     /// payload it half-understands.
     public static let apiVersion = 1
 
+    /// The header the phone declares `apiVersion` in, and the Mac refuses a newer one by.
+    ///
+    /// Here rather than spelled out on each side: a header the phone sends and the Mac does not read
+    /// fails open — every request succeeds, and the skew the header exists to catch arrives instead
+    /// as a payload half-decoded on a screen.
+    public static let apiVersionHeader = "X-Granita-Api-Version"
+
     /// Default TCP port. Taken ports fall back automatically and the chosen one is persisted.
     public static let defaultPort = 8737
 
@@ -44,5 +51,5 @@ public enum Branding {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? fallbackServerVersion
     }
 
-    static let fallbackServerVersion = "0.0.8"
+    static let fallbackServerVersion = "0.0.9"
 }

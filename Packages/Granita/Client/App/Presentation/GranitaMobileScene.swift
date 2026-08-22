@@ -16,13 +16,17 @@ public struct GranitaMobileScene: Scene {
 
     public var body: some Scene {
         WindowGroup {
-            // No `navigationDestination` for a discovered server yet. Selecting a Mac is pairing,
-            // and pairing is the milestone that brings the Keychain identity and the QR code with
-            // it — so the rows link to a destination this stack does not have, and tapping one does
-            // nothing, which is what tapping one did when the callback was a no-op.
+            // Selecting a Mac is pairing, and pairing needs a viewfinder — the scanner and its
+            // screen have no frames, so the rows link to a destination this stack does not have and
+            // tapping one does nothing, which is what tapping one already did.
+            //
+            // The client behind that screen is built and tested and is deliberately **not wired
+            // here**: `MacPairing` reads a Mac's health, spends a code and keeps the token, and it
+            // is composed by the pull request that draws the screen calling it. Wiring it now would
+            // put a dependency in this root that nothing on screen can reach.
             NavigationStack {
                 ServerDiscoveryScreen(
-                    viewModel: ServerDiscoveryViewModel(discovery: BonjourServerDiscovery())
+                    model: ClientConnectionModel(browsing: BonjourServerDiscovery())
                 )
             }
             // The measure goes around the stack rather than around the screen, because iOS draws a

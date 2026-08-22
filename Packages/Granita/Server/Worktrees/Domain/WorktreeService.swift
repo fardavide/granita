@@ -281,12 +281,6 @@ public struct WorktreeService: Sendable {
     }
 }
 
-/// Which side of a comparison raw lines are read from.
-public enum DiffSide: String, Codable, Hashable, Sendable, CaseIterable {
-    case old
-    case new
-}
-
 /// A worktree's uncommitted state.
 public struct WorktreeChangeSet: Hashable, Sendable {
 

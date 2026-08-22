@@ -79,18 +79,20 @@ COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
 
 # Files a host test cannot execute for a reason that is not a layer and not a composition root.
 #
-# One so far, and the bar for a second is the same as the bar for this one: the code must be
-# unrunnable from `swift test` *by construction*, not merely untested. A SwiftPM test binary is
-# unsigned and has no keychain of its own, so the only way to run the Keychain store at all is to
-# write into the developer's real login keychain — which is why it sits behind
-# `ServerIdentityStore`, why everything downstream is tested against a fake, and why it was verified
-# by running the server instead. See `decisions.md` and the "Verified against the real environment"
-# section of `status.md`.
+# Both are Keychain stores, and the bar each met is the same: the code must be unrunnable from
+# `swift test` *by construction*, not merely untested. A SwiftPM test binary is unsigned and has no
+# keychain of its own, so the only way to run either at all is to write into a real one — which is
+# why each sits behind a protocol, why everything downstream is tested against a fake, and why the
+# Mac's was verified by running the server instead. See `decisions.md` and the "Verified against the
+# real environment" section of `status.md`.
 #
 # Named per file rather than per directory, deliberately: `Server/Identity/Data` also holds the
-# interface enumeration, which a host test does reach and does cover, and exempting the directory
-# would stop measuring it.
-UNREACHABLE_FILES = {"Server/Identity/Data/KeychainServerIdentityStore.swift"}
+# interface enumeration and `Client/Connection/Data` holds the whole API client, both of which a
+# host test does reach and does cover, and exempting either directory would stop measuring them.
+UNREACHABLE_FILES = {
+    "Server/Identity/Data/KeychainServerIdentityStore.swift",
+    "Client/Connection/Data/KeychainPairingTokenStore.swift",
+}
 
 # What each kind's percentage is measured over, and the name that says so in the summary.
 #
@@ -111,15 +113,25 @@ UNREACHABLE_FILES = {"Server/Identity/Data/KeychainServerIdentityStore.swift"}
 # target graph rather than about the tests. Drawing code is judged by the Snapshot row instead,
 # which is the mirror of this rule: that row excludes everything a rendered view cannot execute.
 #
-# The scope's name changed from `reachable` to `host-reachable` when UNREACHABLE_FILES was added,
-# and the rename is the point rather than a tidy-up: the gate compares two numbers only when both
-# were taken the same way, so renaming is how a redefinition declares itself and leaves these two
-# rows unjudged for exactly one run instead of failing the pull request that redefines them.
+# The scope's name has changed twice, and each rename is the point rather than a tidy-up: the gate
+# compares two numbers only when both were taken the same way, so renaming is how a redefinition
+# declares itself and leaves these two rows unjudged for exactly one run instead of failing the pull
+# request that redefines them. `reachable` became `host-reachable` when UNREACHABLE_FILES was added
+# for the Mac's Keychain store, and `host-reachable-no-keychain` when the phone's joined it — the
+# name now says what the set actually is rather than leaving one member unmentioned.
 #
 # The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
 # nothing until a macOS snapshot kind exists. See status.md.
+#
+# The two narrowing scopes are named constants rather than repeated literals, and that is not
+# tidiness: the filter below selects on this exact string, so a rename spelled in one place and not
+# the other stops narrowing anything at all — silently, and in the direction that looks like good
+# news. That is precisely what happened the first time this was renamed, and the script's own tests
+# are what said so.
 DEFAULT_SCOPE = "package"
-SCOPES = {"snapshot": "views", "unit": "host-reachable", "all": "host-reachable"}
+VIEWS_SCOPE = "views"
+HOST_REACHABLE_SCOPE = "host-reachable-no-keychain"
+SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 
 # --- collect -----------------------------------------------------------------------------------
@@ -177,9 +189,9 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
         relative = name.split(PACKAGE_MARKER, 1)[1]
         if is_test_path(relative):
             continue
-        if scope == "views" and not is_view_path(relative):
+        if scope == VIEWS_SCOPE and not is_view_path(relative):
             continue
-        if scope == "host-reachable" and not is_reachable_path(relative):
+        if scope == HOST_REACHABLE_SCOPE and not is_reachable_path(relative):
             continue
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
@@ -282,6 +294,18 @@ def uncovered_lines(summary: dict) -> int | None:
     return counter["count"] - counter["covered"]
 
 
+def comparable(current: dict, baseline: dict, category: str) -> bool:
+    """Whether two runs measured that kind over the same files.
+
+    The gate asks this before judging a row. Anything that puts two runs' numbers side by side has
+    to ask it too, or it reports the redefinition as a change in the code.
+    """
+    def scope(summary: dict) -> str:
+        return summary.get("categories", {}).get(category, {}).get("scope", DEFAULT_SCOPE)
+
+    return scope(current) == scope(baseline)
+
+
 # --- gate --------------------------------------------------------------------------------------
 
 
@@ -382,7 +406,11 @@ def render(args: argparse.Namespace) -> int:
     lines += [verdict_sentence(verdict), ""]
 
     missed = uncovered_lines(current)
-    base_missed = uncovered_lines(baseline) if has_baseline else None
+    # Only against a baseline that counted the same files. Everything else in this report compares
+    # like with like — the table skips a redefined row and so does the gate — and this line was the
+    # one place that did not, so a run which changed what `all` measures printed a subtraction
+    # across two different file sets and called it a trend.
+    base_missed = uncovered_lines(baseline) if has_baseline and comparable(current, baseline, "all") else None
     if missed is not None:
         # Spelled out rather than arrowed: fewer uncovered lines is the good direction, and a "▼"
         # next to a number reads as a regression however it is meant.

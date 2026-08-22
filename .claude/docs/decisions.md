@@ -754,9 +754,11 @@ The cost is a type that grows, and it is worth naming: if one model stops being 
 is by **layer concern** — what it wraps — and never by which screen happens to draw it. What is
 gone is the reflex that a new screen needs a new state object.
 
-The phone still has `ServerDiscoveryViewModel` from M1, and it is deliberately left alone rather
-than swept: the rule is written here and in the architecture skill, and each module converts as it
-is next opened. M4 reopens the client's connection feature and converts it there.
+The phone kept `ServerDiscoveryViewModel` from M1 for one release, deliberately, rather than being
+swept: the rule was written here and in the architecture skill, and each module converts as it is
+next opened. M4 reopened the client's connection feature and converted it — `ClientConnectionModel`
+carries the browse, the handshake and the pairing history, and nothing in the client is named for a
+screen any more.
 
 ## The composition root is its own module, and coverage is measured over what a test can reach
 
@@ -1132,3 +1134,216 @@ it is the one screen where a reader is deciding whether to trust something.
 Rejected: asking Design for a redraw against 0.0.7 before building anything. Four of the five calls
 are untouched by the release, the two that changed are both *deletions*, and a second round trip to
 delete a warning would have blocked the whole milestone on a question already answered.
+
+## The wire contract has one definition, and `CoreApiDomain` is where the rest of it went
+
+Writing the phone's half of the API forced the question the Mac's half had never had to answer: what
+is a payload both ends name, and where does it live. The Mac had been the only reader of its own
+contract, so `HealthResponse`, `PairRequest`, `PairResponse`, `ViewedRequest` and `ApiErrorCode` sat
+in `ServerApiPresentation` beside the Hummingbird routes that produced them. The obvious way to give
+the client the same shapes is to write them again on the client, and that is the one thing
+`CoreDiffDomain`'s own header already forbids in as many words: *these types are the wire contract,
+so a renamed property is a version skew rather than a refactor.*
+
+So there is a fourth `Core` module, not in SPEC §3's tree for the same reason `CoreBrandingDomain`
+and `CorePairingDomain` are not. What it holds is the contract that is neither a diff model nor a
+pairing credential. `ApiErrorCode` is the load-bearing member: SPEC §8 says the codes are part of the
+contract *because the client branches on them*, and a client branching on string literals copied out
+of the server would make a rename a screen that silently stops appearing. The HTTP status each code
+maps to stayed on the Mac, because a status is how a refusal travelled and never what it means.
+
+Three payloads moved into `CoreDiffDomain` instead, where the models the API is expressed in already
+live: `DiffSide`, and the two read bodies that were called `ChangesResponse` and `LinesResponse` and
+are now `WorktreeChanges` and `FileLines`.
+
+**`WorktreePatch` is the case that justifies the whole exercise.** SPEC §8 marks it TRAP: `Codable`
+decodes an absent key and an explicit `null` identically, so a struct cannot tell "clear the alias"
+from "leave it alone", and the API needs both. That was implemented once, correctly, on the reading
+side. Written a second time on the writing side it would have been a coin flip whether the phone
+omitted the key where the Mac expected a null — and the symptom is an alias the reader has just
+deleted quietly coming back. One type now encodes and decodes it, and the round trip through both
+halves is a test.
+
+Rejected: a shared `ApiErrorEnvelope` alongside the code. The Mac wants to encode a typed code and
+the phone must tolerate one it has never heard of, which are different types with the same field
+names; the client's four-line private decoder is not the duplication worth removing, and the
+enumeration is.
+
+**And the claim is checked rather than asserted.** "Both halves name the same type" is exactly the
+kind of statement a suite that only ever sees one half cannot prove, so the phone's real client now
+runs against the Mac's real router in one process — nothing faked below the routes, nothing faked
+above them, and the pinned `URLSession` as the single substitution, because it is the one thing on
+the path that is not about the contract. It pairs with a code the Mac issued and with the six words
+under it, reads a worktree's changes and one file's diff and its raw lines, and drives the partial
+update through all three of its states. Removing the explicit null from the encoder turns it red with
+the symptom this entry describes: an alias the reader has just deleted coming back.
+
+## Timestamps are ISO 8601 because both ends say so, not because a framework does
+
+M2 left this open deliberately: the date format on the wire was whatever Hummingbird's encoder
+defaulted to, with a test reading the raw JSON so a change would be red rather than silent, and a
+note that pinning it belonged to the next change in the API module. This is that change, and the
+reason it could not stay implicit is that the phone has to pick a decoding strategy explicitly —
+there is no default to inherit on that side.
+
+Hummingbird's default happens to be `.iso8601` already, which is exactly why leaving it alone was the
+wrong answer: a dependency upgrade that changed it would move only one end, and the symptom is every
+worktree showing as modified in 1970. Both the request context and the client's decoder now say
+`.iso8601` in as many words, so a change to either is a change somebody wrote.
+
+## The phone's transport seam lives in `Data`, not in `Domain`
+
+Every other I/O edge in this project sits behind a protocol its `Domain` owns. `HttpTransport` does
+not, and the exception is the rule working rather than a hole in it: nothing above the `Data` layer
+names HTTP at all, and moving a request-and-response vocabulary into `Domain` so that one type could
+be faked would put the leak in the layer whose whole purpose is not having one. The protocol's
+implementation and its only caller both live in `Client/Connection/Data`.
+
+What it buys is that every rule the API client enforces is asserted on the host with no server and no
+network: the bearer on the authenticated routes and its absence on the two that answer before
+pairing, the contract version on every request, the comma-joined batch of file identifiers, and the
+whole table from a refusal code to something the phone has a screen for.
+
+**No HTTP status reaches anything above that client**, and it is not a style preference. SPEC §8
+makes the *codes* the contract precisely because two refusals the Mac spells differently on purpose
+can share a status — `unauthorized` and `pairingExpired` are both 401 — so a screen switching on the
+number could not tell them apart. The status only ever reaches a diagnostic string.
+
+`ApiFailure` carries two cases §8 does not, because §8 describes what a Mac says rather than what
+happens when it says nothing: `unreachable`, whose payload is labelled a diagnostic for the same
+reason `DiscoveryState.failed`'s is, and `notUnderstood`, which is what a body this version cannot
+read and a refusal code a newer Mac invented both become. A third, `requestNotBuildable`, exists so
+that no step of assembling a request has to be silenced with a `try?`.
+
+## The phone checks the contract before it spends the code, never after
+
+SPEC §8 says the client refuses to pair on an `apiVersion` mismatch. The order is the part worth
+recording: `/v1/health` is read first and the code is spent second.
+
+A pairing code lasts 120 seconds and works once. Discovering the skew from a 426 on the first read
+route would mean the reader has already walked to the Mac, scanned a code, spent it, and has to go
+back for another one to be told the same thing. Reading health costs one request against a route
+that answers before pairing exists — which is the route's whole reason for existing.
+
+Which end is behind is named rather than reported as "the versions differ", because one of them is
+fixed by opening the App Store and the other by opening a Mac.
+
+## Joining a Mac is a use case, and the coverage gate is what said so
+
+The first draft put the sequence — read the contract, spend the code, write the token down — on
+`ClientConnectionModel`, which is a `Presentation` type. It looked reasonable and it was a layer
+violation: a view model orchestrating three protocols is a use case wearing a screen's name, and the
+rule that use cases orchestrate exists precisely so that the thing worth testing is not sitting in
+the layer that is hardest to reach.
+
+**The Snapshot coverage row is what caught it**, and it caught it as a number rather than as an
+opinion. That row is scoped to the layers that draw, which includes `Presentation` because a screen
+is composed there — so ninety lines of pairing logic that no rendered baseline could ever execute
+joined its denominator and dropped it twelve points. The reflex is to rescope the row; the honest
+reading is that the row was right and the code was in the wrong place.
+
+So `MacPairing` is a `Domain` type over the two protocols it needs, returning a `PairingOutcome`
+rather than throwing — three of the four endings are not errors in any useful sense, and a caller
+that had to catch them would be deciding which of its `catch` blocks was really a success. The model
+keeps what a screen reads: not started, joining, finished. `MacJoining` is the protocol between them,
+and it earns its place the ordinary way — the model's tests drive one fake instead of the two
+collaborators underneath it, which is the difference between a test about the screen and a second
+copy of the test below.
+
+Rejected: scoping the Snapshot row to `Ui` alone. It would have passed the gate today by redefining
+a number rather than by fixing what the number was reporting, which is the failure signature the
+`swift-testing` skill names — and it would have stopped counting screen composition, which is
+drawing code a baseline genuinely does execute.
+
+### The row is right twice, and the second time it says: do not ship a screen's API before the screen
+
+Moving the sequence out took Snapshot lines 83.2% to 88.0% and it was still short, which is the same
+sentence one step further in. What was left in the views scope was five members of
+`ClientConnectionModel` that **nothing calls** — `PairingState`, `pairing`, `pairedServers`,
+`loadPairingHistory()`, `join(_:as:)` — plus the composition root's `handshake:` closure, which only
+runs during a pairing attempt. There is no scanner and no pairing sheet, by design: neither has
+frames, and the `design-handoff` rule forbids the pull request that would draw them.
+
+So the pairing surface lands with the screen that reads it. `MacPairing` and the whole `Data` layer
+stay, tested and judged by the Unit row; what leaves is a property no screen has agreed to and a
+wiring line nothing reaches. That is the only option of the four considered that leaves the Snapshot
+row **judged**, so the pull request is measured on the same terms as `main` and the ratchet survives
+a milestone that added a thousand lines.
+
+**And a belief that had to be corrected before any of this could be sized.** The snapshot bundle is
+app-hosted — `TEST_HOST` is `Granita.app`, which is the only reason `drawHierarchyInKeyWindow`
+works — so the host's `@main` really launches and the scene, the screen and the model's `init` and
+`start()` all execute where the profile is written. They are *not* dead code in that pass, and the
+95.7% baseline is arithmetically impossible if they were. An earlier plan to exempt composition roots
+from the views scope was abandoned on that evidence: it would have removed a file that is 90%
+covered from a denominator sitting at 90%, which moves the row a point, not eight.
+
+The numbers came from running `measure-coverage.sh` locally and reading `snapshot.json` per file.
+Three estimates of this had been wrong before that; a per-file export settles in one simulator pass
+what algebra kept getting wrong.
+
+### `isPermissionRefused` was a second place deciding one thing
+
+Removed with the above, and it earns its own line because it predates the pull request. The model
+exposed `discovery == .localNetworkDenied` as a property; the view already reaches that conclusion
+from the state it is handed, and nothing in the app ever read the property — only its own two tests
+did. The `swift-style` rule against a helper that merely shortens an inline expression covers it
+exactly, and two places deciding one thing is the more expensive half.
+
+Stated plainly because it is also the thing that bought the Snapshot row its margin: after the trim
+above the row cleared by 0.13 of a point on lines and sat level on regions, which is inside the
+noise of a different runner. Removing dead API for a good reason and needing headroom happened to be
+the same edit, and the honest thing is to say so rather than to let it read as tidy-up.
+
+### The one line in the report that did not compare like with like
+
+Found while reading the script for the above. The table skips a row whose scope changed and so does
+the gate, but the "N uncovered lines — M more than the baseline" sentence read `categories.all.lines`
+straight out of both summaries with no such guard. On this very pull request that made it a
+subtraction across two different file sets, reported as a trend. It now asks the same question the
+gate asks, and says nothing when the answer is no.
+
+## A pairing that succeeds and cannot be written down is its own outcome
+
+The Mac keeps a hash of the token and the phone keeps the only copy, so a `SecItemAdd` that fails
+after `/v1/pair` has answered leaves the worst state this app has: the Mac holds a device record for
+a credential nothing can produce, and every subsequent request is `unauthorized` for a reason no
+screen could explain. Reported as an ordinary failure it would send the reader round the same loop
+forever.
+
+So it is a case of its own on the connection model, and what it has to say is different from every
+other failure: revoke the device on the Mac before pairing again.
+
+## The client's Keychain store joins the Mac's as uncoverable, and the scope is renamed again
+
+Same reasoning, second instance, and the bar it met is the one the first one set: a SwiftPM test
+binary is unsigned and has no keychain of its own, so the only way to execute
+`KeychainPairingTokenStore` at all is to write into a real one. It is behind `PairingTokenStore` for
+that reason and everything downstream is tested against a fake.
+
+The scope string moves from `host-reachable` to `host-reachable-no-keychain`, which is the mechanism
+declaring itself rather than a tidy-up — the gate compares two numbers only when both were taken the
+same way, so the Unit and All rows go unjudged for one run and rejoin on the next `main` run. The
+name now says what the exempt set actually is instead of leaving one of its two members unmentioned.
+
+**Unlike the Mac's, this one has not been run.** The Mac's store was verified by running the server
+and pairing against it; the phone's needs a device, and the screen that would reach it does not
+exist. `status.md` carries that.
+
+**The rename found a bug in the mechanism it was using.** The filter selected on the scope *string*
+literal, so renaming the scope in the configuration and not in the filter stopped narrowing anything
+at all — silently, and in the direction that looks like good news, since the rows go unjudged for
+that same run. The script's own tests caught it on the first CI run. Both scope names are constants
+now, so the two cannot come apart, and a test asserts that whatever is configured still removes
+something rather than that the two constants equal each other, which would be a tautology.
+
+## The single-file diff route is not called, and the batch is why
+
+SPEC §8 lists both `/v1/worktrees/{id}/diffs?fileIDs=…` and
+`/v1/worktrees/{id}/files/{fileID}/diff`. The client calls only the first, with one identifier when
+it wants one file.
+
+They are the same answer through the same code on the Mac, and a second way to ask a question is a
+second place for it to be answered differently — a divergence that would show up as one file
+rendering differently depending on whether it was prefetched or opened. The route stays served,
+because removing it is a contract change and nothing is gained by making one.

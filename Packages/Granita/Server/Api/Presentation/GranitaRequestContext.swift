@@ -1,3 +1,4 @@
+import Foundation
 import Hummingbird
 import NIOCore
 
@@ -18,6 +19,24 @@ public struct GranitaRequestContext: RequestContext, RemoteAddressRequestContext
     public init(source: ApplicationRequestContextSource) {
         coreContext = .init(source: source)
         remoteAddress = source.channel.remoteAddress
+    }
+
+    /// Timestamps on the wire are ISO 8601, said here rather than inherited.
+    ///
+    /// The framework's default happens to be the same today, and that is exactly the problem: the
+    /// phone decodes with a strategy it has to choose deliberately, so leaving this end to a default
+    /// makes a dependency upgrade a phone that reads every worktree as modified in 1970. Stated on
+    /// both sides, a change to either is a change somebody wrote.
+    public var responseEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    public var requestDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 
     /// How a source is named in the connection log and counted against a rate limit.

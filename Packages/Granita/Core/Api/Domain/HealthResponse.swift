@@ -1,5 +1,3 @@
-import Hummingbird
-
 import CoreBrandingDomain
 
 /// The body of `/v1/health`, and the first thing a phone ever reads from a Mac.
@@ -8,7 +6,10 @@ import CoreBrandingDomain
 /// from "not authorised". The Mac app and the TestFlight phone app ship independently, so version
 /// skew is guaranteed rather than unlikely: the client refuses to pair on an `apiVersion` mismatch
 /// instead of decoding a payload it half-understands.
-public struct HealthResponse: Codable, Hashable, Sendable, ResponseEncodable {
+///
+/// A `Core` type because both halves name it, and a field spelled differently on the two sides is a
+/// phone that cannot read a Mac rather than a rename.
+public struct HealthResponse: Codable, Hashable, Sendable {
 
     public let name: String
     public let apiVersion: Int

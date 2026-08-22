@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+import CoreApiDomain
 import CorePairingDomain
 import ServerApiPresentation
 import ServerStoreDomain

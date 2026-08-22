@@ -1,41 +1,13 @@
 import Foundation
 import Hummingbird
 
-/// The codes the client branches on.
-///
-/// Part of the wire contract rather than an implementation detail: the phone shows a different
-/// screen for each of several of these, so adding one is a contract change and renaming one is a
-/// version skew that reaches a reader as a screen that never appears.
-public enum ApiErrorCode: String, Codable, Hashable, Sendable, CaseIterable {
+import CoreApiDomain
 
-    case unauthorized
-    case pairingExpired
-    case rateLimited
+extension ApiErrorCode {
 
-    /// The project exists but the user has not enabled it. Distinct from "not found" on purpose:
-    /// the server declines to say whether an identifier it will not serve corresponds to anything.
-    case projectNotVisible
-
-    /// The worktree's directory or its entry in git is gone — an agent removed it while it was
-    /// being read, which is ordinary rather than exceptional.
-    case worktreeGone
-
-    case fileGone
-
-    /// The file changed since the reader marked it viewed, so the mark would be over a version
-    /// nobody saw.
-    case staleContentHash
-
-    /// Carries git's own standard error, because nothing else makes a git failure diagnosable from
-    /// a phone three rooms away.
-    case gitFailure
-
-    case tooLarge
-    case badRequest
-
-    /// The client speaks a newer version of this API than the Mac serves.
-    case unsupportedApiVersion
-
+    /// How each code travels. The status is the Mac's business — the phone branches on the code, and
+    /// a screen that switched on a number would have to know the difference between two refusals
+    /// this API deliberately spells the same way.
     var status: HTTPResponse.Status {
         switch self {
         case .unauthorized, .pairingExpired: .unauthorized

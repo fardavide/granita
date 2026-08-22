@@ -89,6 +89,17 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // The wire contract that is neither a diff model nor a pairing one: the refusal codes the
+        // phone branches on, the handshake body it reads before it will pair, and the two halves of
+        // the pairing exchange. A Core module because both ends name every one of them, and two
+        // enumerations of one list is precisely how a rename becomes a refusal nothing can read.
+        .target(
+            name: "CoreApiDomain",
+            dependencies: ["CoreBrandingDomain"],
+            path: "Core/Api/Domain",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "CoreDiffDomain",
             path: "Core/Diff/Domain",
@@ -135,13 +146,25 @@ let package = Package(
 
         .target(
             name: "ClientConnectionDomain",
-            dependencies: ["CoreBrandingDomain", "CoreDiffDomain"],
+            dependencies: ["CoreApiDomain", "CoreBrandingDomain", "CoreDiffDomain", "CorePairingDomain"],
             path: "Client/Connection/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ClientConnectionDomainTests",
+            dependencies: ["ClientConnectionDomain", "CoreApiDomain", "CoreBrandingDomain"],
+            path: "Client/Connection/DomainTests",
             swiftSettings: [swift6]
         ),
         .target(
             name: "ClientConnectionData",
-            dependencies: ["CoreBrandingDomain", "ClientConnectionDomain", "CoreDiffDomain", "CorePairingDomain"],
+            dependencies: [
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                "CorePairingDomain"
+            ],
             path: "Client/Connection/Data",
             swiftSettings: [swift6]
         ),
@@ -153,19 +176,38 @@ let package = Package(
         ),
         .target(
             name: "ClientConnectionPresentation",
-            dependencies: ["ClientConnectionUi", "ClientConnectionDomain", "CoreBrandingDomain"],
+            dependencies: [
+                "ClientConnectionUi",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CorePairingDomain"
+            ],
             path: "Client/Connection/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
             name: "ClientConnectionPresentationTests",
-            dependencies: ["ClientConnectionPresentation", "ClientConnectionDomain"],
+            dependencies: [
+                "ClientConnectionPresentation",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CorePairingDomain"
+            ],
             path: "Client/Connection/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
             name: "ClientConnectionDataTests",
-            dependencies: ["ClientConnectionData", "ClientConnectionDomain", "CoreDiffDomain", "CorePairingDomain"],
+            dependencies: [
+                "ClientConnectionData",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                "CorePairingDomain"
+            ],
             path: "Client/Connection/DataTests",
             swiftSettings: [swift6]
         ),
@@ -256,8 +298,10 @@ let package = Package(
         .target(
             name: "ClientAppPresentation",
             dependencies: [
+                "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
+                "CorePairingDomain",
                 "ClientConnectionDomain",
                 "ClientConnectionData",
                 "ClientConnectionUi",
@@ -389,6 +433,7 @@ let package = Package(
         .target(
             name: "ServerApiPresentation",
             dependencies: [
+                "CoreApiDomain",
                 "CoreBrandingDomain",
                 "ServerApiDomain",
                 "ServerIdentityDomain",
@@ -407,6 +452,7 @@ let package = Package(
             name: "ServerApiPresentationTests",
             dependencies: [
                 "ServerApiPresentation",
+                "CoreApiDomain",
                 "ServerApiDomain",
                 "ServerIdentityDomain",
                 "ServerWorktreesDomain",
@@ -420,6 +466,12 @@ let package = Package(
                 "ServerGitData",
                 "ServerStoreData",
                 "ServerSessionsData",
+                // The phone's client, against the Mac's routes, in one process. The wire contract
+                // now has one definition in `Core` and both halves name it, which is a claim no
+                // suite that sees only one half can check — so the one place the two meet is a
+                // test target, where mixing them is the point rather than a leak.
+                "ClientConnectionData",
+                "ClientConnectionDomain",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
                 // Same package as Hummingbird itself, so this adds no dependency: it is the
