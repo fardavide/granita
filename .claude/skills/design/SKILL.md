@@ -51,15 +51,18 @@ Everything else has an answer.
 ## Binding rules, in the order they get broken
 
 - **Every control on a screen must do something the reader can perceive — before that screen
-  ships.** A row, button or link that looks operable and silently does nothing is the worst thing
-  this product can ship, and it has shipped one: the discovery list's rows are `NavigationLink`s in
-  a stack that declares no `navigationDestination`, so tapping the Mac you came to the app to read
-  answers with nothing. **Being mid-slice is not an excuse — it is the case the rule is for.** If
-  what is behind a control is not built, the control says so, in our voice, using this design's own
-  empty-state or failure idiom. Never `TODO`, never "coming soon". Granita is built in slices with
-  clean layer boundaries, which makes this *easier* to miss, not harder: every layer looks finished
-  on its own. See the global **`no-dead-controls`** skill; **run the app and press it**, because a
-  snapshot baseline photographs a button beautifully whether or not anything is behind it.
+  ships.** It ships only if it works, is absent, is disabled **and** says why, or explains that what
+  is behind it is not built. A row, button or link that looks operable and silently does nothing is
+  the worst thing this product can ship, and it shipped one for eight releases: discovery's rows
+  were `NavigationLink`s and no module declared a `navigationDestination` for their value, so
+  tapping the Mac you opened the app to read answered with silence. **Being mid-slice is not an
+  excuse — it is the case the rule is for**, and Granita's layer graph hides it best, because every
+  layer looks finished on its own and the gap was between two modules. When what is behind a control
+  is not built, the control says so in our voice, using this design's own empty-state idiom — never
+  `TODO`, never "coming soon". **Run the app and press it**: the snapshot suite rendered that dead
+  row in four layouts and stayed green throughout, because a baseline photographs a button whether or
+  not anything is behind it. Declare a link's destination in the same file as the link. Full account
+  in [`../../docs/decisions.md`](../../docs/decisions.md).
 - **Truncation is directional, and the direction is per-screen.** Bonjour device names truncate in
   the **middle** — they differ at the end. Generated worktree directory names truncate at the
   **tail** — the mnemonic is at the front. Paths truncate at the **head** — the filename is what

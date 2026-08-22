@@ -1641,11 +1641,16 @@ sentence is the whole failure: a defect was observed, written down, reasoned abo
 because it was filed as *the pairing screen is not built yet* rather than as *the app has a dead
 control in it*. Those are not the same thing, and only the second one is a release blocker.
 
-**The rule, now binding at three levels** — the global `no-dead-controls` skill, this repository's
-`CLAUDE.md`, and the `/design` skill's binding rules. Before any control ships, one of these is true:
-it works; it is absent; it is disabled **and** labelled with why; or it is enabled and explains that
-the thing behind it is not built. Being mid-slice is not an exception — it is the case the rule is
-for.
+**The rule is now stated where it cannot be missed rather than where it must be looked up** — in the
+global `CLAUDE.md`, in this repository's `CLAUDE.md`, and in the `/design` skill's binding rules.
+Before any control ships, one of these is true: it works; it is absent; it is disabled **and**
+labelled with why; or it is enabled and explains that the thing behind it is not built. Being
+mid-slice is not an exception — it is the case the rule is for.
+
+It was first written as a skill of its own and that was wrong, which is worth one line: **a skill is
+read when something reaches for it**, and nothing reaches for a rule about dead controls while
+believing it is only deferring one. A rule that must hold unconditionally belongs in the files that
+load unconditionally.
 
 **Two things about it are specific to how this codebase is built.** Clean layer boundaries make this
 *easier* to miss rather than harder: every layer looked finished on its own, and the gap was between

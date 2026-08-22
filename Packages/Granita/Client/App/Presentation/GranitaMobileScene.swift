@@ -20,7 +20,7 @@ public struct GranitaMobileScene: Scene {
             // that itself, because the module that offers a link is the one that must know where it
             // goes. This root used to be where the destination would have gone, and the destination
             // was simply absent: tapping the Mac a reader opened the app to read answered with
-            // silence, and it shipped. See the `no-dead-controls` skill.
+            // silence, and it shipped. See `CLAUDE.md` and `.claude/docs/decisions.md`.
             //
             // The client behind the real pairing screen is built and tested and is deliberately
             // **not wired here**: `MacPairing` reads a Mac's health, spends a code and keeps the

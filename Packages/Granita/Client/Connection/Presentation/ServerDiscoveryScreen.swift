@@ -32,7 +32,7 @@ public struct ServerDiscoveryScreen: View {
         // destination for that value — which compiles, draws a chevron, and does nothing at all
         // when tapped. It shipped that way. A link and its destination living in two modules is
         // what let them drift apart silently; in one file, adding the first without the second is
-        // visible. See the `no-dead-controls` skill.
+        // visible. See `CLAUDE.md` and `.claude/docs/decisions.md`.
         .navigationDestination(for: DiscoveredServer.self) { server in
             PairingNotReadyView(server: server)
         }

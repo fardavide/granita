@@ -21,11 +21,13 @@ it is not a history browser.
   — look it up rather than inventing a screen. The Mac frames were drawn against 0.0.6 and the sheet
   corrects them for 0.0.7; trust the sheet.
 - **Never ship a control that does nothing.** Every row, button and link a reader can press must do
-  something they can perceive, *before* the screen ships. Mid-slice is not an excuse — it is the
-  case the rule is for: if what is behind it is not built, the control says so, in our voice. This
-  product has already shipped one dead control and it is the worst defect here. The `/design` skill
-  and the global `no-dead-controls` skill are both binding, and **running the app and pressing it**
-  is the only check that works — a snapshot photographs a button whether or not anything is behind it.
+  something they can perceive, *before* the screen ships. It ships only if it works, is absent, is
+  disabled **and** says why, or explains that what is behind it is not built. **Mid-slice is not an
+  excuse — it is the case the rule is for**, and this layer graph hides it best, because each layer
+  looks finished on its own. Granita shipped one for eight releases: discovery's rows linked to a
+  destination no module declared, so tapping a Mac did nothing (`decisions.md`). **The only check
+  that works is running the app and pressing the thing** — the snapshot suite photographed that row
+  in four layouts and stayed green throughout.
 - **Invoke applicable skills before acting.** If none apply, say so.
 
 | Skill | Use it for |

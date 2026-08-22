@@ -9,7 +9,8 @@ import ClientConnectionDomain
 /// tapping the Mac you opened the app to read did *nothing at all* — no push, no message, no
 /// spinner. A reader taps again, taps harder, restarts the app, and concludes the product is broken
 /// in a way they cannot describe. A control that looks operable must do something perceivable; if
-/// what is behind it is not built, it says so. See the `no-dead-controls` skill.
+/// what is behind it is not built, it says so. The rule and the incident are in `CLAUDE.md` and in
+/// `.claude/docs/decisions.md`.
 ///
 /// It goes when pairing's own screens arrive, and it is deliberately not a stub: this is a real
 /// state with real copy, drawn in this design's own empty-state idiom.

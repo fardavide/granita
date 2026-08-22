@@ -8,8 +8,9 @@ Where the project is. Update this when a slice lands.
 list did *nothing at all* — the rows were `NavigationLink`s and no module declared a destination for
 them. It shipped, and a comment in the composition root said so in as many words. Tapping now opens a
 screen that says Granita can find the Mac and cannot connect to it yet, and the destination lives
-beside the rows that link to it rather than in the root. **The rule is now binding in three places**
-— the global `no-dead-controls` skill, `CLAUDE.md` and `/design` — and what is still owed is the
+beside the rows that link to it rather than in the root. **The rule is stated in the files that load
+unconditionally** — the global `CLAUDE.md`, this repository's, and `/design`'s binding rules — rather
+than in a skill, which is only read when something reaches for it. What is still owed is the
 behavioural test that would have caught it, which needs the `ui` target this project has never had.
 
 **The connection log is a tab of its own and has been relaid out.** It was sharing Advanced with
