@@ -8,7 +8,15 @@
 #   unit      Packages/Granita/**/…Tests       the package suite, on the host, no simulator
 #   ui        Apps/GranitaMobileUiTests        behavioural tests: render a screen and drive it
 #   snapshot  Apps/GranitaMobileSnapshotTests  rendered against a committed baseline, on a simulator
-#   all       the two profiles merged, read through both object sets
+#             Apps/GranitaMacSnapshotTests     …and on this Mac, for the Settings window
+#   all       every profile merged, read through every object set
+#
+# **The snapshot kind is two bundles, one row.** The phone renders on a simulator and the Mac renders
+# on the machine itself — there is no macOS simulator — but the question the row answers is the same
+# for both: of the code that draws screens, how much does a baseline put on screen. Two rows would
+# split a single question along a platform axis that no reader of the report cares about, and would
+# make the Mac's row look like a regression on the day it first appears. The two profiles are merged
+# before the row is taken, exactly as `all` merges everything.
 #
 # A kind with no bundle yet is skipped rather than faked, and its row in the report reads "—".
 # `ui` is that case today: the first behavioural test brings the target with it.
@@ -119,7 +127,67 @@ if [ ${#SNAPSHOT_OBJECTS[@]} -eq 0 ]; then
     exit 1
 fi
 
-xcrun llvm-cov export -instr-profile "$SNAPSHOT_PROFILE" "${SNAPSHOT_OBJECTS[@]}" \
+echo "::endgroup::"
+
+# ---------------------------------------------------------------------------------------------
+# snapshot — the macOS half, on this machine
+# ---------------------------------------------------------------------------------------------
+#
+# Its own derived data path, deliberately. The profile below is located by searching for
+# `Coverage.profdata`, and two platforms' runs sharing one directory would make `head -1` a coin
+# flip between them — which produces a plausible number from the wrong pass.
+
+echo "::group::Coverage — snapshot (macOS)"
+
+MAC_DERIVED="${COVERAGE}/DerivedDataMac"
+
+# `|| true` for the same reason as the iOS pass: this wants the profile, not the verdict.
+xcodebuild test \
+    -project Granita.xcodeproj \
+    -scheme GranitaMac \
+    -destination 'platform=macOS' \
+    -derivedDataPath "$MAC_DERIVED" \
+    -clonedSourcePackagesDirPath SourcePackages \
+    -only-testing:GranitaMacSnapshotTests \
+    "${COVERAGE_SETTINGS[@]}" \
+    CODE_SIGNING_ALLOWED=NO \
+    -quiet || echo "::warning::The macOS snapshot pass failed; measuring whatever it reached."
+
+MAC_SNAPSHOT_PROFILE="$(find "$MAC_DERIVED" -name Coverage.profdata | head -1)"
+if [ -z "$MAC_SNAPSHOT_PROFILE" ]; then
+    echo "::error::The macOS snapshot pass wrote no profile — nothing ran, or coverage was not instrumented."
+    exit 1
+fi
+
+MAC_PRODUCTS="${MAC_DERIVED}/Build/Products/Debug"
+MAC_SNAPSHOT_OBJECTS=()
+for candidate in \
+    "${MAC_PRODUCTS}/Granita.app/Contents/MacOS/Granita.debug.dylib" \
+    "${MAC_PRODUCTS}/Granita.app/Contents/MacOS/Granita" \
+    "${MAC_PRODUCTS}/Granita.app/Contents/PlugIns/GranitaMacSnapshotTests.xctest/Contents/MacOS/GranitaMacSnapshotTests"
+do
+    if [ -f "$candidate" ]; then
+        MAC_SNAPSHOT_OBJECTS+=(-object "$candidate")
+    fi
+done
+if [ ${#MAC_SNAPSHOT_OBJECTS[@]} -eq 0 ]; then
+    echo "::error::Found no built product under ${MAC_PRODUCTS} to read coverage from"
+    exit 1
+fi
+echo "::endgroup::"
+
+# ---------------------------------------------------------------------------------------------
+# snapshot — both halves, merged into one row
+# ---------------------------------------------------------------------------------------------
+
+echo "::group::Coverage — snapshot"
+xcrun llvm-profdata merge -sparse "$SNAPSHOT_PROFILE" "$MAC_SNAPSHOT_PROFILE" \
+    -o "${COVERAGE}/snapshot.profdata"
+
+xcrun llvm-cov export \
+    -instr-profile "${COVERAGE}/snapshot.profdata" \
+    "${SNAPSHOT_OBJECTS[@]}" \
+    "${MAC_SNAPSHOT_OBJECTS[@]}" \
     > "${COVERAGE}/snapshot.json"
 
 python3 .github/scripts/coverage.py collect \
@@ -137,12 +205,14 @@ echo "::endgroup::"
 # simulator never links, the simulator objects contribute the views the host cannot render.
 
 echo "::group::Coverage — all"
-xcrun llvm-profdata merge -sparse "$UNIT_PROFILE" "$SNAPSHOT_PROFILE" -o "${COVERAGE}/all.profdata"
+xcrun llvm-profdata merge -sparse "$UNIT_PROFILE" "$SNAPSHOT_PROFILE" "$MAC_SNAPSHOT_PROFILE" \
+    -o "${COVERAGE}/all.profdata"
 
 xcrun llvm-cov export \
     -instr-profile "${COVERAGE}/all.profdata" \
     "$UNIT_BINARY" \
     "${SNAPSHOT_OBJECTS[@]}" \
+    "${MAC_SNAPSHOT_OBJECTS[@]}" \
     > "${COVERAGE}/all.json"
 
 python3 .github/scripts/coverage.py collect \

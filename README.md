@@ -71,6 +71,22 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.10 — 2026-08-22
+- **The Mac's Settings window has a General tab.** It shows the address this Mac is serving on, with
+  a button that copies it, and it says who chose the port — macOS does, when Granita advertises
+  itself, which is why it differs every launch and why your phone finds this Mac by name instead.
+  Beside it, when the server started, and a Restart for the case a wake did not fix: a laptop that
+  changed network keeps running and quietly stops being reachable, and nothing tells the app so.
+- **When Granita is not serving, the tab says what to do about it.** Our sentence, our button
+  straight to Privacy & Security › Local Network, and macOS's own error underneath in small print —
+  rather than an `NWError` code being the whole explanation for an app that does nothing.
+- **Granita can open itself at login, and will not pretend it did.** macOS normally accepts the
+  registration and then waits for you to approve it in Login Items, which means nothing starts at
+  the next login — so the switch goes back off and says so, with a button that opens the right pane.
+- **The menu bar carries no count of changed worktrees.** It was specified and drawn, and producing
+  the number turned out to cost 122.7 seconds against real repositories, so the icon stands alone
+  until something can ask git the cheap question instead.
+
 ### 0.0.9 — 2026-08-22
 - **Nothing on screen has changed, and that is the whole entry.** This build carries the half of
   pairing that lives on the phone: the code to ask a Mac which version it speaks before spending a

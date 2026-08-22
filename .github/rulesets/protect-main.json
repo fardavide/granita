@@ -57,6 +57,9 @@
           },
           {
             "context": "Snapshot tests (iOS)"
+          },
+          {
+            "context": "Snapshot tests (macOS)"
           }
         ]
       }

@@ -15,7 +15,7 @@ UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLO
 GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
 # Recorded, not generated: no source produces them, so verify-generated cannot check them and the
 # snapshot job is what gates them instead.
-SNAPSHOTS    := Apps/GranitaMobileSnapshotTests/__Snapshots__
+SNAPSHOTS    := Apps/GranitaMobileSnapshotTests/__Snapshots__ Apps/GranitaMacSnapshotTests/__Snapshots__
 
 .DEFAULT_GOAL := help
 
@@ -38,12 +38,22 @@ build: ## Compile-check the package and both apps
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
 
 .PHONY: run
-run: ## Run the backend in a terminal, no Xcode in the loop
-	cd $(PACKAGE) && swift run granita-server
+run: ## Run the backend in a terminal, no Xcode in the loop — `make run ARGS="--pair"`
+	@# ARGS is how every flag in `granita-server --help` is reached: --add-project, --pair,
+	@# --issue-token, --insecure-http, --store. Without it the only way to pass one is a raw
+	@# `swift run`, which is reaching past the sanctioned target rather than through it.
+	cd $(PACKAGE) && swift run granita-server $(ARGS)
 
 .PHONY: snapshots
-snapshots: ## Render the screens on a simulator and compare against the committed baselines
+snapshots: snapshots-ios snapshots-mac ## Render every screen and compare against the committed baselines
+
+.PHONY: snapshots-ios
+snapshots-ios: ## Render the phone's screens on a simulator
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO
+
+.PHONY: snapshots-mac
+snapshots-mac: ## Render the Mac's Settings panes on this Mac — there is no macOS simulator
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -quiet CODE_SIGNING_ALLOWED=NO
 
 .PHONY: record-snapshots
 record-snapshots: ## Re-record every snapshot baseline after a deliberate design change
@@ -54,9 +64,16 @@ record-snapshots: ## Re-record every snapshot baseline after a deliberate design
 	@#
 	@# Never run this on CI. A recorder on CI turns the suite into a record of whatever the code
 	@# currently does, which is a test that cannot fail.
+	@# Per platform, and not `snapshots` twice. The write-then-fail above means the first pass
+	@# exits non-zero, and a recipe line that fails stops the ones after it — so a combined target
+	@# would record the phone, fail as designed, and never reach the Mac at all. Recording is the
+	@# one operation where "the first run fails" is the normal case, so each platform gets its own
+	@# ignored-failure line.
 	rm -rf $(SNAPSHOTS)
-	-@$(MAKE) --no-print-directory snapshots
-	@$(MAKE) --no-print-directory snapshots
+	-@$(MAKE) --no-print-directory snapshots-ios
+	-@$(MAKE) --no-print-directory snapshots-mac
+	@$(MAKE) --no-print-directory snapshots-ios
+	@$(MAKE) --no-print-directory snapshots-mac
 	@echo "Baselines re-recorded and verified stable. Review every changed PNG before committing."
 
 .PHONY: run-mac

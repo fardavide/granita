@@ -8,6 +8,7 @@ import ServerApiPresentation
 import ServerGitData
 import ServerIdentityData
 import ServerIdentityDomain
+import ServerMacData
 import ServerMacPresentation
 import ServerSessionsData
 import ServerStoreData
@@ -73,6 +74,10 @@ final class MacComposition {
             requiresAuthentication: true
         )
 
+        // The Mac woke, or someone pressed Restart. One stream, because what a rebind *does* is
+        // identical either way and the teardown ordering is delicate enough to want one owner.
+        let rebinds = Rebinds(wakes: WorkspaceWakeNotifications())
+
         model = ServerMacModel(
             // Wrapped rather than replaced: waking is the only thing this adds, and everything
             // about how the server binds stays in one place.
@@ -82,9 +87,12 @@ final class MacComposition {
                     serviceName: MachineName.computer,
                     identities: identities
                 ),
-                wakes: WorkspaceWakeNotifications()
+                wakes: rebinds
             ),
-            connectionLog: log
+            restarts: rebinds,
+            connectionLog: log,
+            loginItems: ServiceLoginItemRegistry(),
+            now: { Date() }
         )
 
         // The server's life is the app's life, not a window's: a `.task` on any view would tie

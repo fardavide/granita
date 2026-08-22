@@ -1347,3 +1347,150 @@ They are the same answer through the same code on the Mac, and a second way to a
 second place for it to be answered differently — a divergence that would show up as one file
 rendering differently depending on whether it was prefetched or opened. The route stays served,
 because removing it is a contract change and nothing is gained by making one.
+
+## The menu bar count costs 122.7 seconds, so there is no menu bar count
+
+The design review declined to draw the dirty-worktree count until someone had timed it, and offered
+two branches: tens of milliseconds meant cache it and refresh on a slow timer, seconds meant put the
+number behind opening the menu and leave the label as the icon alone. It was measured on 22 August
+2026 against ten of Davide's real repositories — 38 worktrees, one Android monorepo carrying 16 of
+them — by serving them and reading `/v1/projects`, which is `WorktreeRegistry.projects()` plus a JSON
+encode.
+
+**122.7 seconds.** Neither branch survives. A menu that computes this on open is a menu that does not
+open, and a cache on a slow timer would keep 38 git processes running for two minutes out of every
+period, on a laptop, for a number nobody asked for.
+
+So the count is not built. What it beat was the third option, which was to build it anyway behind a
+cache and a spinner — that spends the worst cost this app has on the one surface that is supposed to
+be glanced at, and SPEC §9's own framing is that the menu bar answers whether the phone can read this
+Mac. The symbol already answers that.
+
+**The number is not the finding; the shape of the question is.** `projects()` computes a whole change
+set per worktree — every changed path, its stats and its revision — in order to evaluate
+`files.isEmpty == false`. Git can answer "is anything different here" without producing any of it.
+The count becomes affordable the day something asks the cheap question, and that is a change to the
+git layer rather than to the menu, so it is not in this slice.
+
+Recorded rather than left in a commit message because it is a measurement, and the next session to
+look at the menu bar will otherwise re-open it exactly as this one nearly did.
+
+## The second process to open the store refuses to start, and names the first
+
+SPEC §9 asks for a lock file beside the document so a standalone `granita-server` and the menu bar
+app cannot both hold it, and says the second one refuses "with a clear message". The review left the
+held case undrawn on purpose and said why — refuse, or serve read-only, is a product question rather
+than a drawing. Davide answered on 22 August 2026: **refuse.**
+
+Read-only is the option it beat, and it loses on a specific failure rather than on principle. Both
+processes read the same document to decide what is enabled; a read-only second process would go on
+answering with a snapshot the first one has since changed, so the phone would be served a stale
+answer to the one question that is the security boundary — which projects are visible. Neither the
+phone nor the reader is told which process answered. A refusal is legible; a quiet disagreement about
+what is enabled is not.
+
+The refusal **names the process holding the lock**, and that is the part worth writing down. "Another
+copy of Granita is already running" is a sentence with no next action, and the case that produces it
+is usually a `granita-server` left in a terminal behind a window. A process identifier can be looked
+up and killed.
+
+## The QR was re-opened and kept, and what came back with it is a surface nobody had drawn
+
+On 22 August 2026 Davide asked for the QR to be dropped, on the grounds that the connection mechanism
+as it stands is already right, and reversed it in the same exchange once it was clear the picture *is*
+that mechanism's one-gesture path rather than a decoration on top of it. **The QR stays exactly as
+§5 draws it**, and this entry exists so the call is not re-opened a third time.
+
+What the exchange produced instead is a requirement the review never saw, from a failure Davide has
+actually hit: **a device has to be approvable from the Mac, with nothing reading the code.** He
+administers this Mac over Screens from his phone, which means the camera and the screen are the same
+device — the QR is unscannable in exactly the situation where getting back in matters most, and the
+way out today is a second device, a screenshot, and a lot of annoyance.
+
+That is not a layout change, and it is deliberately **not** being invented here. Both halves are
+missing. Nothing on this Mac knows a phone exists until that phone presents a credential, so "the
+devices on the net" is not a list anything can currently produce; some announcement has to exist
+first, and inventing one is a change to SPEC §8's contract rather than a control on a tab. And the
+review drew a QR, a countdown and paired rows — not a pending device, not what it says before it is
+allowed, and not what Allow does to it.
+
+So §5 ships in two pieces: the drawn half now, and the Allow path after a design round trip and a
+protocol decision. Building it from this paragraph is the thing the `design-handoff` rule exists to
+stop, and the cost of getting it wrong is a way into the store that nobody designed.
+
+## The Mac's snapshot kind is a second bundle in the same row, not a row of its own
+
+The Mac had no snapshot kind, so every Settings surface was code that nothing rendered and the
+coverage report had no way to say so. Adding one raised a question the report's own shape does not
+answer: is "snapshot" one kind measured on two platforms, or two kinds?
+
+**One row.** The phone renders on a simulator and the Mac renders on the machine itself — there is no
+macOS simulator — but the question the row exists to answer is identical for both: *of the code that
+draws screens, how much does a baseline put on screen*. Two rows would split one question along a
+platform axis no reader of the report cares about, and would do something actively misleading on the
+day the Mac's row first appears: a new row starts unjudged, and a low number beside a high one reads
+as a regression in the phone rather than as a kind that has just begun being measured. The two
+profiles are merged before the row is taken, exactly as `all` already merges everything.
+
+It moves the denominator, and that is expected rather than a surprise: `Server/Mac/Ui`,
+`Server/Mac/Presentation` and `Server/App/Presentation` were in the views scope and in no export,
+because the simulator never linked them. They are now in both.
+
+**App-hosted, and for the coverage reason rather than the rendering one.** macOS needs no
+`drawHierarchyInKeyWindow` — the `NSView` strategy renders through `cacheDisplay` — so a hostless
+bundle would have produced pictures. What it would not have produced is the composition root
+executing where the profile is written, which is the evidence the last session's coverage work turned
+on. The cost is that the host really launches: the server binds, reaches for the Keychain identity
+and tries to advertise. On a runner none of that succeeds and none of it needs to — every one of
+those is a `ServerRunState.failed` the app already handles, and no baseline renders the app's own
+scene.
+
+### Three things about rendering AppKit that a baseline cannot tell you it got wrong
+
+Each of these produces a picture that looks plausible and asserts less than it appears to.
+
+**A window that never becomes key draws accent-tinted controls grey, and nothing here can make it
+key.** `Open Local Network Settings` — the whole point of that row, the button a reader is meant to
+press — renders identically to the `Try Again` beside it, and a switched-on `Toggle` shows a grey
+track with the knob to the right. A window cannot become key while its application is not active,
+and a test runner is never the frontmost app: `activate()`, `makeKeyAndOrderFront` and switching the
+accessory host to `.regular` were each tried and none of them changed a pixel.
+
+**So this limitation is named rather than worked around.** It costs exactly one thing — the accent
+tint. Layout, copy, symbols, control shapes, a toggle's knob position and every non-accent semantic
+colour are captured; the orange on "Not serving" is in the baselines. What a Mac baseline can never
+catch is a `.borderedProminent` quietly losing its prominence, so that call is reviewed in the code.
+Worth stating plainly because the failure mode of *not* stating it is a future session recording a
+flat-looking screen, believing the design drifted, and re-recording to match.
+
+**A rendered clock time is a locale and a time zone.** General shows when the server bound, so a
+runner in UTC and a laptop in CEST draw different pixels from identical code — a failure the suite is
+least able to explain. The locale and time zone are pinned once, in the shared hosting, rather than
+per test.
+
+**A `Form`'s "fitting height" is not a clipping test, and two attempts at one were wrong.**
+`NSView.fittingSize` answers unconstrained, so a long footnote reports an ideal width past the
+window's and an ideal height far short of the truth. Constraining the width and asking `sizeThatFits`
+is no better: a `Form` is a scroll view and accepts whatever height it is offered. A pane cannot clip
+— it scrolls — so the question worth asking is whether it *has* to, and the baseline answers that by
+eye. What is asserted from inside the app is the window's content size, which is the thing that
+genuinely cannot be measured from outside while Stage Manager is on.
+
+## The General tab re-reads the login item's status, because `register()` succeeding means very little
+
+`SMAppService.register()` returns without throwing in the case that matters most: macOS accepts the
+registration and then waits for the user to approve Granita in Login Items, leaving the status at
+`.requiresApproval`. Nothing runs at the next login.
+
+Reported as success — which is what a naive `try service.register()` does — the toggle shows on, the
+reader believes the app will be there in the morning, and finds out it is not by rebooting and
+watching their phone fail to find the Mac. For an app whose entire job is to be running when the
+phone looks, that is the worst failure this tab can produce, and it is the *default* one.
+
+So the registry re-reads its own status afterwards and reports anything that is not `.enabled` as not
+registered, and the toggle has a third and fourth state rather than a boolean: waiting for approval,
+and refused outright with the system's words. Both draw **off**, because a switch left on for a
+registration that will not happen is the only reading on this tab that is actively false.
+
+Rejected: putting the sentence in the `Data` layer by throwing a pre-worded refusal. The layer that
+talks to `SMAppService` should say what happened, not how it reads.
