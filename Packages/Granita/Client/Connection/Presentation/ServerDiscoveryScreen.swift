@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 #endif
 
+import ClientConnectionDomain
 import ClientConnectionUi
 
 /// Binds the connection model to the discovery view.
@@ -26,6 +27,15 @@ public struct ServerDiscoveryScreen: View {
             onSearchAgain: model.searchAgain,
             onOpenSettings: openSettings
         )
+        // **Declared here, beside the rows that link to it, and that placement is the fix.** The
+        // list offers `NavigationLink(value:)`, and for a while nothing in the app declared a
+        // destination for that value — which compiles, draws a chevron, and does nothing at all
+        // when tapped. It shipped that way. A link and its destination living in two modules is
+        // what let them drift apart silently; in one file, adding the first without the second is
+        // visible. See the `no-dead-controls` skill.
+        .navigationDestination(for: DiscoveredServer.self) { server in
+            PairingNotReadyView(server: server)
+        }
         // Keyed on the attempt so that searching again is a *new browser* rather than a new reading
         // of the dead one: SwiftUI cancels the running task, which tears the browse down, and starts
         // this one over. A dead browser is dead for good, and Search Again is tapped precisely when

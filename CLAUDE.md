@@ -20,6 +20,12 @@ it is not a history browser.
   `/design` skill is binding before any SwiftUI in either. A design question is not an open question
   — look it up rather than inventing a screen. The Mac frames were drawn against 0.0.6 and the sheet
   corrects them for 0.0.7; trust the sheet.
+- **Never ship a control that does nothing.** Every row, button and link a reader can press must do
+  something they can perceive, *before* the screen ships. Mid-slice is not an excuse — it is the
+  case the rule is for: if what is behind it is not built, the control says so, in our voice. This
+  product has already shipped one dead control and it is the worst defect here. The `/design` skill
+  and the global `no-dead-controls` skill are both binding, and **running the app and pressing it**
+  is the only check that works — a snapshot photographs a button whether or not anything is behind it.
 - **Invoke applicable skills before acting.** If none apply, say so.
 
 | Skill | Use it for |
