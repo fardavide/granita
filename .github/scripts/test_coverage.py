@@ -73,10 +73,11 @@ class TestPathClassification:
         # Hostless: there is no key window, so a body lays out against nothing and renders blank.
         assert not coverage.is_reachable_path("Server/Mac/Ui/MenuBarContent.swift")
 
-    def test_given_the_keychain_store_when_classifying_then_no_host_test_reaches_it(self):
-        # A test binary is unsigned and has no keychain of its own, so the only way to run this one
-        # is to write into the developer's real login keychain.
+    def test_given_a_keychain_store_when_classifying_then_no_host_test_reaches_it(self):
+        # A test binary is unsigned and has no keychain of its own, so the only way to run either of
+        # these is to write into a real one. Both halves of the product have one now.
         assert not coverage.is_reachable_path("Server/Identity/Data/KeychainServerIdentityStore.swift")
+        assert not coverage.is_reachable_path("Client/Connection/Data/KeychainPairingTokenStore.swift")
 
     def test_given_a_model_or_a_parser_when_classifying_then_a_host_test_reaches_it(self):
         assert coverage.is_reachable_path("Server/Mac/Presentation/ServerMacModel.swift")
@@ -117,7 +118,7 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((8, 10), (3, 5), scope="host-reachable")
+        assert written["categories"]["unit"] == entry((8, 10), (3, 5), scope=coverage.HOST_REACHABLE_SCOPE)
 
     def test_given_a_summary_when_collecting_another_category_then_both_survive(self, tmp_path):
         out = tmp_path / "summary.json"
@@ -190,7 +191,28 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["unit"] == entry((50, 525), (16, 208), scope="host-reachable")
+        assert written["categories"]["unit"] == entry((50, 525), (16, 208), scope=coverage.HOST_REACHABLE_SCOPE)
+
+    def test_given_every_configured_scope_when_reading_an_export_then_each_one_narrows(self, tmp_path):
+        # The filter selects on the scope *string*, so a scope renamed in one place and not the
+        # other stops narrowing anything at all — silently, and in the direction that looks like
+        # good news. Asserting the two constants equal each other would be a tautology; this asserts
+        # that whatever is configured still removes something.
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [
+                        ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (0, 40), (0, 9)),
+                        ("/w/Packages/Granita/Core/Diff/Domain/Parser.swift", (30, 500), (10, 200)),
+                    ]
+                )
+            )
+        )
+        whole = coverage.read_export(path)["lines"]["count"]
+
+        for scope in set(coverage.SCOPES.values()):
+            assert coverage.read_export(path, scope)["lines"]["count"] < whole
 
 
 class TestPercent:

@@ -1246,6 +1246,13 @@ name now says what the exempt set actually is instead of leaving one of its two 
 and pairing against it; the phone's needs a device, and the screen that would reach it does not
 exist. `status.md` carries that.
 
+**The rename found a bug in the mechanism it was using.** The filter selected on the scope *string*
+literal, so renaming the scope in the configuration and not in the filter stopped narrowing anything
+at all — silently, and in the direction that looks like good news, since the rows go unjudged for
+that same run. The script's own tests caught it on the first CI run. Both scope names are constants
+now, so the two cannot come apart, and a test asserts that whatever is configured still removes
+something rather than that the two constants equal each other, which would be a tautology.
+
 ## The single-file diff route is not called, and the batch is why
 
 SPEC §8 lists both `/v1/worktrees/{id}/diffs?fileIDs=…` and

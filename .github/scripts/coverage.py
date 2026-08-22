@@ -122,12 +122,16 @@ UNREACHABLE_FILES = {
 #
 # The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
 # nothing until a macOS snapshot kind exists. See status.md.
+#
+# The two narrowing scopes are named constants rather than repeated literals, and that is not
+# tidiness: the filter below selects on this exact string, so a rename spelled in one place and not
+# the other stops narrowing anything at all — silently, and in the direction that looks like good
+# news. That is precisely what happened the first time this was renamed, and the script's own tests
+# are what said so.
 DEFAULT_SCOPE = "package"
-SCOPES = {
-    "snapshot": "views",
-    "unit": "host-reachable-no-keychain",
-    "all": "host-reachable-no-keychain"
-}
+VIEWS_SCOPE = "views"
+HOST_REACHABLE_SCOPE = "host-reachable-no-keychain"
+SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 
 # --- collect -----------------------------------------------------------------------------------
@@ -185,9 +189,9 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
         relative = name.split(PACKAGE_MARKER, 1)[1]
         if is_test_path(relative):
             continue
-        if scope == "views" and not is_view_path(relative):
+        if scope == VIEWS_SCOPE and not is_view_path(relative):
             continue
-        if scope == "host-reachable" and not is_reachable_path(relative):
+        if scope == HOST_REACHABLE_SCOPE and not is_reachable_path(relative):
             continue
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
