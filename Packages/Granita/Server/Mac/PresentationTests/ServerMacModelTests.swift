@@ -87,13 +87,15 @@ struct ServerMacModelTests {
             id: UUID(),
             at: Date(timeIntervalSince1970: 1_000),
             source: "192.168.1.24",
-            outcome: .refused(.unknownToken)
+            outcome: .refused(.unknownToken),
+            occurrences: 1
         )
         let accepted = ConnectionAttempt(
             id: UUID(),
             at: Date(timeIntervalSince1970: 1_060),
             source: "192.168.1.9",
-            outcome: .accepted(device: "Davide's iPad")
+            outcome: .accepted(device: "Davide's iPad"),
+            occurrences: 1
         )
         let scenario = Scenario(states: [], readings: [[accepted], [refused, accepted]])
 

@@ -27,7 +27,7 @@ becomes.
 | §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
 | §4 | Projects | drawn, not built |
 | §5 | Devices | drawn, not built |
-| §6 | Connections | **built as the Advanced tab in 0.0.6**; the review moves and redraws it |
+| §6 | Connections | **its own tab and relaid out in 0.0.11**, with baselines. The `Pair…` affordance is blocked behind §5, which is the door it opens, so the frames stay until then |
 | §7 | Advanced | drawn, not built |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
@@ -305,6 +305,18 @@ looks like one, and "my phone tried once" against "my phone has been hammering t
 are different problems.
 
 The footer reads *Since 9:12 · the last 50 attempts, this run only*, with a count.
+
+**The since-time is the oldest row's, not the moment the server started.** The two are the same until
+fifty attempts have been recorded and stop being the same afterwards, and of the pair only the oldest
+row truthfully answers how far back what is on screen goes.
+
+**The rate-limited row counts attempts like every other refusal**, rather than the frame's *blocked
+for 41 sec*. Nothing records how long a lockout has left — the refusal carries no deadline — and a
+duration stamped at the moment of refusal is a lie by the time anyone reads it, which is the same
+defect this section's own time column was just repaired for.
+
+**And the elapsed time is handed to the row rather than derived by it**, which is what let this panel
+have baselines beyond its empty state at all. See [`decisions.md`](decisions.md).
 
 Rejected: colour as the difference, since during setup nearly every row is a refusal and a wall of
 red stops being a signal; sections or a filter picker, because this log is read once, in anger, and

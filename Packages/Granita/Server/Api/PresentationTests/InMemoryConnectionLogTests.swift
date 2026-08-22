@@ -87,6 +87,55 @@ struct InMemoryConnectionLogTests {
         #expect(attempts.first?.at == Date(timeIntervalSince1970: 120))
     }
 
+    @Test
+    func `given the same refusal over and over when the panel is read then its row counts them`() async {
+        // given — coalescing is right and, on its own, turns four hundred attempts into a row that
+        // looks like one. "My phone tried once" and "my phone has been hammering this for ten
+        // minutes" are different problems and this is the only place they are told apart.
+        let log = InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 1_000) })
+
+        // when
+        for _ in 1...412 {
+            await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+        }
+
+        // then
+        let attempts = await firstReading(of: log)
+        #expect(attempts.count == 1)
+        #expect(attempts.first?.occurrences == 412)
+    }
+
+    @Test
+    func `given one attempt when the panel is read then its row counts one`() async {
+        // given
+        let log = InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 1_000) })
+
+        // when
+        await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+
+        // then
+        let attempts = await firstReading(of: log)
+        #expect(attempts.first?.occurrences == 1)
+    }
+
+    @Test
+    func `given a device that stops repeating itself when it comes back then its count starts again`() async {
+        // given — the count belongs to the row, and a row is one uninterrupted run of the same thing
+        // from the same place. Carrying a total across a row that fell in between would report a
+        // number no visible row accounts for.
+        let log = InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 1_000) })
+        await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+        await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+
+        // when
+        await log.record(source: "192.168.1.57", outcome: .refused(.unknownToken))
+        await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+
+        // then
+        let attempts = await firstReading(of: log)
+        #expect(attempts.map(\.occurrences) == [1, 1, 2])
+    }
+
     // Time-limited because the failure mode is a wait rather than a wrong value: a log that stops
     // telling its readers anything leaves this test waiting for a reading that never arrives, and a
     // suite that hangs says less than one that goes red.

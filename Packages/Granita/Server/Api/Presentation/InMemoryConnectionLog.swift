@@ -8,10 +8,6 @@ import ServerApiDomain
 /// Advanced panel reads it on the main actor.
 public actor InMemoryConnectionLog: ConnectionLog {
 
-    /// SPEC §9's fifty. A phone retrying every second fills that in under a minute, and what is
-    /// wanted then is the last minute rather than the first.
-    public static let capacity = 50
-
     private let now: @Sendable () -> Date
     private var recorded: [ConnectionAttempt] = []
     private var readers: [UUID: AsyncStream<[ConnectionAttempt]>.Continuation] = [:]
@@ -26,14 +22,22 @@ public actor InMemoryConnectionLog: ConnectionLog {
         // the same thing happening again to the same source moves that row's time rather than
         // adding one: what is asked of the panel is when a phone last got in, not when it first did.
         if let newest = recorded.first, newest.source == source, newest.outcome == outcome {
-            recorded[0] = ConnectionAttempt(id: newest.id, at: now(), source: source, outcome: outcome)
+            recorded[0] = ConnectionAttempt(
+                id: newest.id,
+                at: now(),
+                source: source,
+                outcome: outcome,
+                // Counted rather than merely collapsed, because the row is the only place the size
+                // of a retry storm is visible at all once the repeats stop being separate rows.
+                occurrences: newest.occurrences + 1
+            )
         } else {
             recorded.insert(
-                ConnectionAttempt(id: UUID(), at: now(), source: source, outcome: outcome),
+                ConnectionAttempt(id: UUID(), at: now(), source: source, outcome: outcome, occurrences: 1),
                 at: 0
             )
         }
-        recorded = Array(recorded.prefix(Self.capacity))
+        recorded = Array(recorded.prefix(ConnectionAttempt.logCapacity))
         for reader in readers.values {
             reader.yield(recorded)
         }

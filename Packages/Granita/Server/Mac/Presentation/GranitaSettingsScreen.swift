@@ -12,9 +12,13 @@ import ServerMacUi
 /// gets its own tab, and Advanced goes last because of what shares it: `Reset All Data`. A panel
 /// opened while annoyed should not be one mis-click from the button that unpairs every device.
 ///
-/// Three of the five are not built yet and are therefore not declared. A tab bar with placeholders
-/// in it is a worse answer than a tab bar that grows: the order above is what the tabs land into,
-/// and Advanced stays last throughout.
+/// The three that are not built yet are not declared. A tab bar with placeholders in it is a worse
+/// answer than a tab bar that grows: the order above is what the tabs land into, and Advanced stays
+/// last throughout.
+///
+/// Restoring the last-used tab, and selecting Projects on a first run, land with the tabs that make
+/// either question answerable — a remembered selection is a preference for a set of tabs that does
+/// not exist yet.
 public struct GranitaSettingsScreen: View {
 
     /// Fixed, not a minimum, and read by the window as well as by the test that asserts it.
@@ -56,9 +60,16 @@ public struct GranitaSettingsScreen: View {
                 .task { await model.loadLoginItem() }
             }
 
-            Tab("Advanced", systemImage: "gearshape.2") {
-                ConnectionLogView(attempts: model.connectionAttempts)
-                    .task { await model.followConnections() }
+            Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted") {
+                // The clock the rows are measured against. A row's elapsed time is a value the view
+                // is handed rather than one it derives, which is what lets a baseline photograph
+                // it — so something has to move it, and a schedule that re-renders on the minute is
+                // both the cheapest thing that can and exactly as often as a row changes: the
+                // coarsest unit below an hour is a minute.
+                TimelineView(.everyMinute) { clock in
+                    ConnectionLogView(attempts: model.connectionAttempts, now: clock.date)
+                }
+                .task { await model.followConnections() }
             }
         }
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
