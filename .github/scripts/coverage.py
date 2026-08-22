@@ -65,6 +65,33 @@ PACKAGE_MARKER = "/Packages/Granita/"
 # path rather than only at the position the convention usually puts it.
 VIEW_LAYERS = {"Ui", "Presentation"}
 
+# The one Presentation module that presents no views.
+#
+# `Server/Api/Presentation` is a presentation layer in the wire sense — domain-to-wire mapping plus
+# routes — and architecture.md says so in as many words: "It has no `Ui` sibling because it has no
+# views." Selecting the views scope on the directory name alone therefore swept in the HTTP router,
+# the authenticator, the pairing and the registry, which no rendered screen can ever execute.
+#
+# It went unnoticed while only the phone had a snapshot kind, because the simulator never linked
+# these files and an export cannot include what a binary does not map. The macOS kind links them,
+# and they arrived as **1199 of the views scope's 2350 lines** — more than half the denominator,
+# `GranitaRouter.swift` alone contributing 562. A row measured that way answers "how much of the
+# HTTP API does a rendered screen execute", which is a question with one correct answer: none.
+NON_DRAWING_PRESENTATION = ("Server", "Api", "Presentation")
+
+# A SwiftUI `View` that lives in `Presentation` rather than `Ui`.
+#
+# `Presentation` composes screens out of `Ui`'s stateless views, so a handful of its files are view
+# bodies and the rest are models. A body needs a renderer and a SwiftPM test target is hostless, so
+# these are uncoverable by a host test for exactly the reason `Ui` is — the layer exclusion below
+# was simply the incomplete spelling of that rule, and it went unnoticed while the only such file
+# was `ServerDiscoveryScreen.swift` at 23 lines. `GranitaSettingsScreen.swift` is 101, all of them
+# uncovered, and it is what made the incompleteness visible.
+#
+# Matched on the project's own naming: a composed screen is named `…Screen`. Models are not, and
+# stay judged — `ServerMacModel` is an ordinary object a test constructs.
+SCREEN_SUFFIX = "Screen.swift"
+
 # The layer a host test cannot execute at all: a SwiftUI view body needs a renderer, and a SwiftPM
 # test target is hostless. Distinct from VIEW_LAYERS, which includes `Presentation` — a model there
 # is an ordinary object a test constructs, and must stay judged.
@@ -113,15 +140,25 @@ UNREACHABLE_FILES = {
 # target graph rather than about the tests. Drawing code is judged by the Snapshot row instead,
 # which is the mirror of this rule: that row excludes everything a rendered view cannot execute.
 #
-# The scope's name has changed twice, and each rename is the point rather than a tidy-up: the gate
+# The scope's name has changed three times, and each rename is the point rather than a tidy-up: the
+# gate
 # compares two numbers only when both were taken the same way, so renaming is how a redefinition
 # declares itself and leaves these two rows unjudged for exactly one run instead of failing the pull
 # request that redefines them. `reachable` became `host-reachable` when UNREACHABLE_FILES was added
 # for the Mac's Keychain store, and `host-reachable-no-keychain` when the phone's joined it — the
 # name now says what the set actually is rather than leaving one member unmentioned.
 #
-# The gap this leaves is real and is tracked rather than hidden: a macOS view layer is measured by
-# nothing until a macOS snapshot kind exists. See status.md.
+# Both names moved again when the macOS snapshot kind arrived, and both times because that kind
+# exposed a definition which had only ever been exercised on one platform. `views` became
+# `views-drawing-only`, because the server's API module is a `Presentation` that draws nothing and
+# had been invisible only while no binary linked it into a snapshot pass. `host-reachable-no-keychain`
+# became `…-no-screens`, because a SwiftUI body is uncoverable by a host test wherever it lives and
+# excluding only `Ui` was the incomplete spelling of that.
+#
+# **Neither correction flatters a number, which is the test worth applying to any rescoping.** With
+# the screens removed and nothing else changed, the Unit row reads 95.5% against the 93.9% baseline
+# it had been failing — higher, not lower. Lines that leave a denominator and take the percentage
+# *up* were dragging it down by being unreachable, not by being untested.
 #
 # The two narrowing scopes are named constants rather than repeated literals, and that is not
 # tidiness: the filter below selects on this exact string, so a rename spelled in one place and not
@@ -129,8 +166,8 @@ UNREACHABLE_FILES = {
 # news. That is precisely what happened the first time this was renamed, and the script's own tests
 # are what said so.
 DEFAULT_SCOPE = "package"
-VIEWS_SCOPE = "views"
-HOST_REACHABLE_SCOPE = "host-reachable-no-keychain"
+VIEWS_SCOPE = "views-drawing-only"
+HOST_REACHABLE_SCOPE = "host-reachable-no-keychain-no-screens"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 
@@ -148,8 +185,21 @@ def is_test_path(relative: str) -> bool:
 
 
 def is_view_path(relative: str) -> bool:
-    """A file in a layer that draws — the only code a rendered snapshot can execute."""
-    return bool(VIEW_LAYERS.intersection(pathlib.PurePosixPath(relative).parts[:-1]))
+    """A file in a layer that draws — the only code a rendered snapshot can execute.
+
+    The server's API module is excluded despite being named `Presentation`: it maps domain to wire
+    and serves routes, and has no `Ui` sibling because it has no views.
+    """
+    parts = pathlib.PurePosixPath(relative).parts[:-1]
+    if any(triple == NON_DRAWING_PRESENTATION for triple in zip(parts, parts[1:], parts[2:])):
+        return False
+    return bool(VIEW_LAYERS.intersection(parts))
+
+
+def is_screen_path(relative: str) -> bool:
+    """A composed screen: a SwiftUI view body that happens to live in `Presentation`."""
+    parts = pathlib.PurePosixPath(relative).parts
+    return parts[-1].endswith(SCREEN_SUFFIX) and "Presentation" in parts[:-1]
 
 
 def is_composition_root_path(relative: str) -> bool:
@@ -162,6 +212,8 @@ def is_reachable_path(relative: str) -> bool:
     """A file a host test could execute: not a view body, not wiring nothing depends on, and not
     something whose only real collaborator is absent from a test binary."""
     if DRAWING_LAYER in pathlib.PurePosixPath(relative).parts[:-1]:
+        return False
+    if is_screen_path(relative):
         return False
     if relative.lstrip("/") in UNREACHABLE_FILES:
         return False

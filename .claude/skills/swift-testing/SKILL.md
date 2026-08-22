@@ -163,7 +163,11 @@ bundle here and a bundle is the finest thing a coverage profile can be scoped to
 |---|---|---|
 | Unit | `Packages/Granita/<Unit>/<Feature>/<Layer>Tests/` | In-process, on the host, no simulator. The default — everything that is not one of the two below |
 | Ui | `Apps/GranitaMobileUiTests/` | Behavioural: a screen rendered and driven, asserting what changed. **None exist yet** |
-| Snapshot | `Apps/GranitaMobileSnapshotTests/` | Rendered against a committed baseline, on a simulator |
+| Snapshot | `Apps/GranitaMobileSnapshotTests/` and `Apps/GranitaMacSnapshotTests/` | Rendered against a committed baseline — the phone on a simulator, the Mac on the machine itself |
+
+**The Snapshot kind is two bundles and one row.** There is no macOS simulator, so the two render in
+different places, but the question the row answers is the same for both and a platform axis is not
+one a reader of the report cares about. The two profiles are merged before the row is taken.
 
 The `Coverage` job runs the suite **once per kind**, plus once with the profiles merged, because
 coverage is a property of the tests that ran: the only way to say what the snapshot tests reach, as
@@ -183,13 +187,15 @@ Rules that follow:
 - **Do not "fix" a number by moving snapshot tests into the package.** A SwiftPM test target is
   hostless and renders blank; the split is the reason the numbers mean anything.
 - **The Unit and All rows are measured over what a host test can reach** — the package, minus view
-  bodies, minus the composition roots, minus the handful of files named in `UNREACHABLE_FILES`. A
-  SwiftUI body needs a renderer and a SwiftPM test target is hostless; no test constructs a
-  composition root; and a test binary is unsigned, so it has no keychain for the identity store to
-  write to. Counted, those lines make the number move when a module is first linked into a test
-  binary, which is a fact about the target graph. **A macOS view layer is therefore measured by
-  nothing until a macOS snapshot kind exists** — that is owed, and it is what the Mac's Settings
-  tabs need before they land.
+  bodies **wherever they live**, minus the composition roots, minus the handful of files named in
+  `UNREACHABLE_FILES`. A SwiftUI body needs a renderer and a SwiftPM test target is hostless; no test
+  constructs a composition root; and a test binary is unsigned, so it has no keychain for the identity
+  store to write to. "Wherever they live" is load-bearing: `Presentation` holds both models and the
+  screens composed from `Ui`, and only the models are reachable — a file named `…Screen` is a body
+  and is excluded, while `ServerMacModel` is an ordinary object a test constructs and stays judged.
+- **The Snapshot row excludes `Server/Api/Presentation`**, which is a presentation layer in the wire
+  sense — routes and mapping — with no `Ui` sibling because it has no views. Counting it asks how
+  much of the HTTP router a rendered screen executes.
 - **The bar for `UNREACHABLE_FILES` is "unrunnable by construction", never "hard to test".** Adding
   a name there is a redefinition, so it comes with a rename of the scope string — that is what
   leaves the row unjudged for one run instead of failing the pull request that makes the change.

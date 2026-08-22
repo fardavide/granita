@@ -64,6 +64,15 @@ class TestPathClassification:
         assert not coverage.is_view_path("Core/Diff/Domain/UnifiedDiffParser.swift")
         assert not coverage.is_view_path("Client/Connection/Data/Bonjour.swift")
 
+    def test_given_the_servers_api_when_classifying_then_it_is_not_view_code(self):
+        # A presentation layer in the wire sense: domain-to-wire mapping plus routes, with no `Ui`
+        # sibling because it has no views. Counting it asks how much of the HTTP router a rendered
+        # screen executes, and the answer is always none.
+        assert not coverage.is_view_path("Server/Api/Presentation/GranitaRouter.swift")
+        assert not coverage.is_view_path("Server/Api/Presentation/Authentication.swift")
+        # And the exclusion is that module, not the word "Api" anywhere in a path.
+        assert coverage.is_view_path("Client/Api/Presentation/SomeScreen.swift")
+
     def test_given_a_composition_root_when_classifying_then_no_host_test_reaches_it(self):
         assert not coverage.is_reachable_path("Server/App/Presentation/MacComposition.swift")
         assert not coverage.is_reachable_path("Client/App/Presentation/GranitaMobileScene.swift")
@@ -72,6 +81,14 @@ class TestPathClassification:
     def test_given_a_view_body_when_classifying_then_no_host_test_reaches_it(self):
         # Hostless: there is no key window, so a body lays out against nothing and renders blank.
         assert not coverage.is_reachable_path("Server/Mac/Ui/MenuBarContent.swift")
+
+    def test_given_a_composed_screen_when_classifying_then_no_host_test_reaches_it(self):
+        # A view body is a view body wherever it lives. `Presentation` holds both models and the
+        # screens composed from `Ui`, and only the latter need a renderer.
+        assert not coverage.is_reachable_path("Server/Mac/Presentation/GranitaSettingsScreen.swift")
+        assert not coverage.is_reachable_path("Client/Connection/Presentation/ServerDiscoveryScreen.swift")
+        # The suffix alone does not do it — a domain type may legitimately be named for one.
+        assert coverage.is_reachable_path("Client/Viewer/Domain/DiffScreen.swift")
 
     def test_given_a_keychain_store_when_classifying_then_no_host_test_reaches_it(self):
         # A test binary is unsigned and has no keychain of its own, so the only way to run either of
@@ -134,7 +151,9 @@ class TestCollect:
 
         written = json.loads(out.read_text())
         assert written["categories"]["unit"] == entry((8, 10), (3, 5))
-        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope="views")
+        assert written["categories"]["snapshot"] == entry(
+            (20, 40), (4, 9), scope=coverage.VIEWS_SCOPE
+        )
 
     def test_given_a_snapshot_export_when_collecting_then_only_view_code_counts(self, tmp_path):
         # A rendered view executes no parser and no repository, so every line of those the app
@@ -161,7 +180,9 @@ class TestCollect:
         )
 
         written = json.loads(out.read_text())
-        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope="views")
+        assert written["categories"]["snapshot"] == entry(
+            (20, 40), (4, 9), scope=coverage.VIEWS_SCOPE
+        )
 
     def test_given_a_unit_export_when_collecting_then_what_a_host_test_cannot_reach_does_not_count(self, tmp_path):
         # A SwiftUI body needs a renderer and a SwiftPM test target is hostless, so a view's lines

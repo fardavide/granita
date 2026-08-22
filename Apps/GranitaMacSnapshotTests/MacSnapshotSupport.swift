@@ -80,7 +80,7 @@ func assertSettingsSnapshot(
 
     assertSnapshot(
         of: hosted,
-        as: .image(precision: 0.999, perceptualPrecision: 0.87),
+        as: .fixedScaleImage(precision: 0.999, perceptualPrecision: 0.87),
         named: "\(name)-\(appearance.name)",
         fileID: fileID,
         file: file,
@@ -90,11 +90,50 @@ func assertSettingsSnapshot(
     )
 }
 
-/// The same hosting the assertion uses, exposed so that a test can measure the result instead of
-/// comparing a picture of it. Window geometry is not observable from outside the process while
-/// Stage Manager is on, which is why the window's own size is asserted from in here.
+/// The status item, at its real 22pt height.
+///
+/// Its own entry point rather than a parameter on the one above, because a `MenuBarExtra` label is
+/// not a Settings pane and sizing it to the window would be a picture of a symbol in the middle of
+/// a lot of nothing. The width is what a status item takes: as much as its content, and no more.
 @MainActor
-func hostedInWindow(_ view: some View, appearance: MacAppearance) -> NSHostingView<some View> {
+func assertStatusItemSnapshot(
+    _ view: some View,
+    appearance: MacAppearance,
+    named name: String,
+    fileID: StaticString = #fileID,
+    file: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    _ = redirectFailureArtifacts
+
+    let hosted = hosted(view, appearance: appearance, size: CGSize(width: 44, height: 22))
+    defer { hosted.window?.orderOut(nil) }
+
+    assertSnapshot(
+        of: hosted,
+        as: .fixedScaleImage(precision: 0.999, perceptualPrecision: 0.87),
+        named: "\(name)-\(appearance.name)",
+        fileID: fileID,
+        file: file,
+        testName: testName,
+        line: line,
+        column: column
+    )
+}
+
+/// The same hosting the assertion uses, at the Settings window's size, exposed so that a test can
+/// measure the result instead of comparing a picture of it. Window geometry is not observable from
+/// outside the process while Stage Manager is on, which is why the window's own size is asserted
+/// from in here.
+@MainActor
+func hostedInWindow(_ view: some View, appearance: MacAppearance) -> NSView {
+    hosted(view, appearance: appearance, size: GranitaSettingsScreen.windowSize)
+}
+
+@MainActor
+private func hosted(_ view: some View, appearance: MacAppearance, size: CGSize) -> NSView {
     // Pinned, and not a detail. General renders a clock time, so a runner in UTC and a laptop in
     // CEST would draw different pixels from identical code — a baseline that fails for the reason
     // the suite is least able to explain. Fixed here rather than per test, so every Mac baseline
@@ -104,7 +143,7 @@ func hostedInWindow(_ view: some View, appearance: MacAppearance) -> NSHostingVi
             .environment(\.locale, Locale(identifier: "en_US_POSIX"))
             .environment(\.timeZone, .gmt)
     )
-    hosting.frame = CGRect(origin: .zero, size: GranitaSettingsScreen.windowSize)
+    hosting.frame = CGRect(origin: .zero, size: size)
     hosting.appearance = NSAppearance(named: appearance.appearance)
 
     let window = NSWindow(
