@@ -293,6 +293,7 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "Using $name"
 
+      # See the macOS job below for why this one keeps "(iOS)" in its name.
       # Renders 24 baselines: six discovery states across iPhone and iPad, light and dark. The
       # assertions are main-actor isolated — without that, UIKit traps on a background thread, the
       # host restarts, and the retry reports "0 tests passed" having rendered nothing.
@@ -322,5 +323,61 @@ jobs:
         with:
           name: snapshot-diffs
           path: snapshot-report
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The Mac's half of the same kind, and a separate job rather than a second step in the one above.
+  #
+  # Two reasons, and the first is mechanical: renaming "Snapshot tests (iOS)" would leave every open
+  # pull request waiting forever on a required check that no longer reports, because the ruleset
+  # names checks by string. The second is the reason that job is isolated at all — a pixel diff on
+  # one platform should not hide a real failure on the other, and these render on two different
+  # things: the phone's baselines come off a simulator, the Mac's off the runner itself, because
+  # there is no macOS simulator to render in.
+  #
+  # This job GATES the pull request, and needs adding to .github/rulesets/protect-main.json to do so.
+  snapshot-tests-mac:
+    name: Snapshot tests (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+
+      # Same cache and same key as the iOS job: one package graph, one set of clones.
+      - name: Cache SwiftPM source packages
+        uses: actions/cache@v4
+        with:
+          path: SourcePackages
+          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: snapshot-spm-${{ runner.os }}-
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMac -clonedSourcePackagesDirPath SourcePackages
+
+      # Renders the General tab in both appearances, and asserts the window's fixed size from inside
+      # the app — which is the only place that can, since window geometry is not observable from
+      # outside the process while Stage Manager is on.
+      - name: Run snapshot tests
+        run: |
+          xcodebuild test \
+            -project Granita.xcodeproj \
+            -scheme GranitaMac \
+            -destination 'platform=macOS' \
+            -clonedSourcePackagesDirPath SourcePackages \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build the snapshot diff report
+        if: failure()
+        run: |
+          python3 .github/scripts/snapshot-report.py \
+            Apps/GranitaMacSnapshotTests/__SnapshotFailures__ \
+            Apps/GranitaMacSnapshotTests/__Snapshots__ \
+            snapshot-report-mac
+      - name: Upload the snapshot diff report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs-mac
+          path: snapshot-report-mac
           retention-days: 7
           if-no-files-found: warn

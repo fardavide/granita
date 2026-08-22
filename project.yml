@@ -33,7 +33,7 @@ packages:
 # .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.9
+    MARKETING_VERSION: 0.0.10
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -147,6 +147,43 @@ targets:
         # fixed iPhone-shaped window that cannot be resized, with no multitasking.
         TARGETED_DEVICE_FAMILY: "1,2"
 
+  # The Mac's snapshot kind. Until this target existed the Settings window was measured by nothing
+  # at all — the snapshot suite was the iOS target, so every macOS view was code no test rendered.
+  #
+  # App-hosted like its iOS sibling, and for the coverage reason rather than the rendering one:
+  # macOS needs no `drawHierarchyInKeyWindow`, but a host is what makes the composition root's lines
+  # execute where the profile is written, which is what keeps the Snapshot row measuring screen
+  # composition rather than only leaf views.
+  #
+  # The host really launches, so the real server starts with it: it binds, it reaches for the TLS
+  # identity in the login Keychain, and it tries to advertise over Bonjour. On a runner none of that
+  # succeeds — an unsigned build cannot register a Bonjour service at all — and none of it needs to.
+  # Every one of those failures is a `ServerRunState.failed` the app already handles, and no baseline
+  # here renders the app's own scene: each test hosts the pane it is asserting in a window it makes
+  # itself.
+  GranitaMacSnapshotTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Apps/GranitaMacSnapshotTests
+        # The baselines are the assertion, not a resource — see the iOS target below for what
+        # flattening them into the bundle collides with.
+        excludes:
+          - "__Snapshots__/**"
+          - "__SnapshotFailures__/**"
+    dependencies:
+      - target: GranitaMac
+      - package: SnapshotTesting
+        product: SnapshotTesting
+    settings:
+      base:
+        # Same override and same reason as the iOS bundle: PRODUCT_NAME renames the product to
+        # `Granita`, so XcodeGen's target-derived default points at a bundle that is never built.
+        # BUNDLE_EXECUTABLE_FOLDER_PATH is `Contents/MacOS` on macOS.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac.snapshottests
+
   # Snapshot tests live here rather than in the package, and they have to. A SwiftPM test target is
   # hostless: there is no key window, so a SwiftUI view lays out against nothing and renders blank.
   # Only an app-hosted bundle gives the real window that `drawHierarchyInKeyWindow` needs.
@@ -191,6 +228,11 @@ schemes:
     build:
       targets:
         GranitaMac: all
+        GranitaMacSnapshotTests: [test]
+    test:
+      config: Debug
+      targets:
+        - GranitaMacSnapshotTests
     run:
       config: Debug
     profile:

@@ -15,6 +15,9 @@ UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLO
 GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
 # Recorded, not generated: no source produces them, so verify-generated cannot check them and the
 # snapshot job is what gates them instead.
+# The phone's only. The Mac's baselines are recorded on the CI runner and adopted with
+# Scripts/adopt-mac-baselines.py — re-recording them locally is what turns CI red, so
+# `record-snapshots` deliberately cannot reach them.
 SNAPSHOTS    := Apps/GranitaMobileSnapshotTests/__Snapshots__
 
 .DEFAULT_GOAL := help
@@ -38,12 +41,29 @@ build: ## Compile-check the package and both apps
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
 
 .PHONY: run
-run: ## Run the backend in a terminal, no Xcode in the loop
-	cd $(PACKAGE) && swift run granita-server
+run: ## Run the backend in a terminal, no Xcode in the loop — `make run ARGS="--pair"`
+	@# ARGS is how every flag in `granita-server --help` is reached: --add-project, --pair,
+	@# --issue-token, --insecure-http, --store. Without it the only way to pass one is a raw
+	@# `swift run`, which is reaching past the sanctioned target rather than through it.
+	cd $(PACKAGE) && swift run granita-server $(ARGS)
 
 .PHONY: snapshots
-snapshots: ## Render the screens on a simulator and compare against the committed baselines
+snapshots: snapshots-ios ## Render the phone's screens and compare against the committed baselines
+	@# The Mac's are not here, because they cannot pass on this machine. `make snapshots-mac` runs
+	@# them and is expected to be red; see that target.
+
+.PHONY: snapshots-ios
+snapshots-ios: ## Render the phone's screens on a simulator
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO
+
+.PHONY: snapshots-mac
+snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment
+	@# **A red run here is the normal state on a developer's Mac, and is not something to fix.**
+	@# The committed baselines are the CI runner's renders, because a Retina laptop and a headless
+	@# runner lay text out on different backing grids and the drift swamps a real change. What this
+	@# target is good for locally is the diff report: it shows what moved, and the eye does the rest.
+	@# The gate that matters is `Snapshot tests (macOS)` on the pull request.
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -quiet CODE_SIGNING_ALLOWED=NO
 
 .PHONY: record-snapshots
 record-snapshots: ## Re-record every snapshot baseline after a deliberate design change
@@ -54,10 +74,16 @@ record-snapshots: ## Re-record every snapshot baseline after a deliberate design
 	@#
 	@# Never run this on CI. A recorder on CI turns the suite into a record of whatever the code
 	@# currently does, which is a test that cannot fail.
+	@# The phone's only, and the Mac's absence here is deliberate rather than an omission. Its
+	@# baselines are the CI runner's renders: a Retina laptop lays text out on a 2x grid and a
+	@# headless runner on a 1x one, and the resulting drift is four and a half times larger than a
+	@# real one-word copy change, so no tolerance separates them. Re-recording the Mac locally makes
+	@# `make snapshots-mac` green here and `Snapshot tests (macOS)` red on every pull request.
+	@# See Scripts/adopt-mac-baselines.py.
 	rm -rf $(SNAPSHOTS)
-	-@$(MAKE) --no-print-directory snapshots
-	@$(MAKE) --no-print-directory snapshots
-	@echo "Baselines re-recorded and verified stable. Review every changed PNG before committing."
+	-@$(MAKE) --no-print-directory snapshots-ios
+	@$(MAKE) --no-print-directory snapshots-ios
+	@echo "Phone baselines re-recorded and verified stable. Review every changed PNG before committing."
 
 .PHONY: run-mac
 run-mac: ## Build and launch the menu bar app, signed for this machine

@@ -2,7 +2,15 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.9.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.10.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**The Mac now has a snapshot kind**, which it never had — every Settings surface was code that nothing
+rendered, and the frames were drawn at 1:1 precisely so they could become the baselines. It is a
+second bundle under the same Snapshot row rather than a row of its own: the phone renders on a
+simulator and the Mac on the machine itself, because there is no macOS simulator, but the question
+the row answers is the same for both. **General is the first tab built from a frame**, and it landed
+with its baselines in the same pull request, which is the rule that makes "we built the design"
+checkable.
 
 **Both halves are now designed.** The client's four screens were reviewed and redrawn against 0.0.4
 on 2026-08-21 ([`design.md`](design.md)); the Mac's seven surfaces were drawn for the first time on
@@ -86,6 +94,16 @@ The spec's milestones, each ending in something runnable and a green suite, with
   still, nothing-found and failure both offer a real retry, the failure's advice is ours with the
   system's diagnostic demoted to small print, and every state sits in a 420pt centred measure on
   iPad. §2–§4 are drawn and waiting for M4 and M5.
+- **The Mac's General tab, and the kind of test that can see it.** The address this Mac serves on
+  with a button that copies it, who chose the port and why it moves, when the server last bound and
+  a Restart for the failure that has no notification behind it — a laptop that changed network keeps
+  running and quietly stops being reachable. Not serving gets our sentence, our button straight to
+  Privacy & Security › Local Network, and macOS's own string demoted to small print. The login item
+  goes through `SMAppService` and **re-reads its own status**, because the ordinary first-run outcome
+  is a registration that succeeds and then waits for approval — reported as success, that is an app
+  that silently does not start at the next login. Twelve baselines and two window assertions hold it,
+  the second of which can only be made from inside the app: window geometry is not observable from
+  outside the process while Stage Manager is on.
 - **The menu bar app, serving.** It embeds the same backend, advertises under the name the Mac is
   actually called, reports `host:port` in its menu, and opens a Settings window from a status item
   under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up. Its Advanced
@@ -209,15 +227,18 @@ Smaller things still open in these modules:
 - ~~**Pinning the JSON encoder.**~~ Done. Both the request context and the phone's decoder now say
   `.iso8601` in as many words, so a dependency changing its default moves neither end silently.
 - **The store's lock file.** SPEC §9 wants one beside the document so a standalone `granita-server`
-  and the menu bar app cannot both hold it; today both will happily open the same file. The design
-  review declined to draw the held case and said why: **it is a question for Davide, not a designer.**
-  Refuse to start, or serve read-only? Advanced is the only surface that could ever say so.
-- **The dirty-worktree count** beside the menu bar icon. It needs enabled projects to count, so it
-  belongs with the Projects tab. The design draws it, and flags an arithmetic problem first:
-  `WorktreeRegistry.projects()` computes a whole change set per worktree — one git process each at a
-  ten-second budget — so the number cannot be produced on a tick. **Time it on a real machine before
-  building it**: tens of milliseconds means cache and refresh on a slow timer, seconds means the
-  count goes behind opening the menu and the label is the icon alone.
+  and the menu bar app cannot both hold it; today both will happily open the same file. **Answered by
+  Davide on 2026-08-22: the second one to start refuses, and names the process holding the lock.**
+  Not read-only — two processes disagreeing about what is enabled, with the phone reading one of them
+  and nobody told which, is worse than a refusal. Advanced is where the refusal is read. Still to
+  build.
+- ~~**The dirty-worktree count** beside the menu bar icon.~~ **Measured on 2026-08-22, and the answer
+  is no.** `/v1/projects` over ten of Davide's real repositories — 38 worktrees, one Android monorepo
+  carrying 16 — took **122.7 seconds**. The design offered two branches, "tens of milliseconds" and
+  "seconds", and two minutes is neither: a menu that computes this on open never opens. The label is
+  the icon alone and the count is not built. It becomes affordable only when something asks git the
+  cheap question — `projects()` builds a whole change set per worktree, every path and stat and
+  revision, to evaluate one boolean.
 - **The Bonjour TXT record**, which now blocks something concrete. SPEC §8 wants `apiVersion` and a
   stable `serverInstanceID` in it so a phone can tell its paired Mac from another one.
   `NWEndpoint.service` carries no TXT record, so this needs a way in through the same bind rather
@@ -231,9 +252,18 @@ Smaller things still open in these modules:
 
 ## Waiting on Davide
 
-- **A design round trip for the Mac's own surfaces**, which is now the whole of what is left in M3.
-  The client's four screens came back on 2026-08-21; the Settings window's four tabs and the pairing
-  sheet were not in that ask and have no frames, so none of them can open as a pull request.
+- ~~**A design round trip for the Mac's own surfaces.**~~ Came back on 2026-08-21 and is recorded in
+  [`design-mac.md`](design-mac.md). Nothing in the Settings window is blocked on a drawing any more,
+  with the one exception below.
+- **A design round trip for allowing a device from the Mac**, asked for on 2026-08-22 and the only
+  Mac surface now without frames. The case is real and Davide has hit it: on Screens, looking at the
+  Mac *from the phone being paired*, the camera and the screen are the same device, so the QR cannot
+  be scanned and the way out today is a second device and a screenshot. The QR itself stays — it was
+  re-opened in the same exchange and settled unchanged. What is missing is both halves: nothing on
+  the Mac knows a phone exists until that phone presents a credential, so "the devices on the net" is
+  not a list anything can produce, and inventing an announcement is a change to SPEC §8 rather than a
+  layout. §5's drawn half — the QR, the six words, the countdown, the paired rows with Revoke —
+  ships without it.
 - **Pairing from a real device on the LAN**, which is M3's acceptance and cannot be answered from
   this machine — the simulator does not implement local network privacy at all. Until the phone has
   a pairing screen, the way to try it is `make run` with `--pair`: it prints a `granita://pair` link

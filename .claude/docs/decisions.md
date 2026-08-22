@@ -1347,3 +1347,283 @@ They are the same answer through the same code on the Mac, and a second way to a
 second place for it to be answered differently — a divergence that would show up as one file
 rendering differently depending on whether it was prefetched or opened. The route stays served,
 because removing it is a contract change and nothing is gained by making one.
+
+## The menu bar count costs 122.7 seconds, so there is no menu bar count
+
+The design review declined to draw the dirty-worktree count until someone had timed it, and offered
+two branches: tens of milliseconds meant cache it and refresh on a slow timer, seconds meant put the
+number behind opening the menu and leave the label as the icon alone. It was measured on 22 August
+2026 against ten of Davide's real repositories — 38 worktrees, one Android monorepo carrying 16 of
+them — by serving them and reading `/v1/projects`, which is `WorktreeRegistry.projects()` plus a JSON
+encode.
+
+**122.7 seconds.** Neither branch survives. A menu that computes this on open is a menu that does not
+open, and a cache on a slow timer would keep 38 git processes running for two minutes out of every
+period, on a laptop, for a number nobody asked for.
+
+So the count is not built. What it beat was the third option, which was to build it anyway behind a
+cache and a spinner — that spends the worst cost this app has on the one surface that is supposed to
+be glanced at, and SPEC §9's own framing is that the menu bar answers whether the phone can read this
+Mac. The symbol already answers that.
+
+**The number is not the finding; the shape of the question is.** `projects()` computes a whole change
+set per worktree — every changed path, its stats and its revision — in order to evaluate
+`files.isEmpty == false`. Git can answer "is anything different here" without producing any of it.
+The count becomes affordable the day something asks the cheap question, and that is a change to the
+git layer rather than to the menu, so it is not in this slice.
+
+Recorded rather than left in a commit message because it is a measurement, and the next session to
+look at the menu bar will otherwise re-open it exactly as this one nearly did.
+
+## The second process to open the store refuses to start, and names the first
+
+SPEC §9 asks for a lock file beside the document so a standalone `granita-server` and the menu bar
+app cannot both hold it, and says the second one refuses "with a clear message". The review left the
+held case undrawn on purpose and said why — refuse, or serve read-only, is a product question rather
+than a drawing. Davide answered on 22 August 2026: **refuse.**
+
+Read-only is the option it beat, and it loses on a specific failure rather than on principle. Both
+processes read the same document to decide what is enabled; a read-only second process would go on
+answering with a snapshot the first one has since changed, so the phone would be served a stale
+answer to the one question that is the security boundary — which projects are visible. Neither the
+phone nor the reader is told which process answered. A refusal is legible; a quiet disagreement about
+what is enabled is not.
+
+The refusal **names the process holding the lock**, and that is the part worth writing down. "Another
+copy of Granita is already running" is a sentence with no next action, and the case that produces it
+is usually a `granita-server` left in a terminal behind a window. A process identifier can be looked
+up and killed.
+
+## The QR was re-opened and kept, and what came back with it is a surface nobody had drawn
+
+On 22 August 2026 Davide asked for the QR to be dropped, on the grounds that the connection mechanism
+as it stands is already right, and reversed it in the same exchange once it was clear the picture *is*
+that mechanism's one-gesture path rather than a decoration on top of it. **The QR stays exactly as
+§5 draws it**, and this entry exists so the call is not re-opened a third time.
+
+What the exchange produced instead is a requirement the review never saw, from a failure Davide has
+actually hit: **a device has to be approvable from the Mac, with nothing reading the code.** He
+administers this Mac over Screens from his phone, which means the camera and the screen are the same
+device — the QR is unscannable in exactly the situation where getting back in matters most, and the
+way out today is a second device, a screenshot, and a lot of annoyance.
+
+That is not a layout change, and it is deliberately **not** being invented here. Both halves are
+missing. Nothing on this Mac knows a phone exists until that phone presents a credential, so "the
+devices on the net" is not a list anything can currently produce; some announcement has to exist
+first, and inventing one is a change to SPEC §8's contract rather than a control on a tab. And the
+review drew a QR, a countdown and paired rows — not a pending device, not what it says before it is
+allowed, and not what Allow does to it.
+
+So §5 ships in two pieces: the drawn half now, and the Allow path after a design round trip and a
+protocol decision. Building it from this paragraph is the thing the `design-handoff` rule exists to
+stop, and the cost of getting it wrong is a way into the store that nobody designed.
+
+## The Mac's snapshot kind is a second bundle in the same row, not a row of its own
+
+The Mac had no snapshot kind, so every Settings surface was code that nothing rendered and the
+coverage report had no way to say so. Adding one raised a question the report's own shape does not
+answer: is "snapshot" one kind measured on two platforms, or two kinds?
+
+**One row.** The phone renders on a simulator and the Mac renders on the machine itself — there is no
+macOS simulator — but the question the row exists to answer is identical for both: *of the code that
+draws screens, how much does a baseline put on screen*. Two rows would split one question along a
+platform axis no reader of the report cares about, and would do something actively misleading on the
+day the Mac's row first appears: a new row starts unjudged, and a low number beside a high one reads
+as a regression in the phone rather than as a kind that has just begun being measured. The two
+profiles are merged before the row is taken, exactly as `all` already merges everything.
+
+It moves the denominator, and that is expected rather than a surprise: `Server/Mac/Ui`,
+`Server/Mac/Presentation` and `Server/App/Presentation` were in the views scope and in no export,
+because the simulator never linked them. They are now in both.
+
+**App-hosted, and for the coverage reason rather than the rendering one.** macOS needs no
+`drawHierarchyInKeyWindow` — the `NSView` strategy renders through `cacheDisplay` — so a hostless
+bundle would have produced pictures. What it would not have produced is the composition root
+executing where the profile is written, which is the evidence the last session's coverage work turned
+on. The cost is that the host really launches: the server binds, reaches for the Keychain identity
+and tries to advertise. On a runner none of that succeeds and none of it needs to — every one of
+those is a `ServerRunState.failed` the app already handles, and no baseline renders the app's own
+scene.
+
+### Four things about rendering AppKit that a baseline cannot tell you it got wrong
+
+Each of these produces a picture that looks plausible and asserts less than it appears to.
+
+**And the one that could not be fixed at all: the Mac's baselines are recorded on the CI runner.**
+See the entry below; it inverts a rule this project states plainly elsewhere, and it is the only
+option of four that survives the measurement.
+
+**A baseline inherits the display's backing scale, so one recorded on a Retina Mac can never pass on
+a runner.** This is the one that actually turned CI red, and it is the most important of the four
+because the failure names nothing: twelve baselines, `Newly-taken snapshot@(620.0, 560.0) does not
+match reference@(620.0, 560.0)`, identical point sizes, no clue. The diff artefact is what said it —
+the reference was 1240 × 1120 pixels and what the runner drew was 620 × 560. A CI runner is headless
+and has no Retina display, so `bitmapImageRepForCachingDisplay` gives it a 1× rep and this Mac a 2×
+one, and every pixel differs for a reason that has nothing to do with the screen being asserted.
+
+So the library's `NSView` strategy is replaced by one of ours that states the raster: the bitmap rep
+is built with its pixel dimensions computed from a pinned scale and its `size` left in points, which
+is what makes it 2× whatever is underneath. **Proved rather than assumed** — pinning the scale to 1
+on this Retina Mac produced 620 × 560 images, which is the same mechanism observed in the direction
+that can be tested locally.
+
+Two is chosen over one because a baseline is reviewed by eye and half the resolution is half of what
+a reviewer can catch.
+
+**A window that never becomes key draws accent-tinted controls grey, and nothing here can make it
+key.** `Open Local Network Settings` — the whole point of that row, the button a reader is meant to
+press — renders identically to the `Try Again` beside it, and a switched-on `Toggle` shows a grey
+track with the knob to the right. A window cannot become key while its application is not active,
+and a test runner is never the frontmost app: `activate()`, `makeKeyAndOrderFront` and switching the
+accessory host to `.regular` were each tried and none of them changed a pixel.
+
+**So this limitation is named rather than worked around.** It costs exactly one thing — the accent
+tint. Layout, copy, symbols, control shapes, a toggle's knob position and every non-accent semantic
+colour are captured; the orange on "Not serving" is in the baselines. What a Mac baseline can never
+catch is a `.borderedProminent` quietly losing its prominence, so that call is reviewed in the code.
+Worth stating plainly because the failure mode of *not* stating it is a future session recording a
+flat-looking screen, believing the design drifted, and re-recording to match.
+
+**A rendered clock time is a locale and a time zone.** General shows when the server bound, so a
+runner in UTC and a laptop in CEST draw different pixels from identical code — a failure the suite is
+least able to explain. The locale and time zone are pinned once, in the shared hosting, rather than
+per test.
+
+**A `Form`'s "fitting height" is not a clipping test, and two attempts at one were wrong.**
+`NSView.fittingSize` answers unconstrained, so a long footnote reports an ideal width past the
+window's and an ideal height far short of the truth. Constraining the width and asking `sizeThatFits`
+is no better: a `Form` is a scroll view and accepts whatever height it is offered. A pane cannot clip
+— it scrolls — so the question worth asking is whether it *has* to, and the baseline answers that by
+eye. What is asserted from inside the app is the window's content size, which is the thing that
+genuinely cannot be measured from outside while Stage Manager is on.
+
+### The macOS kind found two defects in what the coverage rows measure, and neither is a rescoping
+
+Both rows went red, and the reflex — the one this project has now recorded being wrong about twice —
+is that the gate is mis-scoped. Read with the per-file export rather than by algebra, it was
+reporting two definitions that had only ever been exercised against one platform.
+
+**`Server/Api/Presentation` was in the views scope.** The scope selects on the directory name
+`Presentation`, and the server's API module is a presentation layer in the wire sense —
+domain-to-wire mapping plus routes. `architecture.md` says it in as many words: *it has no `Ui`
+sibling because it has no views.* This was invisible while only the phone had a snapshot kind,
+because the simulator never linked those files and an export cannot include what a binary does not
+map. The macOS kind links them, and they arrived as **1199 of the views scope's 2350 lines** —
+`GranitaRouter.swift` alone contributing 562. The row was being asked how much of the HTTP router a
+rendered screen executes.
+
+**A SwiftUI body in `Presentation` was in the host-reachable scope.** That scope excludes `Ui`
+because a body needs a renderer and a SwiftPM test target is hostless — and then counts
+`GranitaSettingsScreen.swift`, which is a body, because it lives one layer out. `Presentation` holds
+both models and the screens composed from `Ui`, and only the second kind needs a renderer;
+`ServerMacModel` is an ordinary object a test constructs and stays judged. The incompleteness had
+been sitting there at 23 uncovered lines in `ServerDiscoveryScreen.swift`; the Mac's screen is 101,
+which is what made it visible.
+
+**The test that says this is a correction and not a rescoping is the direction the number moves.**
+With the screens excluded and nothing else changed, the Unit row reads **95.5% against the 93.9%
+baseline it had been failing** — higher, not lower. Lines that leave a denominator and take the
+percentage *up* were dragging it down by being unreachable rather than by being untested. A
+rescoping that flatters a number does the opposite, every time, and that is how to tell them apart.
+
+Both scope strings are renamed, so both rows go unjudged for one run and rejoin on the next `main`
+run. That is the second consecutive run in which they are unenforced, which is a real cost and is
+named here rather than left to be discovered.
+
+**What is left genuinely uncovered is the Snapshot row at 76.3%**, down from 96.9%, and that number
+is honest: the Mac's screens are newly measured and most of them are not rendered by any baseline
+yet. `ConnectionLogView` has only its empty state, because a populated row draws its time with
+`.relative` and a baseline of it would read differently every day — that is a change to the row and
+lands with §6. `GranitaSettingsScreen` is composed by nothing, because rendering it needs the four
+fakes the package's test target holds and an app bundle cannot import them.
+
+## The Mac's snapshot baselines are recorded on the CI runner, and the phone's are not
+
+The `swift-testing` skill says it in as many words: **record locally, never on CI**, because a
+recorder on CI turns the suite into a record of whatever the code currently does. That rule stands
+for the phone. For the Mac it is inverted, and the reason is two numbers rather than a preference.
+
+With the raster pinned and both sides rendering 1240 × 1120, the same code still produced different
+pictures on this Mac and on a runner:
+
+| | share of pixels differing by more than 64 levels |
+|---|---|
+| Cross-machine drift, identical code | **0.737%** |
+| A real one-word copy change, same machine | **0.162%** |
+
+**The noise is four and a half times the signal.** There is no `precision` between them: any budget
+loose enough to absorb the drift is four times looser than a changed word, so the suite would go
+green on exactly the class of change it exists to catch. The skill's own calibration story — 0.98
+was rejected because it hid a changed sentence — is this same argument, and it points the same way
+here.
+
+### What is actually known about the cause, and what is not
+
+Worth separating, because the first account written here asserted a mechanism that the measurements
+only partly support, and a confident wrong story is what stops the next person looking.
+
+**Established.** The runner's window renders at 1× and this laptop's at 2×: before the raster was
+pinned, identical code produced 620 × 560 there and 1240 × 1120 here, and
+`bitmapImageRepForCachingDisplay` takes its resolution from the window's backing scale. A hosted
+macOS runner is headless. `NSWindow.backingScaleFactor` is derived from the screen and has no setter,
+so pinning the raster — necessary, and done — cannot reach it.
+
+**Also established, by measuring the images rather than reasoning about them:**
+
+- Both sides are genuine 2× rasters afterwards. Among blocks sitting on a content edge, the share
+  that are a single flat colour is 1.1% on the runner and 34.9% here; a doubled 1× image would be
+  ~100%. The runner is not upscaling.
+- The residual is not a whole-image shift. Rolling this laptop's image one device pixel up improves
+  the mean absolute difference from 1.42 to 1.08 — so there is roughly half a point of vertical
+  offset — and leaves most of the difference in place.
+- It concentrates in the two smallest text lines. The worst rows are the footnote captions, at mean
+  absolute differences of 32–40 out of 255, while the rest of the pane is close.
+
+**Not established.** That glyphs "snap to a different grid" was the first explanation offered here and
+it is an inference, not a finding. It fits the offset and the concentration in small text, and the
+edge-block figures above sit awkwardly with it: this machine produces the *coarser* image of the two,
+which grid-snapping does not predict. The backing-scale difference is the only environmental
+difference actually demonstrated, and it is plausibly upstream of the rest — but the mechanism is
+open.
+
+Settling it would need a Mac with a 1× display, or a virtual display attached to the runner. It was
+not bought, because no decision turns on it: the drift is four and a half times a real change
+whatever produces it.
+
+So the runner is the only machine whose renders are reproducible on the machine that gates them, and
+`Scripts/adopt-mac-baselines.py` takes them out of the job's own diff artefact. Davide chose this on
+22 August 2026 over three alternatives: gating the Mac suite locally only, which leaves a check
+nobody runs; dropping the image assertions, which gives up checking the design was built as drawn;
+and giving the runner a virtual 2× display, which is fragile infrastructure on a hosted runner and
+could not be verified without several more round trips.
+
+**What it costs is that `make snapshots-mac` is red on a developer's Mac, permanently and by
+design.** That is a loaded gun pointing at the next session, whose obvious move is to re-record
+locally and "fix" it — which makes every pull request red instead. Three things are arranged against
+that: `make record-snapshots` no longer touches the Mac's baselines at all, `make snapshots-mac`'s
+help text and comment say the red run is expected, and the adoption script's docstring carries the
+measurement. The target is still worth running locally for its diff report, which is what shows a
+person what moved.
+
+**The rule that does not change is that a picture nobody looked at is not a baseline.** Adopting a
+runner's render is accepting an image sight-unseen unless someone opens it, so the script prints
+every file it writes and says so.
+
+## The General tab re-reads the login item's status, because `register()` succeeding means very little
+
+`SMAppService.register()` returns without throwing in the case that matters most: macOS accepts the
+registration and then waits for the user to approve Granita in Login Items, leaving the status at
+`.requiresApproval`. Nothing runs at the next login.
+
+Reported as success — which is what a naive `try service.register()` does — the toggle shows on, the
+reader believes the app will be there in the morning, and finds out it is not by rebooting and
+watching their phone fail to find the Mac. For an app whose entire job is to be running when the
+phone looks, that is the worst failure this tab can produce, and it is the *default* one.
+
+So the registry re-reads its own status afterwards and reports anything that is not `.enabled` as not
+registered, and the toggle has a third and fourth state rather than a boolean: waiting for approval,
+and refused outright with the system's words. Both draw **off**, because a switch left on for a
+registration that will not happen is the only reading on this tab that is actively false.
+
+Rejected: putting the sentence in the `Data` layer by throwing a pre-worded refusal. The layer that
+talks to `SMAppService` should say what happened, not how it reads.

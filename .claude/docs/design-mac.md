@@ -1,6 +1,6 @@
 # Design — the Mac
 
-The menu bar app's six surfaces, drawn for the first time. This is the authority on **what the Mac
+The menu bar app's seven surfaces, drawn for the first time. This is the authority on **what the Mac
 looks like and why**; [`design.md`](design.md) is the same thing for the phone and the iPad.
 
 The drawings are working material and do not last.
@@ -22,25 +22,42 @@ becomes.
 
 | Section | Surface | State |
 |---|---|---|
-| §1 | The status item and its menu | drawn, not built |
-| §2 | The window — five tabs | drawn, not built |
-| §3 | General | drawn, not built |
+| §1 | The status item and its menu | drawn, not built. Blocked behind §5: "Pair a device…" opens Settings on the Devices tab |
+| §2 | The window — five tabs | **partly built in 0.0.10** — fixed at 620 × 560pt with Advanced last. The five tabs land as the panes do; restoring the last-used tab and selecting Projects on a first run land with §4 and §5 |
+| §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
 | §4 | Projects | drawn, not built |
 | §5 | Devices | drawn, not built |
 | §6 | Connections | **built as the Advanced tab in 0.0.6**; the review moves and redraws it |
 | §7 | Advanced | drawn, not built |
 
-Two things the review could not decide from drawings, and that only Davide can answer:
+Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
+and the answers are below rather than in the review because neither came from a drawing.
 
-- **Whether the dirty-worktree count in the menu bar is affordable.** Producing it means enumerating
-  worktrees and computing a change set per worktree — one git process each, at a ten-second budget.
-  Time `WorktreeRegistry.projects()` on a real machine with real projects enabled. Tens of
-  milliseconds: cache it, refresh on menu-open and a slow timer. Seconds: the number goes behind
-  opening the menu and the label is the icon alone.
-- **What happens when the store's lock file is already held**, because `granita-server` and the menu
-  bar app will both open the same document today. Refuse to start, or serve read-only? The review
-  left it undrawn deliberately rather than guessing, and Advanced is the only surface that could ever
-  say so.
+| | Question | Answer |
+|---|---|---|
+| a | Is the dirty-worktree count in the menu bar affordable? | **No — by two orders of magnitude.** Measured, not estimated: 122.7 seconds. Neither branch the review drew survives, so the label is **the icon alone** and the count is not built |
+| b | What happens when the store's lock file is already held? | **Refuse to start, and say which process holds it.** Not read-only |
+
+**The measurement, because the number is the whole answer.** `/v1/projects` was served from a store
+holding ten of Davide's real repositories — 38 worktrees, one Android monorepo carrying 16 of them —
+and answered in **122.7 seconds**. The review's two branches were "tens of milliseconds: cache and
+refresh on a slow timer" and "seconds: put the number behind opening the menu". Two minutes is
+neither: a menu that computes this on open is a menu that does not open, and a cache refreshed on a
+slow timer would keep 38 git processes running for two minutes out of every period.
+
+So the count is **not built**, and the reason is arithmetic rather than taste. What would make it
+affordable is a different question asked of git: `projects()` computes a *whole change set* per
+worktree — every changed path, its stats and its revision — in order to test one boolean. Git can
+answer "is anything different here" without producing any of that. Until something asks the cheap
+question, the menu bar is one symbol and no `Text`, and SPEC §9's `Text("\(n)")` beside the icon is
+deferred rather than dropped — the TRAP it exists to satisfy is still true, and still costs nothing
+to honour on the day there is a number to draw.
+
+**Refusing to start is the answer to (b), and Advanced is where it is said.** The alternative was
+serving read-only, which sounds accommodating and is worse: two processes would disagree about what
+is enabled, and the phone would read one of them without either the phone or the reader being told
+which. A refusal names the process holding the lock, because "another Granita is running" is not
+actionable and a process identifier is.
 
 ## The five premises, and which of them are still true
 
@@ -64,7 +81,9 @@ Six specified states, **three symbols**, and a count that appears in exactly one
   both failure and stop — `exclamationmark.triangle`, unfilled. The menu bar answers one question,
   which is whether the phone can read this Mac; the reason is one click below.
 - The count is a `Text` beside the image with tabular figures, drawn **only while serving and only
-  above zero**.
+  above zero** — **and it is not built**, because producing the number costs 122.7 seconds. See
+  answer (a) above. What ships is the symbol alone, which is what the drawing's own third state
+  shows anyway.
 
 **Rejected: the zero.** A menu bar is shared, permanent and glanced at, and "0" is a claim the reader
 parses and dismisses every time they look at the clock — while saying exactly what the icon alone
@@ -88,8 +107,9 @@ already goes through `SettingsOpener`, not a new mechanism.
 **The status line becomes a `Button` that copies.** It is a `Text` today, which the code correctly
 calls "present, legible and unclickable". The port differs every launch, so nobody memorises it and
 the only reason to read it is to paste it — make the row copy `http://macbook-pro.local:59144` and
-the fact becomes a tool. The count gets its noun on the line underneath, because a bare "3" in the
-menu bar cannot carry one.
+the fact becomes a tool. The drawing puts the count's noun on the line underneath, because a bare
+"3" in the menu bar cannot carry one; with the count deferred that second line has nothing to say
+and is not built either.
 
 When the server has failed, the menu leads with the refusal and the one thing to do about it —
 *Not serving — macOS is blocking the local network*, then **Open Local Network Settings…**.
@@ -156,6 +176,24 @@ hit on a machine that has never run it, and `ServerRunState.failed` already carr
 button opens Privacy & Security › Local Network directly; without it an `NWError` code is the whole
 explanation a person gets for an app that does nothing.
 
+### Two calls made while building it, both departures from the drawing
+
+**The failure sentence names the likely cause rather than asserting it.** The frame reads *macOS is
+not letting Granita on the local network*, which is true of the failure this state is most often
+reached by and false of the others — `failed` carries whatever went wrong, and a locked login
+keychain reaches it too. A screen that says the local network is blocked over a keychain error sends
+the reader to a settings pane that is already correct, which is worse than vagueness. What ships is
+*Your phone cannot find this Mac. The usual cause is Local Network access being turned off for
+Granita.* — our voice, the same button, and the system's own string underneath doing the
+distinguishing.
+
+**The address carries no scheme, which is the frame's own answer and worth stating.** It reads
+`macbook-pro.local:59144`. A scheme would have to be `https` now that the Mac serves TLS under a
+self-signed identity, and pasting that into a browser produces a certificate warning rather than an
+answer. Note for §1: the menu's copy is drawn as `http://macbook-pro.local:59144`, which was true of
+0.0.6 and is not now — that row is built with the rest of §1 and the scheme is a decision it has to
+make rather than inherit.
+
 Should feel like the Sharing pane.
 
 ## §4 — Projects
@@ -212,6 +250,32 @@ they are a second credential redeeming the same pairing, not a caption. Under th
 
 **Do not build the plaintext warning the frames show under the QR.** It was true of 0.0.6 and is not
 true now.
+
+### The QR was re-opened on 22 August and closed again, and one thing was added
+
+Davide asked for the QR to go, on the grounds that the connection mechanism as it stands is already
+right, and then reversed it in the same exchange once it was clear the picture *is* the mechanism's
+one-gesture path rather than decoration. **The QR stays exactly as drawn.** Recorded because a call
+that was re-opened and settled the same way is worth one line, so it is not re-opened a third time.
+
+What the exchange did add is a requirement the review never saw, and it comes from a real failure
+he has hit: **a device must be approvable from the Mac, without anything reading the code.** The
+case is remote control — he is on Screens looking at the Mac *from the phone he is trying to pair*,
+so the camera and the screen are the same device and the QR is unscannable. Today the only way out
+is a second device, a screenshot, and a lot of annoyance.
+
+So Devices grows an **Allow** affordance beside the devices it can see, and that is a surface with
+**no frames and no protocol**. Both halves are missing, not just the drawing:
+
+- Nothing on this Mac knows a phone exists until that phone presents a credential, so "the devices
+  on the net" is not a list anything can currently produce. Some announcement has to exist before
+  something can be allowed, and inventing one is a change to SPEC §8 rather than a layout.
+- The review drew a QR, a countdown and paired rows. It did not draw a pending device, what it says
+  before it is allowed, or what Allow does to it.
+
+**§5 therefore ships in two pieces.** The QR, the six words, the countdown and the paired rows with
+Revoke are drawn and are buildable now. The Allow path is a design round trip and a protocol
+question, and under the `design-handoff` rule no pull request touches it until its frames exist.
 
 Two other states are drawn: **expired**, where the QR dims behind *Code expired* / *A code lasts two
 minutes and works once* and a **New Code** button; and **server not running**, which shows no QR at
@@ -273,6 +337,11 @@ error — the rule the whole API already follows.
 projects, two devices — and the confirm repeats it in consequences rather than nouns: *they have to
 pair again*. That sentence is not decoration; a reset is precisely why the log later says "that token
 was not issued by this Mac".
+
+**And the lock file, when it is already held.** Answer (b) above is *refuse to start*, so this tab is
+where the refusal is read: the row names the process holding the lock rather than saying another
+Granita is running, because a process identifier can be acted on and a noun cannot. It is the only
+row here that describes a state in which the rest of the app is doing nothing.
 
 Rejected: a five-level picker; a "Reveal in Finder" row for the log as well as the data folder, when
 the log's home is Console; and a second confirm typed by hand, which is disproportionate for one

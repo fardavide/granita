@@ -482,11 +482,31 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // What the Settings window needs from the system and cannot get from the API: the login
+        // item, and whatever joins it as the remaining tabs land. Separate from `ServerApiDomain`
+        // because none of it is about serving — a login item is a fact about this Mac's startup,
+        // and putting it beside the server's run state would make that module mean two things.
+        .target(
+            name: "ServerMacDomain",
+            path: "Server/Mac/Domain",
+            swiftSettings: [swift6]
+        ),
+
+        // The one implementation of the above. `SMAppService` is a framework call, so it cannot
+        // live in `Domain`, and it is not the API's business either.
+        .target(
+            name: "ServerMacData",
+            dependencies: ["ServerMacDomain"],
+            path: "Server/Mac/Data",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "ServerMacUi",
             dependencies: [
                 "CoreBrandingDomain",
                 "ServerApiDomain",
+                "ServerMacDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "CoreDiffDomain"
@@ -502,6 +522,7 @@ let package = Package(
                 "CoreDiffDomain",
                 "ServerMacUi",
                 "ServerApiDomain",
+                "ServerMacDomain",
                 "ServerWorktreesDomain",
                 "ServerStoreDomain"
             ],
@@ -510,7 +531,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerMacPresentationTests",
-            dependencies: ["ServerMacPresentation", "ServerApiDomain"],
+            dependencies: ["ServerMacPresentation", "ServerApiDomain", "ServerMacDomain"],
             path: "Server/Mac/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -529,6 +550,8 @@ let package = Package(
                 "ServerApiPresentation",
                 "ServerIdentityDomain",
                 "ServerIdentityData",
+                "ServerMacDomain",
+                "ServerMacData",
                 "ServerMacPresentation",
                 "ServerMacUi",
                 "ServerWorktreesDomain",
