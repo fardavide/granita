@@ -15,6 +15,8 @@ import PackageDescription
 //                 the two view layers: it owns no view models and depends on no Presentation.
 //   Presentation  view models, mappers and screen composition, over its feature's Ui and Domain.
 //                 Never a Data target.
+//   Main          a composition root: anything, because wiring implementations into protocols is
+//                 the whole job. Nothing may depend on a Main target.
 //
 // Presentation depends on Ui, not the other way round. A Ui target is a vocabulary of stateless
 // views that take what they render and report what happened; Presentation owns the state and
@@ -22,9 +24,11 @@ import PackageDescription
 // screen that first needed it, and it is why a Ui target has no test target — there is nothing in
 // one a test would want to reach.
 //
-// Three targets are composition roots and are exempt, because wiring implementations into
-// protocols is their entire job: ClientAppPresentation, ServerAppPresentation and the
-// granita-server executable. Nothing depends on them, which is what makes the exemption safe.
+// The three composition roots are the `Main` layer, and that is a layer rather than a sentence in
+// this comment: ClientAppMain, ServerAppMain and the granita-server executable at Server/Cli/Main.
+// Nothing depends on them, which is what makes mixing layers there safe — and naming the layer is
+// what lets the coverage report exempt them by asking which layer a file is in, rather than by
+// carrying a list of the modules that happen to be roots today.
 //
 // Exactly three external dependencies, each pinned to exactly one target. No other target may
 // declare an external product.
@@ -45,8 +49,8 @@ let package = Package(
     products: [
         // The two app shells link one product each; `granita-server` is how the backend runs,
         // is tested and is recovered without Xcode in the loop.
-        .library(name: "ClientAppPresentation", targets: ["ClientAppPresentation"]),
-        .library(name: "ServerAppPresentation", targets: ["ServerAppPresentation"]),
+        .library(name: "ClientAppMain", targets: ["ClientAppMain"]),
+        .library(name: "ServerAppMain", targets: ["ServerAppMain"]),
         .executable(name: "granita-server", targets: ["ServerCliMain"])
     ],
     dependencies: [
@@ -296,7 +300,7 @@ let package = Package(
 
         // Composition root for the phone: the only Client target that may see a Data target.
         .target(
-            name: "ClientAppPresentation",
+            name: "ClientAppMain",
             dependencies: [
                 "CoreApiDomain",
                 "CoreBrandingDomain",
@@ -311,7 +315,7 @@ let package = Package(
                 "ClientViewerPresentation",
                 "ClientViewerData"
             ],
-            path: "Client/App/Presentation",
+            path: "Client/App/Main",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
@@ -505,6 +509,7 @@ let package = Package(
             name: "ServerMacData",
             dependencies: [
                 "CoreDiffDomain",
+                "ServerApiDomain",
                 "ServerMacDomain",
                 "ServerGitDomain",
                 "ServerWorktreesDomain"
@@ -571,12 +576,13 @@ let package = Package(
         ),
 
         // Composition root for the menu bar app: the only Server library that may see a Data
-        // target. It is a module of its own rather than part of the Mac's Presentation for the
-        // same reason `Client/App/Presentation` is — wiring is not a feature, nothing depends on
-        // it, and a test cannot construct it, so it does not belong in a module whose contents
-        // are meant to be reachable from one.
+        // target. It is a `Main` module rather than a `Presentation` one because wiring is not a
+        // feature — nothing depends on it and no test constructs it, so a module whose contents are
+        // meant to be reachable from a test is the wrong place for it. That was true while it was
+        // called `Server/App/Presentation` too; what the layer name buys is that the coverage rows
+        // can now ask which layer a file is in instead of carrying a list of today's roots.
         .target(
-            name: "ServerAppPresentation",
+            name: "ServerAppMain",
             dependencies: [
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
@@ -597,7 +603,7 @@ let package = Package(
                 "ServerWatchData",
                 "CorePairingDomain"
             ],
-            path: "Server/App/Presentation",
+            path: "Server/App/Main",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 

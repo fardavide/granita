@@ -23,8 +23,8 @@ Rationale and the wider picture are in [`../../docs/architecture.md`](../../docs
 Packages/Granita/<Unit>/<Feature>/<Layer>
 ```
 
-`Unit` is `Core`, `Client` or `Server`. `Layer` is `Domain`, `Data`, `Presentation` or `Ui`. A
-module's name is its path with the slashes removed, so `Client/Viewer/Data` is
+`Unit` is `Core`, `Client` or `Server`. `Layer` is `Domain`, `Data`, `Presentation`, `Ui` or `Main`.
+A module's name is its path with the slashes removed, so `Client/Viewer/Data` is
 `import ClientViewerData` and the tree on disk matches the import list at the top of every file.
 
 Create only the layers a feature actually needs — there are no empty placeholder layers. A test
@@ -42,6 +42,7 @@ break the name-equals-path property that makes the tree readable.
 | `Data` | `Domain` targets, plus at most **one** external infra dependency | another feature's `Data` |
 | `Ui` | `Domain` for the model types it renders, SwiftUI | any `Presentation`, any `Data` |
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
+| `Main` | anything — a composition root mixes layers on purpose | being depended on by anything |
 
 **`Presentation` depends on `Ui`, not the other way round.** This is the direction Davide corrected
 on 2026-08-19, and it inverts what most SwiftUI projects do, so it is worth stating plainly:
@@ -115,16 +116,25 @@ The other edges are each forbidden for their own reason:
 - **`Ui` never imports `Data` either**, which follows from having no reason to: it is handed values,
   it does not fetch them.
 
-## The three composition roots
+## The three composition roots are the `Main` layer
 
-`ClientAppPresentation`, `ServerAppPresentation` and the `granita-server` executable are the **only**
-modules that import a `Data` target, because wiring implementations into protocols is their entire
-job. Nothing depends on them, which is what makes the exemption safe rather than a hole: the layers
-they mix cannot travel anywhere.
+`ClientAppMain`, `ServerAppMain` and the `granita-server` executable at `Server/Cli/Main` are the
+**only** modules that import a `Data` target, because wiring implementations into protocols is their
+entire job. Nothing depends on them, which is what makes the mixing safe rather than a hole: the
+layers they cross cannot travel anywhere. Each Xcode shell links exactly one of these products.
 
-Both app roots are `Presentation` modules rather than `Ui` ones — under the direction above, `Ui` is
-the inner layer and could not reach a `Data` target even if it wanted to. Each Xcode target links
-exactly one of these products.
+**A root holds wiring and nothing else.** It is exempt from both coverage rows — no host test
+constructs one and no baseline renders one — so anything in a root that a test would want to assert
+is code that has quietly stopped being visible as untested. When you find logic in one, the fix is to
+move it to a judged module and give it a seam, not to leave it and note the exemption. `Server/App`
+was carrying a server host with four failure sentences nobody could reach; moving it out is what made
+them assertable.
+
+**`Main` is a layer name rather than a list of today's roots**, which is what lets the coverage
+predicates ask which layer a file is in. Two of the three used to be `Presentation` modules, and
+every place that mattered had to name them one by one — this skill, `architecture.md`, the manifest
+header, and a clause in each of the two scope predicates saying that one particular `Presentation`
+module is not one.
 
 The server's `Api/Presentation` is a presentation layer in the same sense as the client's —
 domain-to-wire mapping plus routes. It has no `Ui` sibling because it has no views, and it is not a

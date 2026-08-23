@@ -13,7 +13,7 @@
 		2D2E0F87B05427345965A345 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B372D7F4A8791B0E72A5251 /* Assets.xcassets */; };
 		33B58A6F600E98AEA6F8AC0F /* PairingNotReadyViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2884262C6A16078B1FE142E1 /* PairingNotReadyViewSnapshotTests.swift */; };
 		411058ABACC03600B1261054 /* FixedScaleImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249BF11BEAE3E0E2B0126269 /* FixedScaleImage.swift */; };
-		4537938604663A6B9699EF30 /* ServerAppPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = DC675B33476B33B9153DC215 /* ServerAppPresentation */; };
+		4537938604663A6B9699EF30 /* ServerAppMain in Frameworks */ = {isa = PBXBuildFile; productRef = 8657EFC9E8FD989519FC21B5 /* ServerAppMain */; };
 		5016868BE96A124944176434 /* SettingsWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7E508296916D2C7E1C463F /* SettingsWindowTests.swift */; };
 		528A2CEC660A5049C037AD8A /* ServerDiscoveryViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */; };
 		57C90F1B18A97EB554E254D6 /* GeneralSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307603AAB69780B0D3A792B3 /* GeneralSettingsViewSnapshotTests.swift */; };
@@ -24,7 +24,7 @@
 		926C7C8715CB3B9C65008973 /* AddRepositoriesSheetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */; };
 		A555327E526815742E23C992 /* GranitaSettingsScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */; };
 		D392DB3CFE446E8426AAA986 /* AdvancedSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B7A80F9019B431F80F87EE /* AdvancedSettingsViewSnapshotTests.swift */; };
-		D9A5B4AAEA7F84B2F76589E0 /* ClientAppPresentation in Frameworks */ = {isa = PBXBuildFile; productRef = 369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */; };
+		D9A5B4AAEA7F84B2F76589E0 /* ClientAppMain in Frameworks */ = {isa = PBXBuildFile; productRef = 6781F42DC76C9598B45BEFC8 /* ClientAppMain */; };
 		E317D22222204F7F3B622EA0 /* MenuBarLabelSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C30A9E302D3F01525EFEEA /* MenuBarLabelSnapshotTests.swift */; };
 		E7F6AB9B8358DC951E0EC94E /* GranitaMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */; };
 		F0838C2B10B545CCF67FF561 /* GranitaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */; };
@@ -82,7 +82,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D9A5B4AAEA7F84B2F76589E0 /* ClientAppPresentation in Frameworks */,
+				D9A5B4AAEA7F84B2F76589E0 /* ClientAppMain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,7 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4537938604663A6B9699EF30 /* ServerAppPresentation in Frameworks */,
+				4537938604663A6B9699EF30 /* ServerAppMain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,7 +258,7 @@
 			);
 			name = GranitaMobile;
 			packageProductDependencies = (
-				369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */,
+				6781F42DC76C9598B45BEFC8 /* ClientAppMain */,
 			);
 			productName = GranitaMobile;
 			productReference = F97E4BC6F28CE4A30011888B /* GranitaMobile.app */;
@@ -278,7 +278,7 @@
 			);
 			name = GranitaMac;
 			packageProductDependencies = (
-				DC675B33476B33B9153DC215 /* ServerAppPresentation */,
+				8657EFC9E8FD989519FC21B5 /* ServerAppMain */,
 			);
 			productName = GranitaMac;
 			productReference = C11FFC228F9E6F34066874BD /* GranitaMac.app */;
@@ -781,23 +781,23 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		369C38B3AD650F9D8E8360F3 /* ClientAppPresentation */ = {
+		6781F42DC76C9598B45BEFC8 /* ClientAppMain */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ClientAppPresentation;
+			productName = ClientAppMain;
 		};
 		73708ADF568FC34A53BB9302 /* SnapshotTesting */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4C2BC932A5F84D41AEE4935A /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
 			productName = SnapshotTesting;
 		};
+		8657EFC9E8FD989519FC21B5 /* ServerAppMain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ServerAppMain;
+		};
 		8C48D413A221B85C8A6A3993 /* SnapshotTesting */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4C2BC932A5F84D41AEE4935A /* XCRemoteSwiftPackageReference "swift-snapshot-testing" */;
 			productName = SnapshotTesting;
-		};
-		DC675B33476B33B9153DC215 /* ServerAppPresentation */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ServerAppPresentation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

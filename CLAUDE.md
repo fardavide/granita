@@ -77,6 +77,7 @@ There is no single chain. Each layer depends on `Domain` and on nothing else in 
 | `Data` | `Domain` | `Ui`, `Presentation` |
 | `Ui` | `Domain`, SwiftUI | `Presentation`, `Data` |
 | `Presentation` | `Ui`, `Domain` | `Data` |
+| `Main` | anything — it is a composition root | — nothing may depend on **it** |
 
 Enforced by the target graph in `Package.swift`: a dependency a target does not declare does not
 compile. `Data` and the two view layers never meet — they are siblings over `Domain`, not a
@@ -85,8 +86,11 @@ pipeline.
 **`Presentation` depends on `Ui`, not the other way round.** `Ui` is the inner view layer —
 stateless views that take what they render and report what happened. `Presentation` owns the view
 models and composes screens from them. Only three modules import a `Data` target, because wiring
-implementations into protocols is their job: `ClientAppPresentation`, `ServerAppPresentation`, and
-the `granita-server` executable.
+implementations into protocols is their job: they are the **`Main`** layer — `ClientAppMain`,
+`ServerAppMain`, and the `granita-server` executable at `Server/Cli/Main`.
+
+**A `Main` module holds wiring and nothing else.** It is exempt from both coverage rows, so logic
+left in one is untested code that no longer looks untested. Move it out and give it a seam.
 
 ## Conventions that differ from defaults
 

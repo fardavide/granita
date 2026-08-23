@@ -4,6 +4,17 @@ Where the project is. Update this when a slice lands.
 
 **Version 0.0.14.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
 
+**The composition roots are a layer now, `Main`, and that is not a rename for tidiness.** Two of the
+three were filed under `Presentation` while being neither, so the exemption they need could not be
+read off a path — it was written out by hand in five places, two of them clauses inside the coverage
+scope predicates that decide whether a pull request may merge. Both clauses are gone: one became a
+layer name matched the way `Ui` is, and the other disappeared outright. **The rows stay judged**,
+because the predicate selects exactly the files it always did. What came out of the Mac's root with
+it is the part that was never wiring: a server host whose four failure sentences no test could reach,
+now `TransportResolvingServerHost` beside the host it wraps and asserted line by line, and the wake
+source, which turned out to be reachable by a host test after all rather than needing the exemption
+it was moved out expecting.
+
 **Projects is built, and it is the security boundary.** Nothing on this Mac is visible until a
 repository is added *and* switched on, and the tab keeps those two verbs apart at every point: a
 folder scan opens a sheet, its results never enter the list, there is no *Select All*, and everything
@@ -128,8 +139,8 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 361 package tests in 38 suites, plus
-  the snapshot suite on a simulator.
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 543 package tests in 57 suites, plus
+  the snapshot suite on a simulator and the Mac's on the machine itself.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
 - **The TLS identity and pairing.** A self-signed P-256 certificate generated at first run and kept

@@ -73,9 +73,16 @@ class TestPathClassification:
         # Excluded from both scopes now, which is what makes them symmetric: no host test constructs
         # a composition root, and no baseline renders one either — rendering `GranitaMacScene` means
         # launching the app.
-        assert not coverage.is_view_path("Server/App/Presentation/MacComposition.swift")
-        assert not coverage.is_view_path("Server/App/Presentation/GranitaMacScene.swift")
-        assert not coverage.is_view_path("Client/App/Presentation/GranitaMobileScene.swift")
+        assert not coverage.is_view_path("Server/App/Main/MacComposition.swift")
+        assert not coverage.is_view_path("Server/App/Main/GranitaMacScene.swift")
+        assert not coverage.is_view_path("Client/App/Main/GranitaMobileScene.swift")
+
+    def test_given_a_screen_in_a_composition_root_when_classifying_then_it_is_not_view_code(self):
+        # The clause that used to say this explicitly is gone, and this is what replaced it: `Main`
+        # is neither `Ui` nor `Presentation`, so a file named like a screen does not select on the
+        # name alone. Worth a test rather than a comment, because the two predicates read as though
+        # the suffix were sufficient.
+        assert not coverage.is_view_path("Server/App/Main/GranitaSettingsScreen.swift")
 
     def test_given_a_domain_or_data_file_when_classifying_then_it_is_not_view_code(self):
         assert not coverage.is_view_path("Core/Diff/Domain/UnifiedDiffParser.swift")
@@ -91,8 +98,10 @@ class TestPathClassification:
         assert coverage.is_view_path("Client/Api/Presentation/SomeScreen.swift")
 
     def test_given_a_composition_root_when_classifying_then_no_host_test_reaches_it(self):
-        assert not coverage.is_reachable_path("Server/App/Presentation/MacComposition.swift")
-        assert not coverage.is_reachable_path("Client/App/Presentation/GranitaMobileScene.swift")
+        # One layer name for all three, which is what the `Main` rename bought: the executable
+        # already lived at `Server/Cli/Main`, and the two app roots were the odd ones out.
+        assert not coverage.is_reachable_path("Server/App/Main/MacComposition.swift")
+        assert not coverage.is_reachable_path("Client/App/Main/GranitaMobileScene.swift")
         assert not coverage.is_reachable_path("Server/Cli/Main/GranitaServer.swift")
 
     def test_given_a_view_body_when_classifying_then_no_host_test_reaches_it(self):
@@ -116,8 +125,8 @@ class TestPathClassification:
     def test_given_a_model_or_a_parser_when_classifying_then_a_host_test_reaches_it(self):
         assert coverage.is_reachable_path("Server/Mac/Presentation/ServerMacModel.swift")
         assert coverage.is_reachable_path("Core/Diff/Domain/UnifiedDiffParser.swift")
-        # An App directory that is not a composition root is ordinary code. The pair is what names
-        # one, not the word on its own.
+        # An App directory that is not a composition root is ordinary code. The layer is what names
+        # one, not the word "App" on its own.
         assert coverage.is_reachable_path("Client/App/Domain/Session.swift")
         # Named per file rather than per directory, so what sits beside the Keychain store is still
         # measured — which is the whole reason the exemption is a list of files.
@@ -212,7 +221,7 @@ class TestCollect:
                 export(
                     [
                         ("/w/Packages/Granita/Client/Connection/Ui/Discovery.swift", (0, 40), (0, 9)),
-                        ("/w/Packages/Granita/Server/App/Presentation/MacComposition.swift", (0, 90), (0, 30)),
+                        ("/w/Packages/Granita/Server/App/Main/MacComposition.swift", (0, 90), (0, 30)),
                         ("/w/Packages/Granita/Server/Cli/Main/GranitaServer.swift", (0, 190), (0, 60)),
                         # A model in a Presentation module is an ordinary object a test constructs,
                         # so it stays judged — the exclusion is the drawing layer, not the layer above.
