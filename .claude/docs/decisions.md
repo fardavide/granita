@@ -2150,3 +2150,32 @@ a test opens is what a reader opens.
 The assertion is read back from the **document**, not from the screen. A row that redraws itself
 while nothing is written is precisely the defect this kind of test exists to catch, and a test that
 read the toggle back off the toggle would pass in that case.
+
+## The address conversion is public so that all four of its answers can be decided by a test
+
+`LocalAddresses.current()` reports whatever this machine has up at the instant it is called, which
+makes it a poor thing to assert against and a worse thing to measure. Its IPv6 branch ran only when
+an IPv6 address happened to be up, and the **link-local rejection ran only when one happened to be
+link-local** — so the one case with a consequence a reader would ever meet, a certificate naming an
+address that matches nothing, was covered by luck rather than by a test. The unsupported-family
+branch, which in production runs on every interface a Mac has because every interface reports a
+link-layer address alongside its IP ones, was asserted by nothing at all.
+
+Davide chose fixing the nondeterminism over widening the coverage gate, and the split is the fix:
+the enumeration stays what it honestly is — a smoke test against the real machine, which is the only
+thing that can say `getifaddrs` still works — and the pure conversion becomes
+`certifiableAddress(of:)`, fed fixed `sockaddr_in` and `sockaddr_in6` values.
+
+**Public rather than `@testable`.** Nothing in this repository imports a module that way, and
+starting here would buy one test's convenience with a convention. The function is also a nameable
+unit on its own terms: it answers *what address, if any, can a certificate carry here*, which is why
+a link-layer address and a link-local one both come back as nothing.
+
+**It cannot move to `Domain`.** `sockaddr` is Darwin's, and a `Domain` target sees Foundation and no
+framework. So it stays in `Data` beside the enumeration that feeds it.
+
+**The boundary cases are the point, and they were confirmed to fail.** Link-local is `fe80::/10`, so
+what decides it is the top two bits of the second byte rather than the whole byte — `febf::1` is the
+last address inside the range and `fec0::1` the first outside. Rewriting the guard as
+`read[1] != 0x80`, which is the plausible wrong version, turns the `febf::1` case red and leaves
+everything else green. A test that only ever tried `fe80::1` would have passed against both.
