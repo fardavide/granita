@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 
 import CoreDiffDomain
@@ -21,13 +22,15 @@ struct ProjectsSettingsViewSnapshotTests {
         let name: String
         let projects: [ManagedProject]
         let failure: ProjectsFailure?
+        /// Which row is highlighted, which is the only state in which the minus is operable.
+        let selected: ProjectID?
 
         var testDescription: String { name }
 
         static let all: [Subject] = [
             // The first run, and the state the whole product does nothing in. Both verbs are offered
             // once each.
-            Subject(name: "nothing-added", projects: [], failure: nil),
+            Subject(name: "nothing-added", projects: [], failure: nil, selected: nil),
             // The three rows the frames draw: one switched on with its figure complete, one added
             // and off, and one whose folder moved.
             Subject(
@@ -40,7 +43,8 @@ struct ProjectsSettingsViewSnapshotTests {
                     project(name: "aura", path: "/Developer/aura", isVisible: true,
                             contents: .folderNotFound, changes: .counting)
                 ],
-                failure: nil
+                failure: nil,
+                selected: nil
             ),
             // The moment after the tab opens, which on ten real repositories lasts a while. The
             // second line is drawn rather than absent, so nothing below it moves when it arrives.
@@ -49,10 +53,14 @@ struct ProjectsSettingsViewSnapshotTests {
                 projects: [
                     project(name: "granita", path: "/Developer/granita", isVisible: true,
                             contents: .worktrees(count: 4), changes: .counting),
-                    project(name: "bandlab-android", path: "/Developer/bandlab-android", isVisible: true,
-                            contents: .worktrees(count: 16), changes: .counted(0))
+                    // On a volume rather than under the home directory, which is where a
+                    // monorepo this size ends up — and the one path the tilde cannot shorten.
+                    project(name: "bandlab-android", path: "/Volumes/Work/bandlab-android",
+                            isVisible: true, contents: .worktrees(count: 16), changes: .counted(0),
+                            underHome: false)
                 ],
-                failure: nil
+                failure: nil,
+                selected: nil
             ),
             // A folder still there and no longer a checkout, which `Locate…` cannot fix and which is
             // therefore worded differently from a folder that moved.
@@ -62,7 +70,8 @@ struct ProjectsSettingsViewSnapshotTests {
                     project(name: "notes", path: "/Developer/notes", isVisible: false,
                             contents: .notARepository, changes: .counting)
                 ],
-                failure: nil
+                failure: nil,
+                selected: nil
             ),
             // Nothing was written. Our sentence, the system's underneath — the same idiom General's
             // refused login item uses, and the reason a switch never springs back in silence.
@@ -75,7 +84,23 @@ struct ProjectsSettingsViewSnapshotTests {
                 failure: ProjectsFailure(
                     sentence: "That change could not be saved.",
                     reason: "No space left on device"
-                )
+                ),
+                selected: nil
+            ),
+            // A row picked, which is the only state the minus can be pressed in. Held as a binding
+            // rather than as the view's own state precisely so this picture can exist — otherwise
+            // every baseline shows a permanently grey control and asserts nothing about the one that
+            // works.
+            Subject(
+                name: "a-row-selected",
+                projects: [
+                    project(name: "granita", path: "/Developer/granita", isVisible: true,
+                            contents: .worktrees(count: 4), changes: .counted(2)),
+                    project(name: "oltre", path: "/Developer/oltre", isVisible: false,
+                            contents: .worktrees(count: 2), changes: .counting)
+                ],
+                failure: nil,
+                selected: ProjectID(canonicalPath: "/Developer/oltre")
             )
         ]
 
@@ -84,12 +109,13 @@ struct ProjectsSettingsViewSnapshotTests {
             path: String,
             isVisible: Bool,
             contents: ProjectContents,
-            changes: WorktreesWithChanges
+            changes: WorktreesWithChanges,
+            underHome: Bool = true
         ) -> ManagedProject {
             ManagedProject(
                 id: ProjectID(canonicalPath: path),
                 name: name,
-                path: NSHomeDirectory() + path,
+                path: underHome ? NSHomeDirectory() + path : path,
                 isVisible: isVisible,
                 contents: contents,
                 worktreesWithChanges: changes
@@ -103,10 +129,12 @@ struct ProjectsSettingsViewSnapshotTests {
         appearance: MacAppearance
     ) {
         // given - when - then
+        var selection = subject.selected
         assertSettingsSnapshot(
             ProjectsSettingsView(
                 projects: subject.projects,
                 failure: subject.failure,
+                selection: Binding(get: { selection }, set: { selection = $0 }),
                 onSetVisible: { _, _ in },
                 onAddRepository: {},
                 onScanFolder: {},

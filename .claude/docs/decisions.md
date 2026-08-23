@@ -1943,3 +1943,51 @@ Rejected outright: making the switch's disabled state flip the project off while
 missing. Turning off something a person turned on, while they are not looking, is a decision this app
 does not get to make — and a project switched off by the app is indistinguishable, a week later, from
 one they switched off themselves.
+
+## A Mac baseline of a pane that is not a `Form` was rendering on white, and in dark that hid a control
+
+Every Settings pane before Projects was a `Form` with `.formStyle(.grouped)`, which paints its own
+background across the whole pane. Projects is a bordered list and a plus/minus bar, so it paints
+none — and the snapshot host renders the **view**, not the window, so what came out was the pane
+flattened onto nothing, which is white.
+
+In light that is nearly right and hides the problem. **In dark it is catastrophic and silent**: the
+pane's own foreground is light, so the add and remove buttons and the footnote under the list came
+out white on white. Sixteen baselines were taken, adopted from the runner, and reviewed — and the
+dark ones were pictures of a control that was not there. That is the exact failure the whole suite
+exists to catch, arriving through the suite itself.
+
+**The fix is in the hosting rather than in the view, and the direction matters.** The product is
+correct as written: in the real Settings window the pane is transparent over the window's own
+background, which is what a pane that is not a `Form` is supposed to be. Painting a background into
+`ProjectsSettingsView` to make the picture right would have been changing the product to flatter a
+test. So `hostedInWindow` puts `windowBackgroundColor` behind whatever it is handed, which is the
+colour the pane really sits on. The status item's helper does **not** get it: a menu bar item is not
+on a window background, and giving its 44 × 22 baseline one would be drawing a backdrop that does not
+exist.
+
+Found by looking at the pictures, which is the rule this project already had and the reason it has
+it. Nothing else would have said so — the suite was green against baselines it had just written.
+
+## The two states §4 argues hardest for were unphotographable, and that was a layering mistake
+
+`AddRepositoriesSheet` held what was ticked as its own `@State`, and `ProjectsSettingsView` held
+which row was selected. Both read like a view's own business and neither is, because of what it
+costs: the states those controls turn **on** could then be reached by nothing but a finger. The
+sheet's confirm was photographed only saying `Add` and greyed out; the footer's `2 chosen of 30`
+never at all; the minus only in the state where it cannot be pressed. Design §4 argues about the
+count being in the verb across a whole paragraph, and the suite had no picture of it.
+
+The coverage gate said the same thing in numbers before the eye did — the Snapshot region row fell
+9.3 points, which is far outside the ~0.3% noise these rows drift by, and every uncovered region was
+in a branch only an interaction could take.
+
+So both move out to the screen that composes them, and both views take a `Binding`. That is what
+`architecture.md` already says a `Ui` module is — *each takes what it renders and reports what
+happened* — and this is the first time the rule has paid a debt rather than merely been followed.
+Two baselines came back with it: a sheet with two ticked, and a list with a row selected.
+
+Rejected: adding a parameter to the views that only a test would pass, which is the same picture
+bought by making the production initialiser lie about what the view needs. And rejected: accepting
+the lower number as honest, on the grounds that a snapshot cannot click — it can, once the thing it
+would have clicked is a value it is handed.

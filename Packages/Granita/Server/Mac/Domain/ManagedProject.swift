@@ -144,15 +144,6 @@ public enum FolderScan: Hashable, Sendable {
     case scanning(root: URL)
 
     case found(root: URL, candidates: [RepositoryCandidate])
-
-    /// The folder that was scanned, which the sheet names in both states so the count it reports is
-    /// a scan's report rather than a surprise.
-    public var root: URL {
-        switch self {
-        case .scanning(let root): root
-        case .found(let root, _): root
-        }
-    }
 }
 
 /// What a folder scan refuses to look inside, and how far it goes.

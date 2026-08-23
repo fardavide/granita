@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import SwiftUI
 
+import CoreDiffDomain
 import ServerMacUi
 
 /// Granita's Settings window.
@@ -32,6 +33,15 @@ public struct GranitaSettingsScreen: View {
     public static let windowSize = CGSize(width: 620, height: 560)
 
     private let model: ServerMacModel
+
+    /// Which project row is highlighted, and which scanned repositories are ticked.
+    ///
+    /// Held here rather than inside the two views that read them, because a `Ui` view is a
+    /// vocabulary of stateless views and these are the states its controls turn on. Kept out of
+    /// `ServerMacModel` for the opposite reason: neither outlives the window, and a model that
+    /// remembered a highlighted row would be remembering something about a screen.
+    @State private var selectedProject: ProjectID?
+    @State private var chosenCandidates: Set<String> = []
 
     public init(model: ServerMacModel) {
         self.model = model
@@ -64,6 +74,7 @@ public struct GranitaSettingsScreen: View {
                 ProjectsSettingsView(
                     projects: model.projects,
                     failure: model.projectsFailure,
+                    selection: $selectedProject,
                     onSetVisible: { isVisible, id in
                         Task { await model.setProjectVisible(isVisible, id: id) }
                     },
@@ -78,6 +89,9 @@ public struct GranitaSettingsScreen: View {
                         Task { await model.addProject(atFolder: folder) }
                     },
                     onScanFolder: {
+                        // Cleared here rather than when the sheet closes, so a second scan never
+                        // opens with the previous one's ticks against a different folder's list.
+                        chosenCandidates = []
                         guard let folder = Self.pickFolder(
                             prompt: "Scan",
                             message: "Choose a folder to look for git repositories in. Nothing is added yet."
@@ -107,6 +121,7 @@ public struct GranitaSettingsScreen: View {
                     if let scan = model.folderScan {
                         AddRepositoriesSheet(
                             scan: scan,
+                            chosen: $chosenCandidates,
                             onAdd: { chosen in Task { await model.addScannedProjects(chosen) } },
                             onCancel: { model.dismissFolderScan() }
                         )

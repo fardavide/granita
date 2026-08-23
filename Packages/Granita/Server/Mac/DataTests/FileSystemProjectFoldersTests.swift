@@ -232,6 +232,60 @@ struct FileSystemProjectFoldersTests {
     }
 
     @Test
+    func `given a symbolic link to a repository when scanning then it is not offered`() async throws {
+        // given — a link is somewhere else's directory reached by a second name. Following one
+        // offers the same repository twice, and a link pointing back up the tree is a walk that does
+        // not end.
+        let scenario = try Scenario(worktrees: [], isDirty: false)
+        try scenario.makeRepository(at: "real")
+        try FileManager.default.createSymbolicLink(
+            at: scenario.root.appending(path: "shortcut"),
+            withDestinationURL: scenario.root.appending(path: "real")
+        )
+
+        // when
+        let found = await scenario.sut.repositories(under: scenario.root)
+
+        // then
+        #expect(found.map(\.relativePath) == ["real"])
+    }
+
+    @Test
+    func `given a folder the file system will not list when scanning then the rest still is`(
+    ) async throws {
+        // given — a scan reports what it found. Refusing outright because one directory somewhere
+        // under a home folder could not be read is a sheet that answers nothing.
+        let scenario = try Scenario(worktrees: [], isDirty: false)
+        try scenario.makeRepository(at: "keeper")
+        let closed = try scenario.makeDirectory(at: "closed")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: closed.path(percentEncoded: false))
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: closed.path(percentEncoded: false)) }
+
+        // when
+        let found = await scenario.sut.repositories(under: scenario.root)
+
+        // then
+        #expect(found.map(\.relativePath) == ["keeper"])
+    }
+
+    @Test
+    func `given a folder path with a trailing separator when its contents are read then it is the same folder`(
+    ) async throws {
+        // given — a folder picked from `NSOpenPanel` is a directory URL, and an identifier is a hash
+        // of the path: the same folder spelled two ways is two projects that cannot both be on.
+        let scenario = try Scenario(worktrees: ["/repo"], isDirty: false)
+        let repository = try scenario.makeDirectory(at: "repo")
+
+        // when
+        let contents = await scenario.sut.contents(
+            ofFolderAt: repository.path(percentEncoded: false) + "/"
+        )
+
+        // then
+        #expect(contents == .worktrees(count: 1))
+    }
+
+    @Test
     func `given a folder that is not there when it is scanned then nothing is found`() async throws {
         // given
         let scenario = try Scenario(worktrees: [], isDirty: false)

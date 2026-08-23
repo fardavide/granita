@@ -435,11 +435,14 @@ struct ServerMacModelTests {
             worktreesWithChanges: [:]
         )
 
-        // when
-        await scenario.sut.addProject(atFolder: URL(filePath: "/picked"))
+        // when — a directory URL with the trailing separator `NSOpenPanel` really hands back. An
+        // identifier is a hash of the path, so the same folder spelled two ways would be two
+        // projects that cannot both be switched on.
+        await scenario.sut.addProject(atFolder: URL(filePath: "/picked", directoryHint: .isDirectory))
 
         // then
         #expect(scenario.sut.projects.map(\.name) == ["picked"])
+        #expect(scenario.sut.projects[0].path == "/picked")
         #expect(scenario.sut.projects[0].isVisible == false)
     }
 
@@ -463,6 +466,107 @@ struct ServerMacModelTests {
             sentence: "That folder is not a git repository.",
             reason: nil
         ))
+    }
+
+    @Test
+    func `given a folder that is not there when it is added then it is refused with a reason`() async {
+        // given — a folder can be picked and then moved before the panel is dismissed, and the
+        // sentence has to be the true one rather than the one about repositories.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.addProject(atFolder: URL(filePath: "/gone"))
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "That folder is not there any more.",
+            reason: nil
+        ))
+    }
+
+    @Test
+    func `given a document a newer Granita wrote when a switch is flipped then nothing is destroyed`(
+    ) async {
+        // given — the other refusal the store can give, and the one where repeating its words would
+        // say nothing: there is no system string, only a fact about the document.
+        let scenario = Scenario(
+            projects: [storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/oltre": .worktrees(count: 1)],
+            worktreesWithChanges: [:],
+            storeFailure: .documentIsFromANewerVersion
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.setProjectVisible(true, id: ProjectID(canonicalPath: "/oltre"))
+
+        // then
+        #expect(scenario.sut.projects[0].isVisible == false)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "A newer version of Granita wrote this Mac's settings, so they were left alone.",
+            reason: nil
+        ))
+    }
+
+    @Test
+    func `given a project that is no longer listed when it is located then nothing happens`() async {
+        // given — the sheet and the list are read at different moments, and a project removed in
+        // between is one this cannot move.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.relocateProject(
+            id: ProjectID(canonicalPath: "/never-added"),
+            to: URL(filePath: "/somewhere")
+        )
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == nil)
+    }
+
+    @Test
+    func `given a scan sheet is up when it is dismissed then nothing is added`() async {
+        // given
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")]
+        )
+        await scenario.sut.scanForRepositories(under: URL(filePath: "/dev"))
+
+        // when
+        scenario.sut.dismissFolderScan()
+
+        // then — results never enter the list uninvited, and closing the sheet is the invitation
+        // being declined.
+        #expect(scenario.sut.folderScan == nil)
+        #expect(scenario.sut.projects.isEmpty)
+    }
+
+    @Test
+    func `given the store refuses when scanned repositories are added then it stops at the first`(
+    ) async {
+        // given — a store that will not write will not write the second one either, and thirty
+        // identical failures is thirty writes nobody asked for after the answer was known.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            storeFailure: .notWritable(reason: "Read-only file system")
+        )
+
+        // when
+        await scenario.sut.addScannedProjects([
+            RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one"),
+            RepositoryCandidate(path: "/dev/two", name: "two", relativePath: "two")
+        ])
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure?.reason == "Read-only file system")
     }
 
     @Test

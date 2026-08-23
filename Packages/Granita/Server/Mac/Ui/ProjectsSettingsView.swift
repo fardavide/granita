@@ -19,19 +19,23 @@ public struct ProjectsSettingsView: View {
 
     private let projects: [ManagedProject]
     private let failure: ProjectsFailure?
+
+    /// Which row is highlighted, and therefore what the minus would remove.
+    ///
+    /// Handed in rather than held, for the same reason the sheet's ticks are: held here, the only
+    /// state in which the minus is operable is one a baseline could never render, so the picture
+    /// would show a permanently grey control and assert nothing about the one that works.
+    private let selection: Binding<ProjectID?>
     private let onSetVisible: (Bool, ProjectID) -> Void
     private let onAddRepository: () -> Void
     private let onScanFolder: () -> Void
     private let onRemove: (ProjectID) -> Void
     private let onLocate: (ProjectID) -> Void
 
-    /// A selection is a view's own state and nothing else's: nothing outside this pane has an
-    /// opinion about which row is highlighted, and it does not survive the window closing.
-    @State private var selection: ProjectID?
-
     public init(
         projects: [ManagedProject],
         failure: ProjectsFailure?,
+        selection: Binding<ProjectID?>,
         onSetVisible: @escaping (Bool, ProjectID) -> Void,
         onAddRepository: @escaping () -> Void,
         onScanFolder: @escaping () -> Void,
@@ -40,6 +44,7 @@ public struct ProjectsSettingsView: View {
     ) {
         self.projects = projects
         self.failure = failure
+        self.selection = selection
         self.onSetVisible = onSetVisible
         self.onScanFolder = onScanFolder
         self.onAddRepository = onAddRepository
@@ -82,7 +87,7 @@ public struct ProjectsSettingsView: View {
     // MARK: - The list
 
     @ViewBuilder private var list: some View {
-        List(projects, selection: $selection) { project in
+        List(projects, selection: selection) { project in
             row(project)
         }
         .listStyle(.bordered(alternatesRowBackgrounds: true))
@@ -219,15 +224,15 @@ public struct ProjectsSettingsView: View {
             .help("Add a repository, or scan a folder for them")
 
             Button {
-                if let selection { onRemove(selection) }
+                if let removing = selection.wrappedValue { onRemove(removing) }
             } label: {
                 Image(systemName: "minus")
             }
             .buttonStyle(.borderless)
-            .disabled(selection == nil)
+            .disabled(selection.wrappedValue == nil)
             // A disabled control that does not say why is a different unanswerable question, and
             // this one has an answer worth one line.
-            .help(selection == nil ? "Select a project to remove it" : "Remove the selected project")
+            .help(selection.wrappedValue == nil ? "Select a project to remove it" : "Remove the selected project")
 
             Spacer()
             Text("Only the projects switched on here can be read by a paired device.")

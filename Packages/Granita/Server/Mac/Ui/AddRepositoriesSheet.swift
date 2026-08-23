@@ -15,19 +15,26 @@ import ServerMacDomain
 public struct AddRepositoriesSheet: View {
 
     private let scan: FolderScan
+
+    /// Which candidates are ticked, by path.
+    ///
+    /// Handed in rather than held, which is what a `Ui` view is for — and it is not only tidiness:
+    /// held as `@State`, the two states the frames actually draw, `2 chosen of 30` and
+    /// `Add 2 Repositories`, could be reached by nothing but a finger. A baseline renders a view
+    /// nobody has clicked.
+    private let chosen: Binding<Set<String>>
+
     private let onAdd: ([RepositoryCandidate]) -> Void
     private let onCancel: () -> Void
 
-    /// Which candidates are ticked. A sheet's own state and nothing else's — it exists for as long
-    /// as the sheet does, and dismissing without adding is meant to lose it.
-    @State private var chosen: Set<String> = []
-
     public init(
         scan: FolderScan,
+        chosen: Binding<Set<String>>,
         onAdd: @escaping ([RepositoryCandidate]) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.scan = scan
+        self.chosen = chosen
         self.onAdd = onAdd
         self.onCancel = onCancel
     }
@@ -114,9 +121,9 @@ public struct AddRepositoriesSheet: View {
     @ViewBuilder private func list(_ candidates: [RepositoryCandidate]) -> some View {
         List(candidates) { candidate in
             Toggle(isOn: Binding(
-                get: { chosen.contains(candidate.path) },
+                get: { chosen.wrappedValue.contains(candidate.path) },
                 set: { isChosen in
-                    if isChosen { chosen.insert(candidate.path) } else { chosen.remove(candidate.path) }
+                    if isChosen { chosen.wrappedValue.insert(candidate.path) } else { chosen.wrappedValue.remove(candidate.path) }
                 }
             )) {
                 HStack(spacing: 10) {
@@ -159,7 +166,7 @@ public struct AddRepositoriesSheet: View {
     /// something is, which is the other time there is anything to say.
     @ViewBuilder private var note: some View {
         if case .found(_, let candidates) = scan, candidates.isEmpty == false {
-            if chosen.isEmpty {
+            if chosen.wrappedValue.isEmpty {
                 Text(
                     """
                     Added repositories start switched off. Nothing becomes visible to a device until \
@@ -170,7 +177,7 @@ public struct AddRepositoriesSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             } else {
-                Text(verbatim: "\(chosen.count) chosen of \(candidates.count)")
+                Text(verbatim: "\(chosen.wrappedValue.count) chosen of \(candidates.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -186,15 +193,15 @@ public struct AddRepositoriesSheet: View {
     @ViewBuilder private var confirm: some View {
         if case .found(_, let candidates) = scan, candidates.isEmpty == false {
             Button {
-                onAdd(candidates.filter { chosen.contains($0.path) })
+                onAdd(candidates.filter { chosen.wrappedValue.contains($0.path) })
             } label: {
-                Text(verbatim: chosen.isEmpty
+                Text(verbatim: chosen.wrappedValue.isEmpty
                     ? "Add"
-                    : "Add \(chosen.count) \(chosen.count == 1 ? "Repository" : "Repositories")")
+                    : "Add \(chosen.wrappedValue.count) \(chosen.wrappedValue.count == 1 ? "Repository" : "Repositories")")
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.defaultAction)
-            .disabled(chosen.isEmpty)
+            .disabled(chosen.wrappedValue.isEmpty)
         }
     }
 }

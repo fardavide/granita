@@ -129,7 +129,23 @@ func assertStatusItemSnapshot(
 /// from in here.
 @MainActor
 func hostedInWindow(_ view: some View, appearance: MacAppearance) -> NSView {
-    hosted(view, appearance: appearance, size: GranitaSettingsScreen.windowSize)
+    // **The window's own colour, painted behind the pane, and it is not decoration.**
+    //
+    // A pane that draws no background of its own — which is every pane that is not a `Form` with
+    // `.formStyle(.grouped)` — renders here against nothing, and nothing flattens to white. In light
+    // that is nearly right and hides the problem; in dark it is catastrophic and silent, because the
+    // pane's own foreground is *light*: Projects' add and remove buttons and its footnote came out
+    // white on white, invisible in a baseline whose whole job is to notice a control disappearing.
+    // Snapshotting the view rather than the window is what makes this necessary — and snapshotting
+    // the view is what the geometry assertion below needs.
+    //
+    // Only the Settings panes get it. A status item is not on a window background, and giving its
+    // 44×22 baseline one would be drawing a backdrop that does not exist.
+    hosted(
+        view.background(Color(nsColor: .windowBackgroundColor)),
+        appearance: appearance,
+        size: GranitaSettingsScreen.windowSize
+    )
 }
 
 @MainActor
