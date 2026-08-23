@@ -906,6 +906,21 @@ struct ServerMacModelTests {
     }
 
     @Test
+    func `given the server is still binding when Devices is opened then it says a code is being made`() async {
+        // given — a bind takes a moment and a rebind after waking takes longer. "Nothing is serving"
+        // during it sends a reader holding a phone to General to fix something already happening.
+        let scenario = Scenario(states: [.starting])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then
+        #expect(scenario.sut.pairingOffer == .preparing)
+        #expect(scenario.invitations.invitations == 0)
+    }
+
+    @Test
     func `given nothing is serving when Devices is opened then it says pairing needs the server`() async {
         // given
         let scenario = Scenario(states: [.failed(reason: "the local network is blocked")])

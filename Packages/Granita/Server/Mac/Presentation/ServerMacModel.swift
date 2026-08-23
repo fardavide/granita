@@ -459,7 +459,17 @@ public final class ServerMacModel {
     /// **A live code is left up until its replacement lands.** Going back through `.preparing` on
     /// every ask would blink the QR at the one moment somebody is pointing a camera at it.
     public func offerPairing() async {
-        guard case .running(let endpoint) = serverState else {
+        let endpoint: ServerEndpoint
+        switch serverState {
+        case .running(let running):
+            endpoint = running
+        case .starting:
+            // Not *not serving*. A bind takes a moment and a rebind after waking takes longer, and
+            // for that moment "nothing is serving" is a sentence that sends a reader with a phone in
+            // their hand to the General tab to fix something that is already happening.
+            pairingOffer = .preparing
+            return
+        case .failed, .stopped:
             pairingOffer = .serverNotRunning
             return
         }
