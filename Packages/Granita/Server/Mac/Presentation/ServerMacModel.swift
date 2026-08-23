@@ -48,6 +48,14 @@ public final class ServerMacModel {
     /// only way out of it is a reader choosing.
     public private(set) var folderScan: FolderScan?
 
+    /// Which of a scan's results are ticked, by path.
+    ///
+    /// Beside ``folderScan`` rather than inside the sheet, for the same reason that is here: both
+    /// belong to one act a reader is halfway through, and both die when it ends. It also makes the
+    /// count in the confirm button something a test can assert rather than something only a finger
+    /// can produce.
+    public private(set) var chosenCandidatePaths: Set<String> = []
+
     /// Why the last thing this tab tried to write did not happen, in the store's own words.
     ///
     /// Not drawn by the frames, and built anyway. Every control on this tab writes to the store, and
@@ -73,6 +81,8 @@ public final class ServerMacModel {
     private let loginItems: any LoginItemRegistry
     private let gitInstallations: any GitInstallations
     private let projectFolders: any ProjectFolders
+    private let folderPicker: any FolderPicking
+    private let gestures: any SystemGestures
     private let store: any Store
     private let now: @Sendable () -> Date
 
@@ -83,6 +93,8 @@ public final class ServerMacModel {
         loginItems: any LoginItemRegistry,
         gitInstallations: any GitInstallations,
         projectFolders: any ProjectFolders,
+        folderPicker: any FolderPicking,
+        gestures: any SystemGestures,
         store: any Store,
         dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
@@ -93,6 +105,8 @@ public final class ServerMacModel {
         self.loginItems = loginItems
         self.gitInstallations = gitInstallations
         self.projectFolders = projectFolders
+        self.folderPicker = folderPicker
+        self.gestures = gestures
         self.store = store
         self.dataFolderUrl = dataFolderUrl
         self.now = now
@@ -129,6 +143,27 @@ public final class ServerMacModel {
     /// Runs the git that was found, which is the only way to learn whether it works.
     public func loadGitInstallation() async {
         gitInstallation = await gitInstallations.current()
+    }
+
+    // MARK: - The gestures a pane performs on the system around it
+
+    /// Puts this Mac's address where a `curl` can be pasted, which is the one real use for it.
+    ///
+    /// Reads the endpoint here rather than taking a string from the view, so the copy and the row
+    /// cannot spell it differently — and copies nothing at all when there is nothing to copy, which
+    /// is the state the row draws an em dash in.
+    public func copyAddress() async {
+        guard case .running(let endpoint) = serverState else { return }
+        await gestures.copyToPasteboard("\(endpoint.host):\(endpoint.port)")
+    }
+
+    /// Finder, pointed at the document actually in use rather than at where it usually lives.
+    public func revealDataFolder() async {
+        await gestures.revealInFinder(dataFolderUrl)
+    }
+
+    public func openSystemSettings(_ pane: SystemSettingsPane) async {
+        await gestures.openSystemSettings(pane)
     }
 
     // MARK: - Projects
@@ -193,6 +228,7 @@ public final class ServerMacModel {
     /// chosen repository to learn something already known.
     public func addScannedProjects(_ candidates: [RepositoryCandidate]) async {
         folderScan = nil
+        chosenCandidatePaths = []
         for candidate in candidates {
             guard await write({ () async throws(StoreError) in try await store.add(project: Self.project(atPath: candidate.path)) }) else {
                 break
@@ -226,6 +262,40 @@ public final class ServerMacModel {
         await loadProjects()
     }
 
+    /// Asks for a repository and adds it.
+    ///
+    /// **This flow used to begin in a view body with an `NSOpenPanel`, and that was the defect.**
+    /// A pick decides — a folder, or a reader who changed their mind — and a decision taken inside a
+    /// `body` is one no test can supply either side of. Here it is three lines a fake can drive.
+    public func addProjectFromPicker() async {
+        guard let folder = await folderPicker.pickFolder(
+            prompt: "Add",
+            message: "Choose a git repository to add. It arrives switched off."
+        ) else { return }
+        await addProject(atFolder: folder)
+    }
+
+    /// Asks for a folder and looks inside it.
+    public func scanFolderFromPicker() async {
+        // Cleared before the pick rather than after it, so a second scan never opens carrying the
+        // previous one's ticks against a different folder's list.
+        chosenCandidatePaths = []
+        guard let folder = await folderPicker.pickFolder(
+            prompt: "Scan",
+            message: "Choose a folder to look for git repositories in. Nothing is added yet."
+        ) else { return }
+        await scanForRepositories(under: folder)
+    }
+
+    /// Asks where a project went, and moves it there.
+    public func locateProjectFromPicker(id: ProjectID) async {
+        guard let folder = await folderPicker.pickFolder(
+            prompt: "Locate",
+            message: "Choose where this repository is now."
+        ) else { return }
+        await relocateProject(id: id, to: folder)
+    }
+
     /// Looks for repositories under a folder, and puts what it finds in front of a reader rather
     /// than into the list.
     public func scanForRepositories(under root: URL) async {
@@ -238,8 +308,14 @@ public final class ServerMacModel {
         folderScan = .found(root: root, candidates: found.filter { known.contains($0.path) == false })
     }
 
+    /// What the sheet's checkboxes wrote back.
+    public func setChosenCandidatePaths(_ paths: Set<String>) {
+        chosenCandidatePaths = paths
+    }
+
     public func dismissFolderScan() {
         folderScan = nil
+        chosenCandidatePaths = []
     }
 
     /// Counts what has changed, project by project, into a list that is already on screen.

@@ -639,6 +639,159 @@ struct ServerMacModelTests {
         #expect(offered.map(\.name) == ["two"])
     }
 
+    // MARK: - The gestures that used to be AppKit calls inside a view body
+
+    @Test
+    func `given a repository is picked when adding from the picker then it is added switched off`(
+    ) async {
+        // given — the whole flow, driven end to end. It used to start in a view body with an
+        // `NSOpenPanel`, which is why every branch of it was uncovered: a view cannot be asked what
+        // it did with the answer.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: ["/picked": .worktrees(count: 1)],
+            worktreesWithChanges: [:],
+            pickedFolder: URL(filePath: "/picked", directoryHint: .isDirectory)
+        )
+
+        // when
+        await scenario.sut.addProjectFromPicker()
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["picked"])
+        #expect(scenario.sut.projects[0].isVisible == false)
+    }
+
+    @Test
+    func `given the reader changes their mind when adding from the picker then nothing happens`(
+    ) async {
+        // given — a cancelled pick is not an event. Nothing happened, and nothing on this tab
+        // should move because somebody thought better of it.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.addProjectFromPicker()
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == nil)
+    }
+
+    @Test
+    func `given a folder is picked when scanning from the picker then the sheet opens on it`() async {
+        // given
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")],
+            pickedFolder: URL(filePath: "/dev", directoryHint: .isDirectory)
+        )
+
+        // when
+        await scenario.sut.scanFolderFromPicker()
+
+        // then
+        guard case .found(_, let offered) = scenario.sut.folderScan else {
+            Issue.record("expected a finished scan, got \(String(describing: scenario.sut.folderScan))")
+            return
+        }
+        #expect(offered.map(\.name) == ["one"])
+    }
+
+    @Test
+    func `given a cancelled pick when scanning then no sheet opens`() async {
+        // given
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.scanFolderFromPicker()
+
+        // then — a sheet that opened empty because somebody cancelled a folder picker would be a
+        // second thing to dismiss for no reason.
+        #expect(scenario.sut.folderScan == nil)
+    }
+
+    @Test
+    func `given a folder is picked when locating a project then it moves there`() async {
+        // given
+        let scenario = Scenario(
+            projects: [StoredProject(
+                id: ProjectID(canonicalPath: "/old/aura"),
+                path: "/old/aura",
+                name: "aura",
+                isVisible: true
+            )],
+            folderContents: ["/old/aura": .folderNotFound, "/new/aura": .worktrees(count: 3)],
+            worktreesWithChanges: [:],
+            pickedFolder: URL(filePath: "/new/aura", directoryHint: .isDirectory)
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.locateProjectFromPicker(id: ProjectID(canonicalPath: "/old/aura"))
+
+        // then
+        #expect(scenario.sut.projects[0].path == "/new/aura")
+    }
+
+    @Test
+    func `given the server is up when the address is copied then it reaches the pasteboard`() async {
+        // given — the assertion that could not be made while this was an `NSPasteboard` call in a
+        // view: whether the string a reader gets is the one the row shows.
+        let scenario = Scenario(
+            states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))]
+        )
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.copyAddress()
+
+        // then — host and port and nothing in front of them, which is General's own call: a scheme
+        // would have to be `https` under a self-signed identity, and pasting that into a browser
+        // produces a certificate warning rather than an answer.
+        #expect(await scenario.gestures.copied == ["MacBook-Pro.local:59144"])
+    }
+
+    @Test
+    func `given the server is not up when the address is copied then nothing is put on the pasteboard`(
+    ) async {
+        // given — the row draws an em dash in this state, and copying one would be worse than
+        // copying nothing.
+        let scenario = Scenario(states: [.failed(reason: "the local network is blocked")])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.copyAddress()
+
+        // then
+        #expect(await scenario.gestures.copied.isEmpty)
+    }
+
+    @Test
+    func `when the data folder is revealed then Finder is pointed at the folder in use`() async {
+        // given — and the folder in use is what `--store` moved it to, not the default one.
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.revealDataFolder()
+
+        // then
+        #expect(await scenario.gestures.revealed == [scenario.sut.dataFolderUrl])
+    }
+
+    @Test
+    func `when Local Network settings are asked for then that is the pane opened`() async {
+        // given
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.openSystemSettings(.localNetwork)
+
+        // then
+        #expect(await scenario.gestures.opened == [.localNetwork])
+    }
+
     // MARK: - Locate, which is a move rather than an edit
 
     @Test
@@ -713,6 +866,8 @@ private struct Scenario {
     let restarts: FakeServerRestarting
     let store: FakeStore
     let folders: FakeProjectFolders
+    let picker: FakeFolderPicking
+    let gestures: FakeSystemGestures
 
     init(
         states: [ServerRunState] = [],
@@ -725,6 +880,7 @@ private struct Scenario {
         folderContents: [String: ProjectContents] = [:],
         worktreesWithChanges: [String: Int] = [:],
         candidates: [RepositoryCandidate] = [],
+        pickedFolder: URL? = nil,
         storeFailure: StoreError? = nil,
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
@@ -736,6 +892,8 @@ private struct Scenario {
             worktreesWithChanges: worktreesWithChanges,
             candidates: candidates
         )
+        picker = FakeFolderPicking(folder: pickedFolder)
+        gestures = FakeSystemGestures()
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
@@ -743,6 +901,8 @@ private struct Scenario {
             loginItems: loginItems,
             gitInstallations: FakeGitInstallations(installation: git),
             projectFolders: folders,
+            folderPicker: picker,
+            gestures: gestures,
             store: store,
             dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }

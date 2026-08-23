@@ -33,6 +33,8 @@ enum SettingsScreenFakes {
             loginItems: FakeLoginItems(),
             gitInstallations: FakeGitInstallations(installation: git),
             projectFolders: FakeProjectFolders(),
+            folderPicker: FakeFolderPicker(),
+            gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
@@ -114,6 +116,17 @@ private struct FakeProjectFolders: ProjectFolders {
     func contents(ofFolderAt path: String) -> ProjectContents { .worktrees(count: 2) }
     func worktreesWithChanges(inFolderAt path: String) -> Int { 1 }
     func repositories(under root: URL) -> [RepositoryCandidate] { [] }
+}
+
+/// Nobody is at the keyboard of a snapshot, and nothing here opens a panel.
+private struct FakeFolderPicker: FolderPicking {
+    func pickFolder(prompt: String, message: String) -> URL? { nil }
+}
+
+private struct FakeGestures: SystemGestures {
+    func copyToPasteboard(_ text: String) {}
+    func revealInFinder(_ url: URL) {}
+    func openSystemSettings(_ pane: SystemSettingsPane) {}
 }
 
 private actor FakeStore: Store {

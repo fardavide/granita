@@ -105,6 +105,8 @@ final class MacComposition {
             loginItems: ServiceLoginItemRegistry(),
             gitInstallations: ProcessGitInstallations(git: git, executablePath: gitPath),
             projectFolders: FileSystemProjectFolders(service: service),
+            folderPicker: AppKitFolderPicker(),
+            gestures: AppKitSystemGestures(),
             store: store,
             dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }

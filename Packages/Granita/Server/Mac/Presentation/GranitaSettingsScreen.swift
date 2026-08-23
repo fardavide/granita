@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import SwiftUI
 
@@ -34,14 +33,13 @@ public struct GranitaSettingsScreen: View {
 
     private let model: ServerMacModel
 
-    /// Which project row is highlighted, and which scanned repositories are ticked.
+    /// Which project row is highlighted.
     ///
-    /// Held here rather than inside the two views that read them, because a `Ui` view is a
-    /// vocabulary of stateless views and these are the states its controls turn on. Kept out of
-    /// `ServerMacModel` for the opposite reason: neither outlives the window, and a model that
-    /// remembered a highlighted row would be remembering something about a screen.
+    /// The one piece of state this screen still holds, and it holds it because nothing else has an
+    /// opinion: a highlight drives no I/O, changes nothing on disk, and dies with the window. What
+    /// is *ticked in the scan sheet* looked like the same kind of thing and is not — it decides what
+    /// a confirm button will add — so it lives on the model with the scan it belongs to.
     @State private var selectedProject: ProjectID?
-    @State private var chosenCandidates: Set<String> = []
 
     public init(model: ServerMacModel) {
         self.model = model
@@ -62,10 +60,10 @@ public struct GranitaSettingsScreen: View {
                         get: { model.loginItem == .on },
                         set: { enabled in Task { await model.setLoginItem(enabled: enabled) } }
                     ),
-                    onCopyAddress: Self.copy,
+                    onCopyAddress: { _ in Task { await model.copyAddress() } },
                     onRestart: { Task { await model.restartServer() } },
-                    onOpenLocalNetworkSettings: { Self.open(Self.localNetworkSettings) },
-                    onOpenLoginItems: { Self.open(Self.loginItemsSettings) }
+                    onOpenLocalNetworkSettings: { Task { await model.openSystemSettings(.localNetwork) } },
+                    onOpenLoginItems: { Task { await model.openSystemSettings(.loginItems) } }
                 )
                 .task { await model.loadLoginItem() }
             }
@@ -78,34 +76,10 @@ public struct GranitaSettingsScreen: View {
                     onSetVisible: { isVisible, id in
                         Task { await model.setProjectVisible(isVisible, id: id) }
                     },
-                    onAddRepository: {
-                        // Only what the picker returns reaches the model. A cancelled pick is not an
-                        // event: nothing happened, and nothing on this tab should move because a
-                        // reader changed their mind.
-                        guard let folder = Self.pickFolder(
-                            prompt: "Add",
-                            message: "Choose a git repository to add. It arrives switched off."
-                        ) else { return }
-                        Task { await model.addProject(atFolder: folder) }
-                    },
-                    onScanFolder: {
-                        // Cleared here rather than when the sheet closes, so a second scan never
-                        // opens with the previous one's ticks against a different folder's list.
-                        chosenCandidates = []
-                        guard let folder = Self.pickFolder(
-                            prompt: "Scan",
-                            message: "Choose a folder to look for git repositories in. Nothing is added yet."
-                        ) else { return }
-                        Task { await model.scanForRepositories(under: folder) }
-                    },
+                    onAddRepository: { Task { await model.addProjectFromPicker() } },
+                    onScanFolder: { Task { await model.scanFolderFromPicker() } },
                     onRemove: { id in Task { await model.removeProject(id: id) } },
-                    onLocate: { id in
-                        guard let folder = Self.pickFolder(
-                            prompt: "Locate",
-                            message: "Choose where this repository is now."
-                        ) else { return }
-                        Task { await model.relocateProject(id: id, to: folder) }
-                    }
+                    onLocate: { id in Task { await model.locateProjectFromPicker(id: id) } }
                 )
                 // Re-read every time the tab is opened rather than once at launch. A folder can be
                 // moved, and a repository can grow a worktree, while Granita is running — and the
@@ -121,7 +95,10 @@ public struct GranitaSettingsScreen: View {
                     if let scan = model.folderScan {
                         AddRepositoriesSheet(
                             scan: scan,
-                            chosen: $chosenCandidates,
+                            chosen: Binding(
+                                get: { model.chosenCandidatePaths },
+                                set: { model.setChosenCandidatePaths($0) }
+                            ),
                             onAdd: { chosen in Task { await model.addScannedProjects(chosen) } },
                             onCancel: { model.dismissFolderScan() }
                         )
@@ -147,7 +124,7 @@ public struct GranitaSettingsScreen: View {
                     dataFolderUrl: model.dataFolderUrl,
                     projectCount: model.storedProjectCount,
                     deviceCount: model.storedDeviceCount,
-                    onRevealDataFolder: { Self.reveal(model.dataFolderUrl) },
+                    onRevealDataFolder: { Task { await model.revealDataFolder() } },
                     onResetAllData: { Task { await model.resetAllData() } }
                 )
                 .task {
@@ -163,56 +140,4 @@ public struct GranitaSettingsScreen: View {
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
     }
 
-    /// AppKit rather than a protocol with a fake behind it. Both of these are one-line system
-    /// gestures with nothing to decide and nothing a test would assert; a seam here would be an
-    /// abstraction invented for a future nobody asked for.
-    private static func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    private static func open(_ url: URL) {
-        NSWorkspace.shared.open(url)
-    }
-
-    /// A folder, chosen by hand, for the three things on Projects that need one.
-    ///
-    /// **The activation dance is the same trap `SettingsOpener` exists for, and SPEC §9 names this
-    /// half of it too.** An `LSUIElement` app runs as `.accessory`, and an accessory app cannot
-    /// bring a panel to the front — the panel would open behind everything, or appear not to open at
-    /// all. It costs one line here because the Settings window that raised it has already switched
-    /// the app to `.regular`; activating anyway is what makes it true when that stops being so.
-    ///
-    /// AppKit directly, like the pasteboard and Finder calls above. There is nothing here to decide
-    /// and nothing a test would assert: a seam would be an abstraction invented for a future nobody
-    /// has asked for.
-    private static func pickFolder(prompt: String, message: String) -> URL? {
-        NSApp.activate()
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = prompt
-        panel.message = message
-        return panel.runModal() == .OK ? panel.url : nil
-    }
-
-    /// Finder, with the folder selected rather than opened, which is what "Reveal" means everywhere
-    /// else on this machine.
-    private static func reveal(_ url: URL) {
-        NSWorkspace.shared.activateFileViewerSelecting([url])
-    }
-
-    /// Privacy & Security › Local Network, and Login Items, addressed directly. Without the first
-    /// one an `NWError` code is the whole explanation a person gets for an app that does nothing.
-    // Force-unwrapped, and justified: both are literals in this file with no runtime input in
-    // them, so the optional can only be nil if the literal beside it is malformed — which is a
-    // compile-time editing mistake and not a state to handle.
-    private static let localNetworkSettings = URL(
-        string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork"
-    )!
-
-    private static let loginItemsSettings = URL(
-        string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
-    )!
 }
