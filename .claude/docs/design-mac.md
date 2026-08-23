@@ -22,12 +22,12 @@ becomes.
 
 | Section | Surface | State |
 |---|---|---|
-| §1 | The status item and its menu | drawn, not built. Blocked behind §5: "Pair a device…" opens Settings on the Devices tab |
-| §2 | The window — five tabs | **partly built in 0.0.10** — fixed at 620 × 560pt with Advanced last. The five tabs land as the panes do; restoring the last-used tab and selecting Projects on a first run land with §4 and §5 |
+| §1 | The status item and its menu | drawn, not built. `settingsRequests` now has a pane to carry: `SettingsTab` exists and the model owns the selection |
+| §2 | The window — five tabs | **all five tabs built as of 0.0.15**, fixed at 620 × 560pt with Advanced last. Restoring the last-used tab and selecting Projects on a first run land with §1 |
 | §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
 | §4 | Projects | **built in 0.0.14**, with baselines. Frames deleted. Two departures, both below: the second figure is filled in progressively, and the scan follows the specification's skip list rather than the sheet's own drawing |
-| §5 | Devices | drawn, not built |
-| §6 | Connections | **its own tab and relaid out in 0.0.11**, with baselines. The `Pair…` affordance is blocked behind §5, which is the door it opens, so the frames stay until then |
+| §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The Allow-from-the-Mac path is still out — no frames and no protocol |
+| §6 | Connections | **its own tab and relaid out in 0.0.11**; the `Pair…` affordance landed in 0.0.15 with the tab it opens. Frames deleted |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
@@ -316,6 +316,24 @@ phone's side.
 
 Should feel like the four-digit code an Apple TV puts on the television.
 
+### Three calls made while building it
+
+**Two states the frames do not draw, and both had to exist.** A code that could not be made — the
+link is signed by an identity out of the login Keychain, which can be locked — gets our sentence with
+the Keychain's own words beneath it and a **Try Again**; and a code that is *being* made, which is the
+honest state before the first one lands rather than a placeholder for something unbuilt. See
+[`decisions.md`](decisions.md).
+
+**The pane fits the 560pt window, and only after the stack was tightened.** The first render put the
+countdown below the fold — the one part of this pane a reader is watching. Ten points of spacing
+between each of five children was the whole difference, and the next line added here will cost the
+same again.
+
+**The words are drawn with a separator the server accepts back.** The frames separate them with a
+middle dot; `SpokenWords.normalised` split on spaces and hyphens only, so a reader who selected the
+line and pasted it would have been refused for the punctuation this tab chose. Also
+[`decisions.md`](decisions.md).
+
 ## §6 — Connections
 
 The one surface that exists. The shape is right and the empty state is the best copy in the app.
@@ -324,7 +342,10 @@ Since premise 1 is already fixed, what remains here is **layout**, not the value
 **A refusal that can be acted on says so.** A served row is a receipt; a refused row is a to-do, and
 it gets the one affordance the served row does not — `Pair…` for no token, `Pair Again…` for a token
 this Mac did not issue. Version skew and rate limiting get no button, because there is nothing on
-this Mac to press. Same list, same order, one axis of difference that means something.
+this Mac to press. Same list, same order, one axis of difference that means something. Built in
+0.0.15 with the tab it opens: inside the window that is a **tab switch**, and which pane is up is the
+model's rather than the window's, so a control whose whole job is to move a reader somewhere is a
+thing a test can ask about.
 
 **Two edits to what the row says.** Drop the word "Refused" — the `xmark.circle` already says it,
 forty-five times down a list, and the space pays for the address and the count. And **print the

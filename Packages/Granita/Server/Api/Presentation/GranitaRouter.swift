@@ -100,7 +100,7 @@ public enum GranitaRouter {
                 await dependencies.failedAttempts.clear(source: source)
                 await dependencies.connectionLog.record(
                     source: source,
-                    outcome: .paired(device: body.deviceName)
+                    outcome: .paired(device: body.deviceName, id: paired.deviceId)
                 )
                 return paired
             } catch let refused as PairingRefusal {
@@ -444,7 +444,10 @@ struct AuthenticationMiddleware: RouterMiddleware {
         }
 
         await dependencies.failedAttempts.clear(source: source)
-        await dependencies.connectionLog.record(source: source, outcome: .accepted(device: device.name))
+        await dependencies.connectionLog.record(
+            source: source,
+            outcome: .accepted(device: device.name, id: device.id)
+        )
         return try await next(request, context)
     }
 }

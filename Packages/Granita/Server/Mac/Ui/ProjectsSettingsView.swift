@@ -18,7 +18,7 @@ import ServerMacDomain
 public struct ProjectsSettingsView: View {
 
     private let projects: [ManagedProject]
-    private let failure: ProjectsFailure?
+    private let failure: StoreWriteFailure?
 
     /// Which row is highlighted, and therefore what the minus would remove.
     ///
@@ -34,7 +34,7 @@ public struct ProjectsSettingsView: View {
 
     public init(
         projects: [ManagedProject],
-        failure: ProjectsFailure?,
+        failure: StoreWriteFailure?,
         selection: Binding<ProjectID?>,
         onSetVisible: @escaping (Bool, ProjectID) -> Void,
         onAddRepository: @escaping () -> Void,

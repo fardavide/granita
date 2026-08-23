@@ -46,7 +46,13 @@ struct PairingRouteTests {
         }
 
         // then
-        #expect(await scenario.attempts().map(\.outcome) == [.paired(device: "Davide's iPhone")])
+        // Against the device the store actually recorded, rather than against a name: the Devices
+        // tab joins a sighting to a row on this identifier, so the row a `paired` line refers to has
+        // to be the one that exists.
+        let recorded = try #require(await scenario.store.state().devices.first)
+        #expect(await scenario.attempts().map(\.outcome) == [
+            .paired(device: "Davide's iPhone", id: recorded.id)
+        ])
     }
 
     // MARK: - Refusals, told apart

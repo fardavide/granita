@@ -28,11 +28,6 @@ final class MacComposition {
 
     let model: ServerMacModel
 
-    /// Assembles what a phone is shown in order to pair. Nothing draws it yet — the pairing screen
-    /// is out at design — but everything under it is here and exercised, which is what the
-    /// Devices tab will be handed when its frames arrive.
-    let invitations: PairingInvitations
-
     /// Bumped when the menu asks for Settings. The window that can actually open it watches this;
     /// see `SettingsOpener` for why it cannot simply be a call.
     private(set) var settingsRequests = 0
@@ -66,7 +61,6 @@ final class MacComposition {
         // certificate that chased the current ones would change its key every time the Mac joined
         // a network, and its key is what every paired phone is pinning.
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
-        invitations = PairingInvitations(pairing: pairing, identities: identities)
 
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
@@ -114,6 +108,7 @@ final class MacComposition {
             folderPicker: AppKitFolderPicker(),
             gestures: AppKitSystemGestures(),
             store: store,
+            invitations: PairingInvitations(pairing: pairing, identities: identities),
             dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }
         )
@@ -121,6 +116,10 @@ final class MacComposition {
         // The server's life is the app's life, not a window's: a `.task` on any view would tie
         // serving to something SwiftUI is free to tear down.
         Task { [model] in await model.followServer() }
+        // Followed from launch rather than from the Connections tab opening, because two tabs read
+        // it now: a device row's *Seen 4 min ago* comes from this log, and a reader who has never
+        // opened Connections would otherwise be told every phone they own has not been seen.
+        Task { [model] in await model.followConnections() }
         Task { await sessions.refresh() }
     }
 

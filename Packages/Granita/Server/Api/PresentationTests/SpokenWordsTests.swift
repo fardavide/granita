@@ -89,6 +89,20 @@ struct SpokenWordsTests {
         #expect(normalised == "delta-pepper-amber-kelp-jasper-meadow")
     }
 
+    @Test func `given the words copied off the Devices tab with its separators then they are the stored form`() {
+        // given
+        // Exactly what design §5 draws under the QR. The tab separates the words with a middle dot,
+        // so a reader who selects the line and pastes it into their phone sends this — and a phone
+        // that has just been shown the code it must type would otherwise be refused for typing it.
+        let copied = "delta · pepper · amber · kelp · jasper · meadow"
+
+        // when
+        let normalised = SpokenWords.normalised(copied)
+
+        // then
+        #expect(normalised == "delta-pepper-amber-kelp-jasper-meadow")
+    }
+
     // MARK: -
 
     /// Whether two words are one substitution, insertion or deletion apart.

@@ -56,11 +56,51 @@ public final class ServerMacModel {
     /// can produce.
     public private(set) var chosenCandidatePaths: Set<String> = []
 
-    /// Why the last thing this tab tried to write did not happen, in the store's own words.
+    /// Why the last thing Projects tried to write did not happen, in the store's own words.
     ///
-    /// Not drawn by the frames, and built anyway. Every control on this tab writes to the store, and
+    /// Not drawn by the frames, and built anyway. Every control on that tab writes to the store, and
     /// a switch that springs back with no explanation is a control that did nothing.
-    public private(set) var projectsFailure: ProjectsFailure?
+    public private(set) var projectsFailure: StoreWriteFailure?
+
+    /// The same, for Devices. Its one write is `Revoke`, and a Revoke that leaves the row where it
+    /// was is the same defect wearing different clothes.
+    public private(set) var devicesFailure: StoreWriteFailure?
+
+    /// Which pane of the Settings window is up.
+    ///
+    /// Here rather than in the window's own `@State`, because it is not only the tab bar that moves
+    /// it: a refused connection offers `Pair…`, whose whole job is to bring the reader to the QR.
+    /// A control whose only effect is a `@State` two layers up is a control nothing can be asked
+    /// about — and this app has already shipped one of those for eight releases.
+    ///
+    /// General on launch. Design §2 wants **Projects** on a first run, which needs the window to
+    /// know what a first run is; that lands with §1's half of the same section.
+    public private(set) var settingsTab: SettingsTab = .general
+
+    /// What the Devices tab can offer a phone right now.
+    ///
+    /// `.preparing` until something has asked, which is honest rather than a placeholder: making a
+    /// code reads the identity out of the Keychain, so there is a real moment before there is one.
+    public private(set) var pairingOffer: PairingOffer = .preparing
+
+    /// Every phone that has paired, with what this run of the app has heard from it.
+    ///
+    /// Derived rather than stored, so a device that connects while the tab is open stops saying it
+    /// has not been seen without anything having to notice. The stored half is what the document
+    /// holds; the sighting is read off the connection log, which is the only thing that knows.
+    public var devices: [PairedDevice] {
+        pairedDevices.map { device in
+            PairedDevice(
+                id: device.id,
+                name: device.name,
+                platform: device.platform,
+                pairedAt: device.pairedAt,
+                // Newest first, so the first match is the latest sighting.
+                sighting: connectionAttempts.first { $0.outcome.deviceId == device.id }
+                    .map { .seen(at: $0.at) } ?? .notSeenSince(startedAt)
+            )
+        }
+    }
 
     /// What a reset would destroy, counted from the store rather than guessed.
     ///
@@ -75,6 +115,12 @@ public final class ServerMacModel {
     /// composition root already had to know it in order to open the store.
     public let dataFolderUrl: URL
 
+    /// When this run of the app began watching, which is as far back as anything it can say about a
+    /// device goes. The connection log is in memory, so a phone last served yesterday and a phone
+    /// never served at all are indistinguishable from here — and the row says so rather than
+    /// implying the first.
+    private let startedAt: Date
+
     private let host: any ServerHosting
     private let restarts: any ServerRestarting
     private let connectionLog: any ConnectionLog
@@ -84,7 +130,9 @@ public final class ServerMacModel {
     private let folderPicker: any FolderPicking
     private let gestures: any SystemGestures
     private let store: any Store
+    private let invitations: any PairingInviting
     private let now: @Sendable () -> Date
+    private var pairedDevices: [StoredDevice] = []
 
     public init(
         host: any ServerHosting,
@@ -96,6 +144,7 @@ public final class ServerMacModel {
         folderPicker: any FolderPicking,
         gestures: any SystemGestures,
         store: any Store,
+        invitations: any PairingInviting,
         dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
     ) {
@@ -108,8 +157,10 @@ public final class ServerMacModel {
         self.folderPicker = folderPicker
         self.gestures = gestures
         self.store = store
+        self.invitations = invitations
         self.dataFolderUrl = dataFolderUrl
         self.now = now
+        startedAt = now()
     }
 
     /// Follows the server for as long as the app is running.
@@ -194,13 +245,17 @@ public final class ServerMacModel {
 
     /// Switches a project on or off, which is the only control on this tab with consequences.
     public func setProjectVisible(_ isVisible: Bool, id: ProjectID) async {
-        guard await write({ () async throws(StoreError) in try await store.setProjectVisible(isVisible, id: id) }) else { return }
+        projectsFailure = await write { () async throws(StoreError) in
+            try await store.setProjectVisible(isVisible, id: id)
+        }
+        guard projectsFailure == nil else { return }
         await loadProjects()
     }
 
     /// Forgets a project. Not the same as switching it off, and the plus/minus bar keeps them apart.
     public func removeProject(id: ProjectID) async {
-        guard await write({ () async throws(StoreError) in try await store.removeProject(id: id) }) else { return }
+        projectsFailure = await write { () async throws(StoreError) in try await store.removeProject(id: id) }
+        guard projectsFailure == nil else { return }
         await loadProjects()
     }
 
@@ -212,12 +267,15 @@ public final class ServerMacModel {
         let path = Self.canonicalPath(of: folder)
         switch await projectFolders.contents(ofFolderAt: path) {
         case .worktrees:
-            guard await write({ () async throws(StoreError) in try await store.add(project: Self.project(atPath: path)) }) else { return }
+            projectsFailure = await write { () async throws(StoreError) in
+                try await store.add(project: Self.project(atPath: path))
+            }
+            guard projectsFailure == nil else { return }
             await loadProjects()
         case .folderNotFound:
-            projectsFailure = ProjectsFailure(sentence: "That folder is not there any more.", reason: nil)
+            projectsFailure = StoreWriteFailure(sentence: "That folder is not there any more.", reason: nil)
         case .notARepository:
-            projectsFailure = ProjectsFailure(sentence: "That folder is not a git repository.", reason: nil)
+            projectsFailure = StoreWriteFailure(sentence: "That folder is not a git repository.", reason: nil)
         }
     }
 
@@ -230,9 +288,10 @@ public final class ServerMacModel {
         folderScan = nil
         chosenCandidatePaths = []
         for candidate in candidates {
-            guard await write({ () async throws(StoreError) in try await store.add(project: Self.project(atPath: candidate.path)) }) else {
-                break
+            projectsFailure = await write { () async throws(StoreError) in
+                try await store.add(project: Self.project(atPath: candidate.path))
             }
+            guard projectsFailure == nil else { break }
         }
         await loadProjects()
     }
@@ -246,7 +305,7 @@ public final class ServerMacModel {
         guard let existing = projects.first(where: { $0.id == id }) else { return }
         let path = Self.canonicalPath(of: folder)
         guard case .worktrees = await projectFolders.contents(ofFolderAt: path) else {
-            projectsFailure = ProjectsFailure(sentence: "That folder is not a git repository.", reason: nil)
+            projectsFailure = StoreWriteFailure(sentence: "That folder is not a git repository.", reason: nil)
             return
         }
         let moved = StoredProject(
@@ -255,10 +314,11 @@ public final class ServerMacModel {
             name: existing.name,
             isVisible: existing.isVisible
         )
-        guard await write({ () async throws(StoreError) in
+        projectsFailure = await write { () async throws(StoreError) in
             try await store.removeProject(id: id)
             try await store.add(project: moved)
-        }) else { return }
+        }
+        guard projectsFailure == nil else { return }
         await loadProjects()
     }
 
@@ -335,26 +395,26 @@ public final class ServerMacModel {
         }
     }
 
-    /// Runs one write and keeps whatever the store refused with, so the tab can say it.
+    /// Runs one write and answers with whatever the store refused it with, or nothing.
     ///
-    /// Returns whether it went through, because every caller's next act is to re-read the list and
-    /// re-reading it after a refusal would draw the same rows twice for no reason.
-    private func write(_ mutation: () async throws(StoreError) -> Void) async -> Bool {
+    /// The answer goes to the tab that asked rather than into one shared property, because two tabs
+    /// write to this document and a Projects refusal appearing under the Devices list would send a
+    /// reader looking in the wrong place. Callers re-read their list only when this is `nil`:
+    /// re-reading after a refusal draws the same rows twice for no reason.
+    private func write(_ mutation: () async throws(StoreError) -> Void) async -> StoreWriteFailure? {
         do {
             try await mutation()
-            projectsFailure = nil
-            return true
+            return nil
         } catch {
-            projectsFailure = switch error {
+            return switch error {
             case .notWritable(let reason):
-                ProjectsFailure(sentence: "That change could not be saved.", reason: reason)
+                StoreWriteFailure(sentence: "That change could not be saved.", reason: reason)
             case .documentIsFromANewerVersion:
-                ProjectsFailure(
+                StoreWriteFailure(
                     sentence: "A newer version of Granita wrote this Mac's settings, so they were left alone.",
                     reason: nil
                 )
             }
-            return false
         }
     }
 
@@ -375,6 +435,52 @@ public final class ServerMacModel {
         var path = folder.standardizedFileURL.path(percentEncoded: false)
         if path.count > 1, path.hasSuffix("/") { path.removeLast() }
         return path
+    }
+
+    /// Brings a pane to the front, whether a reader clicked the tab bar or pressed something that
+    /// leads here.
+    public func showSettingsTab(_ tab: SettingsTab) {
+        settingsTab = tab
+    }
+
+    // MARK: - Devices
+
+    /// Reads the phones this Mac has paired with.
+    public func loadDevices() async {
+        pairedDevices = await store.state().devices
+    }
+
+    /// Makes a pairing a phone can redeem, against the address this Mac is actually reachable at.
+    ///
+    /// Asked for again whenever the server's state moves, which is what makes *server not running*
+    /// a state the tab arrives in rather than one it has to be told about — and what puts a working
+    /// code up the moment a rebind succeeds under a reader who is standing there with a phone.
+    ///
+    /// **A live code is left up until its replacement lands.** Going back through `.preparing` on
+    /// every ask would blink the QR at the one moment somebody is pointing a camera at it.
+    public func offerPairing() async {
+        guard case .running(let endpoint) = serverState else {
+            pairingOffer = .serverNotRunning
+            return
+        }
+        do {
+            pairingOffer = .offered(try await invitations.invite(at: endpoint))
+        } catch {
+            pairingOffer = switch error {
+            case .noIdentity(let reason): .unavailable(reason: reason)
+            }
+        }
+    }
+
+    /// Forgets a device, so its token stops working.
+    ///
+    /// The phone is not told, and cannot be: it holds the only copy of a token this Mac no longer
+    /// recognises, so what it meets next is a refusal — which is why the connection log's
+    /// *Token not issued by this Mac* row carries a `Pair Again…` and is the other half of this.
+    public func revokeDevice(id: String) async {
+        devicesFailure = await write { () async throws(StoreError) in try await store.removeDevice(id: id) }
+        guard devicesFailure == nil else { return }
+        await loadDevices()
     }
 
     // MARK: - Advanced

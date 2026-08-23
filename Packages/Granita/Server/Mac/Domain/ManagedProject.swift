@@ -111,27 +111,6 @@ public struct RepositoryCandidate: Hashable, Sendable, Identifiable {
     }
 }
 
-/// Why something this tab was asked to do did not happen.
-///
-/// Two fields rather than one string, because this product's failure idiom is our sentence with the
-/// system's demoted to small print — the same shape General's refused login item and the phone's
-/// discovery failure already use. A store that refuses says `No space left on device`, which is true
-/// and is not a sentence anybody wrote for a reader.
-public struct ProjectsFailure: Hashable, Sendable {
-
-    /// Ours, and always present.
-    public let sentence: String
-
-    /// The system's, when there is one. Absent where the refusal was ours to word in the first
-    /// place, because repeating our own sentence in small print underneath it says nothing twice.
-    public let reason: String?
-
-    public init(sentence: String, reason: String?) {
-        self.sentence = sentence
-        self.reason = reason
-    }
-}
-
 /// A folder scan, from the moment it is asked for to the moment a reader chooses.
 ///
 /// There is no failed case, and that is deliberate rather than optimistic: a scan reports what it

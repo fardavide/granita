@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CorePairingDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerMacPresentation
@@ -36,6 +37,7 @@ enum SettingsScreenFakes {
             folderPicker: FakeFolderPicker(),
             gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
+            invitations: FakeInvitations(),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
             now: { Date(timeIntervalSince1970: 1_755_864_000) }
@@ -55,6 +57,8 @@ enum SettingsScreenFakes {
         await model.loadGitInstallation()
         await model.loadStoredCounts()
         await model.loadProjects()
+        await model.loadDevices()
+        await model.offerPairing()
     }
 }
 
@@ -121,6 +125,27 @@ private struct FakeProjectFolders: ProjectFolders {
 /// Nobody is at the keyboard of a snapshot, and nothing here opens a panel.
 private struct FakeFolderPicker: FolderPicking {
     func pickFolder(prompt: String, message: String) -> URL? { nil }
+}
+
+/// A code that never changes, because the picture of it is compared byte for byte.
+///
+/// The expiry is far enough ahead of the model's clock that the bar in the window's own baselines is
+/// full rather than at whatever fraction the arithmetic happened to land on. What a countdown looks
+/// like part-way through is `DevicesSettingsViewSnapshotTests`' business.
+private struct FakeInvitations: PairingInviting {
+
+    func invite(at endpoint: ServerEndpoint) -> PairingInvitation {
+        PairingInvitation(
+            link: PairingLink(
+                host: endpoint.host,
+                port: endpoint.port,
+                code: "0f3a1c7b9e2d4a6c8b0e5f7a3d1c9b2e",
+                fingerprint: SpkiFingerprint(rawValue: "kZ8Qk1p3mR7vN2xT4yL6sB9wC0dF5gH8jK1lM3nP7qU=")
+            ),
+            spokenCode: "delta-pepper-amber-kelp-jasper-meadow",
+            expiresAt: Date(timeIntervalSince1970: 1_755_864_120)
+        )
+    }
 }
 
 private struct FakeGestures: SystemGestures {

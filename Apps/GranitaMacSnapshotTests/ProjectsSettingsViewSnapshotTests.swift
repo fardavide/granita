@@ -21,7 +21,7 @@ struct ProjectsSettingsViewSnapshotTests {
 
         let name: String
         let projects: [ManagedProject]
-        let failure: ProjectsFailure?
+        let failure: StoreWriteFailure?
         /// Which row is highlighted, which is the only state in which the minus is operable.
         let selected: ProjectID?
 
@@ -81,7 +81,7 @@ struct ProjectsSettingsViewSnapshotTests {
                     project(name: "granita", path: "/Developer/granita", isVisible: false,
                             contents: .worktrees(count: 4), changes: .counting)
                 ],
-                failure: ProjectsFailure(
+                failure: StoreWriteFailure(
                     sentence: "That change could not be saved.",
                     reason: "No space left on device"
                 ),

@@ -2225,3 +2225,127 @@ regions on the runner to 54 of 54 everywhere.
 **Three files, one defect.** A pure function reachable only through something that varies by machine
 is not tested, however green the suite looks — and the coverage row saying so was read as noise twice
 before the export was there to settle it.
+
+## The pairing invitation is a `Domain` type, because the tab that draws it cannot see the layer that makes it
+
+`PairingInvitations` lives in `ServerApiPresentation`, behind Hummingbird, and `ServerMacPresentation`
+may not depend on it — a `Presentation` target depending on another one is not a rule with an
+exception for this. So the Devices tab could not simply call the thing that assembles a code.
+
+What moved is the **value and the question**, not the assembly: `PairingInvitation` and a
+`PairingInviting` protocol are in `ServerApiDomain` now, and the existing type conforms. That module
+gained one dependency, `CorePairingDomain`, which is what a link is defined in. The composition root
+wires the conformer in, exactly as it does for every other edge.
+
+**The error changed shape on the way, and that is the half worth recording.** `invite` threw
+`ServerIdentityError` — a Keychain vocabulary, in a signature the Devices tab would have had to
+translate. It now throws `PairingInvitationError.noIdentity(reason:)`, carrying the sentence rather
+than the status code, and the four sentences themselves moved to `ServerIdentityError.explanation` in
+`ServerIdentityDomain` because **two surfaces say them about one fault**: an identity this Mac cannot
+read stops it serving *and* stops it offering a code, and a reader who meets both should not be given
+two vocabularies for the same locked keychain. `TransportResolvingServerHost` lost its private copy.
+
+`PairingInvitation.lifetime` moved with the type for the same class of reason `ConnectionAttempt.logCapacity`
+is in a `Domain` module: the countdown fills a bar against it and cannot see the actor that enforces
+it, and a second copy of `120` is a bar that empties at a different rate than the code expires.
+`Pairing.codeLifetime` is now that constant rather than a second literal.
+
+## The connection log carries a device identifier beside the name, and the Devices tab is why
+
+*Seen 4 min ago* is a join between a paired device and the log of what has reached this Mac, and the
+only key the log had was `device.name` — which is whatever the phone's owner called it. Two phones
+can carry one string, and a sighting landing on the wrong row is the kind of wrong that reads as
+right: nothing looks broken, and the row says something false about the one fact a reader came to
+this tab for.
+
+So `ConnectionOutcome.accepted` and `.paired` carry `id` as well. Nothing rendered changes — the log
+prints the name and always did — and the router had the identifier at both call sites already.
+
+**The sighting is derived rather than stored.** The model keeps the stored devices and computes the
+rows from them and the current log reading, so a phone that connects while the tab is open stops
+saying it has not been seen without anything having to notice. That is also why **following the log
+moved to the composition root**: it used to start when the Connections tab opened, and a reader who
+had never opened that tab would have been told every phone they own had not been seen. It is an
+in-memory list of fifty, so following it from launch costs a continuation.
+
+## Two states of §5 that the frames do not draw, and one they draw that is now false
+
+The false one first: **the plaintext warning under the QR is not built.** It was true of 0.0.6 and
+0.0.7 landed TLS and a real `spki=`; `design-mac.md` already says so, and this is the pull request
+that had the chance to reintroduce it and did not.
+
+The two that had to exist:
+
+- **A code that could not be made.** The link is signed by an identity out of the login Keychain,
+  which can be locked or half-removed, and a pane that silently showed nothing would be the same
+  defect as the dead row this project shipped for eight releases. Our sentence — *No pairing code
+  could be made* — with the Keychain's own words underneath and a **Try Again**, which is this
+  product's failure idiom everywhere else.
+- **A code being made.** `.preparing` is the honest state before the first one lands, because reading
+  the identity is real work. It is not a placeholder for something unbuilt.
+
+**Whether a code has expired is decided from a `now` the pane is handed**, not from a clock read
+inside `body`. Same reason the connection log's elapsed time is handed in: a state derived from the
+moment of drawing is a state no baseline can photograph, and *expired* is precisely the state that
+matters most. The pane's `TimelineView` steps once a second rather than the log's once a minute,
+because the smallest thing on screen here is a seconds digit.
+
+**The window fits it, but only just, and the stack had to be tightened to make that true.** The first
+render put *Expires in 1:46 / Single use* below the fold of the 560pt window design §2 sized from
+this pane — ten points of spacing between each of five children was the whole difference. Recorded
+because the next person to add a line here will spend it.
+
+**`Revoke` is red on its label rather than tinted.** A tinted bordered button fills its bezel, and a
+row with a solid red block in it reads as an alarm that has already gone off rather than as something
+to press.
+
+**The date reads *paired August 3* rather than the review's *paired 3 August*.** The order is
+`Date.FormatStyle`'s under the reader's locale, and the baselines pin `en_US_POSIX`. Forcing
+day-before-month would be overriding a system decision to match the language the review happens to be
+written in.
+
+## Which Settings pane is up is the model's, not the window's
+
+`Pair…` on a refused connection row has exactly one job: bring the reader to the QR. Inside an open
+window that is a tab switch rather than a settings request — an open window cannot open itself — and
+the obvious way to build it is a `@State` on the screen.
+
+That is the shape this project has already shipped a dead control in. A control whose only effect is
+a `@State` two layers up is a control nothing can be asked about: no host test can reach it, and a
+`TabView` hosted outside a `Settings` scene draws no tab bar, so no baseline can see it either. So
+`SettingsTab` is a `ServerMacDomain` type and `ServerMacModel` owns the selection, which makes "the
+control did something" an assertion rather than a claim.
+
+It is also what §1 needs: the menu bar's *Pair a device…* has to open this window **on Devices**, so
+`settingsRequests` will have to carry a pane rather than being a bare counter.
+
+**What is still owed is pressing it.** The model transition is asserted; the closure that calls it is
+one line in a `…Screen`, which no kind of test in this repository reaches — the macOS UI target
+exists and has never been allowed to run. That is the same gap `decisions.md` records above, and it
+closes with the Accessibility grant rather than with more unit tests.
+
+## The words on screen are typeable, which they were not going to be
+
+Design §5 draws the six words separated by middle dots, and `SpokenWords.normalised` split on spaces,
+hyphens and tabs. A reader who selected that line and pasted it into their phone would have sent
+`delta-·-pepper-…` and been refused — with a reason naming the code, on a screen that had just shown
+them the code.
+
+The dot is a separator now. Found by writing the row, not by using it, which is the only reason it is
+not a defect somebody would have hit once and been unable to describe.
+
+## The QR is `Ui`, and CoreImage is not a fourth dependency
+
+`CIQRCodeGenerator` is a system filter, and turning a value into pixels for rendering is `Ui` work in
+the same sense SPEC §8 already pins Highlightr to `ClientViewerUi`: highlighting produces attributed
+strings for rendering. Nothing in `PairingQrCode` decides anything — the link is the contract and the
+picture is a function of it.
+
+**It sizes itself from the module count rather than filling a fixed square**, which is why design §5
+gives the size as a range. A 53-module code squeezed into 240pt puts some modules at four points and
+others at five, and that unevenness is what a scanner reads as noise. Four points per module, eight
+pixels per module, so the bitmap is an exact 2× of the drawn size and an exact 2:1 downsample at 1×.
+
+**White behind it in both appearances**, which is functional rather than a hardcoded colour: a QR
+inverted for dark mode is one most scanners will not read, and this is the one surface where a reader
+is holding a camera up to the screen.

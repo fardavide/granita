@@ -71,6 +71,24 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.15 — 2026-08-23
+- **Settings has a Devices tab, and it is where a phone gets in.** A QR code big enough to scan from
+  across a desk, the six words underneath it for when the camera will not cooperate, and a bar
+  counting down the two minutes a code lasts. The words are a real second credential, not a caption:
+  either one pairs the same device, and either one dies when the other is spent.
+- **Every phone that has paired is listed, with a Revoke beside it.** Each row leads with the fact
+  that is true — the platform and the day it paired — and adds *Seen 4 min ago* only when this Mac
+  has actually served that device since Granita started. A device it has not heard from says so, and
+  says how far back it has been listening, rather than showing a stale date that reads like an
+  accusation.
+- **A code that ran out says so instead of quietly failing on the phone.** The QR dims behind *Code
+  expired* with a **New Code** button, because from the phone's side an expired code and a wrong one
+  look exactly the same.
+- **A refused connection now offers to fix itself.** In the Connections tab, a device turned away for
+  having no token gets **Pair…**, and one whose token this Mac never issued gets **Pair Again…** —
+  both open the Devices tab. Version mismatches and rate limiting get no button, because there is
+  nothing on this Mac to press for either.
+
 ### 0.0.14 — 2026-08-23
 - **Settings has a Projects tab, and it is where you decide what your phone may read.** Nothing on
   this Mac is visible until you add a repository here and switch it on, and those are two separate

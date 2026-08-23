@@ -52,7 +52,9 @@ struct ConnectionLogRecordingTests {
 
         // then
         let attempts = await scenario.recordedAttempts()
-        #expect(attempts.first?.outcome == .accepted(device: "Davide's iPhone"))
+        // The identifier beside the name, because the Devices tab joins its *Seen 4 min ago* on it —
+        // and a device's name is whatever its owner called it, so two of them can share one.
+        #expect(attempts.first?.outcome == .accepted(device: "Davide's iPhone", id: paired.deviceId))
     }
 
     @Test

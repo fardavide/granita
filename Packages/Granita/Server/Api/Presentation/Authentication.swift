@@ -3,6 +3,7 @@ import Foundation
 
 import CoreApiDomain
 import CorePairingDomain
+import ServerApiDomain
 import ServerStoreDomain
 
 /// Offers pairings and turns them into tokens.
@@ -14,7 +15,10 @@ public actor Pairing {
 
     /// SPEC §8's window. Long enough to point a camera at a screen, short enough that a photograph
     /// of one is worthless by the time anyone finds it.
-    public static let codeLifetime: TimeInterval = 120
+    ///
+    /// The number itself lives one layer down, on the invitation, because the Devices tab fills a
+    /// bar against it and cannot see this actor.
+    public static let codeLifetime = PairingInvitation.lifetime
 
     private let store: any Store
     private let now: @Sendable () -> Date
