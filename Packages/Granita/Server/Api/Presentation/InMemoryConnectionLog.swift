@@ -38,23 +38,24 @@ public actor InMemoryConnectionLog: ConnectionLog {
             )
         }
         recorded = Array(recorded.prefix(ConnectionAttempt.logCapacity))
-        for reader in readers.values {
-            reader.yield(recorded)
+        // A reader that has gone away is dropped here rather than announcing its own departure.
+        // The obvious arrangement — `onTermination` hopping through a detached `Task` to remove
+        // itself — worked, and its removal was reachable by no test: whether that task ran before
+        // a process finished was a race, which showed up as a coverage row moving 0.1% on a runner
+        // and not on a laptop for a branch that touched nothing near it. Pruning on the next write
+        // is synchronous, is on a path every test already drives, and holds one terminated
+        // continuation until the next attempt at worst.
+        for (reader, continuation) in Array(readers) {
+            if case .terminated = continuation.yield(recorded) {
+                readers[reader] = nil
+            }
         }
     }
 
     public func attempts() -> AsyncStream<[ConnectionAttempt]> {
         let (stream, continuation) = AsyncStream<[ConnectionAttempt]>.makeStream()
-        let reader = UUID()
-        readers[reader] = continuation
-        continuation.onTermination = { [weak self] _ in
-            Task { await self?.stopReading(reader) }
-        }
+        readers[UUID()] = continuation
         continuation.yield(recorded)
         return stream
-    }
-
-    private func stopReading(_ reader: UUID) {
-        readers[reader] = nil
     }
 }

@@ -106,6 +106,29 @@ struct InMemoryConnectionLogTests {
     }
 
     @Test
+    func `given a panel that was closed when another opens then it reads everything recorded since`() async {
+        // given — a reader that has gone away, which is what closing the Settings window leaves
+        // behind. It is dropped on the next write rather than announcing its own departure: the
+        // arrangement that did announce it hopped through a detached task, so whether the removal
+        // ran at all was a race, and the only thing that ever noticed was a coverage row moving on
+        // one machine and not another.
+        let log = InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 1_000) })
+        do {
+            _ = await log.attempts()
+        }
+
+        // when
+        await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
+        await log.record(source: "192.168.1.7", outcome: .accepted(device: "Davide's iPhone"))
+
+        // then — the panel that opens next is whole, which is the behaviour the pruning must not
+        // cost. A reader removed while it was still being written to would lose an attempt.
+        let attempts = await firstReading(of: log)
+        #expect(attempts.count == 2)
+        #expect(attempts.first?.source == "192.168.1.7")
+    }
+
+    @Test
     func `given one attempt when the panel is read then its row counts one`() async {
         // given
         let log = InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 1_000) })
