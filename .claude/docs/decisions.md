@@ -2202,3 +2202,26 @@ an asynchronous cleanup path with no observable consequence cannot be asserted, 
 Rejected: exposing the reader count so a test could wait for the removal. It is state nothing else
 reads, so it would be API a test alone justifies — and it would have kept the race and merely made it
 survivable, rather than removing it.
+
+### And a third instance, in the one place the product cannot afford it
+
+The same read found `GitInvocation.quotedIfNeeded`'s escape table covered on this laptop and not on
+the runner. It was not a measurement artefact: of the four escapes git's C-quoting needs, **only the
+newline had a test.** The carriage return, the backslash and the double quote were reached, when they
+were reached at all, by whatever paths happened to exist in a fixture repository — so a runner with a
+slightly different checkout exercised a different subset, and the row moved for reasons no one had
+written.
+
+The gap matters more than the number. `--stdin-paths` unquotes a line with C escapes once it begins
+with a double quote, so a backslash left bare is read as the start of an escape and **the path git
+hashes is not the path on disk**. That is a wrong content hash, and a wrong content hash silently
+un-marks a file the reader had marked viewed — a defect with no error anywhere, on the one mechanism
+SPEC §5.5 exists to make trustworthy.
+
+`standardInput(for:)` is a pure function over bytes, so all four escapes and the leading-quote
+trigger are now asserted with no filesystem, no git and no fixture. The file went from 49 of 54
+regions on the runner to 54 of 54 everywhere.
+
+**Three files, one defect.** A pure function reachable only through something that varies by machine
+is not tested, however green the suite looks — and the coverage row saying so was read as noise twice
+before the export was there to settle it.

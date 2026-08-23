@@ -255,6 +255,43 @@ struct GitInvocationTests {
         #expect(input.map { String(decoding: $0, as: UTF8.self) } == "\"od\\nd.txt\"\nafter.txt\n")
     }
 
+    @Test(arguments: [
+        ("od\rd.txt", "\"od\\rd.txt\""),
+        ("dir\\file.txt", "\"dir\\\\file.txt\""),
+        ("\"quoted.txt", "\"\\\"quoted.txt\""),
+        ("all\r\n\\\".txt", "\"all\\r\\n\\\\\\\".txt\"")
+    ])
+    func `given a path git would misread when hashing then every escape it needs is written`(
+        path: String,
+        expected: String
+    ) {
+        // given — a newline is the case that splits a path in two, and it was the only one asserted.
+        // The other three are quieter and no less wrong: git unquotes the whole line with C escapes
+        // once it starts with a double quote, so a backslash left bare is read as the start of an
+        // escape and the path git hashes is not the path on disk. A wrong content hash silently
+        // un-marks a file the reader had marked viewed, which is a defect with no error anywhere.
+        let paths = [RepositoryRelativePath(path)]
+
+        // when
+        let input = GitInvocation.standardInput(for: .hashWorktreeFiles(paths: paths))
+
+        // then
+        #expect(input.map { String(decoding: $0, as: UTF8.self) } == expected + "\n")
+    }
+
+    @Test
+    func `given a path with a quote inside it when hashing then it is left alone`() {
+        // given — the quoting is triggered by a leading quote or by a byte that breaks the line
+        // format, not by a quote anywhere. A path git can read back verbatim is sent verbatim.
+        let paths = [RepositoryRelativePath("say\"what.txt")]
+
+        // when
+        let input = GitInvocation.standardInput(for: .hashWorktreeFiles(paths: paths))
+
+        // then
+        #expect(input.map { String(decoding: $0, as: UTF8.self) } == "say\"what.txt\n")
+    }
+
     @Test
     func `given a command that reads nothing when asked for its input then there is none`() {
         // given - when - then
