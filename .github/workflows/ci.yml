@@ -184,6 +184,22 @@ jobs:
       - name: Measure coverage
         run: .github/scripts/measure-coverage.sh
 
+      # The per-file exports, so a row that falls can be diagnosed by reading which files moved
+      # rather than by estimating. Uploaded whatever the gate decides, because the interesting case
+      # is the run that failed and the runner's disk is gone by the time anyone asks.
+      - name: Upload the coverage exports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-exports
+          path: |
+            build/coverage/unit.json
+            build/coverage/snapshot.json
+            build/coverage/all.json
+            build/coverage/summary.json
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Render the report
         run: |
           python3 .github/scripts/coverage.py render \

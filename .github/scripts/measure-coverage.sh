@@ -63,6 +63,12 @@ fi
 
 python3 .github/scripts/coverage.py collect \
     --category unit --export "$UNIT_EXPORT" --out "$OUT" --ref "$REF"
+# Kept beside the other two so the job can upload all three. A row that falls is diagnosed by
+# reading the per-file export and nothing else — this repository has three recorded instances of
+# algebra reaching the wrong conclusion about which files moved a number, and the export settles in
+# one read what estimating kept getting wrong. Without this the only copy is on a runner that is
+# thrown away, and the same question has to be re-asked by pushing another commit.
+cp "$UNIT_EXPORT" "${COVERAGE}/unit.json"
 echo "::endgroup::"
 
 # The merge below needs the binary the profile was written against. `--show-codecov-path` rebuilds
