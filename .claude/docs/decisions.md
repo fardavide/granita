@@ -2179,3 +2179,26 @@ what decides it is the top two bits of the second byte rather than the whole byt
 last address inside the range and `fec0::1` the first outside. Rewriting the guard as
 `read[1] != 0x80`, which is the plausible wrong version, turns the `febf::1` case red and leaves
 everything else green. A test that only ever tried `fe80::1` would have passed against both.
+
+### A reader that has gone away is dropped on the next write, not by announcing its own departure
+
+Found by the artifact above, on the first pull request that had it. `InMemoryConnectionLog` removed a
+finished reader from an `onTermination` closure that hopped through a detached `Task`, and whether
+that task ran before a test process stopped writing its profile was a **race**. It won on this laptop
+and lost on the runner, which surfaced as the Unit and All region rows each falling 0.1% on a branch
+that had touched nothing anywhere near it — the kind of red that reads as "the gate is mis-scoped"
+and is neither that nor a real regression.
+
+`record` now prunes readers whose `yield` reports `.terminated`. That is synchronous, sits on the one
+path every test in that suite already drives, and deletes two regions rather than making them
+reachable: the closure and the private removal are both gone. What it costs is that a finished
+continuation is held until the next attempt is recorded, which is a `UUID` and a continuation.
+
+**This is the same defect as the one the pull request was about**, arriving in a second file — a
+region whose coverage is decided by the machine rather than by a test. Recorded together because the
+tool that found it is the artifact added to diagnose the first, and because the pattern generalises:
+an asynchronous cleanup path with no observable consequence cannot be asserted, only raced.
+
+Rejected: exposing the reader count so a test could wait for the removal. It is state nothing else
+reads, so it would be API a test alone justifies — and it would have kept the race and merely made it
+survivable, rather than removing it.
