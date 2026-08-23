@@ -37,6 +37,11 @@ actor FakeStore: Store {
         })
     }
 
+    func removeProject(id: ProjectID) throws(StoreError) {
+        try refuseIfAsked()
+        stored = replacing(projects: stored.projects.filter { $0.id != id })
+    }
+
     func setAlias(_ alias: String?, for worktree: WorktreeID) throws(StoreError) {
         try refuseIfAsked()
         var worktrees = stored.worktrees

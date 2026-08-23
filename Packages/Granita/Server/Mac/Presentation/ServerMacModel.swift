@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+import CoreDiffDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerStoreDomain
@@ -36,6 +37,23 @@ public final class ServerMacModel {
     /// asking runs a subprocess.
     public private(set) var gitInstallation: GitInstallation = .checking
 
+    /// Every project a reader added, switched on or not, with what this Mac can still find behind
+    /// each. The API's own project list is not this: it describes what is switched **on**, because
+    /// that is all a phone is ever told about.
+    public private(set) var projects: [ManagedProject] = []
+
+    /// What a folder scan turned up, for as long as the sheet showing it is up.
+    ///
+    /// Design §4: results never enter the list uninvited. This is where they wait instead, and the
+    /// only way out of it is a reader choosing.
+    public private(set) var folderScan: FolderScan?
+
+    /// Why the last thing this tab tried to write did not happen, in the store's own words.
+    ///
+    /// Not drawn by the frames, and built anyway. Every control on this tab writes to the store, and
+    /// a switch that springs back with no explanation is a control that did nothing.
+    public private(set) var projectsFailure: ProjectsFailure?
+
     /// What a reset would destroy, counted from the store rather than guessed.
     ///
     /// Two numbers rather than the whole state: this tab counts what exists in order to make one
@@ -54,6 +72,7 @@ public final class ServerMacModel {
     private let connectionLog: any ConnectionLog
     private let loginItems: any LoginItemRegistry
     private let gitInstallations: any GitInstallations
+    private let projectFolders: any ProjectFolders
     private let store: any Store
     private let now: @Sendable () -> Date
 
@@ -63,6 +82,7 @@ public final class ServerMacModel {
         connectionLog: any ConnectionLog,
         loginItems: any LoginItemRegistry,
         gitInstallations: any GitInstallations,
+        projectFolders: any ProjectFolders,
         store: any Store,
         dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
@@ -72,6 +92,7 @@ public final class ServerMacModel {
         self.connectionLog = connectionLog
         self.loginItems = loginItems
         self.gitInstallations = gitInstallations
+        self.projectFolders = projectFolders
         self.store = store
         self.dataFolderUrl = dataFolderUrl
         self.now = now
@@ -109,6 +130,178 @@ public final class ServerMacModel {
     public func loadGitInstallation() async {
         gitInstallation = await gitInstallations.current()
     }
+
+    // MARK: - Projects
+
+    /// Reads the list, draws it, and only then goes and finds out what has changed inside it.
+    ///
+    /// **Two passes because there are two prices, and Davide chose to pay the second one in the
+    /// background rather than to drop the figure it buys.** The worktree count is one git invocation
+    /// per project; the count of worktrees with uncommitted work is one *per worktree*, measured on
+    /// 23 August 2026 at 16.7 seconds for a single Android monorepo's sixteen. A tab that waited for
+    /// the second number is a tab that does not open.
+    public func loadProjects() async {
+        let stored = await store.state().projects
+        var loaded: [ManagedProject] = []
+        for project in stored {
+            loaded.append(ManagedProject(
+                id: project.id,
+                name: project.name,
+                path: project.path,
+                isVisible: project.isVisible,
+                contents: await projectFolders.contents(ofFolderAt: project.path),
+                worktreesWithChanges: .counting
+            ))
+        }
+        projects = loaded
+        await countWorktreesWithChanges()
+    }
+
+    /// Switches a project on or off, which is the only control on this tab with consequences.
+    public func setProjectVisible(_ isVisible: Bool, id: ProjectID) async {
+        guard await write({ () async throws(StoreError) in try await store.setProjectVisible(isVisible, id: id) }) else { return }
+        await loadProjects()
+    }
+
+    /// Forgets a project. Not the same as switching it off, and the plus/minus bar keeps them apart.
+    public func removeProject(id: ProjectID) async {
+        guard await write({ () async throws(StoreError) in try await store.removeProject(id: id) }) else { return }
+        await loadProjects()
+    }
+
+    /// Adds one folder a reader picked by hand, switched off.
+    ///
+    /// The picker will offer any folder on this Mac, so this is the one add that checks. A row
+    /// reading "not a repository" for something chosen a second ago says less than refusing does.
+    public func addProject(atFolder folder: URL) async {
+        let path = Self.canonicalPath(of: folder)
+        switch await projectFolders.contents(ofFolderAt: path) {
+        case .worktrees:
+            guard await write({ () async throws(StoreError) in try await store.add(project: Self.project(atPath: path)) }) else { return }
+            await loadProjects()
+        case .folderNotFound:
+            projectsFailure = ProjectsFailure(sentence: "That folder is not there any more.", reason: nil)
+        case .notARepository:
+            projectsFailure = ProjectsFailure(sentence: "That folder is not a git repository.", reason: nil)
+        }
+    }
+
+    /// Adds what a scan turned up and a reader chose, every one of them switched off.
+    ///
+    /// No check, and that is the difference from the picker above: a candidate is a folder this Mac
+    /// found a `.git` directory in a moment ago, so asking git again would be one subprocess per
+    /// chosen repository to learn something already known.
+    public func addScannedProjects(_ candidates: [RepositoryCandidate]) async {
+        folderScan = nil
+        for candidate in candidates {
+            guard await write({ () async throws(StoreError) in try await store.add(project: Self.project(atPath: candidate.path)) }) else {
+                break
+            }
+        }
+        await loadProjects()
+    }
+
+    /// Points a project at the folder it moved to.
+    ///
+    /// A remove and an add rather than an edit, because an identifier is a hash of a path: to
+    /// everything that resolves one, a folder that moved is a different project. What survives is
+    /// the name and the switch, which are the two things a reader decided.
+    public func relocateProject(id: ProjectID, to folder: URL) async {
+        guard let existing = projects.first(where: { $0.id == id }) else { return }
+        let path = Self.canonicalPath(of: folder)
+        guard case .worktrees = await projectFolders.contents(ofFolderAt: path) else {
+            projectsFailure = ProjectsFailure(sentence: "That folder is not a git repository.", reason: nil)
+            return
+        }
+        let moved = StoredProject(
+            id: ProjectID(canonicalPath: path),
+            path: path,
+            name: existing.name,
+            isVisible: existing.isVisible
+        )
+        guard await write({ () async throws(StoreError) in
+            try await store.removeProject(id: id)
+            try await store.add(project: moved)
+        }) else { return }
+        await loadProjects()
+    }
+
+    /// Looks for repositories under a folder, and puts what it finds in front of a reader rather
+    /// than into the list.
+    public func scanForRepositories(under root: URL) async {
+        folderScan = .scanning(root: root)
+        let known = Set(projects.map(\.path))
+        let found = await projectFolders.repositories(under: root)
+        // Already-added repositories are not offered, which is what keeps the sheet's own subtitle
+        // true: it says none of what it shows is added yet, and a checkbox for something already in
+        // the list is a control with nothing behind it.
+        folderScan = .found(root: root, candidates: found.filter { known.contains($0.path) == false })
+    }
+
+    public func dismissFolderScan() {
+        folderScan = nil
+    }
+
+    /// Counts what has changed, project by project, into a list that is already on screen.
+    ///
+    /// Asked only of the projects whose figure is drawn — a switched-off row says "not visible" and
+    /// has nowhere to put a count — and each answer lands on its own rather than at the end, so the
+    /// first project's figure appears while the last one is still being read.
+    private func countWorktreesWithChanges() async {
+        for project in projects where project.isVisible {
+            guard case .worktrees = project.contents else { continue }
+            let dirty = await projectFolders.worktreesWithChanges(inFolderAt: project.path)
+            // The reader left the tab, or the list was reloaded under this loop by a switch they
+            // flipped while it ran. Either way this answer is about a list that is gone.
+            guard Task.isCancelled == false else { return }
+            guard let index = projects.firstIndex(where: { $0.id == project.id }) else { continue }
+            projects[index].worktreesWithChanges = .counted(dirty)
+        }
+    }
+
+    /// Runs one write and keeps whatever the store refused with, so the tab can say it.
+    ///
+    /// Returns whether it went through, because every caller's next act is to re-read the list and
+    /// re-reading it after a refusal would draw the same rows twice for no reason.
+    private func write(_ mutation: () async throws(StoreError) -> Void) async -> Bool {
+        do {
+            try await mutation()
+            projectsFailure = nil
+            return true
+        } catch {
+            projectsFailure = switch error {
+            case .notWritable(let reason):
+                ProjectsFailure(sentence: "That change could not be saved.", reason: reason)
+            case .documentIsFromANewerVersion:
+                ProjectsFailure(
+                    sentence: "A newer version of Granita wrote this Mac's settings, so they were left alone.",
+                    reason: nil
+                )
+            }
+            return false
+        }
+    }
+
+    /// A new project is always switched off. Adding a repository and letting a phone read it are
+    /// two separate acts, and this is the end of the first one.
+    private static func project(atPath path: String) -> StoredProject {
+        StoredProject(
+            id: ProjectID(canonicalPath: path),
+            path: path,
+            name: (path as NSString).lastPathComponent,
+            isVisible: false
+        )
+    }
+
+    /// No trailing separator, because a project's identifier is a hash of this string and the same
+    /// folder spelled two ways is two projects that cannot both be switched on.
+    private static func canonicalPath(of folder: URL) -> String {
+        var path = folder.standardizedFileURL.path(percentEncoded: false)
+        if path.count > 1, path.hasSuffix("/") { path.removeLast() }
+        return path
+    }
+
+    // MARK: - Advanced
 
     /// Counts what a reset would destroy.
     public func loadStoredCounts() async {

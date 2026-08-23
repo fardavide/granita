@@ -142,6 +142,46 @@ struct JsonDocumentStoreTests {
     }
 
     @Test
+    func `given a project when it is removed then it is gone and the others remain`() async throws {
+        // given — the minus half of design §4's plus/minus bar. Removing is not switching off: a
+        // project switched off is one this Mac still remembers being asked about, and a removed one
+        // is a path this Mac has no business holding any more.
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+        let one = ProjectID(canonicalPath: "/one")
+        try await scenario.sut.add(project: StoredProject(id: one, path: "/one", name: "one", isVisible: true))
+        try await scenario.sut.add(project: StoredProject(
+            id: ProjectID(canonicalPath: "/two"), path: "/two", name: "two", isVisible: true
+        ))
+
+        // when
+        try await scenario.sut.removeProject(id: one)
+
+        // then
+        let state = await scenario.sut.state()
+        #expect(state.projects.map(\.name) == ["two"])
+    }
+
+    @Test
+    func `given a project that was removed when the document is read again then it stayed removed`(
+    ) async throws {
+        // given — the one outcome nobody would think to check for: a removal that cleared this
+        // process's memory and left the file alone puts a repository back on the network at the next
+        // launch.
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+        let one = ProjectID(canonicalPath: "/one")
+        try await scenario.sut.add(project: StoredProject(id: one, path: "/one", name: "one", isVisible: true))
+        try await scenario.sut.removeProject(id: one)
+
+        // when
+        let reopened = JsonDocumentStore(fileUrl: scenario.fileUrl)
+
+        // then
+        #expect(await reopened.state().projects.isEmpty)
+    }
+
+    @Test
     func `given a paired device when it is revoked then its token is gone and the others remain`(
     ) async throws {
         // given — tokens are per device and individually revocable, which is the whole reason they

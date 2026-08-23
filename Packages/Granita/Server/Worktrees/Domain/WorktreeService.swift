@@ -38,6 +38,23 @@ public struct WorktreeService: Sendable {
         return head.isEmpty ? .emptyTree : .head
     }
 
+    /// Whether anything in this worktree differs from what is committed.
+    ///
+    /// **The cheap question, and the only reason it exists is arithmetic.** Answering it by building
+    /// a change set — which is what the API's project list does — costs six invocations per worktree
+    /// plus a hash of every changed file, and was measured at 122.7 seconds across ten real
+    /// repositories. The Mac's Projects tab draws one row per project and cannot wait for that. This
+    /// is one invocation, and it is one git already runs: `status` prints nothing at all when there
+    /// is nothing to report, so the boolean is whether it printed.
+    ///
+    /// It agrees with the change set by construction rather than by coincidence, because it is the
+    /// same command with the same untracked mode. A second spelling — `diff-index --quiet` — would
+    /// answer "no" for a worktree holding nothing but new files, which is exactly what an agent
+    /// leaves behind.
+    public func hasChanges(in worktree: RepositoryLocation) async throws(GitError) -> Bool {
+        try await git.run(.worktreeStatus, in: worktree).standardOutput.isEmpty == false
+    }
+
     public func changeSet(
         in worktree: RepositoryLocation,
         viewed: [FileID: String]

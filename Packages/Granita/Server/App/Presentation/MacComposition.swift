@@ -95,6 +95,7 @@ final class MacComposition {
             connectionLog: log,
             loginItems: ServiceLoginItemRegistry(),
             gitInstallations: ProcessGitInstallations(git: git, executablePath: gitPath),
+            projectFolders: FileSystemProjectFolders(service: service),
             store: store,
             dataFolderUrl: Self.storeUrl.deletingLastPathComponent(),
             now: { Date() }

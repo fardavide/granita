@@ -60,6 +60,60 @@ public struct GranitaSettingsScreen: View {
                 .task { await model.loadLoginItem() }
             }
 
+            Tab("Projects", systemImage: "folder") {
+                ProjectsSettingsView(
+                    projects: model.projects,
+                    failure: model.projectsFailure,
+                    onSetVisible: { isVisible, id in
+                        Task { await model.setProjectVisible(isVisible, id: id) }
+                    },
+                    onAddRepository: {
+                        // Only what the picker returns reaches the model. A cancelled pick is not an
+                        // event: nothing happened, and nothing on this tab should move because a
+                        // reader changed their mind.
+                        guard let folder = Self.pickFolder(
+                            prompt: "Add",
+                            message: "Choose a git repository to add. It arrives switched off."
+                        ) else { return }
+                        Task { await model.addProject(atFolder: folder) }
+                    },
+                    onScanFolder: {
+                        guard let folder = Self.pickFolder(
+                            prompt: "Scan",
+                            message: "Choose a folder to look for git repositories in. Nothing is added yet."
+                        ) else { return }
+                        Task { await model.scanForRepositories(under: folder) }
+                    },
+                    onRemove: { id in Task { await model.removeProject(id: id) } },
+                    onLocate: { id in
+                        guard let folder = Self.pickFolder(
+                            prompt: "Locate",
+                            message: "Choose where this repository is now."
+                        ) else { return }
+                        Task { await model.relocateProject(id: id, to: folder) }
+                    }
+                )
+                // Re-read every time the tab is opened rather than once at launch. A folder can be
+                // moved, and a repository can grow a worktree, while Granita is running — and the
+                // expensive half of the row is cancelled with this task when the reader leaves.
+                .task { await model.loadProjects() }
+                .sheet(isPresented: Binding(
+                    get: { model.folderScan != nil },
+                    set: { if $0 == false { model.dismissFolderScan() } }
+                )) {
+                    // Read inside the sheet rather than captured beside it, so a scan that finishes
+                    // while the sheet is up replaces the spinner with the list it found instead of
+                    // presenting a second sheet.
+                    if let scan = model.folderScan {
+                        AddRepositoriesSheet(
+                            scan: scan,
+                            onAdd: { chosen in Task { await model.addScannedProjects(chosen) } },
+                            onCancel: { model.dismissFolderScan() }
+                        )
+                    }
+                }
+            }
+
             Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted") {
                 // The clock the rows are measured against. A row's elapsed time is a value the view
                 // is handed rather than one it derives, which is what lets a baseline photograph
@@ -104,6 +158,28 @@ public struct GranitaSettingsScreen: View {
 
     private static func open(_ url: URL) {
         NSWorkspace.shared.open(url)
+    }
+
+    /// A folder, chosen by hand, for the three things on Projects that need one.
+    ///
+    /// **The activation dance is the same trap `SettingsOpener` exists for, and SPEC §9 names this
+    /// half of it too.** An `LSUIElement` app runs as `.accessory`, and an accessory app cannot
+    /// bring a panel to the front — the panel would open behind everything, or appear not to open at
+    /// all. It costs one line here because the Settings window that raised it has already switched
+    /// the app to `.regular`; activating anyway is what makes it true when that stops being so.
+    ///
+    /// AppKit directly, like the pasteboard and Finder calls above. There is nothing here to decide
+    /// and nothing a test would assert: a seam would be an abstraction invented for a future nobody
+    /// has asked for.
+    private static func pickFolder(prompt: String, message: String) -> URL? {
+        NSApp.activate()
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = prompt
+        panel.message = message
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     /// Finder, with the folder selected rather than opened, which is what "Reveal" means everywhere

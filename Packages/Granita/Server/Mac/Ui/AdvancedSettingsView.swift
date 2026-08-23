@@ -50,7 +50,7 @@ public struct AdvancedSettingsView: View {
             Section {
                 LabeledContent("Data folder") {
                     HStack(spacing: 8) {
-                        Text(verbatim: abbreviatedDataFolder)
+                        Text(verbatim: homeRelative(dataFolderUrl))
                             .font(.caption)
                             .monospaced()
                             .foregroundStyle(.secondary)
@@ -125,19 +125,6 @@ public struct AdvancedSettingsView: View {
             }
             .frame(maxWidth: 300, alignment: .trailing)
         }
-    }
-
-    /// The home directory as a tilde, and no trailing separator.
-    ///
-    /// The literal path is a reader's own name plus forty characters of nothing they chose, and the
-    /// separator is there because the value is a directory URL rather than because anyone wants to
-    /// read it.
-    private var abbreviatedDataFolder: String {
-        var path = dataFolderUrl.path(percentEncoded: false)
-        if path.hasSuffix("/") { path.removeLast() }
-        let home = NSHomeDirectory()
-        guard path.hasPrefix(home) else { return path }
-        return "~" + path.dropFirst(home.count)
     }
 
     private var holdings: String {

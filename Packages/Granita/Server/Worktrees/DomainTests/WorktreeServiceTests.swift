@@ -399,6 +399,59 @@ struct WorktreeServiceTests {
         #expect(standardError.contains("not a git repository"))
     }
 
+    // MARK: - The cheap question
+
+    @Test
+    func `given a worktree with something uncommitted when asked whether it changed then it has`(
+    ) async throws {
+        // given
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: [],
+            status: ["1 .M N... 100644 100644 100644 aaa bbb src/edited.swift"],
+            worktreeObjectIds: []
+        )
+
+        // when
+        let changed = try await scenario.sut.hasChanges(in: scenario.location)
+
+        // then
+        #expect(changed)
+    }
+
+    @Test
+    func `given a clean worktree when asked whether it changed then it has not`() async throws {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [], worktreeObjectIds: [])
+
+        // when
+        let changed = try await scenario.sut.hasChanges(in: scenario.location)
+
+        // then
+        #expect(changed == false)
+    }
+
+    @Test
+    func `when asked whether a worktree changed then only the status is run`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: [],
+            status: ["? new.swift"],
+            worktreeObjectIds: []
+        )
+
+        // when
+        _ = try await scenario.sut.hasChanges(in: scenario.location)
+
+        // then — the whole point of this question is that it is one invocation. Building a change
+        // set to evaluate one boolean is what costs 122.7 seconds across ten real repositories, and
+        // this is the panel that draws a row per project.
+        #expect(await scenario.git.received == [.worktreeStatus])
+    }
+
     // MARK: - Scenario
 
     private struct Scenario {

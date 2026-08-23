@@ -1836,3 +1836,110 @@ So **§6's frames stay in the design review until the Devices tab ships them**, 
 shape §1 is already in and for the same reason. The rule that a section's frames are deleted by the
 pull request that ships it is unchanged; this is one section shipping in two pieces, named here so
 the second piece is not lost.
+
+## The Projects row costs two different amounts, and the expensive half is filled in rather than dropped
+
+Design §4 draws the trailing figure as two lines — `4 worktrees` over `2 with changes` — and says it
+comes from `Project.worktreeCount` and `dirtyWorktreeCount`, "which already exist". They do. What
+the review could not know is that the second one had not been timed yet, and when it was, on 22
+August 2026, the answer was **122.7 seconds** across ten real repositories. That measurement killed
+the menu bar count. It arrives at this tab too, and the review's own sentence says why it must:
+the figure is "what reconciles this tab with the number in the menu bar", and there is no number in
+the menu bar.
+
+**So the cheap question was measured before anything was decided.** `WorktreeRegistry.projects()`
+builds a whole change set per worktree — every changed path, its stats, its revision, a hash of every
+changed file — to evaluate one boolean. Git can answer "is anything different here" with one
+invocation. On 23 August 2026, against Davide's `bandlab-android` monorepo and its sixteen worktrees:
+
+| | wall clock, warm |
+|---|---|
+| `git status --porcelain`, per worktree | **16.7 s** for sixteen |
+| `git diff-index --quiet HEAD`, per worktree | 8.0 s for sixteen |
+| `git worktree list --porcelain -z`, whole project | **0.014 s** |
+
+Two orders of magnitude cheaper than the change set, and still about a second per worktree. One
+monorepo alone is longer than anybody waits for a settings pane.
+
+**Davide chose to fill it in progressively**, on 23 August 2026, over dropping the second line
+entirely and over computing both before drawing. So the tab reads the store and the worktree counts,
+draws the whole list, and *then* walks the visible projects asking the cheap question, each answer
+landing in the row it belongs to. What that beats:
+
+- **Dropping `2 with changes`.** It was the recommendation and it lost on what the line is for: the
+  worktree count says how much is behind a switch, and only the second line says whether there is
+  anything to read. A row that cannot answer that is a row about filing rather than about work.
+- **Computing both before drawing.** A pane that is blank for a minute on ten repositories, every
+  time it is opened.
+
+**Three things make the progressive fill honest rather than merely deferred.** The second line is
+drawn as `checking…` rather than left absent, so nothing below it moves when the answer lands — this
+is a list a reader is aiming a switch at. The expensive question is asked **only of projects that are
+switched on**, because a switched-off row says `not visible` and has nowhere to put a count. And the
+walk is cancelled with the tab's own `.task`, so leaving Projects stops the git invocations rather
+than running them into a list nobody is looking at.
+
+**The cheap question is `worktreeStatus`, a command the vocabulary already had**, so no case was
+added to `GitCommand`. `status` prints nothing at all when there is nothing to report, which makes
+the boolean "did it print". It agrees with the change set by construction rather than by coincidence,
+because it is the same command with the same untracked mode — and that matters: `diff-index --quiet`
+is faster and answers *no* for a worktree holding nothing but new files, which is precisely what an
+agent leaves behind.
+
+## What a folder scan will not look at, and why each refusal is there
+
+SPEC §9 names six directories a scan skips — `node_modules`, `.build`, `DerivedData`, `Pods`,
+`vendor`, `target` — and the §4 frames show `vendor/swift-nio` as a candidate. That is the second
+place the design and the specification have disagreed, so it went to Davide rather than being
+resolved by whoever read one of them last. **Answered on 23 August 2026: the specification wins.**
+The drawing's row reads as an illustration of a candidate at a nested path, which the sheet needed an
+example of; the skip list is explicit and argued. Recorded because `design-handoff` says a
+disagreement is worth a line rather than a silent resolution.
+
+Three more limits are ours, and none of them is in either document:
+
+- **Hidden directories are refused wholesale** rather than named one at a time. Everything under a
+  leading dot is a cache, a trash can or an agent's scratch space — including every worktree Claude
+  Code creates, which lives under `.claude/worktrees` and is a checkout of a repository the reader
+  already has. It also makes `.build`'s presence on the specification's list redundant, which is
+  fine: the list is what SPEC says and is kept as written.
+- **Four levels below the folder that was picked.** A scan is a person pointing at where they keep
+  their work, not a search of a disk, and an unbounded walk of a home directory is minutes of I/O for
+  repositories nobody filed there on purpose.
+- **A candidate is a folder with a `.git` *directory* in it**, never a `.git` file. The difference is
+  a linked worktree, whose `.git` is a file pointing back at the repository it belongs to — adding
+  one as a project would enumerate exactly the worktrees that repository already offers, under a
+  second name, with a second switch over the same files.
+
+Symbolic links are not followed either, and that one is not a policy so much as a termination
+argument: a link is somewhere else's directory reached by a second name, so following one offers the
+same repository twice, and a link pointing back up the tree is a walk that does not end.
+
+**The scan runs no git at all**, which is worth stating because everything else on this tab does.
+Thirty candidates is thirty `.git` directories found by `FileManager` and zero subprocesses. What
+makes that safe is that the one add which *can* be aimed anywhere — the folder picker — checks, and
+the sheet's candidates are folders this Mac found a `.git` in a moment ago.
+
+## Locating a moved project is a remove and an add, because an identifier is a hash of a path
+
+`Locate…` looks like an edit and cannot be one. Every opaque identifier in this product is derived
+from a canonical path, so a project that moved is a *different* project to everything that resolves
+one — the store, the API, the phone. Editing the path in place would leave a record whose identifier
+no longer derives from its own contents, and the next thing to recompute one would stop finding it.
+
+So the move is `removeProject` followed by `add`, with the name and the switch carried across because
+those are the two things a reader decided. `Store` grew `removeProject(id:)` for this and for the
+minus button, and it deliberately leaves worktree aliases and viewed marks alone: they are keyed by
+their own path-derived identifiers, so re-adding the same folder finds them where it left them, and
+nothing outside an enabled project is ever served.
+
+**The switch survives the move, and that is the call worth naming.** A project switched on before its
+folder moved comes back switched on, which is what makes `Locate…` a repair rather than a second
+setup. What it beats is relocating to *off* on the grounds that a path change is security-relevant —
+it is not: the reader is standing at the Mac naming the folder, which is exactly the gesture that
+enabled it in the first place.
+
+Rejected outright: making the switch's disabled state flip the project off while the folder is
+missing. Turning off something a person turned on, while they are not looking, is a decision this app
+does not get to make — and a project switched off by the app is indistinguishable, a week later, from
+one they switched off themselves.

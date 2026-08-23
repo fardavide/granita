@@ -71,6 +71,22 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.14 — 2026-08-23
+- **Settings has a Projects tab, and it is where you decide what your phone may read.** Nothing on
+  this Mac is visible until you add a repository here and switch it on, and those are two separate
+  acts on purpose. Each row shows the switch, the name, the folder, and how many worktrees are behind
+  it.
+- **Scanning a folder never adds anything on its own.** Point Granita at where you keep your work and
+  what it finds opens in a sheet, with nothing ticked and no *Select All*. The button counts what it
+  will do — *Add 2 Repositories* — and everything it adds arrives switched off.
+- **A project whose folder moved says so instead of looking empty.** Until now it stayed switched on
+  and served nothing, which on the phone is indistinguishable from a project with nothing to read.
+  The row now reads *Folder not found*, keeps the last known path, and offers **Locate…** — and its
+  switch is disabled rather than quietly turned off behind your back.
+- **How many worktrees have uncommitted work arrives a moment after the list does.** Asking git that
+  question costs about a second per worktree — sixteen seconds for one Android monorepo — so the tab
+  opens with what it knows and fills the rest in while you look at it.
+
 ### 0.0.13 — 2026-08-22
 - **Settings has an Advanced tab, and it is last.** It holds the rows you set once and the one button
   you hope never to press — which is exactly why the connection log moved out of it in 0.0.11.

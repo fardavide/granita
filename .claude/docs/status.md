@@ -2,7 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.13.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.14.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**Projects is built, and it is the security boundary.** Nothing on this Mac is visible until a
+repository is added *and* switched on, and the tab keeps those two verbs apart at every point: a
+folder scan opens a sheet, its results never enter the list, there is no *Select All*, and everything
+it adds arrives switched off. A project whose folder moved now says *Folder not found*, keeps its
+last known path and offers **Locate…** with its switch disabled rather than quietly turned off —
+until now it stayed enabled and served nothing, which on a phone reads as a repository with nothing
+in it. **The trailing figure is drawn in two passes**, and that is a measurement rather than a
+shortcut: the worktree count is 0.014 seconds for a whole project and the count of worktrees with
+uncommitted work is 16.7 for one monorepo's sixteen, so the tab draws what it knows and fills the
+rest in as it lands. Davide chose that over dropping the line. Ten baselines, and the scan follows
+SPEC §9's skip list rather than the frame that shows `vendor/swift-nio`.
 
 **Advanced is built, and it is last.** The git row runs git rather than reporting which of three
 candidate paths won — that is the whole point of it, because a path that is executable and broken
@@ -226,10 +238,10 @@ What is left is **screens, and their frames have now arrived.** The Mac round tr
 2026-08-21 and its calls are recorded in [`design-mac.md`](design-mac.md), so nothing here is blocked
 on a design any more:
 
-- **Settings, and two tabs are left.** General, Connections and Advanced are built; **Projects and
-  Devices are not.** Enabling a project by picking a folder and the visibility toggle; the paired
-  devices with revoke and the QR. The store already holds all of it and `PairingInvitations` already
-  assembles what the Devices tab draws — the work is the drawing.
+- **Settings, and one tab is left.** General, Projects, Connections and Advanced are built;
+  **Devices is not.** The paired devices with revoke and the QR. `PairingInvitations` already
+  assembles what that tab draws — the work is the drawing. §5's Allow-from-the-Mac path stays out
+  until its frames exist.
 - **A logging layer, which nothing has needed until now.** Advanced's verbose switch and its route
   into Console are the first thing that does, and both are blocked on it. The Console filter travels
   **on the pasteboard**, because `Console.app` registers no URL scheme and cannot be handed a
