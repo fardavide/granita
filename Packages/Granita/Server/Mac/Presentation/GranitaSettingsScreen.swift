@@ -114,11 +114,14 @@ public struct GranitaSettingsScreen: View {
                 // is the coarsest unit a row there changes on; here the smallest thing on screen is
                 // a seconds digit, and a bar that moved once a minute would be a bar that looks
                 // stuck while a reader watches their code run out.
-                TimelineView(.periodic(from: .now, by: 1)) { clock in
+                //
+                // The schedule says when to redraw; what time it *is* comes from the model, which
+                // is the only clock in this app a test can move.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
                     DevicesSettingsView(
                         devices: model.devices,
                         offer: model.pairingOffer,
-                        now: clock.date,
+                        now: model.currentTime,
                         failure: model.devicesFailure,
                         onNewCode: { Task { await model.offerPairing() } },
                         onRevoke: { id in Task { await model.revokeDevice(id: id) } },
@@ -138,10 +141,10 @@ public struct GranitaSettingsScreen: View {
                 // it — so something has to move it, and a schedule that re-renders on the minute is
                 // both the cheapest thing that can and exactly as often as a row changes: the
                 // coarsest unit below an hour is a minute.
-                TimelineView(.everyMinute) { clock in
+                TimelineView(.everyMinute) { _ in
                     ConnectionLogView(
                         attempts: model.connectionAttempts,
-                        now: clock.date,
+                        now: model.currentTime,
                         onPair: { model.showSettingsTab(.devices) }
                     )
                 }

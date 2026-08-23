@@ -66,6 +66,15 @@ public final class ServerMacModel {
     /// was is the same defect wearing different clothes.
     public private(set) var devicesFailure: StoreWriteFailure?
 
+    /// What time it is, for the two panes that measure something against it.
+    ///
+    /// A `TimelineView`'s schedule says *when* to redraw; it does not say what to draw, and a pane
+    /// that answers that second question with `Date()` is a pane whose picture depends on when the
+    /// shutter opened. That is the defect the connection log's row was repaired for one layer down,
+    /// arriving again one layer up: the row takes `now` as a value, and the screen was handing it a
+    /// reading it took itself.
+    public var currentTime: Date { now() }
+
     /// Which pane of the Settings window is up.
     ///
     /// Here rather than in the window's own `@State`, because it is not only the tab bar that moves

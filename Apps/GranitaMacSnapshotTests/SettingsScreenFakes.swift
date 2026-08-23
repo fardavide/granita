@@ -129,9 +129,10 @@ private struct FakeFolderPicker: FolderPicking {
 
 /// A code that never changes, because the picture of it is compared byte for byte.
 ///
-/// The expiry is far enough ahead of the model's clock that the bar in the window's own baselines is
-/// full rather than at whatever fraction the arithmetic happened to land on. What a countdown looks
-/// like part-way through is `DevicesSettingsViewSnapshotTests`' business.
+/// The expiry is stated against the model's own clock rather than against a wall clock, so the
+/// window's Devices baseline shows a live code with a fixed amount left on it. Before the panes read
+/// the time off the model, this expiry was in the past on every run and the window photographed
+/// *Code expired* forever.
 private struct FakeInvitations: PairingInviting {
 
     func invite(at endpoint: ServerEndpoint) -> PairingInvitation {
@@ -143,7 +144,7 @@ private struct FakeInvitations: PairingInviting {
                 fingerprint: SpkiFingerprint(rawValue: "kZ8Qk1p3mR7vN2xT4yL6sB9wC0dF5gH8jK1lM3nP7qU=")
             ),
             spokenCode: "delta-pepper-amber-kelp-jasper-meadow",
-            expiresAt: Date(timeIntervalSince1970: 1_755_864_120)
+            expiresAt: Date(timeIntervalSince1970: 1_755_864_106)
         )
     }
 }
