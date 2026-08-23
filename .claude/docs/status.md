@@ -16,6 +16,17 @@ uncommitted work is 16.7 for one monorepo's sixteen, so the tab draws what it kn
 rest in as it lands. Davide chose that over dropping the line. Ten baselines, and the scan follows
 SPEC §9's skip list rather than the frame that shows `vendor/swift-nio`.
 
+**The Settings screen does no I/O any more, and that was a structural fix rather than a coverage
+one.** `GranitaSettingsScreen` held an `NSOpenPanel`, an `NSPasteboard` and two `NSWorkspace` calls,
+excused as one-line gestures — until a folder picker joined them, and a picker *decides*. The screen
+was at 45 uncovered regions of 56, and the reflex was to blame the scope. Davide refused that: Ui
+must be declarative, and a state a model cannot drive is a structural issue rather than a
+measurement one. `FolderPicking` answers and `SystemGestures` does not; the model gained six drivable
+flows; three questions became askable and are asserted, including whether Copy puts on the pasteboard
+the string the row actually shows. **Only then was the coverage predicate corrected**, and it needed
+correcting for a bigger reason than models: the views scope was counting a server host and a
+composition root as code a rendered baseline executes.
+
 **Advanced is built, and it is last.** The git row runs git rather than reporting which of three
 candidate paths won — that is the whole point of it, because a path that is executable and broken
 looks exactly like a working one until something runs it — and in failure it carries git's own

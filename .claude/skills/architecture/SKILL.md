@@ -52,6 +52,36 @@ on 2026-08-19, and it inverts what most SwiftUI projects do, so it is worth stat
 - A **`Presentation`** module owns the unit's `@Observable` model and **composes screens** out of
   those views. It is the outer of the two, so it is the one that changes when a screen changes.
 
+## No I/O in a view or a screen — not even one line of it
+
+**A `body` is where a test cannot follow.** Anything a view calls on the world outside the process
+is a line no unit test can execute and no baseline can drive, so it is invisible to both rows of the
+coverage report at once — which is exactly how it goes unnoticed.
+
+The rule is the same one every other edge already follows, applied where it is most often waived: a
+`Ui` view reports what happened and a screen calls a **model**, and the model calls a protocol its
+`Domain` owns. No `NSOpenPanel`, no `NSPasteboard`, no `NSWorkspace`, no `FileManager`, no
+`URLSession`, no `UserDefaults` in a view or a screen.
+
+**The excuse to watch for is "it is one line with nothing to decide".** It was written into
+`GranitaSettingsScreen` about a pasteboard call and was true; it stopped being true the day a folder
+picker joined them, because **a picker decides** — it returns a folder or a reader who changed their
+mind, and every call site branches on which. By then the file was at 45 uncovered regions of 56.
+Davide, 2026-08-23: *Ui must be declarative; if a state cannot be driven by a model, and it isn't
+testable because of that, we have a structural issue.*
+
+Two things follow, and they are what the seam buys rather than what it costs:
+
+- **Split a seam by whether it answers.** `FolderPicking` returns something and every caller
+  branches; `SystemGestures` does not. One protocol for both would put a decision and a fire-and-
+  forget behind one fake.
+- **Questions become askable.** Whether Copy puts on the pasteboard the string the row shows;
+  whether copying while the server is down copies the em dash it draws. Neither could be asked while
+  the call was in a `body`, and both were worth asking.
+
+If a gesture genuinely has nothing to decide and nothing to assert, it still goes behind the seam —
+a rule applied by size rather than by kind is not one.
+
 ## One model per unit, never one per view
 
 A state object per screen — `MenuBarViewModel` beside `ConnectionLogViewModel` — is a **vertical**

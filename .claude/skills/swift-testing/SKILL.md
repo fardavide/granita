@@ -201,9 +201,17 @@ Rules that follow:
   store to write to. "Wherever they live" is load-bearing: `Presentation` holds both models and the
   screens composed from `Ui`, and only the models are reachable — a file named `…Screen` is a body
   and is excluded, while `ServerMacModel` is an ordinary object a test constructs and stays judged.
-- **The Snapshot row excludes `Server/Api/Presentation`**, which is a presentation layer in the wire
-  sense — routes and mapping — with no `Ui` sibling because it has no views. Counting it asks how
-  much of the HTTP router a rendered screen executes.
+- **The Snapshot row is a `Ui` module plus the screens composed from one**, and nothing else under a
+  `Presentation` directory. That layer holds three kinds of thing — models, screens, composition
+  roots — and only the middle one is code a picture executes. Selecting the whole directory once had
+  the row asking how much of a server host and a wiring module a rendered screen ran; measured on
+  2026-08-23, that was 163 uncovered lines of a model, 18 of a host and 9 of a composition root. It
+  is the mirror of the Unit row's rule, which excludes screens for the opposite reason.
+- **When a row falls, read the per-file export before touching the scope.** Three of the four
+  redefinitions recorded in `decisions.md` were corrections and one proposal was not — it would have
+  excluded models to fix a number while a screen was doing its own I/O. The tell is whether the code
+  the row cannot reach is code that *should not be there*: fix that first, then ask whether the
+  predicate is still wrong. Often it is, and the case for it is far stronger once nothing else is.
 - **The bar for `UNREACHABLE_FILES` is "unrunnable by construction", never "hard to test".** Adding
   a name there is a redefinition, so it comes with a rename of the scope string — that is what
   leaves the row unjudged for one run instead of failing the pull request that makes the change.
