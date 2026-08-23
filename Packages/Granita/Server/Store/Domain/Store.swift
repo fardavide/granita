@@ -15,6 +15,15 @@ public protocol Store: Sendable {
     func add(project: StoredProject) async throws(StoreError)
     func setProjectVisible(_ isVisible: Bool, id: ProjectID) async throws(StoreError)
 
+    /// Forgets a project entirely, which is not the same as switching it off.
+    ///
+    /// Design §4 keeps the two verbs apart at both ends. A project switched off is one this Mac
+    /// still remembers being asked about and can be switched back on; a removed one is a path this
+    /// Mac has no further business holding. It is also how `Locate…` moves a project, because an
+    /// identifier is a hash of a path and a folder that moved is a different project to everything
+    /// that resolves one.
+    func removeProject(id: ProjectID) async throws(StoreError)
+
     func setAlias(_ alias: String?, for worktree: WorktreeID) async throws(StoreError)
     func setPinned(_ isPinned: Bool, for worktree: WorktreeID) async throws(StoreError)
 

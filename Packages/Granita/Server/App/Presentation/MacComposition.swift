@@ -9,6 +9,7 @@ import ServerGitData
 import ServerIdentityData
 import ServerIdentityDomain
 import ServerMacData
+import ServerMacDomain
 import ServerMacPresentation
 import ServerSessionsData
 import ServerStoreData
@@ -36,8 +37,16 @@ final class MacComposition {
     /// see `SettingsOpener` for why it cannot simply be a call.
     private(set) var settingsRequests = 0
 
-    init() {
-        let store = JsonDocumentStore(fileUrl: Self.storeUrl)
+    /// Whether the app was told to put Settings on screen without waiting for the menu.
+    let opensSettingsAtLaunch: Bool
+
+    init(launch: MacLaunchOptions) {
+        opensSettingsAtLaunch = launch.opensSettingsAtLaunch
+        // The one thing about this app a launch argument may move, and it moves for one reason: a
+        // behavioural test drives the real app, and the real app with no seam here would switch a
+        // real repository on in the reader's own document and leave it that way.
+        let storeUrl = launch.storeUrl ?? Self.defaultStoreUrl
+        let store = JsonDocumentStore(fileUrl: storeUrl)
         // A path with no binary at it surfaces as git being unavailable, with git's own words,
         // which is the failure the Advanced panel is there to show. Kept in a `let` because that
         // panel prints it beside the version it got by running it.
@@ -95,8 +104,11 @@ final class MacComposition {
             connectionLog: log,
             loginItems: ServiceLoginItemRegistry(),
             gitInstallations: ProcessGitInstallations(git: git, executablePath: gitPath),
+            projectFolders: FileSystemProjectFolders(service: service),
+            folderPicker: AppKitFolderPicker(),
+            gestures: AppKitSystemGestures(),
             store: store,
-            dataFolderUrl: Self.storeUrl.deletingLastPathComponent(),
+            dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }
         )
 
@@ -112,9 +124,12 @@ final class MacComposition {
 
     /// The same document the executable reads, so the two cannot disagree about what is enabled.
     ///
+    /// Where it lives when nothing said otherwise. `--store` moves it, and Advanced's data-folder
+    /// row reads whichever one is actually in use rather than this one.
+    ///
     /// SPEC §9 also wants a lock file beside it, so a standalone `granita-server` and this app
     /// cannot both hold it. That is not here yet.
-    private static var storeUrl: URL {
+    private static var defaultStoreUrl: URL {
         URL(filePath: NSHomeDirectory())
             .appending(path: "Library/Application Support", directoryHint: .isDirectory)
             .appending(path: Branding.applicationSupportDirectoryName, directoryHint: .isDirectory)

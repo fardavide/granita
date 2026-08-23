@@ -285,6 +285,576 @@ struct ServerMacModelTests {
         // then
         #expect(scenario.sut.loginItem == .on)
     }
+
+    // MARK: - Projects, which is the security boundary
+
+    @Test
+    func `given projects the reader added when the tab opens then each says what is behind it`() async {
+        // given
+        let scenario = Scenario(
+            projects: [storedProject(named: "granita"), storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/granita": .worktrees(count: 4), "/oltre": .worktrees(count: 1)],
+            worktreesWithChanges: ["/granita": 2]
+        )
+
+        // when
+        await scenario.sut.loadProjects()
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["granita", "oltre"])
+        #expect(scenario.sut.projects[0].contents == .worktrees(count: 4))
+        #expect(scenario.sut.projects[0].isVisible)
+        #expect(scenario.sut.projects[1].isVisible == false)
+    }
+
+    @Test
+    func `given a project switched on when the tab opens then what has changed arrives after the row`(
+    ) async {
+        // given — the two figures cost two different amounts. Counting what has changed is one git
+        // invocation per worktree, measured at 16.7 seconds for one monorepo's sixteen, so the row
+        // is drawn from the cheap half and this arrives into it.
+        let scenario = Scenario(
+            projects: [storedProject(named: "granita")],
+            folderContents: ["/granita": .worktrees(count: 4)],
+            worktreesWithChanges: ["/granita": 2]
+        )
+
+        // when
+        await scenario.sut.loadProjects()
+
+        // then
+        #expect(scenario.sut.projects[0].worktreesWithChanges == .counted(2))
+    }
+
+    @Test
+    func `given a project switched off when the tab opens then nothing counts what changed in it`() async {
+        // given — the expensive question is asked only of the projects whose figure is drawn. A
+        // switched-off row reads "not visible" and has nowhere to put a count.
+        let scenario = Scenario(
+            projects: [storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/oltre": .worktrees(count: 9)],
+            worktreesWithChanges: ["/oltre": 3]
+        )
+
+        // when
+        await scenario.sut.loadProjects()
+
+        // then
+        #expect(await scenario.folders.counted == [])
+        #expect(scenario.sut.projects[0].worktreesWithChanges == .counting)
+    }
+
+    @Test
+    func `given a project whose folder has gone when the tab opens then it says so rather than reading empty`(
+    ) async {
+        // given — today such a project still passes `isVisible`, so the API serves it with zero
+        // worktrees, which on a phone is indistinguishable from a project with nothing to read.
+        let scenario = Scenario(
+            projects: [storedProject(named: "aura")],
+            folderContents: ["/aura": .folderNotFound],
+            worktreesWithChanges: [:]
+        )
+
+        // when
+        await scenario.sut.loadProjects()
+
+        // then — and nothing tried to count what changed inside a folder that is not there.
+        #expect(scenario.sut.projects[0].contents == .folderNotFound)
+        #expect(await scenario.folders.counted == [])
+    }
+
+    @Test
+    func `given a project when its switch is turned on then it becomes visible and is counted`() async {
+        // given
+        let scenario = Scenario(
+            projects: [storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/oltre": .worktrees(count: 2)],
+            worktreesWithChanges: ["/oltre": 1]
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.setProjectVisible(true, id: ProjectID(canonicalPath: "/oltre"))
+
+        // then — a switch that changed nothing a reader can perceive would be the worst control on
+        // the one tab that is the security boundary.
+        #expect(scenario.sut.projects[0].isVisible)
+        #expect(scenario.sut.projects[0].worktreesWithChanges == .counted(1))
+    }
+
+    @Test
+    func `given the store refuses a switch when it is flipped then the tab says so and does not lie`(
+    ) async {
+        // given — a full disk, or a document a newer Granita wrote. Either way nothing was written.
+        let scenario = Scenario(
+            projects: [storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/oltre": .worktrees(count: 2)],
+            worktreesWithChanges: [:],
+            storeFailure: .notWritable(reason: "No space left on device")
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.setProjectVisible(true, id: ProjectID(canonicalPath: "/oltre"))
+
+        // then — the switch stays where the document says it is, and the reason is on screen. A
+        // switch that sprang back with no explanation is a control that did nothing.
+        #expect(scenario.sut.projects[0].isVisible == false)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "That change could not be saved.",
+            reason: "No space left on device"
+        ))
+    }
+
+    @Test
+    func `given a project when it is removed then it leaves the list`() async {
+        // given
+        let scenario = Scenario(
+            projects: [storedProject(named: "granita"), storedProject(named: "oltre")],
+            folderContents: ["/granita": .worktrees(count: 1), "/oltre": .worktrees(count: 1)],
+            worktreesWithChanges: [:]
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.removeProject(id: ProjectID(canonicalPath: "/granita"))
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["oltre"])
+    }
+
+    // MARK: - Adding, which is the verb a scan may not perform
+
+    @Test
+    func `given a folder that is a repository when it is added then it arrives switched off`() async {
+        // given — design §4's whole argument: adding puts a repository in the list and a switch
+        // decides whether the phone can see it, and those are two separate acts.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: ["/picked": .worktrees(count: 1)],
+            worktreesWithChanges: [:]
+        )
+
+        // when — a directory URL with the trailing separator `NSOpenPanel` really hands back. An
+        // identifier is a hash of the path, so the same folder spelled two ways would be two
+        // projects that cannot both be switched on.
+        await scenario.sut.addProject(atFolder: URL(filePath: "/picked", directoryHint: .isDirectory))
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["picked"])
+        #expect(scenario.sut.projects[0].path == "/picked")
+        #expect(scenario.sut.projects[0].isVisible == false)
+    }
+
+    @Test
+    func `given a folder that is not a repository when it is added then it is refused with a reason`(
+    ) async {
+        // given — a folder picker will offer any folder on this Mac, and a row reading "not a
+        // repository" for something a reader chose a second ago is a worse answer than not adding it.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: ["/documents": .notARepository],
+            worktreesWithChanges: [:]
+        )
+
+        // when
+        await scenario.sut.addProject(atFolder: URL(filePath: "/documents"))
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "That folder is not a git repository.",
+            reason: nil
+        ))
+    }
+
+    @Test
+    func `given a folder that is not there when it is added then it is refused with a reason`() async {
+        // given — a folder can be picked and then moved before the panel is dismissed, and the
+        // sentence has to be the true one rather than the one about repositories.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.addProject(atFolder: URL(filePath: "/gone"))
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "That folder is not there any more.",
+            reason: nil
+        ))
+    }
+
+    @Test
+    func `given a document a newer Granita wrote when a switch is flipped then nothing is destroyed`(
+    ) async {
+        // given — the other refusal the store can give, and the one where repeating its words would
+        // say nothing: there is no system string, only a fact about the document.
+        let scenario = Scenario(
+            projects: [storedProject(named: "oltre", isVisible: false)],
+            folderContents: ["/oltre": .worktrees(count: 1)],
+            worktreesWithChanges: [:],
+            storeFailure: .documentIsFromANewerVersion
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.setProjectVisible(true, id: ProjectID(canonicalPath: "/oltre"))
+
+        // then
+        #expect(scenario.sut.projects[0].isVisible == false)
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "A newer version of Granita wrote this Mac's settings, so they were left alone.",
+            reason: nil
+        ))
+    }
+
+    @Test
+    func `given a project that is no longer listed when it is located then nothing happens`() async {
+        // given — the sheet and the list are read at different moments, and a project removed in
+        // between is one this cannot move.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.relocateProject(
+            id: ProjectID(canonicalPath: "/never-added"),
+            to: URL(filePath: "/somewhere")
+        )
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == nil)
+    }
+
+    @Test
+    func `given a scan sheet is up when it is dismissed then nothing is added`() async {
+        // given
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")]
+        )
+        await scenario.sut.scanForRepositories(under: URL(filePath: "/dev"))
+
+        // when
+        scenario.sut.dismissFolderScan()
+
+        // then — results never enter the list uninvited, and closing the sheet is the invitation
+        // being declined.
+        #expect(scenario.sut.folderScan == nil)
+        #expect(scenario.sut.projects.isEmpty)
+    }
+
+    @Test
+    func `given the store refuses when scanned repositories are added then it stops at the first`(
+    ) async {
+        // given — a store that will not write will not write the second one either, and thirty
+        // identical failures is thirty writes nobody asked for after the answer was known.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            storeFailure: .notWritable(reason: "Read-only file system")
+        )
+
+        // when
+        await scenario.sut.addScannedProjects([
+            RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one"),
+            RepositoryCandidate(path: "/dev/two", name: "two", relativePath: "two")
+        ])
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure?.reason == "Read-only file system")
+    }
+
+    @Test
+    func `given a folder scan when its results are chosen then they arrive added and switched off`(
+    ) async {
+        // given — "thirty found, none enabled" has to read as deliberate, so what the sheet writes
+        // is added-and-off and the switch in the list is a second, separate act.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: ["/dev/one": .worktrees(count: 1), "/dev/two": .worktrees(count: 1)],
+            worktreesWithChanges: [:]
+        )
+
+        // when
+        await scenario.sut.addScannedProjects([
+            RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one"),
+            RepositoryCandidate(path: "/dev/two", name: "two", relativePath: "two")
+        ])
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["one", "two"])
+        #expect(scenario.sut.projects.allSatisfy { $0.isVisible == false })
+    }
+
+    @Test
+    func `given a folder to scan when scanning then the sheet says it is looking before it answers`(
+    ) async {
+        // given
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")]
+        )
+
+        // when
+        await scenario.sut.scanForRepositories(under: URL(filePath: "/dev"))
+
+        // then
+        #expect(scenario.sut.folderScan == .found(
+            root: URL(filePath: "/dev"),
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")]
+        ))
+    }
+
+    @Test
+    func `given repositories already in the list when a folder is scanned then they are not offered again`(
+    ) async {
+        // given — the sheet's own subtitle says none of what it shows is added yet, and it has to
+        // stay true. A candidate a reader already added is a checkbox that does nothing.
+        let scenario = Scenario(
+            projects: [storedProject(named: "dev/one")],
+            folderContents: ["/dev/one": .worktrees(count: 1)],
+            worktreesWithChanges: [:],
+            candidates: [
+                RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one"),
+                RepositoryCandidate(path: "/dev/two", name: "two", relativePath: "two")
+            ]
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.scanForRepositories(under: URL(filePath: "/dev"))
+
+        // then
+        guard case .found(_, let offered) = scenario.sut.folderScan else {
+            Issue.record("expected a finished scan, got \(String(describing: scenario.sut.folderScan))")
+            return
+        }
+        #expect(offered.map(\.name) == ["two"])
+    }
+
+    // MARK: - The gestures that used to be AppKit calls inside a view body
+
+    @Test
+    func `given a repository is picked when adding from the picker then it is added switched off`(
+    ) async {
+        // given — the whole flow, driven end to end. It used to start in a view body with an
+        // `NSOpenPanel`, which is why every branch of it was uncovered: a view cannot be asked what
+        // it did with the answer.
+        let scenario = Scenario(
+            projects: [],
+            folderContents: ["/picked": .worktrees(count: 1)],
+            worktreesWithChanges: [:],
+            pickedFolder: URL(filePath: "/picked", directoryHint: .isDirectory)
+        )
+
+        // when
+        await scenario.sut.addProjectFromPicker()
+
+        // then
+        #expect(scenario.sut.projects.map(\.name) == ["picked"])
+        #expect(scenario.sut.projects[0].isVisible == false)
+    }
+
+    @Test
+    func `given the reader changes their mind when adding from the picker then nothing happens`(
+    ) async {
+        // given — a cancelled pick is not an event. Nothing happened, and nothing on this tab
+        // should move because somebody thought better of it.
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.addProjectFromPicker()
+
+        // then
+        #expect(scenario.sut.projects.isEmpty)
+        #expect(scenario.sut.projectsFailure == nil)
+    }
+
+    @Test
+    func `given a folder is picked when scanning from the picker then the sheet opens on it`() async {
+        // given
+        let scenario = Scenario(
+            projects: [],
+            folderContents: [:],
+            worktreesWithChanges: [:],
+            candidates: [RepositoryCandidate(path: "/dev/one", name: "one", relativePath: "one")],
+            pickedFolder: URL(filePath: "/dev", directoryHint: .isDirectory)
+        )
+
+        // when
+        await scenario.sut.scanFolderFromPicker()
+
+        // then
+        guard case .found(_, let offered) = scenario.sut.folderScan else {
+            Issue.record("expected a finished scan, got \(String(describing: scenario.sut.folderScan))")
+            return
+        }
+        #expect(offered.map(\.name) == ["one"])
+    }
+
+    @Test
+    func `given a cancelled pick when scanning then no sheet opens`() async {
+        // given
+        let scenario = Scenario(projects: [], folderContents: [:], worktreesWithChanges: [:])
+
+        // when
+        await scenario.sut.scanFolderFromPicker()
+
+        // then — a sheet that opened empty because somebody cancelled a folder picker would be a
+        // second thing to dismiss for no reason.
+        #expect(scenario.sut.folderScan == nil)
+    }
+
+    @Test
+    func `given a folder is picked when locating a project then it moves there`() async {
+        // given
+        let scenario = Scenario(
+            projects: [StoredProject(
+                id: ProjectID(canonicalPath: "/old/aura"),
+                path: "/old/aura",
+                name: "aura",
+                isVisible: true
+            )],
+            folderContents: ["/old/aura": .folderNotFound, "/new/aura": .worktrees(count: 3)],
+            worktreesWithChanges: [:],
+            pickedFolder: URL(filePath: "/new/aura", directoryHint: .isDirectory)
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.locateProjectFromPicker(id: ProjectID(canonicalPath: "/old/aura"))
+
+        // then
+        #expect(scenario.sut.projects[0].path == "/new/aura")
+    }
+
+    @Test
+    func `given the server is up when the address is copied then it reaches the pasteboard`() async {
+        // given — the assertion that could not be made while this was an `NSPasteboard` call in a
+        // view: whether the string a reader gets is the one the row shows.
+        let scenario = Scenario(
+            states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))]
+        )
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.copyAddress()
+
+        // then — host and port and nothing in front of them, which is General's own call: a scheme
+        // would have to be `https` under a self-signed identity, and pasting that into a browser
+        // produces a certificate warning rather than an answer.
+        #expect(await scenario.gestures.copied == ["MacBook-Pro.local:59144"])
+    }
+
+    @Test
+    func `given the server is not up when the address is copied then nothing is put on the pasteboard`(
+    ) async {
+        // given — the row draws an em dash in this state, and copying one would be worse than
+        // copying nothing.
+        let scenario = Scenario(states: [.failed(reason: "the local network is blocked")])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.copyAddress()
+
+        // then
+        #expect(await scenario.gestures.copied.isEmpty)
+    }
+
+    @Test
+    func `when the data folder is revealed then Finder is pointed at the folder in use`() async {
+        // given — and the folder in use is what `--store` moved it to, not the default one.
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.revealDataFolder()
+
+        // then
+        #expect(await scenario.gestures.revealed == [scenario.sut.dataFolderUrl])
+    }
+
+    @Test
+    func `when Local Network settings are asked for then that is the pane opened`() async {
+        // given
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.openSystemSettings(.localNetwork)
+
+        // then
+        #expect(await scenario.gestures.opened == [.localNetwork])
+    }
+
+    // MARK: - Locate, which is a move rather than an edit
+
+    @Test
+    func `given a project whose folder moved when it is located then it is the same project elsewhere`(
+    ) async {
+        // given — an identifier is a hash of a path, so a folder that moved is a different project
+        // to everything that resolves one. What has to survive is the name and the switch.
+        let scenario = Scenario(
+            projects: [StoredProject(
+                id: ProjectID(canonicalPath: "/old/aura"),
+                path: "/old/aura",
+                name: "aura",
+                isVisible: true
+            )],
+            folderContents: ["/old/aura": .folderNotFound, "/new/aura": .worktrees(count: 3)],
+            worktreesWithChanges: ["/new/aura": 1]
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.relocateProject(
+            id: ProjectID(canonicalPath: "/old/aura"),
+            to: URL(filePath: "/new/aura")
+        )
+
+        // then
+        #expect(scenario.sut.projects.count == 1)
+        #expect(scenario.sut.projects[0].name == "aura")
+        #expect(scenario.sut.projects[0].path == "/new/aura")
+        #expect(scenario.sut.projects[0].isVisible)
+        #expect(scenario.sut.projects[0].contents == .worktrees(count: 3))
+    }
+
+    @Test
+    func `given a folder that is not a repository when a project is located to it then nothing moves`(
+    ) async {
+        // given
+        let scenario = Scenario(
+            projects: [StoredProject(
+                id: ProjectID(canonicalPath: "/old/aura"),
+                path: "/old/aura",
+                name: "aura",
+                isVisible: true
+            )],
+            folderContents: ["/old/aura": .folderNotFound, "/downloads": .notARepository],
+            worktreesWithChanges: [:]
+        )
+        await scenario.sut.loadProjects()
+
+        // when
+        await scenario.sut.relocateProject(
+            id: ProjectID(canonicalPath: "/old/aura"),
+            to: URL(filePath: "/downloads")
+        )
+
+        // then — losing the last known path to a mis-aimed pick would take away the one thing that
+        // says which project this row is.
+        #expect(scenario.sut.projects[0].path == "/old/aura")
+        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+            sentence: "That folder is not a git repository.",
+            reason: nil
+        ))
+    }
 }
 
 // MARK: -
@@ -295,6 +865,9 @@ private struct Scenario {
     let loginItems: FakeLoginItemRegistry
     let restarts: FakeServerRestarting
     let store: FakeStore
+    let folders: FakeProjectFolders
+    let picker: FakeFolderPicking
+    let gestures: FakeSystemGestures
 
     init(
         states: [ServerRunState] = [],
@@ -304,18 +877,32 @@ private struct Scenario {
         git: GitInstallation = .checking,
         projects: [StoredProject] = [],
         devices: [StoredDevice] = [],
+        folderContents: [String: ProjectContents] = [:],
+        worktreesWithChanges: [String: Int] = [:],
+        candidates: [RepositoryCandidate] = [],
+        pickedFolder: URL? = nil,
         storeFailure: StoreError? = nil,
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
         restarts = FakeServerRestarting()
         store = FakeStore(projects: projects, devices: devices, failure: storeFailure)
+        folders = FakeProjectFolders(
+            contents: folderContents,
+            worktreesWithChanges: worktreesWithChanges,
+            candidates: candidates
+        )
+        picker = FakeFolderPicking(folder: pickedFolder)
+        gestures = FakeSystemGestures()
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
             connectionLog: FakeConnectionLog(readings: readings),
             loginItems: loginItems,
             gitInstallations: FakeGitInstallations(installation: git),
+            projectFolders: folders,
+            folderPicker: picker,
+            gestures: gestures,
             store: store,
             dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }
@@ -323,8 +910,13 @@ private struct Scenario {
     }
 }
 
-private func storedProject(named name: String) -> StoredProject {
-    StoredProject(id: ProjectID(canonicalPath: "/\(name)"), path: "/\(name)", name: name, isVisible: true)
+private func storedProject(named name: String, isVisible: Bool = true) -> StoredProject {
+    StoredProject(
+        id: ProjectID(canonicalPath: "/\(name)"),
+        path: "/\(name)",
+        name: (name as NSString).lastPathComponent,
+        isVisible: isVisible
+    )
 }
 
 private func storedDevice(named name: String) -> StoredDevice {

@@ -488,12 +488,13 @@ let package = Package(
         // and putting it beside the server's run state would make that module mean two things.
         .target(
             name: "ServerMacDomain",
+            dependencies: ["CoreDiffDomain"],
             path: "Server/Mac/Domain",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ServerMacDomainTests",
-            dependencies: ["ServerMacDomain"],
+            dependencies: ["ServerMacDomain", "CoreDiffDomain"],
             path: "Server/Mac/DomainTests",
             swiftSettings: [swift6]
         ),
@@ -502,7 +503,12 @@ let package = Package(
         // live in `Domain`, and it is not the API's business either.
         .target(
             name: "ServerMacData",
-            dependencies: ["ServerMacDomain", "ServerGitDomain"],
+            dependencies: [
+                "CoreDiffDomain",
+                "ServerMacDomain",
+                "ServerGitDomain",
+                "ServerWorktreesDomain"
+            ],
             path: "Server/Mac/Data",
             swiftSettings: [swift6]
         ),
@@ -512,7 +518,13 @@ let package = Package(
         // unit row that would have said so.
         .testTarget(
             name: "ServerMacDataTests",
-            dependencies: ["ServerMacData", "ServerMacDomain", "ServerGitDomain"],
+            dependencies: [
+                "CoreDiffDomain",
+                "ServerMacData",
+                "ServerMacDomain",
+                "ServerGitDomain",
+                "ServerWorktreesDomain"
+            ],
             path: "Server/Mac/DataTests",
             swiftSettings: [swift6]
         ),

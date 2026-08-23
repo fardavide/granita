@@ -1836,3 +1836,202 @@ So **§6's frames stay in the design review until the Devices tab ships them**, 
 shape §1 is already in and for the same reason. The rule that a section's frames are deleted by the
 pull request that ships it is unchanged; this is one section shipping in two pieces, named here so
 the second piece is not lost.
+
+## The Projects row costs two different amounts, and the expensive half is filled in rather than dropped
+
+Design §4 draws the trailing figure as two lines — `4 worktrees` over `2 with changes` — and says it
+comes from `Project.worktreeCount` and `dirtyWorktreeCount`, "which already exist". They do. What
+the review could not know is that the second one had not been timed yet, and when it was, on 22
+August 2026, the answer was **122.7 seconds** across ten real repositories. That measurement killed
+the menu bar count. It arrives at this tab too, and the review's own sentence says why it must:
+the figure is "what reconciles this tab with the number in the menu bar", and there is no number in
+the menu bar.
+
+**So the cheap question was measured before anything was decided.** `WorktreeRegistry.projects()`
+builds a whole change set per worktree — every changed path, its stats, its revision, a hash of every
+changed file — to evaluate one boolean. Git can answer "is anything different here" with one
+invocation. On 23 August 2026, against Davide's `bandlab-android` monorepo and its sixteen worktrees:
+
+| | wall clock, warm |
+|---|---|
+| `git status --porcelain`, per worktree | **16.7 s** for sixteen |
+| `git diff-index --quiet HEAD`, per worktree | 8.0 s for sixteen |
+| `git worktree list --porcelain -z`, whole project | **0.014 s** |
+
+Two orders of magnitude cheaper than the change set, and still about a second per worktree. One
+monorepo alone is longer than anybody waits for a settings pane.
+
+**Davide chose to fill it in progressively**, on 23 August 2026, over dropping the second line
+entirely and over computing both before drawing. So the tab reads the store and the worktree counts,
+draws the whole list, and *then* walks the visible projects asking the cheap question, each answer
+landing in the row it belongs to. What that beats:
+
+- **Dropping `2 with changes`.** It was the recommendation and it lost on what the line is for: the
+  worktree count says how much is behind a switch, and only the second line says whether there is
+  anything to read. A row that cannot answer that is a row about filing rather than about work.
+- **Computing both before drawing.** A pane that is blank for a minute on ten repositories, every
+  time it is opened.
+
+**Three things make the progressive fill honest rather than merely deferred.** The second line is
+drawn as `checking…` rather than left absent, so nothing below it moves when the answer lands — this
+is a list a reader is aiming a switch at. The expensive question is asked **only of projects that are
+switched on**, because a switched-off row says `not visible` and has nowhere to put a count. And the
+walk is cancelled with the tab's own `.task`, so leaving Projects stops the git invocations rather
+than running them into a list nobody is looking at.
+
+**The cheap question is `worktreeStatus`, a command the vocabulary already had**, so no case was
+added to `GitCommand`. `status` prints nothing at all when there is nothing to report, which makes
+the boolean "did it print". It agrees with the change set by construction rather than by coincidence,
+because it is the same command with the same untracked mode — and that matters: `diff-index --quiet`
+is faster and answers *no* for a worktree holding nothing but new files, which is precisely what an
+agent leaves behind.
+
+## What a folder scan will not look at, and why each refusal is there
+
+SPEC §9 names six directories a scan skips — `node_modules`, `.build`, `DerivedData`, `Pods`,
+`vendor`, `target` — and the §4 frames show `vendor/swift-nio` as a candidate. That is the second
+place the design and the specification have disagreed, so it went to Davide rather than being
+resolved by whoever read one of them last. **Answered on 23 August 2026: the specification wins.**
+The drawing's row reads as an illustration of a candidate at a nested path, which the sheet needed an
+example of; the skip list is explicit and argued. Recorded because `design-handoff` says a
+disagreement is worth a line rather than a silent resolution.
+
+Three more limits are ours, and none of them is in either document:
+
+- **Hidden directories are refused wholesale** rather than named one at a time. Everything under a
+  leading dot is a cache, a trash can or an agent's scratch space — including every worktree Claude
+  Code creates, which lives under `.claude/worktrees` and is a checkout of a repository the reader
+  already has. It also makes `.build`'s presence on the specification's list redundant, which is
+  fine: the list is what SPEC says and is kept as written.
+- **Four levels below the folder that was picked.** A scan is a person pointing at where they keep
+  their work, not a search of a disk, and an unbounded walk of a home directory is minutes of I/O for
+  repositories nobody filed there on purpose.
+- **A candidate is a folder with a `.git` *directory* in it**, never a `.git` file. The difference is
+  a linked worktree, whose `.git` is a file pointing back at the repository it belongs to — adding
+  one as a project would enumerate exactly the worktrees that repository already offers, under a
+  second name, with a second switch over the same files.
+
+Symbolic links are not followed either, and that one is not a policy so much as a termination
+argument: a link is somewhere else's directory reached by a second name, so following one offers the
+same repository twice, and a link pointing back up the tree is a walk that does not end.
+
+**The scan runs no git at all**, which is worth stating because everything else on this tab does.
+Thirty candidates is thirty `.git` directories found by `FileManager` and zero subprocesses. What
+makes that safe is that the one add which *can* be aimed anywhere — the folder picker — checks, and
+the sheet's candidates are folders this Mac found a `.git` in a moment ago.
+
+## Locating a moved project is a remove and an add, because an identifier is a hash of a path
+
+`Locate…` looks like an edit and cannot be one. Every opaque identifier in this product is derived
+from a canonical path, so a project that moved is a *different* project to everything that resolves
+one — the store, the API, the phone. Editing the path in place would leave a record whose identifier
+no longer derives from its own contents, and the next thing to recompute one would stop finding it.
+
+So the move is `removeProject` followed by `add`, with the name and the switch carried across because
+those are the two things a reader decided. `Store` grew `removeProject(id:)` for this and for the
+minus button, and it deliberately leaves worktree aliases and viewed marks alone: they are keyed by
+their own path-derived identifiers, so re-adding the same folder finds them where it left them, and
+nothing outside an enabled project is ever served.
+
+**The switch survives the move, and that is the call worth naming.** A project switched on before its
+folder moved comes back switched on, which is what makes `Locate…` a repair rather than a second
+setup. What it beats is relocating to *off* on the grounds that a path change is security-relevant —
+it is not: the reader is standing at the Mac naming the folder, which is exactly the gesture that
+enabled it in the first place.
+
+Rejected outright: making the switch's disabled state flip the project off while the folder is
+missing. Turning off something a person turned on, while they are not looking, is a decision this app
+does not get to make — and a project switched off by the app is indistinguishable, a week later, from
+one they switched off themselves.
+
+## A Mac baseline of a pane that is not a `Form` was rendering on white, and in dark that hid a control
+
+Every Settings pane before Projects was a `Form` with `.formStyle(.grouped)`, which paints its own
+background across the whole pane. Projects is a bordered list and a plus/minus bar, so it paints
+none — and the snapshot host renders the **view**, not the window, so what came out was the pane
+flattened onto nothing, which is white.
+
+In light that is nearly right and hides the problem. **In dark it is catastrophic and silent**: the
+pane's own foreground is light, so the add and remove buttons and the footnote under the list came
+out white on white. Sixteen baselines were taken, adopted from the runner, and reviewed — and the
+dark ones were pictures of a control that was not there. That is the exact failure the whole suite
+exists to catch, arriving through the suite itself.
+
+**The fix is in the hosting rather than in the view, and the direction matters.** The product is
+correct as written: in the real Settings window the pane is transparent over the window's own
+background, which is what a pane that is not a `Form` is supposed to be. Painting a background into
+`ProjectsSettingsView` to make the picture right would have been changing the product to flatter a
+test. So `hostedInWindow` puts `windowBackgroundColor` behind whatever it is handed, which is the
+colour the pane really sits on. The status item's helper does **not** get it: a menu bar item is not
+on a window background, and giving its 44 × 22 baseline one would be drawing a backdrop that does not
+exist.
+
+Found by looking at the pictures, which is the rule this project already had and the reason it has
+it. Nothing else would have said so — the suite was green against baselines it had just written.
+
+## The two states §4 argues hardest for were unphotographable, and that was a layering mistake
+
+`AddRepositoriesSheet` held what was ticked as its own `@State`, and `ProjectsSettingsView` held
+which row was selected. Both read like a view's own business and neither is, because of what it
+costs: the states those controls turn **on** could then be reached by nothing but a finger. The
+sheet's confirm was photographed only saying `Add` and greyed out; the footer's `2 chosen of 30`
+never at all; the minus only in the state where it cannot be pressed. Design §4 argues about the
+count being in the verb across a whole paragraph, and the suite had no picture of it.
+
+The coverage gate said the same thing in numbers before the eye did — the Snapshot region row fell
+9.3 points, which is far outside the ~0.3% noise these rows drift by, and every uncovered region was
+in a branch only an interaction could take.
+
+So both move out to the screen that composes them, and both views take a `Binding`. That is what
+`architecture.md` already says a `Ui` module is — *each takes what it renders and reports what
+happened* — and this is the first time the rule has paid a debt rather than merely been followed.
+Two baselines came back with it: a sheet with two ticked, and a list with a row selected.
+
+Rejected: adding a parameter to the views that only a test would pass, which is the same picture
+bought by making the production initialiser lie about what the view needs. And rejected: accepting
+the lower number as honest, on the grounds that a snapshot cannot click — it can, once the thing it
+would have clicked is a value it is handed.
+
+## A screen was doing I/O, and the coverage gate had been reporting that for three runs
+
+`GranitaSettingsScreen` held four AppKit statics — `NSOpenPanel`, `NSPasteboard`, `NSWorkspace`
+twice — and the closures that called them. The comment excusing them said they were "one-line system
+gestures with nothing to decide and nothing a test would assert; a seam here would be an abstraction
+invented for a future nobody asked for". That was true when it was written and stopped being true
+the moment Projects added a folder picker: **a picker decides.** It comes back with a folder or with
+a reader who changed their mind, and every one of the three call sites branches on which.
+
+The gate had been saying so and was misread. The Snapshot row fell and the reflex — twice recorded
+in this file as wrong — was that the scope was mis-drawn. Measured per file through `coverage.py`'s
+own reader, `GranitaSettingsScreen` was at **45 uncovered regions of 56**: not because it is a view,
+but because a view body is where no test can supply an answer to a question the code asks.
+
+**A scope change was proposed here and Davide refused it**, on 23 August 2026, with the argument
+that settles it: *Ui must be declarative; if a state cannot be driven by a model, and it isn't
+testable because of that, we have a structural issue.* The proposal would have excluded models from
+the views scope and taken the number back over its baseline without touching the defect. It was the
+third time this project has reached for a rescoping and the first time the reach was wrong.
+
+So the I/O left the screen, which is what `architecture.md` has said all along — *anything that
+touches the outside world sits behind a protocol its `Domain` owns, with one implementation in a
+`Data` module and a hand-written fake in tests*. Two protocols, because they differ in the way that
+matters: `FolderPicking` answers and `SystemGestures` does not. `AppKitFolderPicker` and
+`AppKitSystemGestures` hold the AppKit; the model gained `addProjectFromPicker`,
+`scanFolderFromPicker`, `locateProjectFromPicker`, `copyAddress`, `revealDataFolder` and
+`openSystemSettings`, all of them ordinary methods a test drives; and the screen became composition
+and nothing else.
+
+**Three things came free, and each is the sort that was previously unaskable.** Whether the string
+Copy puts on the pasteboard is the one the row shows — it is, and it is asserted now rather than
+computed twice. Whether copying while the server is down copies the em dash the row draws — it does
+not. And whether the two `x-apple.systempreferences:` literals still parse, which nothing in the
+product would have noticed: a mistyped extension identifier opens System Settings on its front page,
+which looks exactly like the app working.
+
+**What is ticked in the scan sheet moved to the model in the same pass**, and the distinction is
+worth keeping: a highlighted row drives nothing and stays the screen's own `@State`, while a ticked
+checkbox decides what a confirm button will add and belongs beside the scan it came from.
+
+Rejected: keeping `copy`, `reveal` and `openSystemSettings` inline on the grounds that they really
+are one-liners with nothing to decide. They are — but they are I/O in a view either way, and leaving
+three behind while moving the fourth would have been a rule applied by size rather than by kind.

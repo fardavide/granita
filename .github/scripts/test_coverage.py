@@ -56,9 +56,26 @@ class TestPathClassification:
 
     def test_given_a_view_layer_file_when_classifying_then_it_is_view_code(self):
         assert coverage.is_view_path("Client/Connection/Ui/ServerDiscoveryView.swift")
-        assert coverage.is_view_path("Client/App/Presentation/GranitaApp.swift")
         # A layer may hold subdirectories, and they are still that layer.
         assert coverage.is_view_path("Client/Connection/Ui/Components/Badge.swift")
+        # A screen composed from that vocabulary, which is a body a baseline renders.
+        assert coverage.is_view_path("Server/Mac/Presentation/GranitaSettingsScreen.swift")
+
+    def test_given_a_model_when_classifying_then_it_is_not_view_code(self):
+        # **The redefinition of 23 August 2026, and the mirror of the rule below it.** A rendered
+        # baseline cannot drive an object: it renders a view against a model it was handed and
+        # clicks nothing. So a model is judged by the Unit row, which constructs it, and leaving it
+        # in this one asked a picture how much of an object it executed.
+        assert not coverage.is_view_path("Server/Mac/Presentation/ServerMacModel.swift")
+        assert not coverage.is_view_path("Client/Connection/Presentation/ClientConnectionModel.swift")
+
+    def test_given_a_composition_root_when_classifying_then_it_is_not_view_code(self):
+        # Excluded from both scopes now, which is what makes them symmetric: no host test constructs
+        # a composition root, and no baseline renders one either — rendering `GranitaMacScene` means
+        # launching the app.
+        assert not coverage.is_view_path("Server/App/Presentation/MacComposition.swift")
+        assert not coverage.is_view_path("Server/App/Presentation/GranitaMacScene.swift")
+        assert not coverage.is_view_path("Client/App/Presentation/GranitaMobileScene.swift")
 
     def test_given_a_domain_or_data_file_when_classifying_then_it_is_not_view_code(self):
         assert not coverage.is_view_path("Core/Diff/Domain/UnifiedDiffParser.swift")

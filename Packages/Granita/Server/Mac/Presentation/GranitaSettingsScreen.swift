@@ -1,7 +1,7 @@
-import AppKit
 import Foundation
 import SwiftUI
 
+import CoreDiffDomain
 import ServerMacUi
 
 /// Granita's Settings window.
@@ -33,6 +33,14 @@ public struct GranitaSettingsScreen: View {
 
     private let model: ServerMacModel
 
+    /// Which project row is highlighted.
+    ///
+    /// The one piece of state this screen still holds, and it holds it because nothing else has an
+    /// opinion: a highlight drives no I/O, changes nothing on disk, and dies with the window. What
+    /// is *ticked in the scan sheet* looked like the same kind of thing and is not — it decides what
+    /// a confirm button will add — so it lives on the model with the scan it belongs to.
+    @State private var selectedProject: ProjectID?
+
     public init(model: ServerMacModel) {
         self.model = model
     }
@@ -52,12 +60,50 @@ public struct GranitaSettingsScreen: View {
                         get: { model.loginItem == .on },
                         set: { enabled in Task { await model.setLoginItem(enabled: enabled) } }
                     ),
-                    onCopyAddress: Self.copy,
+                    onCopyAddress: { _ in Task { await model.copyAddress() } },
                     onRestart: { Task { await model.restartServer() } },
-                    onOpenLocalNetworkSettings: { Self.open(Self.localNetworkSettings) },
-                    onOpenLoginItems: { Self.open(Self.loginItemsSettings) }
+                    onOpenLocalNetworkSettings: { Task { await model.openSystemSettings(.localNetwork) } },
+                    onOpenLoginItems: { Task { await model.openSystemSettings(.loginItems) } }
                 )
                 .task { await model.loadLoginItem() }
+            }
+
+            Tab("Projects", systemImage: "folder") {
+                ProjectsSettingsView(
+                    projects: model.projects,
+                    failure: model.projectsFailure,
+                    selection: $selectedProject,
+                    onSetVisible: { isVisible, id in
+                        Task { await model.setProjectVisible(isVisible, id: id) }
+                    },
+                    onAddRepository: { Task { await model.addProjectFromPicker() } },
+                    onScanFolder: { Task { await model.scanFolderFromPicker() } },
+                    onRemove: { id in Task { await model.removeProject(id: id) } },
+                    onLocate: { id in Task { await model.locateProjectFromPicker(id: id) } }
+                )
+                // Re-read every time the tab is opened rather than once at launch. A folder can be
+                // moved, and a repository can grow a worktree, while Granita is running — and the
+                // expensive half of the row is cancelled with this task when the reader leaves.
+                .task { await model.loadProjects() }
+                .sheet(isPresented: Binding(
+                    get: { model.folderScan != nil },
+                    set: { if $0 == false { model.dismissFolderScan() } }
+                )) {
+                    // Read inside the sheet rather than captured beside it, so a scan that finishes
+                    // while the sheet is up replaces the spinner with the list it found instead of
+                    // presenting a second sheet.
+                    if let scan = model.folderScan {
+                        AddRepositoriesSheet(
+                            scan: scan,
+                            chosen: Binding(
+                                get: { model.chosenCandidatePaths },
+                                set: { model.setChosenCandidatePaths($0) }
+                            ),
+                            onAdd: { chosen in Task { await model.addScannedProjects(chosen) } },
+                            onCancel: { model.dismissFolderScan() }
+                        )
+                    }
+                }
             }
 
             Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted") {
@@ -78,7 +124,7 @@ public struct GranitaSettingsScreen: View {
                     dataFolderUrl: model.dataFolderUrl,
                     projectCount: model.storedProjectCount,
                     deviceCount: model.storedDeviceCount,
-                    onRevealDataFolder: { Self.reveal(model.dataFolderUrl) },
+                    onRevealDataFolder: { Task { await model.revealDataFolder() } },
                     onResetAllData: { Task { await model.resetAllData() } }
                 )
                 .task {
@@ -94,34 +140,4 @@ public struct GranitaSettingsScreen: View {
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
     }
 
-    /// AppKit rather than a protocol with a fake behind it. Both of these are one-line system
-    /// gestures with nothing to decide and nothing a test would assert; a seam here would be an
-    /// abstraction invented for a future nobody asked for.
-    private static func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    private static func open(_ url: URL) {
-        NSWorkspace.shared.open(url)
-    }
-
-    /// Finder, with the folder selected rather than opened, which is what "Reveal" means everywhere
-    /// else on this machine.
-    private static func reveal(_ url: URL) {
-        NSWorkspace.shared.activateFileViewerSelecting([url])
-    }
-
-    /// Privacy & Security › Local Network, and Login Items, addressed directly. Without the first
-    /// one an `NWError` code is the whole explanation a person gets for an app that does nothing.
-    // Force-unwrapped, and justified: both are literals in this file with no runtime input in
-    // them, so the optional can only be nil if the literal beside it is malformed — which is a
-    // compile-time editing mistake and not a state to handle.
-    private static let localNetworkSettings = URL(
-        string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork"
-    )!
-
-    private static let loginItemsSettings = URL(
-        string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
-    )!
 }

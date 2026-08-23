@@ -33,7 +33,7 @@ packages:
 # .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.13
+    MARKETING_VERSION: 0.0.14
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -183,6 +183,11 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
         BUNDLE_LOADER: "$(TEST_HOST)"
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac.snapshottests
+        # Needed the moment anything in this scheme is signed, which the UI test bundle below is.
+        # Without it the build fails with "Cannot code sign because the target does not have an
+        # Info.plist file" — for *this* target, while the one being run is the other one.
+        GENERATE_INFOPLIST_FILE: YES
+
 
   # Snapshot tests live here rather than in the package, and they have to. A SwiftPM test target is
   # hostless: there is no key window, so a SwiftUI view lays out against nothing and renders blank.

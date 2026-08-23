@@ -59,6 +59,20 @@ public actor JsonDocumentStore: Store {
         ))
     }
 
+    public func removeProject(id: ProjectID) throws(StoreError) {
+        let current = state()
+        // The project's own record and nothing else. A worktree alias or a viewed mark under it is
+        // keyed by a path-derived identifier, so re-adding the same folder finds its aliases where
+        // it left them — and nothing outside an enabled project is ever served, so keeping them
+        // costs no visibility.
+        try write(StoredState(
+            projects: current.projects.filter { $0.id != id },
+            worktrees: current.worktrees,
+            viewed: current.viewed,
+            devices: current.devices
+        ))
+    }
+
     public func setAlias(_ alias: String?, for worktree: WorktreeID) throws(StoreError) {
         let current = state()
         var worktrees = current.worktrees

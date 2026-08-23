@@ -126,6 +126,17 @@ UNREACHABLE_FILES = {
     "Server/Identity/Data/KeychainServerIdentityStore.swift",
     "Client/Connection/Data/KeychainPairingTokenStore.swift",
     "Server/Mac/Data/ServiceLoginItemRegistry.swift",
+    # Every line is a call on the *running application* — `NSApp`, `NSPasteboard`, `NSWorkspace`, and
+    # a modal panel whose `runModal()` would not return in a test process at all. Stronger than the
+    # three above it, which merely fail: this one hangs.
+    #
+    # It entered this scope by being *moved into it*, which is the fact that justifies the
+    # exemption rather than the arithmetic. These calls used to sit in `GranitaSettingsScreen`,
+    # which this scope already excluded as a body; taking them out of a view — the right change, and
+    # the one that made three of them assertable for the first time — carried unrunnable code into a
+    # module that is judged. The pane spellings stayed behind in `SystemSettingsPaneUrl.swift`
+    # precisely so the part that *is* a pure function keeps being measured.
+    "Server/Mac/Data/AppKitSystemGestures.swift",
 }
 
 # What each kind's percentage is measured over, and the name that says so in the summary.
@@ -182,8 +193,8 @@ UNREACHABLE_FILES = {
 # news. That is precisely what happened the first time this was renamed, and the script's own tests
 # are what said so.
 DEFAULT_SCOPE = "package"
-VIEWS_SCOPE = "views-drawing-only"
-HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens"
+VIEWS_SCOPE = "views-and-screens-only"
+HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 
@@ -203,13 +214,25 @@ def is_test_path(relative: str) -> bool:
 def is_view_path(relative: str) -> bool:
     """A file in a layer that draws — the only code a rendered snapshot can execute.
 
-    The server's API module is excluded despite being named `Presentation`: it maps domain to wire
-    and serves routes, and has no `Ui` sibling because it has no views.
+    A `Ui` module, plus the screens that compose one. **Not everything filed under `Presentation`**,
+    and that correction is the mirror of the one `is_reachable_path` already makes: that scope
+    excludes screens because a host test cannot render a body, and this one excludes what is not a
+    body because a rendered baseline cannot drive an object. `Presentation` holds three kinds of
+    thing — models, the screens composed from `Ui`, and composition roots — and only the middle one
+    is code a picture executes.
+
+    Measured before it was changed, on 23 August 2026: the denominator held `ServerMacModel` at 163
+    uncovered lines of 241, `KeychainBackedServerHost` at 18 of 117, and `MacComposition` — a
+    composition root — at 9 of 97. A row asking "of the code that draws screens, how much does a
+    baseline put on screen" was being handed a server host and a wiring module.
+
+    The server's API module needs no clause of its own any more: it has no screens and no `Ui`, so
+    nothing in it selects.
     """
     parts = pathlib.PurePosixPath(relative).parts[:-1]
-    if any(triple == NON_DRAWING_PRESENTATION for triple in zip(parts, parts[1:], parts[2:])):
-        return False
-    return bool(VIEW_LAYERS.intersection(parts))
+    if DRAWING_LAYER in parts:
+        return True
+    return is_screen_path(relative) and not is_composition_root_path(relative)
 
 
 def is_screen_path(relative: str) -> bool:

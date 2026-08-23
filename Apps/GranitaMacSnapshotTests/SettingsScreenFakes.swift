@@ -6,7 +6,7 @@ import ServerMacDomain
 import ServerMacPresentation
 import ServerStoreDomain
 
-/// The six doubles `ServerMacModel` needs, so the whole Settings window can be rendered.
+/// The seven doubles `ServerMacModel` needs, so the whole Settings window can be rendered.
 ///
 /// **These live in the snapshot bundle rather than being shared with the package suite, and they
 /// have to.** SwiftPM test targets cannot import each other, and the alternative — a fixtures module
@@ -32,6 +32,9 @@ enum SettingsScreenFakes {
             connectionLog: FakeLog(reading: attempts),
             loginItems: FakeLoginItems(),
             gitInstallations: FakeGitInstallations(installation: git),
+            projectFolders: FakeProjectFolders(),
+            folderPicker: FakeFolderPicker(),
+            gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
@@ -51,6 +54,7 @@ enum SettingsScreenFakes {
         await model.loadLoginItem()
         await model.loadGitInstallation()
         await model.loadStoredCounts()
+        await model.loadProjects()
     }
 }
 
@@ -102,6 +106,29 @@ private struct FakeGitInstallations: GitInstallations {
     func current() async -> GitInstallation { installation }
 }
 
+/// Every project the window's fake store holds is a folder with two worktrees, one of them dirty.
+///
+/// A fixed answer rather than a configurable one: the window's own baselines are about the tab bar
+/// and the pane inside it, and `ProjectsSettingsView` has baselines of its own for the states of a
+/// row.
+private struct FakeProjectFolders: ProjectFolders {
+
+    func contents(ofFolderAt path: String) -> ProjectContents { .worktrees(count: 2) }
+    func worktreesWithChanges(inFolderAt path: String) -> Int { 1 }
+    func repositories(under root: URL) -> [RepositoryCandidate] { [] }
+}
+
+/// Nobody is at the keyboard of a snapshot, and nothing here opens a panel.
+private struct FakeFolderPicker: FolderPicking {
+    func pickFolder(prompt: String, message: String) -> URL? { nil }
+}
+
+private struct FakeGestures: SystemGestures {
+    func copyToPasteboard(_ text: String) {}
+    func revealInFinder(_ url: URL) {}
+    func openSystemSettings(_ pane: SystemSettingsPane) {}
+}
+
 private actor FakeStore: Store {
 
     private var stored: StoredState
@@ -129,6 +156,7 @@ private actor FakeStore: Store {
 
     func add(project: StoredProject) throws(StoreError) {}
     func setProjectVisible(_ isVisible: Bool, id: ProjectID) throws(StoreError) {}
+    func removeProject(id: ProjectID) throws(StoreError) {}
     func setAlias(_ alias: String?, for worktree: WorktreeID) throws(StoreError) {}
     func setPinned(_ isPinned: Bool, for worktree: WorktreeID) throws(StoreError) {}
     func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {}

@@ -25,7 +25,7 @@ becomes.
 | §1 | The status item and its menu | drawn, not built. Blocked behind §5: "Pair a device…" opens Settings on the Devices tab |
 | §2 | The window — five tabs | **partly built in 0.0.10** — fixed at 620 × 560pt with Advanced last. The five tabs land as the panes do; restoring the last-used tab and selecting Projects on a first run land with §4 and §5 |
 | §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
-| §4 | Projects | drawn, not built |
+| §4 | Projects | **built in 0.0.14**, with baselines. Frames deleted. Two departures, both below: the second figure is filled in progressively, and the scan follows the specification's skip list rather than the sheet's own drawing |
 | §5 | Devices | drawn, not built |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**, with baselines. The `Pair…` affordance is blocked behind §5, which is the door it opens, so the frames stay until then |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
@@ -230,6 +230,34 @@ turned on is a decision the app should not make while they are not looking.
 The empty state is a `ContentUnavailableView` with `folder.badge.plus`, offering both verbs once.
 
 Should feel like Full Disk Access in Privacy & Security.
+
+### Three calls made while building it
+
+**`2 with changes` is filled in after the row rather than drawn with it**, and that is Davide's call
+of 23 August 2026 rather than a shortcut. The review says the figure "comes from
+`Project.worktreeCount` and `dirtyWorktreeCount`, which already exist" — they do, and the second one
+had not been timed. It is the same question that costs 122.7 seconds across ten repositories, and
+even asked the cheap way it is 16.7 seconds for one Android monorepo's sixteen worktrees against
+0.014 for the worktree count. So the tab draws the list from what is cheap and walks the visible
+projects afterwards, each answer landing in its own row. The second line reads `checking…` in the
+meantime — drawn rather than absent, because a row that grows by a line when an answer lands moves
+every row below it on a list a reader is aiming a switch at. The alternative it beat was dropping the
+line; the reason it lost is that the worktree count says how much is behind a switch and only this
+line says whether there is anything to read. See [`decisions.md`](decisions.md).
+
+**The scan skips `vendor`, so the sheet's own `vendor/swift-nio` row can never appear.** SPEC §9
+names six directories and the frames draw a candidate inside one of them. Put to Davide on 23 August
+2026 and settled toward the specification — the row reads as an illustration of a nested path, which
+the sheet needed an example of. Three further limits are ours and are in `decisions.md`: hidden
+directories wholesale, four levels of depth, and a candidate being a `.git` **directory** rather than
+the `.git` file a linked worktree has.
+
+**Two states the frames do not draw, and both had to exist.** A scan that is still looking, because
+a development folder is fast and a home directory is not and finding that out with a frozen sheet is
+the wrong way; and a scan that found nothing new, where the confirm button is **absent** rather than
+permanently grey. There is also a failure line under the list — our sentence with the store's own
+words beneath it — for the case the frames assume away: every control on this tab writes to the
+store, and a switch that springs back in silence is a control that did nothing.
 
 ## §5 — Devices
 
