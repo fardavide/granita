@@ -53,7 +53,16 @@ public struct ConnectionLogView: View {
                 Text(verbatim: elapsed(since: attempt.at))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                pairing(for: attempt.outcome)
+                // The action's slot is reserved on every row, whether or not it holds one, so the
+                // elapsed times stay in a column. Only two of nine outcomes offer anything, and
+                // without this the times sit at three different depths down a list whose whole
+                // value is being scannable while something is failing.
+                //
+                // Sized by a hidden copy of the longest label rather than by a number, so it stays
+                // right at another type size and in another language.
+                Text("Pair Again…")
+                    .hidden()
+                    .overlay(alignment: .trailing) { pairing(for: attempt.outcome) }
             }
         } label: {
             Label {
