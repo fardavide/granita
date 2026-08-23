@@ -97,12 +97,20 @@ SCREEN_SUFFIX = "Screen.swift"
 # is an ordinary object a test constructs, and must stay judged.
 DRAWING_LAYER = "Ui"
 
-# The composition roots, by the directory each one occupies. Wiring implementations into protocols
-# is their whole job, nothing depends on them, and no test constructs one — `granita-server` has
-# never been measured at all, because an executable target is not linked into a test binary. That
-# exemption was an accident of packaging rather than a decision; naming the directories makes it
-# the same decision for all three.
-COMPOSITION_ROOTS = {("App", "Presentation"), ("Cli", "Main")}
+# The layer the composition roots occupy. Wiring implementations into protocols is their whole job,
+# nothing depends on them, and no test constructs one — `granita-server` has never been measured at
+# all, because an executable target is not linked into a test binary. That exemption was an accident
+# of packaging rather than a decision.
+#
+# It used to be a set of directory *pairs*, `{("App", "Presentation"), ("Cli", "Main")}`, because two
+# of the three roots were filed under a layer they were not: a module called `Presentation` that a
+# rendered baseline cannot draw and a host test cannot construct is a module both scopes have to
+# carry a clause about. Both scopes carried one, and both clauses were the same fact spelled twice.
+#
+# The roots are now the `Main` layer — `Client/App/Main`, `Server/App/Main`, `Server/Cli/Main` — so
+# this is a layer name matched exactly the way `Ui` is, and the views scope needs no clause at all:
+# `Main` is neither `Ui` nor `Presentation`, so nothing in a root selects into it in the first place.
+COMPOSITION_ROOT_LAYER = "Main"
 
 # Files a host test cannot execute for a reason that is not a layer and not a composition root.
 #
@@ -227,12 +235,14 @@ def is_view_path(relative: str) -> bool:
     baseline put on screen" was being handed a server host and a wiring module.
 
     The server's API module needs no clause of its own any more: it has no screens and no `Ui`, so
-    nothing in it selects.
+    nothing in it selects. Neither do the composition roots, since they became the `Main` layer —
+    the clause that used to exclude them was only ever needed because two of them were filed under
+    `Presentation`, and a `…Screen.swift` in a root would have selected on the name alone.
     """
     parts = pathlib.PurePosixPath(relative).parts[:-1]
     if DRAWING_LAYER in parts:
         return True
-    return is_screen_path(relative) and not is_composition_root_path(relative)
+    return is_screen_path(relative)
 
 
 def is_screen_path(relative: str) -> bool:
@@ -242,21 +252,19 @@ def is_screen_path(relative: str) -> bool:
 
 
 def is_composition_root_path(relative: str) -> bool:
-    """A file in one of the three composition roots, matched on the pair of directories naming it."""
-    parts = pathlib.PurePosixPath(relative).parts[:-1]
-    return any(pair in COMPOSITION_ROOTS for pair in zip(parts, parts[1:]))
+    """A file in one of the three composition roots, which is to say in the `Main` layer."""
+    return COMPOSITION_ROOT_LAYER in pathlib.PurePosixPath(relative).parts[:-1]
 
 
 def is_reachable_path(relative: str) -> bool:
     """A file a host test could execute: not a view body, not wiring nothing depends on, and not
     something whose only real collaborator is absent from a test binary."""
-    if DRAWING_LAYER in pathlib.PurePosixPath(relative).parts[:-1]:
+    parts = pathlib.PurePosixPath(relative).parts[:-1]
+    if DRAWING_LAYER in parts or COMPOSITION_ROOT_LAYER in parts:
         return False
     if is_screen_path(relative):
         return False
-    if relative.lstrip("/") in UNREACHABLE_FILES:
-        return False
-    return not is_composition_root_path(relative)
+    return relative.lstrip("/") not in UNREACHABLE_FILES
 
 
 def empty() -> dict:

@@ -93,10 +93,16 @@ final class MacComposition {
             // Wrapped rather than replaced: waking is the only thing this adds, and everything
             // about how the server binds stays in one place.
             host: RebindingOnWake(
-                host: KeychainBackedServerHost(
+                host: TransportResolvingServerHost(
                     dependencies: dependencies,
-                    serviceName: MachineName.computer,
-                    identities: identities
+                    binding: .bonjourService(name: MachineName.computer),
+                    // Asked per run, not once here. A rebind after waking has to be able to fail
+                    // for a reason someone can act on — a locked keychain, an identity deleted by
+                    // hand — and a transport resolved at launch could only report that as the app
+                    // never having started.
+                    transport: { () async throws(ServerIdentityError) -> ApiTransport in
+                        .tls(try await identities.keychainIdentity().reference)
+                    }
                 ),
                 wakes: rebinds
             ),

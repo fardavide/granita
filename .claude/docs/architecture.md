@@ -42,6 +42,7 @@ The layer rules are declared once, in the package manifest, and enforced by the 
 | `Data` | `Domain` targets, plus at most **one** external infra dependency | another `Data`'s internals |
 | `Ui` | `Domain` for the model types it renders, SwiftUI | any `Presentation`, any `Data` |
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
+| `Main` | anything — it is a composition root | being depended on by anything |
 
 **`Presentation` depends on `Ui`**, which inverts what most SwiftUI projects do and is deliberate. A
 `Ui` module is a vocabulary of stateless views: each takes what it renders and reports what happened,
@@ -58,11 +59,24 @@ This is the whole boundary system. A domain module cannot reach a network client
 declare it, so a violation is a compile error rather than a review comment. When a rule feels
 obstructive, that is the rule working: the fix is to move the logic, not to add the edge.
 
-Three modules are exempt, because wiring implementations into protocols is their entire job: the
-phone's composition root, the menu bar app's composition root, and the executable's. They are the
-only modules that import a `Data` target, and nothing depends on **them** — which is what makes the
-exemption safe rather than a hole. Both app roots are `Presentation` modules, since under the
-direction above a `Ui` module could not reach a `Data` target even if it wanted to.
+The three composition roots — the phone's, the menu bar app's, and the executable's — may mix
+layers, because wiring implementations into protocols is their entire job. They are the only modules
+that import a `Data` target, and nothing depends on **them**, which is what makes that safe rather
+than a hole.
+
+**They are a layer, `Main`, rather than an exemption written down in prose.** Two of the three used
+to be filed under `Presentation` and were exempted by name wherever the distinction mattered: in this
+document, in the manifest's header, and twice in the coverage report's scope predicates, which each
+had to carry a clause saying that one particular `Presentation` module is not one. A rule spelled in
+four places is a rule that drifts, and the coverage clauses were the same fact written twice in
+different words. Naming the layer replaces all four with a directory name, matched exactly the way
+`Ui` is — and one of the two clauses disappears outright, because `Main` is neither `Ui` nor
+`Presentation` and so nothing in a root selects into the drawing scope in the first place.
+
+What a root may hold is **only wiring**. Anything in one that a test would want to assert is in the
+wrong module, because a root is exempt from both coverage rows and an exempt module is where
+untested code stops being visible as untested. The menu bar root was carrying a server host whose
+four failure sentences no test could reach; they are asserted now, from a module that is judged.
 
 The server's API module is a `Presentation` layer in the same sense as the client's: domain-to-wire
 mapping plus routes. It has no `Ui` sibling because it has no views.
