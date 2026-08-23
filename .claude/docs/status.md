@@ -46,6 +46,16 @@ destroy before it does. **Its Diagnostics half is deliberately absent**: the ver
 in Console* describe logging that **does not exist anywhere in this product**, so both land with a
 logging layer rather than as controls over nothing. The lock-file row waits on the lock file.
 
+**The macOS UI test target exists, is built by CI, and has never been seen to pass.** That is the
+honest state rather than a half-landing: a UI test bundle is a separate runner app that must be
+signed to connect at all, both test bundles need a generated plist once anything is signed, and the
+last layer down is an **Accessibility grant on this machine** that no project setting can supply —
+System Settings › Privacy & Security › Accessibility. `make ui-tests-mac` is the door; nothing in CI
+runs it, and the report's `ui` row stays empty on purpose, because a near-zero row recorded from a
+target that cannot run would become the ratchet baseline. Joining the `GranitaMac` scheme meant
+scoping three invocations with `-only-testing` first, the CI snapshot job included, or that job would
+have started driving the app instead of photographing it.
+
 **The app no longer has a dead control in it.** From 0.0.4 to 0.0.11, tapping a Mac in the discovery
 list did *nothing at all* — the rows were `NavigationLink`s and no module declared a destination for
 them. It shipped, and a comment in the composition root said so in as many words. Tapping now opens a

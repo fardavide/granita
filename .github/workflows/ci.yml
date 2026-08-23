@@ -357,12 +357,18 @@ jobs:
       # Renders the General tab in both appearances, and asserts the window's fixed size from inside
       # the app — which is the only place that can, since window geometry is not observable from
       # outside the process while Stage Manager is on.
+      #
+      # `-only-testing` because the GranitaMac scheme holds two kinds of test. Without it this job
+      # would drive the app as well as photograph it, and a UI failure would arrive in the job least
+      # able to explain it. The UI bundle is still *built* here, which is the only thing keeping it
+      # compiling until a job of its own runs it.
       - name: Run snapshot tests
         run: |
           xcodebuild test \
             -project Granita.xcodeproj \
             -scheme GranitaMac \
             -destination 'platform=macOS' \
+            -only-testing:GranitaMacSnapshotTests \
             -clonedSourcePackagesDirPath SourcePackages \
             CODE_SIGNING_ALLOWED=NO
 
