@@ -18,17 +18,25 @@ struct SettingsOpener: View {
 
     let requests: Int
 
+    /// Whether to open Settings without waiting to be asked.
+    ///
+    /// The menu is otherwise the only route in, which makes a behavioural test's first act clicking
+    /// a status item — a step that can fail for reasons having nothing to do with what the test is
+    /// asserting. Through the same call the menu uses, so what a test opens is what a reader opens.
+    let opensAtLaunch: Bool
+
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Color.clear
             .frame(width: 1, height: 1)
             .background(InvisibleWindow())
-            .onChange(of: requests) {
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate()
-                openSettings()
+            .task {
+                // After this window's render tree exists, which is the whole reason this view is
+                // the one holding `openSettings`.
+                if opensAtLaunch { present() }
             }
+            .onChange(of: requests) { present() }
             .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in
                 // Asked of the app rather than of the window that closed: SwiftUI's Settings window
                 // is not an `NSPanel`, its title is localised, and its identifier is an
@@ -43,6 +51,16 @@ struct SettingsOpener: View {
                     }
                 }
             }
+    }
+
+    /// The activation dance, in one place because two things now perform it.
+    ///
+    /// An `LSUIElement` app runs as `.accessory`, and an accessory app cannot bring a window to the
+    /// front: Settings would open behind everything, or appear not to open at all.
+    private func present() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        openSettings()
     }
 }
 

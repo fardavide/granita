@@ -183,6 +183,33 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
         BUNDLE_LOADER: "$(TEST_HOST)"
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac.snapshottests
+        # Needed the moment anything in this scheme is signed, which the UI test bundle below is.
+        # Without it the build fails with "Cannot code sign because the target does not have an
+        # Info.plist file" — for *this* target, while the one being run is the other one.
+        GENERATE_INFOPLIST_FILE: YES
+
+  # The kind this project has owed since a dead control shipped for eight releases: a test that
+  # drives the real app and asserts what changed, rather than photographing what it looks like.
+  #
+  # **No TEST_HOST and no BUNDLE_LOADER, and their absence is deliberate.** A UI test bundle is not
+  # loaded into the app — it is a separate runner that launches it — so XcodeGen derives
+  # `TEST_TARGET_NAME` from the target dependency below and derives `TEST_HOST` only for unit test
+  # bundles. `TEST_TARGET_NAME` takes the *target* name rather than the product name, so the
+  # `PRODUCT_NAME: Granita` rename that forces the override above cannot bite here. Adding a
+  # TEST_HOST to "match" the bundle above is the wrong repair for any failure this target has.
+  GranitaMacUiTests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - Apps/GranitaMacUiTests
+    dependencies:
+      - target: GranitaMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac.uitests
+        # A runner app is signed — see the Makefile target — and signing wants a plist. Generated
+        # rather than a file on disk: there is nothing in it anybody would ever edit.
+        GENERATE_INFOPLIST_FILE: YES
 
   # Snapshot tests live here rather than in the package, and they have to. A SwiftPM test target is
   # hostless: there is no key window, so a SwiftUI view lays out against nothing and renders blank.
@@ -224,15 +251,21 @@ targets:
 # `xcodebuild -project Granita.xcodeproj -describeAllArchivableProducts -json`.
 schemes:
 
+  # Two kinds of test in one scheme, which is why every invocation of it now says `-only-testing`.
+  # Without that, `make snapshots-mac` and the `Snapshot tests (macOS)` job would silently start
+  # driving the app as well as photographing it — a kind widening another kind, and a red run in the
+  # job least able to explain it.
   GranitaMac:
     build:
       targets:
         GranitaMac: all
         GranitaMacSnapshotTests: [test]
+        GranitaMacUiTests: [test]
     test:
       config: Debug
       targets:
         - GranitaMacSnapshotTests
+        - GranitaMacUiTests
     run:
       config: Debug
     profile:

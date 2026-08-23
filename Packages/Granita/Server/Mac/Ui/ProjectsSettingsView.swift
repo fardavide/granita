@@ -111,6 +111,10 @@ public struct ProjectsSettingsView: View {
             .help(isOperable(project)
                 ? "Let paired devices read this project"
                 : "Granita cannot read this folder, so it cannot be switched on")
+            // Named so a behavioural test can find *this* row's switch. Every other handle on this
+            // row is a string a reader chose — a project's name, its path — and two projects may
+            // share either.
+            .accessibilityIdentifier("granita.projects.visible.\(project.id.rawValue)")
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: project.name)
@@ -222,6 +226,7 @@ public struct ProjectsSettingsView: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .help("Add a repository, or scan a folder for them")
+            .accessibilityIdentifier("granita.projects.add")
 
             Button {
                 if let removing = selection.wrappedValue { onRemove(removing) }
@@ -233,6 +238,7 @@ public struct ProjectsSettingsView: View {
             // A disabled control that does not say why is a different unanswerable question, and
             // this one has an answer worth one line.
             .help(selection.wrappedValue == nil ? "Select a project to remove it" : "Remove the selected project")
+            .accessibilityIdentifier("granita.projects.remove")
 
             Spacer()
             Text("Only the projects switched on here can be read by a paired device.")

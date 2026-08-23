@@ -17,12 +17,16 @@ import ServerMacUi
 @MainActor
 struct AddRepositoriesSheetSnapshotTests {
 
-    /// A directory URL, with the trailing separator `NSOpenPanel` really hands back — which is the
-    /// spelling that put `~/Dev/Projects/Swiftly/` on screen before one formatter took it off again.
-    private static let root = URL(filePath: NSHomeDirectory())
-        .appending(path: "Developer", directoryHint: .isDirectory)
-
     struct Subject: Sendable, CustomTestStringConvertible {
+
+        /// A directory URL, with the trailing separator `NSOpenPanel` really hands back — which is
+        /// the spelling that put `~/Dev/Projects/Swiftly/` on screen before one formatter took it
+        /// off again.
+        ///
+        /// Held here rather than on the suite: the suite is `@MainActor` and this list is built in a
+        /// nonisolated context, so reaching a main-actor static from it is an error under Swift 6.
+        static let root = URL(filePath: NSHomeDirectory())
+            .appending(path: "Developer", directoryHint: .isDirectory)
 
         let name: String
         let scan: FolderScan
