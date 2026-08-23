@@ -45,11 +45,17 @@ enum SpokenWords {
     /// Nobody types the hyphens, and somebody reading six words off a screen across the room will
     /// capitalise the first one. Refusing either would make the fallback useless in exactly the
     /// situation it exists for — no camera, and a code being read out.
+    ///
+    /// The middle dot is here because the Devices tab draws the words separated by one. A code shown
+    /// in a form the server will not accept is worse than no fallback at all: everything looks
+    /// right, and the pairing is refused with a reason that names the code rather than the dots.
     static func normalised(_ typed: String) -> String {
         typed
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-            .split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "\t" })
+            .split(whereSeparator: separators.contains)
             .joined(separator: "-")
     }
+
+    private static let separators: Set<Character> = [" ", "-", "\t", "·"]
 }

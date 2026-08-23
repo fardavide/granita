@@ -2,7 +2,31 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.14.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.15.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**Devices is built, and the Settings window now has all five of its tabs.** The QR is the largest
+thing in the app and it is what the 620 × 560pt window was sized from — and the first render put the
+countdown below the fold, which is a measurement worth keeping: ten points of spacing between five
+children was the whole difference. The six words sit under it as an equal rather than as a caption,
+and the middle dot the tab draws between them is now a separator the server accepts back, because a
+reader who selects that line and pastes it into a phone must not be refused for punctuation this tab
+chose. Fourteen baselines across seven states, two of which the frames do not draw and both of which
+had to exist: a code being made, and a code that could not be. **The plaintext warning the frames
+show is not built** — 0.0.7 made it false.
+
+**A device row says what is true and no more.** The platform and the day it paired come from the
+store; *Seen 4 min ago* comes from the connection log, which is in memory, so a device this run has
+not heard from says how far back the run goes rather than showing a date that reads as an accusation.
+The join is on an identifier the log now carries beside the name — two phones can be called the same
+thing, and a sighting on the wrong row is the kind of wrong that looks right. Following the log moved
+to the composition root for the same reason: it used to start when Connections was opened.
+
+**A refused connection now offers the thing that fixes it.** `Pair…` for no token, `Pair Again…` for
+a token this Mac never issued, and nothing at all for version skew or rate limiting. Inside the
+window that is a tab switch — and **which pane is up is the model's, not the window's**, because a
+control whose only effect is a `@State` two layers up is a control nothing can be asked about. That
+is the shape of the dead row this app shipped for eight releases, and it is also what §1 needs: the
+menu's *Pair a device…* has to open Settings **on Devices**.
 
 **The composition roots are a layer now, `Main`, and that is not a rename for tidiness.** Two of the
 three were filed under `Presentation` while being neither, so the exemption they need could not be
@@ -149,7 +173,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 543 package tests in 57 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 564 package tests in 58 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
@@ -266,21 +290,23 @@ the executable runs, advertises it over TLS under an identity it generated for i
 is listening, re-binds when the Mac wakes, and has a Settings window whose Advanced tab shows the
 last fifty connection attempts with the reason each was turned away.
 
-What is left is **screens, and their frames have now arrived.** The Mac round trip came back on
-2026-08-21 and its calls are recorded in [`design-mac.md`](design-mac.md), so nothing here is blocked
-on a design any more:
+**Every Settings tab is now built**, with its baselines, from the frames the Mac round trip returned
+on 2026-08-21. What is left of M3 is the status item and its menu, the rest of §2, the logging layer,
+and the store's lock file:
 
-- **Settings, and one tab is left.** General, Projects, Connections and Advanced are built;
-  **Devices is not.** The paired devices with revoke and the QR. `PairingInvitations` already
-  assembles what that tab draws — the work is the drawing. §5's Allow-from-the-Mac path stays out
-  until its frames exist.
+- ~~**Settings, and one tab is left.**~~ All five are built as of 0.0.15. §5's Allow-from-the-Mac
+  path stays out until its frames exist.
+- ~~**The pairing QR.**~~ Built, at four points per module — sized from the module count rather than
+  into a fixed square, because a 53-module code squeezed into 240pt puts some modules at four points
+  and others at five, which is what a scanner reads as noise.
+- **§1, the status item and its menu, and the rest of §2.** Three symbols and no count; the status
+  line as a `Button` that copies; *Pair a device…* opening Settings on Devices and disabled when not
+  serving, which means `settingsRequests` carries a `SettingsTab` rather than being a counter. Then
+  restoring the last-used tab, and Projects on a first run.
 - **A logging layer, which nothing has needed until now.** Advanced's verbose switch and its route
   into Console are the first thing that does, and both are blocked on it. The Console filter travels
   **on the pasteboard**, because `Console.app` registers no URL scheme and cannot be handed a
   predicate; that is settled and recorded.
-- **The pairing QR.** The link and the six words exist and are exercised through
-  `granita-server --pair`; what is missing is the picture of one. It is the largest thing in the app
-  at 236–244pt square, and it is what sets the window to 620 × 560pt.
 
 **Read `design-mac.md` rather than the frames.** They were drawn against 0.0.6 and 0.0.7 landed
 after, repairing two of the five premises they overturn and making a third obsolete — the sheet says
@@ -330,10 +356,20 @@ Smaller things still open in these modules:
   the **join**, because a discovered Mac is only a Bonjour instance name. Until the record carries
   it, design §1's *Recent* and *Other Macs* sections cannot be built and the list ships as the single
   unlabelled section that section says it degrades to.
-- **Revoking a device** has a store method and no route. It belongs with the Devices tab, which is
-  the only place that would call it.
+- ~~**Revoking a device** has a store method and no route.~~ Built with the Devices tab in 0.0.15,
+  and its refusal is drawn: a Revoke that leaves the row where it was is a control that did nothing,
+  on the one tab where doing nothing means a phone can still read this Mac.
 
 ## Waiting on Davide
+
+- **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
+  last thing between `make ui-tests-mac` and a green run, and it is now blocking something concrete
+  rather than a target: the Devices tab's `Revoke`, `New Code` and `Open General`, and the
+  connection log's `Pair…`, are all asserted at the model and none of them has been pressed. That is
+  the exact shape of the dead control this project shipped for eight releases, and no baseline can
+  see it — a `TabView` outside a `Settings` scene draws no tab bar at all. **Pressing them means
+  driving this Mac while Davide is using it, which he ruled out on 2026-08-23**, so it is his to
+  grant or his to press.
 
 - ~~**A design round trip for the Mac's own surfaces.**~~ Came back on 2026-08-21 and is recorded in
   [`design-mac.md`](design-mac.md). Nothing in the Settings window is blocked on a drawing any more,

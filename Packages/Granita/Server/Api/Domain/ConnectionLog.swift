@@ -41,14 +41,29 @@ public struct ConnectionAttempt: Identifiable, Hashable, Sendable {
 public enum ConnectionOutcome: Hashable, Sendable {
 
     /// A request carrying a token this Mac issued, and the device it was issued to.
-    case accepted(device: String)
+    case accepted(device: String, id: String)
 
     /// A device that has just paired. Distinct from being served, because it is the row someone
     /// looks for when a phone has been set up and then cannot read anything: it says the pairing
     /// itself worked and moves the question to the token.
-    case paired(device: String)
+    case paired(device: String, id: String)
 
     case refused(ConnectionRefusal)
+}
+
+extension ConnectionOutcome {
+
+    /// Which paired device this was, when it was one this Mac recognised.
+    ///
+    /// The identifier travels beside the name because the Devices tab joins on it. A phone's name
+    /// is whatever its owner called it, so two of them can carry the same string — and *Seen 4 min
+    /// ago* landing on the wrong row is the kind of wrong that reads as right.
+    public var deviceId: String? {
+        switch self {
+        case .accepted(_, let id), .paired(_, let id): id
+        case .refused: nil
+        }
+    }
 }
 
 /// Why a request was turned away.

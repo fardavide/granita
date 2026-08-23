@@ -15,7 +15,7 @@ a question that now has a real one. When a file's last section ships, the file g
 | File | Still to build | Read the calls in |
 |---|---|---|
 | [`granita-design-review.html`](granita-design-review.html) | The worktree sidebar (M4), the file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
-| [`granita-mac-design-review.html`](granita-mac-design-review.html) | Six sections — the status item, the window, and four of the five Settings tabs (M3). 21 August 2026, drawn against 0.0.6. **General went with 0.0.10** | [`../design-mac.md`](../design-mac.md) |
+| [`granita-mac-design-review.html`](granita-mac-design-review.html) | Three sections — the status item, the window, and Advanced (M3). 21 August 2026, drawn against 0.0.6. **General went with 0.0.10, Connections with 0.0.11, Projects with 0.0.14, Devices with 0.0.15** | [`../design-mac.md`](../design-mac.md) |
 
 Server discovery was in the first file too, and was implemented in 0.0.6; its frames went with it.
 

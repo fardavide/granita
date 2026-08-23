@@ -55,13 +55,13 @@ struct InMemoryConnectionLogTests {
 
         // when
         for _ in 1...10 {
-            await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone"))
+            await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"))
         }
 
         // then
         let attempts = await firstReading(of: log)
         #expect(attempts.count == 2)
-        #expect(attempts.first?.outcome == .accepted(device: "Davide's iPhone"))
+        #expect(attempts.first?.outcome == .accepted(device: "Davide's iPhone", id: "device-iphone"))
         #expect(attempts.last?.outcome == .refused(.unknownToken))
     }
 
@@ -78,8 +78,8 @@ struct InMemoryConnectionLogTests {
         })
 
         // when
-        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone"))
-        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone"))
+        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"))
+        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"))
 
         // then
         let attempts = await firstReading(of: log)
@@ -119,7 +119,7 @@ struct InMemoryConnectionLogTests {
 
         // when
         await log.record(source: "192.168.1.42", outcome: .refused(.noToken))
-        await log.record(source: "192.168.1.7", outcome: .accepted(device: "Davide's iPhone"))
+        await log.record(source: "192.168.1.7", outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"))
 
         // then — the panel that opens next is whole, which is the behaviour the pruning must not
         // cost. A reader removed while it was still being written to would lose an attempt.
@@ -171,11 +171,11 @@ struct InMemoryConnectionLogTests {
         _ = await readings.next()
 
         // when
-        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone"))
+        await log.record(source: "192.168.1.24", outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"))
 
         // then
         let reading = await readings.next()
-        #expect(reading?.first?.outcome == .accepted(device: "Davide's iPhone"))
+        #expect(reading?.first?.outcome == .accepted(device: "Davide's iPhone", id: "device-iphone"))
     }
 }
 

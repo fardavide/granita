@@ -430,6 +430,10 @@ let package = Package(
         // and the Mac's view layer, which draws them, have to name the same types.
         .target(
             name: "ServerApiDomain",
+            // The pairing link is the Devices tab's subject and the phone's contract at once, so
+            // the invitation that carries one is named here rather than behind the HTTP layer that
+            // assembles it.
+            dependencies: ["CorePairingDomain"],
             path: "Server/Api/Domain",
             swiftSettings: [swift6]
         ),
@@ -538,6 +542,8 @@ let package = Package(
             name: "ServerMacUi",
             dependencies: [
                 "CoreBrandingDomain",
+                // The Devices tab draws a pairing link as a QR, so it names the link.
+                "CorePairingDomain",
                 "ServerApiDomain",
                 "ServerMacDomain",
                 "ServerWorktreesDomain",
@@ -552,6 +558,7 @@ let package = Package(
             name: "ServerMacPresentation",
             dependencies: [
                 "CoreBrandingDomain",
+                "CorePairingDomain",
                 "CoreDiffDomain",
                 "ServerMacUi",
                 "ServerApiDomain",
@@ -566,6 +573,7 @@ let package = Package(
             name: "ServerMacPresentationTests",
             dependencies: [
                 "ServerMacPresentation",
+                "CorePairingDomain",
                 "CoreDiffDomain",
                 "ServerApiDomain",
                 "ServerMacDomain",

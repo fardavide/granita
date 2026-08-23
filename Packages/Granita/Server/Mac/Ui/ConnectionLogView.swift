@@ -18,10 +18,12 @@ public struct ConnectionLogView: View {
 
     private let attempts: [ConnectionAttempt]
     private let now: Date
+    private let onPair: () -> Void
 
-    public init(attempts: [ConnectionAttempt], now: Date) {
+    public init(attempts: [ConnectionAttempt], now: Date, onPair: @escaping () -> Void) {
         self.attempts = attempts
         self.now = now
+        self.onPair = onPair
     }
 
     public var body: some View {
@@ -47,9 +49,21 @@ public struct ConnectionLogView: View {
 
     @ViewBuilder private func row(for attempt: ConnectionAttempt) -> some View {
         LabeledContent {
-            Text(verbatim: elapsed(since: attempt.at))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Text(verbatim: elapsed(since: attempt.at))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                // The action's slot is reserved on every row, whether or not it holds one, so the
+                // elapsed times stay in a column. Only two of nine outcomes offer anything, and
+                // without this the times sit at three different depths down a list whose whole
+                // value is being scannable while something is failing.
+                //
+                // Sized by a hidden copy of the longest label rather than by a number, so it stays
+                // right at another type size and in another language.
+                Text("Pair Again…")
+                    .hidden()
+                    .overlay(alignment: .trailing) { pairing(for: attempt.outcome) }
+            }
         } label: {
             Label {
                 VStack(alignment: .leading, spacing: 1) {
@@ -71,6 +85,31 @@ public struct ConnectionLogView: View {
                 Image(systemName: symbolName(for: attempt.outcome))
                     .foregroundStyle(tint(for: attempt.outcome))
             }
+        }
+    }
+
+    /// **A served row is a receipt; a refused row is a to-do.** The two refusals a person standing
+    /// at this Mac can actually fix get the one affordance the others do not — a token that was
+    /// never offered, and a token this Mac did not issue. Version skew and rate limiting get no
+    /// button, because there is nothing here to press for either: one is a phone that ships ahead
+    /// of this app, and the other clears itself in a minute.
+    ///
+    /// It opens the Devices tab rather than doing anything itself. There is one pairing code in this
+    /// app and this is a second door to it, not a second implementation.
+    @ViewBuilder private func pairing(for outcome: ConnectionOutcome) -> some View {
+        switch outcome {
+        case .refused(.noToken):
+            Button("Pair…", action: onPair)
+                .buttonStyle(.link)
+        case .refused(.unknownToken):
+            // A different word for a different situation. This phone believes it is paired, so what
+            // it needs is not its first pairing — most often this Mac's store was reset under it.
+            Button("Pair Again…", action: onPair)
+                .buttonStyle(.link)
+        case .accepted, .paired, .refused(.rateLimited), .refused(.pairingCodeUnknown),
+             .refused(.pairingCodeExpired), .refused(.pairingNotRecordable),
+             .refused(.unsupportedApiVersion):
+            EmptyView()
         }
     }
 
@@ -112,8 +151,8 @@ public struct ConnectionLogView: View {
     /// glance and the whole value of that row is that it says the pairing itself worked.
     private func sentence(for outcome: ConnectionOutcome) -> String {
         switch outcome {
-        case .accepted(let device): device
-        case .paired(let device): "Paired \(device)"
+        case .accepted(let device, _): device
+        case .paired(let device, _): "Paired \(device)"
         case .refused(.noToken): "No pairing token"
         case .refused(.unknownToken): "Token not issued by this Mac"
         case .refused(.rateLimited): "Too many failed attempts"

@@ -25,7 +25,7 @@ struct ConnectionLogViewSnapshotTests {
     ) {
         // given - when - then
         assertSettingsSnapshot(
-            ConnectionLogView(attempts: [], now: Self.now),
+            ConnectionLogView(attempts: [], now: Self.now, onPair: {}),
             appearance: appearance,
             named: "empty"
         )
@@ -44,13 +44,13 @@ struct ConnectionLogViewSnapshotTests {
             attempt(
                 seconds: 240,
                 source: "192.168.1.42",
-                outcome: .accepted(device: "Davide's iPhone"),
+                outcome: .accepted(device: "Davide's iPhone", id: "device-iphone"),
                 occurrences: 18
             ),
             attempt(
                 seconds: 500,
                 source: "192.168.1.42",
-                outcome: .paired(device: "Davide's iPhone"),
+                outcome: .paired(device: "Davide's iPhone", id: "device-iphone"),
                 occurrences: 1
             ),
             attempt(
@@ -72,7 +72,7 @@ struct ConnectionLogViewSnapshotTests {
 
         // when - then
         assertSettingsSnapshot(
-            ConnectionLogView(attempts: attempts, now: Self.now),
+            ConnectionLogView(attempts: attempts, now: Self.now, onPair: {}),
             appearance: appearance,
             named: "every-outcome"
         )
@@ -93,7 +93,7 @@ struct ConnectionLogViewSnapshotTests {
 
         // when - then
         assertSettingsSnapshot(
-            ConnectionLogView(attempts: attempts, now: Self.now),
+            ConnectionLogView(attempts: attempts, now: Self.now, onPair: {}),
             appearance: appearance,
             named: "one-loud-one-quiet"
         )
@@ -117,7 +117,7 @@ struct ConnectionLogViewSnapshotTests {
 
         // when - then
         assertSettingsSnapshot(
-            ConnectionLogView(attempts: attempts, now: Self.now),
+            ConnectionLogView(attempts: attempts, now: Self.now, onPair: {}),
             appearance: appearance,
             named: "full"
         )

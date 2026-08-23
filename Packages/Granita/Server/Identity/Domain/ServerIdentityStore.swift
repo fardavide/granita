@@ -47,3 +47,24 @@ public enum ServerIdentityError: Error, Hashable, Sendable {
     /// whose private key is gone, most likely, which is what a half-removed identity looks like.
     case identityUnusable(reason: String)
 }
+
+extension ServerIdentityError {
+
+    /// The same fault, in words, for the person standing at this Mac.
+    ///
+    /// Here rather than at each of the two places that show it, because they show it about one
+    /// thing: an identity this Mac cannot read stops it serving **and** stops it offering a pairing
+    /// code, and a reader meeting both should not be handed two vocabularies for one fault.
+    public var explanation: String {
+        switch self {
+        case .malformedSubject(let reason):
+            "this Mac's name or addresses cannot go in a certificate: \(reason)"
+        case .notSignable(let reason):
+            "the identity could not be signed: \(reason)"
+        case .keychainRefused(let operation, let status):
+            "the Keychain refused while \(operation) (\(status)) — unlock the login keychain"
+        case .identityUnusable(let reason):
+            reason
+        }
+    }
+}

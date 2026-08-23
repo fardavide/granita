@@ -47,29 +47,17 @@ public struct TransportResolvingServerHost: ServerHosting {
                     for await state in host.run() {
                         continuation.yield(state)
                     }
+                // In words rather than as a status code, because the person who can act on any of
+                // these is standing at this Mac and is reading a menu, not a log. The wording is
+                // the error's own, so the Devices tab says the same thing about the same fault.
                 } catch let refused as ServerIdentityError {
-                    continuation.yield(.failed(reason: Self.reason(for: refused)))
+                    continuation.yield(.failed(reason: refused.explanation))
                 } catch {
                     continuation.yield(.failed(reason: "\(error)"))
                 }
                 continuation.finish()
             }
             continuation.onTermination = { _ in serving.cancel() }
-        }
-    }
-
-    /// In words rather than as a status code, because the person who can act on any of these is
-    /// standing at this Mac and is reading a menu, not a log.
-    private static func reason(for error: ServerIdentityError) -> String {
-        switch error {
-        case .malformedSubject(let reason):
-            "this Mac's name or addresses cannot go in a certificate: \(reason)"
-        case .notSignable(let reason):
-            "the identity could not be signed: \(reason)"
-        case .keychainRefused(let operation, let status):
-            "the Keychain refused while \(operation) (\(status)) — unlock the login keychain"
-        case .identityUnusable(let reason):
-            reason
         }
     }
 }

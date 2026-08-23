@@ -9,8 +9,9 @@ import ServerStoreDomain
 /// other, and the alternative — a fixtures module shipped in the product so both can see it — puts
 /// test doubles in the binary a reader installs.
 ///
-/// The project mutations are real rather than empty, because Projects is the one tab that **writes**
-/// through this seam and its whole subject is whether what a reader switched on is what is served.
+/// The project and device mutations are real rather than empty, because those two tabs are the ones
+/// that **write** through this seam, and each writes the thing it exists for: whether what a reader
+/// switched on is what is served, and whether a phone they revoked can still read it.
 actor FakeStore: Store {
 
     private(set) var resets = 0
@@ -49,6 +50,11 @@ actor FakeStore: Store {
         stored = replacing(projects: stored.projects.filter { $0.id != id })
     }
 
+    func removeDevice(id: String) throws(StoreError) {
+        if let failure { throw failure }
+        stored = replacing(devices: stored.devices.filter { $0.id != id })
+    }
+
     func reset() throws(StoreError) {
         if let failure { throw failure }
         resets += 1
@@ -61,16 +67,18 @@ actor FakeStore: Store {
     func setPinned(_ isPinned: Bool, for worktree: WorktreeID) throws(StoreError) {}
     func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {}
     func add(device: StoredDevice) throws(StoreError) {}
-    func removeDevice(id: String) throws(StoreError) {}
 
     // MARK: -
 
-    private func replacing(projects: [StoredProject]) -> StoredState {
+    private func replacing(
+        projects: [StoredProject]? = nil,
+        devices: [StoredDevice]? = nil
+    ) -> StoredState {
         StoredState(
-            projects: projects,
+            projects: projects ?? stored.projects,
             worktrees: stored.worktrees,
             viewed: stored.viewed,
-            devices: stored.devices
+            devices: devices ?? stored.devices
         )
     }
 }

@@ -86,11 +86,12 @@ struct PairingInvitationsTests {
 
         // when - then
         // No fingerprint means no link worth showing: a QR without one pairs a phone that then
-        // trusts whatever answers. Refused rather than shown incomplete.
+        // trusts whatever answers. Refused rather than shown incomplete — and refused in words,
+        // because the Devices tab prints this under its own sentence and the only person who can
+        // act on it is standing at the Mac.
         await #expect(
-            throws: ServerIdentityError.keychainRefused(
-                operation: "looking for the existing certificate",
-                status: -25308
+            throws: PairingInvitationError.noIdentity(
+                reason: "the Keychain refused while looking for the existing certificate (-25308) — unlock the login keychain"
             )
         ) {
             try await scenario.invitations.invite(at: ServerEndpoint(host: "macbook.local", port: 51234))

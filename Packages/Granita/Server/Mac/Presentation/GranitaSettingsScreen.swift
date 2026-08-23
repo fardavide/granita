@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 import CoreDiffDomain
+import ServerMacDomain
 import ServerMacUi
 
 /// Granita's Settings window.
@@ -12,13 +13,9 @@ import ServerMacUi
 /// gets its own tab, and Advanced goes last because of what shares it: `Reset All Data`. A panel
 /// opened while annoyed should not be one mis-click from the button that unpairs every device.
 ///
-/// The three that are not built yet are not declared. A tab bar with placeholders in it is a worse
-/// answer than a tab bar that grows: the order above is what the tabs land into, and Advanced stays
-/// last throughout.
-///
-/// Restoring the last-used tab, and selecting Projects on a first run, land with the tabs that make
-/// either question answerable — a remembered selection is a preference for a set of tabs that does
-/// not exist yet.
+/// All five are declared now that Devices exists. Restoring the last-used tab, and selecting
+/// Projects on a first run, land with §1 and §2's remaining half — the menu that asks for a
+/// particular tab is what makes a remembered selection worth having.
 public struct GranitaSettingsScreen: View {
 
     /// Fixed, not a minimum, and read by the window as well as by the test that asserts it.
@@ -46,8 +43,14 @@ public struct GranitaSettingsScreen: View {
     }
 
     public var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") {
+        // The selection is the model's, not this view's. One control other than the tab bar moves
+        // it — a refused row's `Pair…`, which brings the reader to the QR — and inside this window
+        // that is a tab switch rather than a settings request: an open window cannot open itself.
+        TabView(selection: Binding(
+            get: { model.settingsTab },
+            set: { model.showSettingsTab($0) }
+        )) {
+            Tab("General", systemImage: "gearshape", value: SettingsTab.general) {
                 GeneralSettingsView(
                     state: model.serverState,
                     servingSince: model.servingSince,
@@ -68,7 +71,7 @@ public struct GranitaSettingsScreen: View {
                 .task { await model.loadLoginItem() }
             }
 
-            Tab("Projects", systemImage: "folder") {
+            Tab("Projects", systemImage: "folder", value: SettingsTab.projects) {
                 ProjectsSettingsView(
                     projects: model.projects,
                     failure: model.projectsFailure,
@@ -106,19 +109,48 @@ public struct GranitaSettingsScreen: View {
                 }
             }
 
-            Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted") {
+            Tab("Devices", systemImage: "iphone", value: SettingsTab.devices) {
+                // A second a step, because this pane counts one down. The connection log's minute
+                // is the coarsest unit a row there changes on; here the smallest thing on screen is
+                // a seconds digit, and a bar that moved once a minute would be a bar that looks
+                // stuck while a reader watches their code run out.
+                //
+                // The schedule says when to redraw; what time it *is* comes from the model, which
+                // is the only clock in this app a test can move.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    DevicesSettingsView(
+                        devices: model.devices,
+                        offer: model.pairingOffer,
+                        now: model.currentTime,
+                        failure: model.devicesFailure,
+                        onNewCode: { Task { await model.offerPairing() } },
+                        onRevoke: { id in Task { await model.revokeDevice(id: id) } },
+                        onOpenGeneral: { model.showSettingsTab(.general) }
+                    )
+                }
+                .task { await model.loadDevices() }
+                // Keyed on the server's state rather than run once, so the pane that says pairing
+                // needs the server replaces itself with a working code the moment one binds — which
+                // is exactly when a reader is standing here having just pressed Restart.
+                .task(id: model.serverState) { await model.offerPairing() }
+            }
+
+            Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted", value: SettingsTab.connections) {
                 // The clock the rows are measured against. A row's elapsed time is a value the view
                 // is handed rather than one it derives, which is what lets a baseline photograph
                 // it — so something has to move it, and a schedule that re-renders on the minute is
                 // both the cheapest thing that can and exactly as often as a row changes: the
                 // coarsest unit below an hour is a minute.
-                TimelineView(.everyMinute) { clock in
-                    ConnectionLogView(attempts: model.connectionAttempts, now: clock.date)
+                TimelineView(.everyMinute) { _ in
+                    ConnectionLogView(
+                        attempts: model.connectionAttempts,
+                        now: model.currentTime,
+                        onPair: { model.showSettingsTab(.devices) }
+                    )
                 }
-                .task { await model.followConnections() }
             }
 
-            Tab("Advanced", systemImage: "gearshape.2") {
+            Tab("Advanced", systemImage: "gearshape.2", value: SettingsTab.advanced) {
                 AdvancedSettingsView(
                     git: model.gitInstallation,
                     dataFolderUrl: model.dataFolderUrl,
@@ -139,5 +171,4 @@ public struct GranitaSettingsScreen: View {
         }
         .frame(width: Self.windowSize.width, height: Self.windowSize.height)
     }
-
 }

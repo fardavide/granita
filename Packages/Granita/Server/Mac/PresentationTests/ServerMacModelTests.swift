@@ -96,7 +96,7 @@ struct ServerMacModelTests {
             id: UUID(),
             at: Date(timeIntervalSince1970: 1_060),
             source: "192.168.1.9",
-            outcome: .accepted(device: "Davide's iPad"),
+            outcome: .accepted(device: "Davide's iPad", id: "device-ipad"),
             occurrences: 1
         )
         let scenario = Scenario(states: [], readings: [[accepted], [refused, accepted]])
@@ -400,7 +400,7 @@ struct ServerMacModelTests {
         // then — the switch stays where the document says it is, and the reason is on screen. A
         // switch that sprang back with no explanation is a control that did nothing.
         #expect(scenario.sut.projects[0].isVisible == false)
-        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+        #expect(scenario.sut.projectsFailure == StoreWriteFailure(
             sentence: "That change could not be saved.",
             reason: "No space left on device"
         ))
@@ -462,7 +462,7 @@ struct ServerMacModelTests {
 
         // then
         #expect(scenario.sut.projects.isEmpty)
-        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+        #expect(scenario.sut.projectsFailure == StoreWriteFailure(
             sentence: "That folder is not a git repository.",
             reason: nil
         ))
@@ -479,7 +479,7 @@ struct ServerMacModelTests {
 
         // then
         #expect(scenario.sut.projects.isEmpty)
-        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+        #expect(scenario.sut.projectsFailure == StoreWriteFailure(
             sentence: "That folder is not there any more.",
             reason: nil
         ))
@@ -503,7 +503,7 @@ struct ServerMacModelTests {
 
         // then
         #expect(scenario.sut.projects[0].isVisible == false)
-        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+        #expect(scenario.sut.projectsFailure == StoreWriteFailure(
             sentence: "A newer version of Granita wrote this Mac's settings, so they were left alone.",
             reason: nil
         ))
@@ -850,10 +850,244 @@ struct ServerMacModelTests {
         // then — losing the last known path to a mis-aimed pick would take away the one thing that
         // says which project this row is.
         #expect(scenario.sut.projects[0].path == "/old/aura")
-        #expect(scenario.sut.projectsFailure == ProjectsFailure(
+        #expect(scenario.sut.projectsFailure == StoreWriteFailure(
             sentence: "That folder is not a git repository.",
             reason: nil
         ))
+    }
+
+    // MARK: - Which pane is up
+
+    @Test
+    func `given the window has just opened when it is drawn then General is the pane in front`() {
+        // given - when
+        let scenario = Scenario()
+
+        // then — design §2 wants Projects on a first run, which needs the window to know what a
+        // first run is. That lands with §1; until it does, this is the honest default.
+        #expect(scenario.sut.settingsTab == .general)
+    }
+
+    @Test
+    func `given a refusal offering to pair when it is taken up then Devices comes to the front`() {
+        // given — the whole of what `Pair…` does. Held on the model rather than in the window's own
+        // state, because a control whose only effect is a `@State` two layers up is a control
+        // nothing can be asked about, and this app shipped one of those for eight releases.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.showSettingsTab(.devices)
+
+        // then
+        #expect(scenario.sut.settingsTab == .devices)
+    }
+
+    // MARK: - Devices, and the code that adds one
+
+    @Test
+    func `given the server is serving when Devices is opened then it offers a code for that address`() async {
+        // given
+        let endpoint = ServerEndpoint(host: "MacBook-Pro.local", port: 59_144)
+        let scenario = Scenario(states: [.running(endpoint)])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then — a link naming an address this Mac is not reachable at pairs a phone that then
+        // fails every connection afterwards, with nothing on either side saying why.
+        guard case .offered(let invitation) = scenario.sut.pairingOffer else {
+            Issue.record("expected a code, got \(scenario.sut.pairingOffer)")
+            return
+        }
+        #expect(invitation.link.host == "MacBook-Pro.local")
+        #expect(invitation.link.port == 59_144)
+        #expect(scenario.invitations.lastEndpoint == endpoint)
+    }
+
+    @Test
+    func `given the server is still binding when Devices is opened then it says a code is being made`() async {
+        // given — a bind takes a moment and a rebind after waking takes longer. "Nothing is serving"
+        // during it sends a reader holding a phone to General to fix something already happening.
+        let scenario = Scenario(states: [.starting])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then
+        #expect(scenario.sut.pairingOffer == .preparing)
+        #expect(scenario.invitations.invitations == 0)
+    }
+
+    @Test
+    func `given nothing is serving when Devices is opened then it says pairing needs the server`() async {
+        // given
+        let scenario = Scenario(states: [.failed(reason: "the local network is blocked")])
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then — and no code was spent producing a link to nowhere.
+        #expect(scenario.sut.pairingOffer == .serverNotRunning)
+        #expect(scenario.invitations.invitations == 0)
+    }
+
+    @Test
+    func `given the identity cannot be read when Devices is opened then it says so in the keychain's words`() async {
+        // given — the code is signed by an identity out of the login keychain, which can be locked.
+        let scenario = Scenario(
+            states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))],
+            pairingFailure: .noIdentity(reason: "unlock the login keychain")
+        )
+        await scenario.sut.followServer()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then
+        #expect(scenario.sut.pairingOffer == .unavailable(reason: "unlock the login keychain"))
+    }
+
+    @Test
+    func `given a code is on screen when a new one is asked for then a second code is spent`() async {
+        // given
+        let scenario = Scenario(states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))])
+        await scenario.sut.followServer()
+        await scenario.sut.offerPairing()
+
+        // when
+        await scenario.sut.offerPairing()
+
+        // then — *New Code* has to reach the actor holding the outstanding offers, not redraw the
+        // one already on screen: an expired code redraws identically and stays refused.
+        #expect(scenario.invitations.invitations == 2)
+        guard case .offered(let invitation) = scenario.sut.pairingOffer else {
+            Issue.record("expected a code, got \(scenario.sut.pairingOffer)")
+            return
+        }
+        #expect(invitation.link.code == "code-2")
+    }
+
+    @Test
+    func `given a device this run has served when Devices is drawn then its row says when`() async {
+        // given
+        let served = Date(timeIntervalSince1970: 900)
+        let scenario = Scenario(
+            readings: [[ConnectionAttempt(
+                id: UUID(),
+                at: served,
+                source: "192.168.1.42",
+                outcome: .accepted(device: "Davide's iPhone", id: "Davide's iPhone"),
+                occurrences: 18
+            )]],
+            devices: [storedDevice(named: "Davide's iPhone")]
+        )
+
+        // when
+        await scenario.sut.loadDevices()
+        await scenario.sut.followConnections()
+
+        // then
+        #expect(scenario.sut.devices.map(\.sighting) == [.seen(at: served)])
+    }
+
+    @Test
+    func `given a device nothing has been heard from when Devices is drawn then its row says how far back this run goes`(
+    ) async {
+        // given — the log is in memory, so "not seen" is only ever a claim about this run of the
+        // app. A date from the store would read as an accusation the data cannot support.
+        let launched = Date(timeIntervalSince1970: 500)
+        let scenario = Scenario(devices: [storedDevice(named: "iPad Pro")], now: launched)
+
+        // when
+        await scenario.sut.loadDevices()
+
+        // then
+        #expect(scenario.sut.devices.map(\.sighting) == [.notSeenSince(launched)])
+    }
+
+    @Test
+    func `given two devices when only one has connected then the sighting lands on that one`() async {
+        // given — the log carries the identifier beside the name for exactly this: a reader with two
+        // phones called the same thing would otherwise see one row's sighting on both.
+        let served = Date(timeIntervalSince1970: 900)
+        let scenario = Scenario(
+            readings: [[ConnectionAttempt(
+                id: UUID(),
+                at: served,
+                source: "192.168.1.42",
+                outcome: .accepted(device: "renamed since", id: "iPad Pro"),
+                occurrences: 4
+            )]],
+            devices: [storedDevice(named: "Davide's iPhone"), storedDevice(named: "iPad Pro")],
+            now: Date(timeIntervalSince1970: 500)
+        )
+
+        // when
+        await scenario.sut.loadDevices()
+        await scenario.sut.followConnections()
+
+        // then
+        #expect(scenario.sut.devices.map(\.sighting) == [
+            .notSeenSince(Date(timeIntervalSince1970: 500)),
+            .seen(at: served)
+        ])
+    }
+
+    @Test
+    func `given a paired device when it is revoked then it is gone from the list`() async {
+        // given
+        let scenario = Scenario(devices: [storedDevice(named: "Davide's iPhone"), storedDevice(named: "iPad Pro")])
+        await scenario.sut.loadDevices()
+
+        // when
+        await scenario.sut.revokeDevice(id: "iPad Pro")
+
+        // then
+        #expect(scenario.sut.devices.map(\.name) == ["Davide's iPhone"])
+        #expect(scenario.sut.devicesFailure == nil)
+    }
+
+    @Test
+    func `given the store refuses when a device is revoked then the row stays and the tab says why`() async {
+        // given — a Revoke that leaves the row where it was and says nothing is a control that did
+        // nothing, on the one tab where doing nothing means a phone can still read this Mac.
+        let scenario = Scenario(
+            devices: [storedDevice(named: "Davide's iPhone")],
+            storeFailure: .notWritable(reason: "No space left on device")
+        )
+        await scenario.sut.loadDevices()
+
+        // when
+        await scenario.sut.revokeDevice(id: "Davide's iPhone")
+
+        // then
+        #expect(scenario.sut.devices.map(\.name) == ["Davide's iPhone"])
+        #expect(scenario.sut.devicesFailure == StoreWriteFailure(
+            sentence: "That change could not be saved.",
+            reason: "No space left on device"
+        ))
+    }
+
+    @Test
+    func `given Devices refused a write when Projects is used then the refusal stays on Devices`() async {
+        // given — two tabs write to one document, and a Projects failure drawn under the device list
+        // sends a reader looking in the wrong place for something that did not happen there.
+        let scenario = Scenario(
+            projects: [storedProject(named: "aura")],
+            devices: [storedDevice(named: "Davide's iPhone")],
+            folderContents: ["/aura": .worktrees(count: 2)],
+            storeFailure: .documentIsFromANewerVersion
+        )
+
+        // when
+        await scenario.sut.revokeDevice(id: "Davide's iPhone")
+
+        // then
+        #expect(scenario.sut.devicesFailure != nil)
+        #expect(scenario.sut.projectsFailure == nil)
     }
 }
 
@@ -868,6 +1102,7 @@ private struct Scenario {
     let folders: FakeProjectFolders
     let picker: FakeFolderPicking
     let gestures: FakeSystemGestures
+    let invitations: FakePairingInviting
 
     init(
         states: [ServerRunState] = [],
@@ -882,6 +1117,8 @@ private struct Scenario {
         candidates: [RepositoryCandidate] = [],
         pickedFolder: URL? = nil,
         storeFailure: StoreError? = nil,
+        pairingFailure: PairingInvitationError? = nil,
+        codeExpiresAt: Date = Date(timeIntervalSince1970: 120),
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
@@ -894,6 +1131,7 @@ private struct Scenario {
         )
         picker = FakeFolderPicking(folder: pickedFolder)
         gestures = FakeSystemGestures()
+        invitations = FakePairingInviting(failure: pairingFailure, expiresAt: codeExpiresAt)
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
@@ -904,6 +1142,7 @@ private struct Scenario {
             folderPicker: picker,
             gestures: gestures,
             store: store,
+            invitations: invitations,
             dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }
         )
