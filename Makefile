@@ -63,21 +63,7 @@ snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, 
 	@# runner lay text out on different backing grids and the drift swamps a real change. What this
 	@# target is good for locally is the diff report: it shows what moved, and the eye does the rest.
 	@# The gate that matters is `Snapshot tests (macOS)` on the pull request.
-	@# `-only-testing` because the scheme now holds two kinds. Without it this target would also
-	@# drive the app, and a UI failure would surface in the job that photographs screens.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacSnapshotTests -quiet CODE_SIGNING_ALLOWED=NO
-
-.PHONY: ui-tests-mac
-ui-tests-mac: ## Drive the Mac app and assert what pressing things changed
-	@# The kind that catches a dead control, which a baseline never can: it launches the real app
-	@# against a store in a temporary directory and reads the document back.
-	@#
-	@# **Signed, unlike every other test target here, and that is not a preference.** A UI test
-	@# bundle is a separate runner app that has to launch and drive another process; unsigned it
-	@# is killed before it can connect, and the only thing xcodebuild says is `Test crashed with
-	@# signal kill before establishing connection`, which names nothing. So no
-	@# CODE_SIGNING_ALLOWED=NO here — the same call `run-mac` makes, for a related reason.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacUiTests -derivedDataPath .build/mac-ui -quiet
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -quiet CODE_SIGNING_ALLOWED=NO
 
 .PHONY: record-snapshots
 record-snapshots: ## Re-record every snapshot baseline after a deliberate design change

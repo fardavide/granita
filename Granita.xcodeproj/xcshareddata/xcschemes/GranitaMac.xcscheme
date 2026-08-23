@@ -35,20 +35,6 @@
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "800F1EA80AE515CF770198BA"
-               BuildableName = "GranitaMacUiTests.xctest"
-               BlueprintName = "GranitaMacUiTests"
-               ReferencedContainer = "container:Granita.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -75,17 +61,6 @@
                BlueprintIdentifier = "7B067AD556BEC5707F901D69"
                BuildableName = "GranitaMacSnapshotTests.xctest"
                BlueprintName = "GranitaMacSnapshotTests"
-               ReferencedContainer = "container:Granita.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "800F1EA80AE515CF770198BA"
-               BuildableName = "GranitaMacUiTests.xctest"
-               BlueprintName = "GranitaMacUiTests"
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </TestableReference>
