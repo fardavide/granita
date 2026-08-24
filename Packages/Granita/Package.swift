@@ -248,7 +248,10 @@ let package = Package(
 
         .target(
             name: "ClientWorktreesDomain",
-            dependencies: ["CoreDiffDomain"],
+            // A sibling `Domain`, which is the one thing a `Domain` may see: the vocabulary a Mac
+            // refuses a request in is the connection unit's, and inventing a second copy of it here
+            // would be two spellings of one refusal.
+            dependencies: ["ClientConnectionDomain", "CoreDiffDomain"],
             path: "Client/Worktrees/Domain",
             swiftSettings: [swift6]
         ),
@@ -260,25 +263,45 @@ let package = Package(
         ),
         .target(
             name: "ClientWorktreesUi",
-            dependencies: ["ClientWorktreesDomain", "CoreDiffDomain"],
+            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreDiffDomain"],
             path: "Client/Worktrees/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .target(
             name: "ClientWorktreesPresentation",
-            dependencies: ["ClientWorktreesUi", "ClientWorktreesDomain", "CoreDiffDomain"],
+            dependencies: [
+                "ClientWorktreesUi",
+                "ClientWorktreesDomain",
+                // The repository and its refusals are the connection unit's Domain, and a sibling
+                // Domain is what a Presentation target may see. Reaching for the `Data` target that
+                // implements it is what the graph refuses.
+                "ClientConnectionDomain",
+                "CoreDiffDomain"
+            ],
             path: "Client/Worktrees/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
             name: "ClientWorktreesDomainTests",
-            dependencies: ["ClientWorktreesDomain", "CoreDiffDomain"],
+            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreDiffDomain"],
             path: "Client/Worktrees/DomainTests",
             swiftSettings: [swift6]
         ),
         .testTarget(
+            name: "ClientWorktreesDataTests",
+            dependencies: ["ClientWorktreesData", "ClientWorktreesDomain", "CoreDiffDomain"],
+            path: "Client/Worktrees/DataTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
             name: "ClientWorktreesPresentationTests",
-            dependencies: ["ClientWorktreesPresentation", "ClientWorktreesDomain", "CoreDiffDomain"],
+            dependencies: [
+                "ClientWorktreesPresentation",
+                "ClientWorktreesDomain",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreDiffDomain"
+            ],
             path: "Client/Worktrees/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),

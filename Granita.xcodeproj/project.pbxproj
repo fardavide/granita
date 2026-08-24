@@ -9,9 +9,11 @@
 /* Begin PBXBuildFile section */
 		0C62426463AFBD64981C4544 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 73708ADF568FC34A53BB9302 /* SnapshotTesting */; };
 		12CE025517CD686836DA6C47 /* MacSnapshotSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B63DE58A67791F68B88A1E /* MacSnapshotSupport.swift */; };
+		1C6B5D93D6147EA0F859CE6F /* WorktreeSidebarScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF37A723BF53C737C5742F2 /* WorktreeSidebarScreenSnapshotTests.swift */; };
 		2B3A488FAE11D4D743CC5DD0 /* SettingsScreenFakes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947F84A35F0E5E6ED6FED344 /* SettingsScreenFakes.swift */; };
 		2D2E0F87B05427345965A345 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B372D7F4A8791B0E72A5251 /* Assets.xcassets */; };
 		33B58A6F600E98AEA6F8AC0F /* PairingNotReadyViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2884262C6A16078B1FE142E1 /* PairingNotReadyViewSnapshotTests.swift */; };
+		3C1FC11E65FD9F96F3FE3139 /* WorktreeRenameSheetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160B6573F41F430438E5DDEB /* WorktreeRenameSheetSnapshotTests.swift */; };
 		411058ABACC03600B1261054 /* FixedScaleImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249BF11BEAE3E0E2B0126269 /* FixedScaleImage.swift */; };
 		4537938604663A6B9699EF30 /* ServerAppMain in Frameworks */ = {isa = PBXBuildFile; productRef = 8657EFC9E8FD989519FC21B5 /* ServerAppMain */; };
 		5016868BE96A124944176434 /* SettingsWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7E508296916D2C7E1C463F /* SettingsWindowTests.swift */; };
@@ -20,15 +22,18 @@
 		7381A8F9316C881E69E52446 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 8C48D413A221B85C8A6A3993 /* SnapshotTesting */; };
 		8A5AE7E674E3117242BFE682 /* ProjectsSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */; };
 		8CFBBC9DE14C23D70908A986 /* ConnectionLogViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4317F6CE05A15B740CB4D63B /* ConnectionLogViewSnapshotTests.swift */; };
+		8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */; };
 		8D957603285B9B07B48A4D18 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D8BA25970E39E480588A658 /* Assets.xcassets */; };
 		9148CC664C173384A313C279 /* DevicesSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6704FCA70E8C166E0C3D94 /* DevicesSettingsViewSnapshotTests.swift */; };
 		926C7C8715CB3B9C65008973 /* AddRepositoriesSheetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */; };
 		954DA716637FD5784C607B58 /* ProjectsTabUiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564791E76C442C34220B14F8 /* ProjectsTabUiTests.swift */; };
 		962D9FBC6BC3F85B470BF2D3 /* MenuBarContentSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE6425F26947A49618D5421 /* MenuBarContentSnapshotTests.swift */; };
 		A555327E526815742E23C992 /* GranitaSettingsScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */; };
+		B527EDF5CE66094E01452955 /* WorktreeSidebarViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */; };
 		D392DB3CFE446E8426AAA986 /* AdvancedSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B7A80F9019B431F80F87EE /* AdvancedSettingsViewSnapshotTests.swift */; };
 		D9A5B4AAEA7F84B2F76589E0 /* ClientAppMain in Frameworks */ = {isa = PBXBuildFile; productRef = 6781F42DC76C9598B45BEFC8 /* ClientAppMain */; };
 		E317D22222204F7F3B622EA0 /* MenuBarLabelSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C30A9E302D3F01525EFEEA /* MenuBarLabelSnapshotTests.swift */; };
+		E6A9D9F6CEBAA7052ED6E101 /* WorktreeNotReadyViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF00B09F8F5CF031A096E2C7 /* WorktreeNotReadyViewSnapshotTests.swift */; };
 		E7F6AB9B8358DC951E0EC94E /* GranitaMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */; };
 		F0838C2B10B545CCF67FF561 /* GranitaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */; };
 		F596F8B37214464488DA320A /* SnapshotSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B5A52A78377F68D4732194 /* SnapshotSupport.swift */; };
@@ -59,10 +64,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeWorktreeSource.swift; sourceTree = "<group>"; };
 		04B7A80F9019B431F80F87EE /* AdvancedSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
 		0B372D7F4A8791B0E72A5251 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0F2250BC21291A1017BC6EFA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaMobileApp.swift; sourceTree = "<group>"; };
+		160B6573F41F430438E5DDEB /* WorktreeRenameSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeRenameSheetSnapshotTests.swift; sourceTree = "<group>"; };
 		1D8BA25970E39E480588A658 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1FE6425F26947A49618D5421 /* MenuBarContentSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentSnapshotTests.swift; sourceTree = "<group>"; };
 		249BF11BEAE3E0E2B0126269 /* FixedScaleImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixedScaleImage.swift; sourceTree = "<group>"; };
@@ -77,14 +84,17 @@
 		4BBF4C28D111DF1BA19678D6 /* Granita */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Granita; path = Packages/Granita; sourceTree = SOURCE_ROOT; };
 		4D0538A3F4776AE4C78E6A5B /* GranitaMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GranitaMac.entitlements; sourceTree = "<group>"; };
 		564791E76C442C34220B14F8 /* ProjectsTabUiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsTabUiTests.swift; sourceTree = "<group>"; };
+		5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSidebarViewSnapshotTests.swift; sourceTree = "<group>"; };
 		5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaSettingsScreenSnapshotTests.swift; sourceTree = "<group>"; };
 		60122123568D79059A4AE559 /* GranitaMobileSnapshotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDiscoveryViewSnapshotTests.swift; sourceTree = "<group>"; };
 		947F84A35F0E5E6ED6FED344 /* SettingsScreenFakes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreenFakes.swift; sourceTree = "<group>"; };
 		9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
+		BEF37A723BF53C737C5742F2 /* WorktreeSidebarScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSidebarScreenSnapshotTests.swift; sourceTree = "<group>"; };
 		C11FFC228F9E6F34066874BD /* GranitaMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GranitaMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepositoriesSheetSnapshotTests.swift; sourceTree = "<group>"; };
 		C77CD613CBDF5A03306382D2 /* GranitaMacSnapshotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranitaMacSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF00B09F8F5CF031A096E2C7 /* WorktreeNotReadyViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeNotReadyViewSnapshotTests.swift; sourceTree = "<group>"; };
 		E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaMacApp.swift; sourceTree = "<group>"; };
 		E9C30A9E302D3F01525EFEEA /* MenuBarLabelSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarLabelSnapshotTests.swift; sourceTree = "<group>"; };
 		F4BC23246FF9F1BFC805482B /* GranitaMacUiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranitaMacUiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -168,9 +178,14 @@
 		505F0A3D2819DE0E79CFCEBE /* GranitaMobileSnapshotTests */ = {
 			isa = PBXGroup;
 			children = (
+				026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */,
 				2884262C6A16078B1FE142E1 /* PairingNotReadyViewSnapshotTests.swift */,
 				7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */,
 				36B5A52A78377F68D4732194 /* SnapshotSupport.swift */,
+				CF00B09F8F5CF031A096E2C7 /* WorktreeNotReadyViewSnapshotTests.swift */,
+				160B6573F41F430438E5DDEB /* WorktreeRenameSheetSnapshotTests.swift */,
+				BEF37A723BF53C737C5742F2 /* WorktreeSidebarScreenSnapshotTests.swift */,
+				5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */,
 			);
 			path = GranitaMobileSnapshotTests;
 			sourceTree = "<group>";
@@ -429,9 +444,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */,
 				33B58A6F600E98AEA6F8AC0F /* PairingNotReadyViewSnapshotTests.swift in Sources */,
 				528A2CEC660A5049C037AD8A /* ServerDiscoveryViewSnapshotTests.swift in Sources */,
 				F596F8B37214464488DA320A /* SnapshotSupport.swift in Sources */,
+				E6A9D9F6CEBAA7052ED6E101 /* WorktreeNotReadyViewSnapshotTests.swift in Sources */,
+				3C1FC11E65FD9F96F3FE3139 /* WorktreeRenameSheetSnapshotTests.swift in Sources */,
+				1C6B5D93D6147EA0F859CE6F /* WorktreeSidebarScreenSnapshotTests.swift in Sources */,
+				B527EDF5CE66094E01452955 /* WorktreeSidebarViewSnapshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -504,7 +524,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.18;
+				MARKETING_VERSION = 0.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -533,7 +553,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.18;
+				MARKETING_VERSION = 0.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -647,7 +667,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.18;
+				MARKETING_VERSION = 0.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -673,7 +693,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.0.18;
+				MARKETING_VERSION = 0.0.19;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;

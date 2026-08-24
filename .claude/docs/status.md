@@ -2,7 +2,35 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.18.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.19.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**M4's worktree sidebar is built, and nothing in the app can reach it.** That is the design rather
+than an unfinished edge: the list needs a paired Mac, pairing has no frames and therefore no screen,
+and a row leading somewhere that cannot load is the defect this project shipped for eight releases.
+A debug-only route was offered and declined for the same reason. So **none of this screen's controls
+has ever been pressed** — the two swipes, the toolbar menu's picker and toggle, the hidden-count
+footer, Try Again and Show them anyway. Every one is asserted at the model and photographed in four
+layouts, and a picture cannot say whether anything is behind a swipe. They get pressed the day
+pairing lands, which is also the day the screen becomes reachable.
+
+**Design §2's drawings contradicted its own prose in two places, and the prose won both.** The
+rename sheet's footer previews the session summary rather than the branch, because the footer's
+stated job is to say what the row will read after Save and the Mac resolves a suggestion ahead of a
+branch — a footer that is wrong in the one case a reader checks it is worse than none. And a quiet
+primary checkout is hidden like any other, because exempting it makes §2's own "all 9 are clean"
+state unreachable. Both are Davide's calls rather than picked, and both are in `decisions.md`. §2's
+frames are gone, which is that rule working: what survives a drawing is the argument.
+
+**The first four-digit figure on a screen found the locale trap.** `+1,204` recorded as `+1.204`,
+because a grouping separator is the environment's decision and this machine's simulator is not the
+runner's — a baseline nothing in the diff would have explained. The snapshot helper now pins
+`en_US`, which asserts one layout deliberately instead of whichever the simulator happened to be on.
+
+**What §2 draws and this slice does not build is the iPad's split view** — the 320pt sidebar and the
+*Choose a worktree* detail column. Both are a `NavigationSplitView`, and the split view belongs to
+whichever composition root presents this screen, which is the one pairing brings. So **the iPad
+baselines photograph the sidebar at full width, which is not the iPad layout that will ship**, and
+they are re-recorded when the root arrives.
 
 **The Mac is finished for M3.** All five Settings tabs, the status item and its menu, TLS, Bonjour,
 pairing codes, the QR, logging, and now the lock file. What is left of the milestone is its
@@ -265,7 +293,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 591 package tests in 64 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 667 package tests in 70 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself. **The coverage pass runs
   serially**, because measured in parallel it reported a different percentage for identical code —
   five runs of one commit spread across 96.037% and 96.121%, which a ratchet with no slack reads as a
@@ -324,6 +352,21 @@ The spec's milestones, each ending in something runnable and a green suite, with
   against each other**, not each against its own idea of the contract: the phone's real client runs
   against the Mac's real router in one process, pairing with a code the Mac issued and with the six
   words under it, and driving the partial update through all three of its states.
+- **The worktree sidebar, design §2, unreachable on purpose.** Every checkout an agent has been
+  working in: grouped under one Pinned section and then by project, or flat and most recently changed
+  first, with pins above everything in both. A name the reader can trust rendered proportionally and
+  a generated directory name rendered monospaced, because that font switch encodes the whole question
+  of whether the string means anything. Primary checkout and detachment earn a word rather than a
+  glyph — detachment only where the name fell through to the directory — an unborn head takes the
+  stats slot rather than reporting the whole repository, and the file count is the first field to go
+  when the line will not fit. Swiping renames or pins; the rename sheet **offers** the agent's own
+  session summary rather than prefilling it, and its footer says what the row will read after Save,
+  live. Quiet worktrees are hidden and the footer says how many, tappably, so that count and the way
+  back to those rows are one control. Fifteen states across three suites, sixty baselines.
+- **How the sidebar was left, across launches**, in user defaults: the arrangement and the quiet
+  switch. That is what design §2 chose a toolbar menu over a segmented band for — a preference set in
+  week one and then forgotten — and a control the reader has to set again every launch is one they
+  would rather not have been offered.
 - **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
   client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
   method on the model, and the model carries only the browse: the pairing surface lands with the
@@ -402,6 +445,17 @@ sets up delivery.
 
 
 ## What to pick up next
+
+**M4's remaining half is pairing, and it is a design away.** The sidebar is built and cannot be
+opened; the QR scanner and the pairing screen are what open it. When their frames come back, one
+slice does all of it: `ClientConnectionModel` gets back the pairing surface it owes —
+`PairingState`, `pairing`, `pairedServers`, `loadPairingHistory()`, `join(_:as:)` and the
+`MacPairing` dependency — the root wires the handshake, `PairingNotReadyView` goes, and the
+discovery row leads to the sidebar rather than to a sentence about the camera. The same slice owns
+the `NavigationSplitView` §2 draws for the iPad and re-records the four iPad baselines that are
+currently full width, and it is the first chance anyone has had to **press** the eleven controls
+across both screens.
+
 
 **M3, the menu bar app: everything that is not a screen is done.** The Mac app runs the same backend
 the executable runs, advertises it over TLS under an identity it generated for itself, says where it
@@ -509,10 +563,13 @@ Smaller things still open in these modules:
   a pairing screen, the way to try it is `make run` with `--pair`: it prints a `granita://pair` link
   and six words every two minutes, and the fingerprint on that line is what the phone must pin.
 - **A design for the QR scanner and the pairing screen**, which is now the only thing between the
-  phone and a paired Mac. Everything behind that screen is built and tested; what has no frames is
-  the viewfinder, the six-word fallback field, and what a reader sees while a code is being spent
-  and when it is refused. The client round trip of 2026-08-21 did not include them. Until they come
-  back, no branch touching those screens becomes a pull request — see the `design-handoff` skill.
+  phone and a paired Mac — and, since 0.0.19, between the worktree sidebar and a reader who can open
+  it. Everything behind those screens is built and tested; what has no frames is the viewfinder, the
+  six-word fallback field, and what a reader sees while a code is being spent and when it is refused.
+  The client round trip of 2026-08-21 did not include them. **The prompt had never been written**,
+  which is why this had been outstanding for eight releases without anyone waiting on an answer — it
+  was written on 2026-08-24 and handed over in chat. Until the frames come back, no branch touching
+  those screens becomes a pull request; see the `design-handoff` skill.
 - **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
   the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
   hardware is the true one: whether a browser that iOS really is withholding permission from dies

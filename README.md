@@ -71,6 +71,21 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.19 — 2026-08-24
+- **The worktree sidebar is built, and nothing in the app opens it yet.** It needs a paired Mac, and
+  pairing has no screen, so there is deliberately no way to reach it: a row leading to a screen that
+  cannot load is worse than no row at all. It arrives with pairing.
+- **What it will show when it does.** Every checkout an agent has been working in, grouped by project
+  or flat and most recently changed first, with what the worktree is called, how many files moved,
+  how much was added and removed, and how long ago. Pinned worktrees sit above everything in both
+  arrangements.
+- **Renaming a worktree names it on your phone and never touches git.** Swipe a row to rename or pin
+  it. The rename sheet offers the summary Claude Code wrote for that session rather than filling the
+  field with it, and its footer always says what the row will read once you save — including what it
+  falls back to if you clear the field.
+- **Worktrees with nothing changed are hidden, and the list says how many it hid.** That line is
+  tappable, so the count and the way back to those rows are the same control.
+
 ### 0.0.18 — 2026-08-24
 - **The verbose switch is on the Advanced tab, and it takes effect on a server that has been running
   since you opened the app.** It is a switch rather than five log levels: there is one reader here,

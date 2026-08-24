@@ -14,9 +14,13 @@ a question that now has a real one. When a file's last section ships, the file g
 
 | File | Still to build | Read the calls in |
 |---|---|---|
-| [`granita-design-review.html`](granita-design-review.html) | The worktree sidebar (M4), the file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
+| [`granita-design-review.html`](granita-design-review.html) | The file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
 
-Server discovery was in that file too, and was implemented in 0.0.6; its frames went with it.
+Server discovery was in that file too, and was implemented in 0.0.6; its frames went with it. The
+worktree sidebar followed in 0.0.19 — and its frames left with **two of their strings recorded in
+[`../decisions.md`](../decisions.md) rather than built**, because they contradicted a rule stated in
+the prose beside them. That is the case this rule exists for: the drawing was one moment's answer,
+and what survives it is the argument.
 
 **The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
 surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in
