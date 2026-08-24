@@ -65,4 +65,26 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// One case for both, because the reader can do nothing different about them and the diagnostic
     /// is what tells the developer which it was.
     case notUnderstood(diagnostic: String)
+
+    /// The machine's own words, where there are any, for the small print under a screen's own
+    /// sentence.
+    ///
+    /// **Never advice, and never the description slot** — that slot is ours on every screen in this
+    /// app. What comes back here is copyable into a bug report and unmistakably not instructions,
+    /// which is the whole reason it is separated from the sentence a reader is meant to act on.
+    ///
+    /// `nil` for the refusals a Mac spells deliberately: those are answers rather than faults, and
+    /// printing "unauthorized" under a sentence that already says so is noise with a monospaced
+    /// font on it.
+    public var diagnostic: String? {
+        switch self {
+        case .unauthorized, .pairingExpired, .rateLimited, .projectNotVisible: nil
+        case .worktreeGone, .fileGone, .staleContentHash, .tooLarge, .unsupportedApiVersion: nil
+        case .gitFailure(let message): message
+        case .badRequest(let message): message
+        case .requestNotBuildable(let diagnostic): diagnostic
+        case .unreachable(let diagnostic): diagnostic
+        case .notUnderstood(let diagnostic): diagnostic
+        }
+    }
 }

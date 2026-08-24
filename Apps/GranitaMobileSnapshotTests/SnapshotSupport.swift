@@ -92,7 +92,13 @@ func assertScreenSnapshot(
     _ = redirectFailureArtifacts
 
     assertSnapshot(
-        of: view,
+        // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first
+        // screen here to draw a four-digit figure rendered `+1.204` on the machine that recorded it
+        // — which is a baseline the runner cannot reproduce and a red suite nothing in the diff
+        // explains. The environment's locale is the right source for what a reader sees and the
+        // wrong one for a golden image, so this asserts one layout deliberately rather than
+        // whichever the simulator happened to be set to.
+        of: view.environment(\.locale, Locale(identifier: "en_US")),
         as: .image(
             drawHierarchyInKeyWindow: true,
             precision: 0.999,

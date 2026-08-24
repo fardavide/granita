@@ -2689,3 +2689,100 @@ screen will keep pressing on this row until the Accessibility grant lets `make u
 sheet into a window of its own and the raster does not include it — the same limitation as the tab
 bar — so the picture is `projects-beneath-the-scan-sheet`. Naming it for the sheet would be a picture
 asserting the opposite of its own name, which that suite already refuses one paragraph above.
+
+## §2's drawings and its prose disagree twice, and the prose wins both times
+
+The frames are measured and the prose is written from them, so a conflict is normally the drawing
+being right. **These two are the other way round, because in each case the drawing contradicts a rule
+stated in the same document.**
+
+**The rename sheet's footer previews the suggestion, not the branch.** Frame (c) draws *"Clear the
+field and save to go back to feat/tls-pinning"* while a session summary is on screen one section
+below — but the Mac resolves a display name as alias, then suggestion, then branch, then directory,
+so clearing that alias would put the summary on the row and not the branch. The footer's whole
+purpose is stated a paragraph above the frame: it says what the row will read after Save. A footer
+that is wrong in the one case a reader is checking it is worse than no footer. So the fallback is
+`suggestedAlias ?? branch ?? directoryName`, and `WorktreeRenameSubject` carries which of the three
+won, because with no suggestion the sheet's section is absent and the footer has to say *why*.
+
+**A quiet primary checkout is hidden like any other.** The grouped frame draws *"main · primary
+checkout · no changes"* above a footer reading *"6 worktrees with no changes are hidden"*, which
+cannot both be true. Exempting the primary was the tempting reading — §2 says the word exists partly
+because that row "usually has no changes" — and it is unbuildable: §2 also draws *"Nothing to
+review. All 9 worktrees across granita and aura are clean"*, and a never-hidden primary makes that
+state unreachable, since every project has one. So the filter is literal, the word still earns its
+place on the rows that do show, and Davide confirmed it rather than it being picked.
+
+## The worktree sidebar ships with no way to reach it, and that is the point
+
+M4's list needs a paired Mac. Pairing has no frames, so it has no screen, so **nothing routes to this
+one** — not a row, not a tab, not a debug entry. `ClientAppMain` builds the browse and stops exactly
+where it did.
+
+That is the rule rather than an exception to it. A control ships if it works, is absent, is disabled
+and says why, or explains that what is behind it is not built. **Absent is a legitimate state; a link
+to a screen that cannot load is not**, and this project shipped the second one for eight releases.
+The alternative offered and declined was a debug-only route, which is the same defect with a
+smaller audience.
+
+The consequence is that **none of this screen's controls has ever been pressed**, which is the same
+honest state the Mac's ten are in and for a different reason: there the grant is missing, here the
+route is. Every one of them is asserted at the model — the two swipes, the menu's picker and toggle,
+the footer, Try Again and Show them anyway — and a rendered baseline cannot say whether anything is
+behind any of them. They are pressable the day pairing lands, and that is when they get pressed.
+
+**A row still has to do something the moment the screen is reachable**, so it does: selecting one
+pushes `WorktreeNotReadyView`, which names the worktree and says the file list is being built. It is
+declared in the same file as the links that reach it, and it goes when design §3 arrives — the same
+shape, and the same reason, as `PairingNotReadyView`.
+
+## Two states §2 does not draw, and one it draws for a container this slice does not build
+
+**Loading and failed had to exist.** §2 draws four states and none of them is a request in flight or
+a Mac that would not answer, and both are reachable on the first launch of a paired phone. They
+follow §1's idiom rather than inventing one: our sentence in the description, a real Try Again, and
+the machine's own words demoted to caption2 monospaced tertiary — which is why `ApiFailure` grew a
+`diagnostic` beside it, `nil` for the refusals a Mac spells deliberately. **Loading gets a
+`ProgressView`**, which §1 refuses: a progress view promises a finish and a Bonjour browse has none,
+while an HTTP request either answers or fails.
+
+**The iPad's 320pt sidebar and its "Choose a worktree" detail column are not built.** They are a
+`NavigationSplitView`, and the split view belongs to whichever composition root presents this screen
+— which is the one pairing brings. Building half of it here would mean a container nothing composes
+and a detail column no reader can reach. The consequence is stated rather than hidden: **the iPad
+baselines photograph the sidebar at full width, which is not the iPad layout that will ship.** They
+are re-recorded when the root arrives.
+
+## A pinned row is lifted out of its project, and project sections sort by activity
+
+Two orderings §2 settles by argument rather than by drawing, both worth recording because the
+alternative is what a reader would expect.
+
+**Lifted, not copied.** The Pinned section takes the row out of its project's section rather than
+duplicating it — "a row that appears twice is a worse bug than a row that appears once in a
+surprising place" — and the project name on line two, which no other grouped row carries, is what
+makes the place unsurprising. A project whose only worktree is pinned therefore grows no header at
+all, because a header over nothing says a project is here and then shows a gap.
+
+**Activity, not the alphabet.** §2 never states the order of the project sections, and its frames put
+`granita` above `aura`, which is not alphabetical. Most recently touched first is what the rest of
+this screen sorts by and what puts the project the agent was in five minutes ago at the top. The name
+breaks a tie, so two identical reads cannot reshuffle.
+
+## The sidebar's mode control is a toolbar menu, which is a second departure from `SPEC.md` §10
+
+§10 says a segmented control switching between grouped and flat. Design §2 calls replacing it "the
+strongest single recommendation in section two", and the built screen follows the design: **one
+toolbar menu holding an inline picker and a toggle.**
+
+The arithmetic is what settles it. A segmented picker is a permanent 32pt band plus 16pt of padding
+— 48pt of every scroll, forever, for a preference set in week one — and it lands directly above the
+Pinned header, so the first thing a reader sees on the screen this product exists for is two rows of
+chrome. There is already a second preference beside the mode, the quiet switch, and probably a third:
+three toggles cannot be three segmented controls, but they are three menu rows without a redesign.
+
+Recorded here rather than left in `design.md` alone because this file is where a knowing departure
+from the specification belongs, and this is the second in §2 — the other being the rename sheet
+offering the suggestion rather than prefilling it. Everything else §10 asks of this sidebar is built
+as written: the row's six fields, the swipe actions, pinned above everything in both modes with a
+single Pinned section in grouped, and renaming writing the alias and never touching git.
