@@ -109,6 +109,7 @@ final class MacComposition {
             gestures: AppKitSystemGestures(),
             store: store,
             invitations: PairingInvitations(pairing: pairing, identities: identities),
+            tabMemory: UserDefaultsSettingsTabMemory(defaults: .standard),
             dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }
         )
@@ -123,7 +124,23 @@ final class MacComposition {
         Task { await sessions.refresh() }
     }
 
-    func requestSettings() {
+    /// Puts the Settings window on screen, on a particular pane when the caller has one in mind.
+    ///
+    /// **The pane is applied here and does not travel on `settingsRequests`**, which is a departure
+    /// from what design §1 expected and from what `decisions.md` predicted, and the reason is that
+    /// the model has since become the owner of which pane is up. A pane riding on the request would
+    /// be a second copy of that fact — and `SettingsOpener` watches this value with `onChange`, which
+    /// cannot tell "asked for Devices again" from "nothing happened", so a reader who moved to
+    /// Advanced and pressed *Pair a device…* a second time would land on a menu item that did
+    /// nothing. The counter stays a counter because what it signals is "open", and opening twice is
+    /// two events.
+    ///
+    /// Ordered rather than incidental: the pane is set before the window is asked for, so the window
+    /// opens already showing it instead of arriving on one pane and moving.
+    func requestSettings(showing tab: SettingsTab?) {
+        if let tab {
+            model.showSettingsTab(tab)
+        }
         settingsRequests += 1
     }
 

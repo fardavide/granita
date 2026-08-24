@@ -9,10 +9,13 @@ import ServerMacUi
 /// are otherwise reachable only by breaking something — a refused Bonjour registration or a server
 /// that fell over. Here they are values.
 ///
-/// **These baselines pin what ships today, and §1 will move them deliberately.** The design review
-/// calls for three symbols rather than four, with failure and stop sharing one, and for a count
-/// beside the image; the count has since been measured and dropped. That change lands with the rest
-/// of §1, and a re-record is how it will announce itself.
+/// **Four states, three symbols.** Design §1 gives failure and stop one symbol between them, because
+/// the menu bar answers one question — whether the phone can read this Mac — and both are the same
+/// answer to it. Both cases stay here rather than one standing in for the other: that they draw the
+/// same picture is the assertion, not a duplication.
+///
+/// The count design §1 draws beside the image is not built. Producing it was measured at 122.7
+/// seconds over ten real repositories, which is why the label is the symbol alone.
 @Suite("Menu bar status item")
 @MainActor
 struct MenuBarLabelSnapshotTests {

@@ -859,13 +859,35 @@ struct ServerMacModelTests {
     // MARK: - Which pane is up
 
     @Test
-    func `given the window has just opened when it is drawn then General is the pane in front`() {
-        // given - when
-        let scenario = Scenario()
+    func `given this Mac has never opened the window when it is drawn then Projects is the pane in front`() {
+        // given - when — a first run, which is what remembering nothing means.
+        let scenario = Scenario(lastUsedTab: nil)
 
-        // then — design §2 wants Projects on a first run, which needs the window to know what a
-        // first run is. That lands with §1; until it does, this is the honest default.
-        #expect(scenario.sut.settingsTab == .general)
+        // then — design §2, and the reason is not symmetry with the tab order: until a repository is
+        // switched on the app does nothing at all, so General would open on an address no phone can
+        // use yet.
+        #expect(scenario.sut.settingsTab == .projects)
+    }
+
+    @Test
+    func `given a pane was up last time when the window is drawn then that pane is in front`() {
+        // given - when
+        let scenario = Scenario(lastUsedTab: .connections)
+
+        // then
+        #expect(scenario.sut.settingsTab == .connections)
+    }
+
+    @Test
+    func `given a pane is brought to the front when it is shown then the next launch opens on it`() {
+        // given
+        let scenario = Scenario(lastUsedTab: .general)
+
+        // when
+        scenario.sut.showSettingsTab(.advanced)
+
+        // then
+        #expect(scenario.memory.remembered == [.advanced])
     }
 
     @Test
@@ -1103,6 +1125,7 @@ private struct Scenario {
     let picker: FakeFolderPicking
     let gestures: FakeSystemGestures
     let invitations: FakePairingInviting
+    let memory: FakeSettingsTabMemory
 
     init(
         states: [ServerRunState] = [],
@@ -1119,6 +1142,7 @@ private struct Scenario {
         storeFailure: StoreError? = nil,
         pairingFailure: PairingInvitationError? = nil,
         codeExpiresAt: Date = Date(timeIntervalSince1970: 120),
+        lastUsedTab: SettingsTab? = .general,
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
@@ -1132,6 +1156,7 @@ private struct Scenario {
         picker = FakeFolderPicking(folder: pickedFolder)
         gestures = FakeSystemGestures()
         invitations = FakePairingInviting(failure: pairingFailure, expiresAt: codeExpiresAt)
+        memory = FakeSettingsTabMemory(stored: lastUsedTab)
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
@@ -1143,6 +1168,7 @@ private struct Scenario {
             gestures: gestures,
             store: store,
             invitations: invitations,
+            tabMemory: memory,
             dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }
         )

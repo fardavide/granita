@@ -3,12 +3,14 @@
 The menu bar app's seven surfaces, drawn for the first time. This is the authority on **what the Mac
 looks like and why**; [`design.md`](design.md) is the same thing for the phone and the iPad.
 
-The drawings are working material and do not last.
-[`design/granita-mac-design-review.html`](design/granita-mac-design-review.html) holds the frames at
-1:1 — open it for the measurements this prose only summarises — and **each section is deleted from it
-as it is implemented**. When the last one ships, the file goes.
+The drawings were working material and did not last. `design/granita-mac-design-review.html` held
+the frames at 1:1, each section deleted from it as it was implemented; **§1 and §2 were the last two
+and the file went with them in 0.0.16**, which is what it said would happen. Every measurement worth
+keeping is in this document — the window's 620 × 560pt and where that number comes from, the QR's
+module range, the five premises and both open calls — and this prose does not expire, because it
+keeps each call beside the alternative it beat.
 
-First drawing, 21 August 2026, against 0.0.6. The Settings window is drawn at 620 × 560pt and the
+First drawing, 21 August 2026, against 0.0.6. The Settings window was drawn at 620 × 560pt and the
 status item at its real 22pt height. Everything is a stock control: `TabView`, `Form`, `List`,
 `Toggle`, semantic colours, SF Symbols. Where the review moves something it names the control it
 becomes.
@@ -22,8 +24,8 @@ becomes.
 
 | Section | Surface | State |
 |---|---|---|
-| §1 | The status item and its menu | drawn, not built. `settingsRequests` now has a pane to carry: `SettingsTab` exists and the model owns the selection |
-| §2 | The window — five tabs | **all five tabs built as of 0.0.15**, fixed at 620 × 560pt with Advanced last. Restoring the last-used tab and selecting Projects on a first run land with §1 |
+| §1 | The status item and its menu | **built in 0.0.16**, with baselines. Frames deleted. Three symbols and no count; the status line copies, and the pane is applied to the model rather than carried on `settingsRequests` — below |
+| §2 | The window — five tabs | **complete as of 0.0.16.** Five tabs since 0.0.15, fixed at 620 × 560pt with Advanced last; the last-used pane is restored across launches and a first run opens Projects. Frames deleted |
 | §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
 | §4 | Projects | **built in 0.0.14**, with baselines. Frames deleted. Two departures, both below: the second figure is filled in progressively, and the scan follows the specification's skip list rather than the sheet's own drawing |
 | §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The Allow-from-the-Mac path is still out — no frames and no protocol |
@@ -118,6 +120,48 @@ Rejected: dropping the item and letting Settings be the only route, which saves 
 one gesture a new device needs; a separate "Copy address" item, which is two rows for one fact; and
 putting the local-network fix behind an alert, when the menu is where the reader already is.
 
+### Five calls made while building it
+
+**What the status line copies has no scheme.** The drawing shows `http://macbook-pro.local:59144`,
+and it was drawn against 0.0.6 — TLS landed in 0.0.7. `https://` is now the truthful spelling and it
+is the wrong thing to hand a reader: pasted into a browser it produces a certificate warning under a
+self-signed identity, which is the opposite of what this row is for. General had already settled on
+host and port alone for exactly that reason, and two rows copying one fact must not spell it two
+ways. What is copied is what General copies, through the same call.
+
+**The copy announces itself before it happens**, with General's own `doc.on.doc` beside the address.
+A menu closes on click, so a row whose entire effect is a changed pasteboard has no way to report
+itself afterwards — and a control a reader cannot perceive the result of is the defect this project
+cares most about. Borrowing the icon rather than inventing one means the affordance is already
+familiar from the tab that has it.
+
+**The refusal names no cause.** The drawing writes *Not serving — macOS is blocking the local
+network*; the menu says **Not serving** and offers **Open Local Network Settings…** underneath.
+`failed` carries whatever went wrong and a locked keychain reaches it too, and a menu has no room for
+the small print that lets General name a likely cause without asserting it. §1's own argument settles
+this: the menu bar answers one question and *the reason is one click below*. The button still ships,
+because Local Network is the overwhelmingly common cause and offering the fix is not the same as
+claiming the diagnosis.
+
+**Stopped gets the refusal and no button.** Local Network is no way at all to reach that state — the
+server's life is the app's life, so stopped means it fell over — and a button that fixes a different
+problem is a control doing nothing.
+
+***Pair a device…* is enabled while starting**, which departs from "disabled when the server is not
+running". A bind takes a moment and a rebind after waking takes longer; the Devices pane already
+draws that moment as a code being made, deliberately, so that a reader with a phone in their hand is
+not sent to General to fix something that is already happening. Disabling a row for a state that
+resolves itself in under a second would fight them at the same moment for the same reason. Failed and
+stopped stay disabled, and the *Not serving* line directly above is what says why.
+
+**The pane is applied to the model rather than carried on `settingsRequests`.** The review expected
+the request to carry it, and so did `decisions.md`, but both were written before `ServerMacModel`
+owned the selection. A pane riding on the request would be a second copy of a fact the model already
+holds — and `SettingsOpener` watches that value with `onChange`, which cannot tell "asked for Devices
+again" from "nothing happened", so a reader who moved to Advanced and pressed the row a second time
+would meet a menu item that did nothing. `requestSettings(showing:)` carries the pane, sets it, and
+then asks for the window, in that order.
+
 ## §2 — The window
 
 **Five tabs, not four, and Advanced last: General, Projects, Devices, Connections, Advanced.** This
@@ -133,6 +177,17 @@ mis-click from the button that unpairs every device.
 reason — it was the only tab worth opening — and that reason expires the moment General and Projects
 exist. Order as above, restore the last-used tab after that, and select **Projects** on a first run,
 because until something is switched on the app does nothing at all.
+
+**Both halves of that are one question, and the answer is an optional.** A remembered pane and a
+first run are the same seam seen from either end, so the memory answers with a pane *or nothing* and
+the model decides that nothing means Projects — rather than the memory defaulting and the caller
+never learning which of the two it got. It lives in this app's user defaults and not in the JSON
+document: that file is shared with `granita-server`, which has no window and no panes, and a
+preference belonging to one of two processes does not belong in the file they both hold. The pane
+names are spelled out rather than derived from the case names, because a rename would otherwise send
+a reader back to a pane they were not on, silently and only on machines that had already stored the
+old word. Losing it costs nothing — a reader whose defaults did not travel to a new Mac lands on
+Projects, which is what a first run does anyway.
 
 Tab symbols: `gearshape`, `folder`, `iphone`, `point.3.connected.trianglepath.dotted`, `gearshape.2`.
 

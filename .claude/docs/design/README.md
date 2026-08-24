@@ -15,14 +15,16 @@ a question that now has a real one. When a file's last section ships, the file g
 | File | Still to build | Read the calls in |
 |---|---|---|
 | [`granita-design-review.html`](granita-design-review.html) | The worktree sidebar (M4), the file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
-| [`granita-mac-design-review.html`](granita-mac-design-review.html) | Three sections — the status item, the window, and Advanced (M3). 21 August 2026, drawn against 0.0.6. **General went with 0.0.10, Connections with 0.0.11, Projects with 0.0.14, Devices with 0.0.15** | [`../design-mac.md`](../design-mac.md) |
 
-Server discovery was in the first file too, and was implemented in 0.0.6; its frames went with it.
+Server discovery was in that file too, and was implemented in 0.0.6; its frames went with it.
 
-**The Mac frames are one release out of date, and the sheet is not.** They were drawn against 0.0.6
-and 0.0.7 landed after, repairing two of the five premises the review overturns and making a third
-obsolete. `../design-mac.md` records the calls as corrected and says which still stand — read it
-first, and treat the frames as measurements rather than as instructions.
+**The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
+surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in
+0.0.14, Devices in 0.0.15, and the status item and the window in 0.0.16 — so the last frames were
+deleted with the last section. [`../design-mac.md`](../design-mac.md) is the whole record now: every
+call beside the alternative it beat, both open calls answered, and each measurement the frames were
+carrying. The one Mac surface still without a drawing has never had one — allowing a device from the
+Mac, which is [waiting on Davide](../status.md).
 
 The round trip that produces these, what the prompt has to carry, and where a returned call ends up
 are all in the [`design-handoff`](../../skills/design-handoff/SKILL.md) skill.

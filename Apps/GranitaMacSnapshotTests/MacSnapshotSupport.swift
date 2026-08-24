@@ -123,6 +123,53 @@ func assertStatusItemSnapshot(
     )
 }
 
+/// The menu's rows, laid out so that a picture can hold them.
+///
+/// **This is not a picture of the menu, and it cannot be.** A `MenuBarExtra`'s menu is drawn by
+/// AppKit outside this process's view hierarchy; there is no hosting view it can be rendered into,
+/// and there is no `Settings` scene in a test bundle either — the same reason the window's own
+/// baselines show no tab bar. What a stack renders is every row the menu is composed of, in order,
+/// with the copy each one carries and with a disabled row visibly disabled. That is what §1 is
+/// about: which rows exist in which state, and what they say.
+///
+/// The button styling is this file's rather than the app's, for the same reason: a menu item's
+/// appearance comes from the menu. Read these for the words and the rows, not for the chrome.
+@MainActor
+func assertMenuSnapshot(
+    _ view: some View,
+    appearance: MacAppearance,
+    named name: String,
+    fileID: StaticString = #fileID,
+    file: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    _ = redirectFailureArtifacts
+
+    let hosted = hosted(
+        VStack(alignment: .leading, spacing: 6) { view }
+            .buttonStyle(.plain)
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(nsColor: .windowBackgroundColor)),
+        appearance: appearance,
+        size: CGSize(width: 320, height: 180)
+    )
+    defer { hosted.window?.orderOut(nil) }
+
+    assertSnapshot(
+        of: hosted,
+        as: .fixedScaleImage(precision: 0.999, perceptualPrecision: 0.87),
+        named: "\(name)-\(appearance.name)",
+        fileID: fileID,
+        file: file,
+        testName: testName,
+        line: line,
+        column: column
+    )
+}
+
 /// The same hosting the assertion uses, at the Settings window's size, exposed so that a test can
 /// measure the result instead of comparing a picture of it. Window geometry is not observable from
 /// outside the process while Stage Manager is on, which is why the window's own size is asserted

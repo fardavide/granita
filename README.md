@@ -71,6 +71,25 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.16 — 2026-08-24
+- **The menu bar item now does things instead of only saying them.** The status line is a button:
+  press it and this Mac's address is on the clipboard, ready to paste into a phone or a terminal. It
+  copies the same `macbook-pro.local:59144` the General tab copies — no scheme, because Granita
+  serves TLS under its own certificate and pasting `https://` into a browser produces a warning
+  rather than an answer.
+- **Pair a device… is in the menu.** It opens Settings straight to the QR, which matters because
+  Granita has no Dock icon and no window: when a phone is in your hand, the menu is the whole app.
+  It is greyed out when the server is not running, since there is no address for a code to carry.
+- **When the server has not come up, the menu leads with it.** *Not serving*, and directly under it
+  **Open Local Network Settings…**, which is where the overwhelmingly common cause is fixed. The
+  diagnostic itself stays one click below, on General, where there is room to say it is a likely
+  cause rather than a certainty.
+- **The status item has three symbols rather than four.** A server that fell over and a server macOS
+  is blocking now look the same in the menu bar, because the menu bar answers one question — can
+  your phone read this Mac — and both are the same answer to it.
+- **Settings reopens on the pane you left it on**, and on **Projects** the very first time, because
+  until a repository is switched on there is nothing for a phone to read.
+
 ### 0.0.15 — 2026-08-23
 - **Settings has a Devices tab, and it is where a phone gets in.** A QR code big enough to scan from
   across a desk, the six words underneath it for when the camera will not cooperate, and a bar
