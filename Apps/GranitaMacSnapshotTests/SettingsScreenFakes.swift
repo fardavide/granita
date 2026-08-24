@@ -26,7 +26,8 @@ enum SettingsScreenFakes {
         attempts: [ConnectionAttempt],
         git: GitInstallation,
         projects: Int,
-        devices: Int
+        devices: Int,
+        candidates: [RepositoryCandidate] = []
     ) -> ServerMacModel {
         ServerMacModel(
             host: FakeHost(state: state),
@@ -34,7 +35,7 @@ enum SettingsScreenFakes {
             connectionLog: FakeLog(reading: attempts),
             loginItems: FakeLoginItems(),
             gitInstallations: FakeGitInstallations(installation: git),
-            projectFolders: FakeProjectFolders(),
+            projectFolders: FakeProjectFolders(candidates: candidates),
             folderPicker: FakeFolderPicker(),
             gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
@@ -122,9 +123,14 @@ private struct FakeGitInstallations: GitInstallations {
 /// row.
 private struct FakeProjectFolders: ProjectFolders {
 
+    /// What a scan turns up, so the sheet the window presents over Projects can be photographed.
+    /// Empty by default: most baselines never scan, and a scan that found things is a state a test
+    /// asks for rather than one it inherits.
+    let candidates: [RepositoryCandidate]
+
     func contents(ofFolderAt path: String) -> ProjectContents { .worktrees(count: 2) }
     func worktreesWithChanges(inFolderAt path: String) -> Int { 1 }
-    func repositories(under root: URL) -> [RepositoryCandidate] { [] }
+    func repositories(under root: URL) -> [RepositoryCandidate] { candidates }
 }
 
 /// Nobody is at the keyboard of a snapshot, and nothing here opens a panel.
