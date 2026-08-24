@@ -82,9 +82,9 @@ public final class ServerMacModel {
     /// A control whose only effect is a `@State` two layers up is a control nothing can be asked
     /// about — and this app has already shipped one of those for eight releases.
     ///
-    /// General on launch. Design §2 wants **Projects** on a first run, which needs the window to
-    /// know what a first run is; that lands with §1's half of the same section.
-    public private(set) var settingsTab: SettingsTab = .general
+    /// Set here rather than defaulted, because design §2 asks for two things that are the same
+    /// question: the pane the reader was last on, and **Projects** when there has never been one.
+    public private(set) var settingsTab: SettingsTab
 
     /// What the Devices tab can offer a phone right now.
     ///
@@ -140,6 +140,7 @@ public final class ServerMacModel {
     private let gestures: any SystemGestures
     private let store: any Store
     private let invitations: any PairingInviting
+    private let tabMemory: any SettingsTabMemory
     private let now: @Sendable () -> Date
     private var pairedDevices: [StoredDevice] = []
 
@@ -154,6 +155,7 @@ public final class ServerMacModel {
         gestures: any SystemGestures,
         store: any Store,
         invitations: any PairingInviting,
+        tabMemory: any SettingsTabMemory,
         dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
     ) {
@@ -167,9 +169,15 @@ public final class ServerMacModel {
         self.gestures = gestures
         self.store = store
         self.invitations = invitations
+        self.tabMemory = tabMemory
         self.dataFolderUrl = dataFolderUrl
         self.now = now
         startedAt = now()
+        // Read here rather than asked for later, so there is no moment in which the window could
+        // open on one pane and be moved to another under a reader who has already started looking
+        // at it — and no moment in which a restore could land after the menu's *Pair a device…* and
+        // take Devices back off the screen.
+        settingsTab = tabMemory.lastUsedTab() ?? .projects
     }
 
     /// Follows the server for as long as the app is running.
@@ -447,9 +455,14 @@ public final class ServerMacModel {
     }
 
     /// Brings a pane to the front, whether a reader clicked the tab bar or pressed something that
-    /// leads here.
+    /// leads here — and writes it down, so the next launch opens where this one left off.
+    ///
+    /// Synchronous, and the seam behind it is too. A tab bar's `Binding` has nowhere to put an
+    /// `await`, and deferring the assignment by one turn to make room for one is how a tab bar comes
+    /// to lag a click it has already accepted.
     public func showSettingsTab(_ tab: SettingsTab) {
         settingsTab = tab
+        tabMemory.remember(tab)
     }
 
     // MARK: - Devices

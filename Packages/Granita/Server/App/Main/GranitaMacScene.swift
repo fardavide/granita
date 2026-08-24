@@ -32,7 +32,16 @@ public struct GranitaMacScene: Scene {
         MenuBarExtra {
             MenuBarContent(
                 state: composition.model.serverState,
-                onOpenSettings: { composition.requestSettings() },
+                onCopyAddress: { Task { await composition.model.copyAddress() } },
+                // The one QR in the app is on Devices, so this is a door to it rather than a second
+                // one. Declared here, beside the row that opens it, which is the rule the dead
+                // discovery row cost eight releases to learn.
+                onPairDevice: { composition.requestSettings(showing: .devices) },
+                onOpenLocalNetworkSettings: {
+                    Task { await composition.model.openSystemSettings(.localNetwork) }
+                },
+                // No pane, so the window opens on whichever one it was last left on.
+                onOpenSettings: { composition.requestSettings(showing: nil) },
                 onQuit: { NSApplication.shared.terminate(nil) }
             )
         } label: {

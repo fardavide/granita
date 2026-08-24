@@ -9,10 +9,14 @@
 /// device…* opens this window on Devices. Which pane is up is a fact about the app rather than a
 /// piece of one view's state, and holding it in a `@State` is what makes "the control did nothing"
 /// unassertable.
-public enum SettingsTab: Hashable, Sendable, CaseIterable {
-    case general
-    case projects
-    case devices
-    case connections
-    case advanced
+///
+/// The raw values are written down between launches, so they are spelled out rather than derived
+/// from the case names: a rename that changed one would send a reader back to a pane they were not
+/// on, silently and only on the machines that had already stored the old word.
+public enum SettingsTab: String, Hashable, Sendable, CaseIterable {
+    case general = "general"
+    case projects = "projects"
+    case devices = "devices"
+    case connections = "connections"
+    case advanced = "advanced"
 }

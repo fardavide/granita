@@ -59,7 +59,8 @@ struct GranitaSettingsScreenSnapshotTests {
     ) async {
         // given — what a reader lands in when macOS is withholding local network access, which is
         // the failure this app is most likely to hit on a machine that has never run it. On General,
-        // because that is the pane the window opens on and the one carrying the way out.
+        // because that is the pane carrying the way out — and the fake memory says General was the
+        // last one up, since a Mac with nothing remembered opens on Projects now.
         let model = SettingsScreenFakes.model(
             state: .failed(reason: "NWError: -65555"),
             attempts: [],

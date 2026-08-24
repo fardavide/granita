@@ -2,7 +2,38 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.15.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.16.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**The menu bar item does things now, and all seven of the Mac's drawn surfaces are built.** The
+status line is a `Button` that copies — `macbook-pro.local:59144`, with no scheme, because the
+frames drew `http://` against 0.0.6 and TLS landed in 0.0.7, and `https://` pasted into a browser
+under a self-signed identity produces a warning rather than an answer. It copies through the same
+call General's row does, so two places cannot spell one fact two ways, and it carries General's own
+`doc.on.doc` because a menu closes on click and a row whose whole effect is a changed pasteboard has
+no way to report itself afterwards. *Pair a device…* opens Settings **on Devices** — one QR, two
+doors — enabled while starting and disabled when the server is failed or stopped. A failed server
+leads with *Not serving* and **Open Local Network Settings…**; it does **not** name the cause, because
+a locked keychain reaches that state too and a menu has no room for the small print General uses to
+say "likely". Three symbols rather than four: failure and stop are one answer to the one question a
+menu bar asks. **The count is not built and is not owed** — 122.7 seconds.
+
+**The pane does not ride on the settings request**, which is what `decisions.md` predicted it would
+do and is now superseded there. `ServerMacModel` has owned the selection since 0.0.15, so a pane on
+the request would be a second copy of it — and `SettingsOpener` watches that value with `onChange`,
+which cannot tell *asked for Devices again* from *nothing happened*. Pressing the row twice with
+Advanced in between would have been a dead control built by the mechanism meant to prevent one.
+
+**Settings reopens where it was left, and on Projects the first time.** Both are one question, so the
+seam answers with a pane **or nothing** and the model decides that nothing means Projects. It is user
+defaults rather than the JSON document: that file is shared with `granita-server`, which has no
+window, and is about to grow a lock file so the two cannot both hold it. Synchronous, alone among the
+seams here, which is what makes it impossible rather than unlikely for a restore to land after the
+menu asked for Devices and take it back off the screen.
+
+**Four new controls, and none of them has been pressed.** They are photographed — the menu's rows in
+a stack, because a `MenuBarExtra`'s menu is drawn by AppKit outside this process and there is nothing
+to render — and a picture cannot say whether anything is behind a row. That is the Accessibility
+grant's job, below.
 
 **Devices is built, and the Settings window now has all five of its tabs.** The QR is the largest
 thing in the app and it is what the 620 × 560pt window was sized from — and the first render put the
@@ -173,7 +204,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 564 package tests in 58 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 573 package tests in 60 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
@@ -202,9 +233,13 @@ The spec's milestones, each ending in something runnable and a green suite, with
   that silently does not start at the next login. Twelve baselines and two window assertions hold it,
   the second of which can only be made from inside the app: window geometry is not observable from
   outside the process while Stage Manager is on.
-- **The menu bar app, serving.** It embeds the same backend, advertises under the name the Mac is
-  actually called, reports `host:port` in its menu, and opens a Settings window from a status item
-  under `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up.
+- **The menu bar app, serving, and its menu — design §1.** It embeds the same backend, advertises
+  under the name the Mac is actually called, and opens a Settings window from a status item under
+  `LSUIElement` — the trap SPEC §14 asks to be implemented rather than looked up. Three symbols and
+  no count; `host:port` on a row that copies it; *Pair a device…* opening the window **on Devices**
+  and greyed when there is no address to encode; and a failed server leading with the refusal and
+  the one thing to do about it. Eight baselines across four states, rendered as a stack because a
+  `MenuBarExtra`'s menu is drawn by AppKit outside this process and cannot be photographed at all.
 - **The Mac's Advanced tab.** Which git this Mac would run and whether running it works, the data
   folder with a Reveal, and `Reset All Data` — which counts what exists, repeats it as consequences
   in the confirmation, and leaves the count truthful when the reset could not be written. `Store`
@@ -290,8 +325,7 @@ the executable runs, advertises it over TLS under an identity it generated for i
 is listening, re-binds when the Mac wakes, and has a Settings window whose Advanced tab shows the
 last fifty connection attempts with the reason each was turned away.
 
-**Every Settings tab is now built**, with its baselines, from the frames the Mac round trip returned
-on 2026-08-21. What is left of M3 is the status item and its menu, the rest of §2, the logging layer,
+**Every drawn Mac surface is now built**, with its baselines. What is left of M3 is the logging layer
 and the store's lock file:
 
 - ~~**Settings, and one tab is left.**~~ All five are built as of 0.0.15. §5's Allow-from-the-Mac
@@ -299,35 +333,20 @@ and the store's lock file:
 - ~~**The pairing QR.**~~ Built, at four points per module — sized from the module count rather than
   into a fixed square, because a 53-module code squeezed into 240pt puts some modules at four points
   and others at five, which is what a scanner reads as noise.
-- **§1, the status item and its menu, and the rest of §2.** Three symbols and no count; the status
-  line as a `Button` that copies; *Pair a device…* opening Settings on Devices and disabled when not
-  serving, which means `settingsRequests` carries a `SettingsTab` rather than being a counter. Then
-  restoring the last-used tab, and Projects on a first run.
+- ~~**§1, the status item and its menu, and the rest of §2.**~~ Built in 0.0.16, with baselines,
+  and the Mac's design review was deleted with them — it was the last two sections in it.
 - **A logging layer, which nothing has needed until now.** Advanced's verbose switch and its route
   into Console are the first thing that does, and both are blocked on it. The Console filter travels
   **on the pasteboard**, because `Console.app` registers no URL scheme and cannot be handed a
   predicate; that is settled and recorded.
 
-**Read `design-mac.md` rather than the frames.** They were drawn against 0.0.6 and 0.0.7 landed
-after, repairing two of the five premises they overturn and making a third obsolete — the sheet says
-which still stand.
-
-**Owed before any of them: a macOS snapshot kind**, unchanged from below, and now the only thing
-between M3 and done.
+**Read `design-mac.md`, which is the whole record.** The frames are gone; the sheet keeps every call
+beside the alternative it beat, both open calls with the measurements that answered them, and which
+of the five premises the drawings overturned still stand.
 
 **The milestone's acceptance — pairing from a real device on the LAN — is the one thing left that
 this machine cannot answer**, and it is what earns the minor version. Everything it depends on is
 proven from a terminal; see "Verified against the real environment".
-
-**Owed before slice 2: a macOS snapshot kind.** The Mac's views are measured by no test kind at all
-— the snapshot suite is the iOS target — so every screen the Settings window gains is code nothing
-renders. The gate tolerates that today because the Unit and All rows were rescoped in the same pull
-request that created the gap, and a rescoped row is unjudged for one run. It will not tolerate the
-four remaining tabs. The frames have come back drawn at 1:1 precisely so they can become the
-baselines, and a screen built from a frame lands with its baselines: that is the pull request the
-macOS kind belongs in. The review adds a second reason — the window's real minimum can only be
-asserted from inside the app, because window geometry is not measurable from outside while Stage
-Manager is on.
 
 Smaller things still open in these modules:
 
@@ -363,13 +382,17 @@ Smaller things still open in these modules:
 ## Waiting on Davide
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
-  last thing between `make ui-tests-mac` and a green run, and it is now blocking something concrete
-  rather than a target: the Devices tab's `Revoke`, `New Code` and `Open General`, and the
-  connection log's `Pair…`, are all asserted at the model and none of them has been pressed. That is
-  the exact shape of the dead control this project shipped for eight releases, and no baseline can
-  see it — a `TabView` outside a `Settings` scene draws no tab bar at all. **Pressing them means
+  last thing between `make ui-tests-mac` and a green run, and it is now blocking **eight** shipped
+  controls rather than a target: the Devices tab's `Revoke`, `New Code` and `Open General`, the
+  connection log's `Pair…`, and 0.0.16's four menu bar rows — the status line that copies, *Pair a
+  device…*, *Open Local Network Settings…* and *Settings…*. Every one is asserted at the model and
+  none has been pressed. That is the exact shape of the dead control this project shipped for eight
+  releases, and no baseline can see it: a `TabView` outside a `Settings` scene draws no tab bar, and
+  a `MenuBarExtra`'s menu is drawn by AppKit outside this process entirely. **Pressing them means
   driving this Mac while Davide is using it, which he ruled out on 2026-08-23**, so it is his to
-  grant or his to press.
+  grant or his to press. The four menu rows are reached by clicking the status item; the copy is
+  checked by pasting, and *Pair a device…* must land on **Devices** — press it, switch to Advanced,
+  and press it again, because the second press is the one a counter would have swallowed.
 
 - ~~**A design round trip for the Mac's own surfaces.**~~ Came back on 2026-08-21 and is recorded in
   [`design-mac.md`](design-mac.md). Nothing in the Settings window is blocked on a drawing any more,

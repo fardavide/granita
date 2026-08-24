@@ -38,6 +38,9 @@ enum SettingsScreenFakes {
             gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
             invitations: FakeInvitations(),
+            // General, so a baseline names the pane it shows rather than inheriting a first run's
+            // Projects. Every test here goes on to say which pane it wants anyway.
+            tabMemory: FakeTabMemory(),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
             now: { Date(timeIntervalSince1970: 1_755_864_000) }
@@ -147,6 +150,12 @@ private struct FakeInvitations: PairingInviting {
             expiresAt: Date(timeIntervalSince1970: 1_755_864_106)
         )
     }
+}
+
+/// A Mac that was last on General, and forgets what these baselines put in front of it.
+private struct FakeTabMemory: SettingsTabMemory {
+    func lastUsedTab() -> SettingsTab? { .general }
+    func remember(_ tab: SettingsTab) {}
 }
 
 private struct FakeGestures: SystemGestures {

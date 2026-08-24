@@ -2378,3 +2378,78 @@ That is the defect the connection log's row was repaired for, arriving one layer
 `Date()` is a `body` whose picture depends on when the shutter opened. Both panes read
 `model.currentTime` now. The schedule still comes from `.now`, because when to redraw is not
 something a baseline can be wrong about.
+
+## The pane does not ride on the settings request, and the entry above predicted that it would
+
+Design §1 and the entry on which pane is up both said the same thing: *Pair a device…* needs
+`settingsRequests` to carry a pane rather than being a bare counter. Both were written before
+`ServerMacModel` owned the selection, and once it does, carrying the pane on the request is a second
+copy of a fact something else already holds.
+
+**The half that makes it wrong rather than merely redundant is `onChange`.** `SettingsOpener` watches
+that value, and a value carrying a pane is `Equatable`: asking for Devices twice in a row produces
+two identical requests, and the second one fires nothing. A reader who pressed the row, moved to
+Advanced, and pressed it again would meet a menu item that did nothing — the exact defect this
+project spent eight releases shipping, reintroduced by the mechanism meant to prevent it. Keeping the
+counter a counter keeps "open" an event, and opening twice two events.
+
+So `requestSettings(showing:)` takes the pane, hands it to the model, and *then* bumps the counter.
+The ordering is the other half: set first, ask second, so the window opens already showing the pane
+rather than arriving on one and moving. The design's actual constraint — do not invent a new
+mechanism for this — is met; what it guessed about the shape is not, and the guess is superseded
+rather than argued with.
+
+## The remembered pane is in user defaults, and its absence is what a first run is
+
+Design §2 asks for two things that are one question: restore the pane the reader was last on, and
+open **Projects** the first time. So `SettingsTabMemory` answers with a pane **or nothing**, and the
+model turns nothing into Projects. A seam that defaulted internally would answer every launch with a
+pane and leave no caller able to tell a return from a first run — which is the decision design §2
+actually makes.
+
+**Not the store.** That document is shared with `granita-server`, which has no window and no panes,
+and it is about to grow a lock file precisely so the two processes cannot both hold it. A preference
+belonging to one of them does not belong in the file they share, and losing it costs nothing: a
+reader whose defaults did not follow them to a new Mac lands on Projects, which is what a first run
+does anyway.
+
+**Synchronous, which no other seam here is**, and that is what makes the race impossible rather than
+unlikely. The rest of them wrap a subprocess, a panel a person is looking at, or a document written
+to disk; this wraps a value the system already holds in memory. Read in the model's `init`, there is
+no window in which a restore could land *after* the menu's *Pair a device…* and quietly take Devices
+back off the screen — and no `Binding` on the tab bar has to defer its own assignment by a turn to
+make room for an `await`, which is how a tab bar comes to lag a click it has already accepted. The
+pane names are spelled out rather than derived from the case names, because a rename would otherwise
+strand a stored word and send a reader to a pane they were not on.
+
+## The menu is photographed as a stack, because a menu cannot be photographed at all
+
+`MenuBarContent` gained four controls, and the Snapshot row is scoped to the `Ui` layer — so drawing
+code nothing renders would have taken the row down, which is the trap this repository has now met
+three times. The obstacle is that a `MenuBarExtra`'s menu is drawn by AppKit outside this process's
+view hierarchy: there is no hosting view it can be rendered into, and a test bundle has no `Settings`
+scene either, which is the same reason the window's own baselines show no tab bar.
+
+What is committed is the menu's rows laid out in a `VStack` — every row in order, the copy each one
+carries, and a disabled row visibly disabled. That is what §1 is about: which rows exist in which
+state and what they say. The button styling is the test file's rather than the app's, and the
+docstring says so, because a menu item's appearance comes from the menu it is in.
+
+**What no picture here can say is whether anything is behind them**, and that is the honest state of
+four new controls rather than a caveat. It is the same gap the Devices tab's `Revoke` and the
+connection log's `Pair…` are in, it closes with the Accessibility grant rather than with more tests,
+and the four rows are named in `status.md` beside them.
+
+## The Mac's design review is gone, and the sheet is the whole record now
+
+`granita-mac-design-review.html` was deleted with §1 and §2's frames, because they were the last two
+sections in it and the file said in its own words that it would go with them. Every surface it drew
+is built.
+
+Recorded because deleting a design return looks like losing one. What was durable in it was already
+carried across as it went: `design-mac.md` holds each call beside the alternative it beat, both open
+calls with the measurements that answered them, the five premises and which survived, and the numbers
+the frames existed to carry — the window's 620 × 560pt and where that height comes from, the QR's
+49-to-53 module range, the tab symbols. What the frames added on top of that was pixels, and the
+built screens are pinned by committed baselines now, which is a better answer to the same question
+and one that fails when it stops being true.
