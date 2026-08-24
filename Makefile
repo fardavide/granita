@@ -40,6 +40,39 @@ build: ## Compile-check the package and both apps
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac    -destination '$(MAC_GENERIC)' -quiet $(UNSIGNED)
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
 
+.PHONY: coverage
+coverage: ## Run the coverage gate locally — the same verdict CI gives, before the pull request
+	@# **This exists so a falling row is found here rather than twenty minutes later.** The gate is a
+	@# plain ratchet with no slack against the last `main` run, so any change that adds code can push
+	@# a row under it — and every time that has been discovered from a red pull request instead of
+	@# from here, the cost was a full CI round trip to learn a number that was already computable.
+	@#
+	@# It runs the same script CI runs and hands the result to the same predicates, so the verdict is
+	@# the verdict rather than an approximation of it. Verified on 24 August 2026: the local numbers
+	@# matched the runner's to the line on all six rows.
+	@#
+	@# **It is not fast** — three passes, one of which builds the iOS app and boots a simulator, and
+	@# one of which renders the Mac's panes. Several minutes. That is the price of the answer, and it
+	@# is a fraction of the round trip it replaces.
+	@#
+	@# A red run prints which rows fell and by how much. **Which FILES moved is the next question and
+	@# this does not answer it** — for that, read build/coverage/{unit,snapshot,all}.json, which this
+	@# leaves behind. A row that falls is read, never estimated: this repository has three recorded
+	@# instances of algebra reaching the wrong conclusion about which file moved a number.
+	Scripts/fetch-coverage-baseline.sh
+	.github/scripts/measure-coverage.sh
+	python3 .github/scripts/coverage.py render \
+		--current build/coverage/summary.json \
+		--baseline .coverage-baseline/summary.json \
+		--out build/coverage/comment.md \
+		--verdict-out build/coverage/verdict.json
+	@cat build/coverage/comment.md
+	@python3 .github/scripts/coverage.py enforce --verdict build/coverage/verdict.json
+
+.PHONY: coverage-baseline
+coverage-baseline: ## Re-fetch main's coverage numbers, discarding the cached copy
+	Scripts/fetch-coverage-baseline.sh --force
+
 .PHONY: run
 run: ## Run the backend in a terminal, no Xcode in the loop — `make run ARGS="--pair"`
 	@# ARGS is how every flag in `granita-server --help` is reached: --add-project, --pair,

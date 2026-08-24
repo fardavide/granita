@@ -200,6 +200,20 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      # The same six numbers again, on their own and tiny. `coverage-exports` above is ~300 MB of
+      # per-file detail, and `gh run download` cannot fetch one file out of an artifact — so a
+      # developer wanting to know what the gate will say has to pull all of it. This is what
+      # `make coverage` fetches instead: a few hundred bytes, kept long enough that a branch cut
+      # weeks ago still has a baseline to measure against.
+      - name: Upload the coverage summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: build/coverage/summary.json
+          retention-days: 90
+          if-no-files-found: warn
+
       - name: Render the report
         run: |
           python3 .github/scripts/coverage.py render \

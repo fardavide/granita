@@ -108,10 +108,16 @@ left in one is untested code that no longer looks untested. Move it out and give
 ```bash
 make test       # package tests, on the host, no simulator
 make build      # compile-check the package and both apps, unsigned
+make coverage   # the coverage gate's own verdict, locally — run before any PR that adds code
 make snapshots  # render the screens on a simulator against the committed baselines
 make run        # run the backend in a terminal
 make project    # regenerate Granita.xcodeproj after editing project.yml
 ```
+
+**The coverage gate is a ratchet with no slack, so any change that adds code can fall under it.**
+`make coverage` answers that here instead of twenty minutes later in CI. What to cover as you write
+it — every `guard` failure branch, every `??`, every new `case`, every view fallback needs its own
+snapshot subject — is in the `swift-testing` skill.
 
 `make record-snapshots` re-records the baselines, and is only ever correct after a deliberate change
 to `.claude/docs/design.md`.
