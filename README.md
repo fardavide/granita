@@ -71,6 +71,24 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.17 — 2026-08-24
+- **Granita writes a log now, and until this release it wrote nothing at all.** Not a line, anywhere
+  — which is why the Advanced tab's verbose switch and *Open in Console* have been missing: they
+  were controls over a subsystem that emitted silence. Every request the Mac answers and every git
+  command it runs is recorded, under the subsystem `dev.fardavide.granita`, so Console can be
+  filtered to Granita and nothing else.
+- **A failure is always written down; the rest waits to be asked for.** A git command that could not
+  be run, or a request that was refused, is recorded whatever the setting — a fault you have to
+  switch logging on to see is one you learn about after it mattered. Everything else — each request,
+  each git invocation — is the detail the verbose switch will turn on.
+- **What is logged is deliberately not what git said back.** The command and the checkout it ran in,
+  never its output; the method and the path of a request, never its query or its body. Your source
+  stays on your Mac, which is the point of the product, and a log has a longer life and more readers
+  than the thing it was taken from.
+- The switch itself, and the button that opens Console, arrive with the next release alongside the
+  lock-file row — all three are on the same tab. Until then verbose is turned on with
+  `defaults write dev.fardavide.granita granita.diagnostics.verbose -bool YES`.
+
 ### 0.0.16 — 2026-08-24
 - **The menu bar item now does things instead of only saying them.** The status line is a button:
   press it and this Mac's address is on the clipboard, ready to paste into a phone or a terminal. It

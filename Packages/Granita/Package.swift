@@ -93,6 +93,36 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // Where Granita says what it is doing, which until 0.0.17 it never did anywhere. In `Core`
+        // rather than under `Server` because two call sites need it and they are siblings over this:
+        // the git client, which is a server module, and the request boundary, which is another.
+        .target(
+            name: "CoreDiagnosticsDomain",
+            path: "Core/Diagnostics/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "CoreDiagnosticsDomainTests",
+            dependencies: ["CoreDiagnosticsDomain"],
+            path: "Core/Diagnostics/DomainTests",
+            swiftSettings: [swift6]
+        ),
+
+        // `os.Logger` and the defaults key behind the verbose switch. Nothing here decides anything
+        // — the decision is `VerbosityFilteringDiagnostics`, one layer in.
+        .target(
+            name: "CoreDiagnosticsData",
+            dependencies: ["CoreDiagnosticsDomain", "CoreBrandingDomain"],
+            path: "Core/Diagnostics/Data",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "CoreDiagnosticsDataTests",
+            dependencies: ["CoreDiagnosticsData", "CoreDiagnosticsDomain"],
+            path: "Core/Diagnostics/DataTests",
+            swiftSettings: [swift6]
+        ),
+
         // The wire contract that is neither a diff model nor a pairing one: the refusal codes the
         // phone branches on, the handshake body it reads before it will pair, and the two halves of
         // the pairing exchange. A Core module because both ends name every one of them, and two
@@ -323,8 +353,14 @@ let package = Package(
 
         .target(
             name: "ServerGitDomain",
-            dependencies: ["CoreDiffDomain"],
+            dependencies: ["CoreDiffDomain", "CoreDiagnosticsDomain"],
             path: "Server/Git/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ServerGitDomainTests",
+            dependencies: ["ServerGitDomain", "CoreDiffDomain", "CoreDiagnosticsDomain"],
+            path: "Server/Git/DomainTests",
             swiftSettings: [swift6]
         ),
         .target(
@@ -443,6 +479,7 @@ let package = Package(
             dependencies: [
                 "CoreApiDomain",
                 "CoreBrandingDomain",
+                "CoreDiagnosticsDomain",
                 "ServerApiDomain",
                 "ServerIdentityDomain",
                 "ServerWorktreesDomain",
@@ -461,6 +498,7 @@ let package = Package(
             dependencies: [
                 "ServerApiPresentation",
                 "CoreApiDomain",
+                "CoreDiagnosticsDomain",
                 "ServerApiDomain",
                 "ServerIdentityDomain",
                 "ServerWorktreesDomain",
@@ -593,6 +631,8 @@ let package = Package(
             name: "ServerAppMain",
             dependencies: [
                 "CoreBrandingDomain",
+                "CoreDiagnosticsData",
+                "CoreDiagnosticsDomain",
                 "CoreDiffDomain",
                 "ServerApiDomain",
                 "ServerApiPresentation",
@@ -621,6 +661,8 @@ let package = Package(
             name: "ServerCliMain",
             dependencies: [
                 "CoreBrandingDomain",
+                "CoreDiagnosticsData",
+                "CoreDiagnosticsDomain",
                 "ServerApiDomain",
                 "ServerApiPresentation",
                 "ServerIdentityDomain",

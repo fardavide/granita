@@ -41,6 +41,13 @@ public enum Branding {
     /// Default TCP port. Taken ports fall back automatically and the chosen one is persisted.
     public static let defaultPort = 8737
 
+    /// The subsystem every line Granita writes to the system log carries.
+    ///
+    /// Here rather than beside the logger, because two things have to agree on it and only one of
+    /// them writes: Advanced's *Open in Console* hands the reader a predicate naming this exact
+    /// string, and a filter spelled a second time is a Console window that opens on nothing.
+    public static let loggingSubsystem = bundleIdentifierPrefix
+
     /// The build's marketing version, reported by `/v1/health` so a phone can say "update your Mac
     /// app" rather than failing to decode a payload it half-understands.
     ///
@@ -51,5 +58,5 @@ public enum Branding {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? fallbackServerVersion
     }
 
-    static let fallbackServerVersion = "0.0.16"
+    static let fallbackServerVersion = "0.0.17"
 }

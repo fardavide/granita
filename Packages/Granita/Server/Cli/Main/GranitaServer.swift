@@ -1,6 +1,8 @@
 import Foundation
 
 import CoreBrandingDomain
+import CoreDiagnosticsData
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import CorePairingDomain
 import ServerApiDomain
@@ -28,10 +30,16 @@ struct GranitaServer {
         }
 
         let store = JsonDocumentStore(fileUrl: arguments.storeUrl)
-        let git = ProcessGitClient(
-            executablePath: gitExecutablePath(),
-            outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
-            timeout: ProcessGitClient.defaultTimeout
+        let git = LoggingGitClient(
+            client: ProcessGitClient(
+                executablePath: gitExecutablePath(),
+                outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
+                timeout: ProcessGitClient.defaultTimeout
+            ),
+            diagnostics: VerbosityFilteringDiagnostics(
+                wrapped: OsLogDiagnostics(),
+                verbosity: UserDefaultsVerboseLogging(defaults: .standard)
+            )
         )
         let service = WorktreeService(git: git, limits: .standard)
 
@@ -63,6 +71,13 @@ struct GranitaServer {
             // The terminal has stderr for this; the log is here because the menu bar app draws it
             // and both composition roots build the same dependencies.
             connectionLog: InMemoryConnectionLog(now: { Date() }),
+            // The same subsystem the Mac app writes to, so `log stream --predicate` reads either
+            // one. Verbose is the same defaults key too — this root has no switch to offer, and a
+            // second way of turning it on would be a second answer to one question.
+            diagnostics: VerbosityFilteringDiagnostics(
+                wrapped: OsLogDiagnostics(),
+                verbosity: UserDefaultsVerboseLogging(defaults: .standard)
+            ),
             serverVersion: Branding.serverVersion,
             // Plaintext means every token on the wire is already everyone's, so demanding one would
             // be theatre. The flag exists so a TLS problem can never leave code unreviewable, and

@@ -220,6 +220,7 @@ struct PairingRouteTests {
                         pairing: pairing,
                         failedAttempts: FailedAttempts(now: { clock.reading }),
                         connectionLog: connectionLog,
+                        diagnostics: FakeDiagnostics(),
                         serverVersion: "0.0.6",
                         requiresAuthentication: true
                     )

@@ -3,6 +3,7 @@ import Hummingbird
 
 import CoreApiDomain
 import CoreBrandingDomain
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import ServerApiDomain
 import ServerGitDomain
@@ -21,6 +22,11 @@ public struct ApiDependencies: Sendable {
     /// Where every refusal goes, so the Advanced panel can say why a phone is not getting in.
     public let connectionLog: any ConnectionLog
 
+    /// Where every request goes, which is a different question and a different reader: the panel
+    /// above is fifty coalesced attempts read on screen under pressure, and this is a line per
+    /// request in the system log, read after the fact for its order.
+    public let diagnostics: any Diagnostics
+
     public let serverVersion: String
 
     /// Whether a request has to prove who it is.
@@ -36,6 +42,7 @@ public struct ApiDependencies: Sendable {
         pairing: Pairing,
         failedAttempts: FailedAttempts,
         connectionLog: any ConnectionLog,
+        diagnostics: any Diagnostics,
         serverVersion: String,
         requiresAuthentication: Bool
     ) {
@@ -45,6 +52,7 @@ public struct ApiDependencies: Sendable {
         self.pairing = pairing
         self.failedAttempts = failedAttempts
         self.connectionLog = connectionLog
+        self.diagnostics = diagnostics
         self.serverVersion = serverVersion
         self.requiresAuthentication = requiresAuthentication
     }
@@ -72,6 +80,11 @@ public enum GranitaRouter {
 
     public static func build(_ dependencies: ApiDependencies) -> Router<GranitaRequestContext> {
         let router = Router(context: GranitaRequestContext.self)
+
+        // On the router rather than on the authenticated group below, because the requests worth
+        // reading about are disproportionately the ones that never get that far: a phone that cannot
+        // pair is asking `/v1/pair` and being refused.
+        router.add(middleware: DiagnosticsMiddleware(diagnostics: dependencies.diagnostics))
 
         // Unauthenticated, deliberately, along with pairing: a phone that cannot yet prove who it
         // is still has to be able to find out whether it is talking to a Granita of a version it
