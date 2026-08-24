@@ -1,6 +1,6 @@
 ---
 name: git-invocation
-description: How Granita invokes the git binary — the per-subcommand argument vector, the environment, draining and timeouts, and the six verified behaviours a naive implementation gets wrong.
+description: How Granita invokes the git binary — the per-subcommand argument vector, the hardening flags, the environment, concurrent draining and timeouts, -z parsing including the two opposite rename layouts, and the six verified behaviours a naive implementation gets wrong.
 when_to_use: >
   Consult before writing or changing any code that runs `git`, before adding a new subcommand to
   the git client, and when a git-layer test fails in a way that looks like git "behaving oddly".
@@ -9,17 +9,14 @@ when_to_use: >
 
 # Invoking git
 
-Everything below was verified by running it, against git 2.52.0 locally and 2.55.0 on the CI runner.
-`Scripts/make-fixture-repo.sh` asserts each behaviour on every CI run, so if one stops holding the
-build goes red rather than the parser quietly reading the wrong field. Numbers and raw output are in
-[`../../docs/verification.md`](../../docs/verification.md).
-
-The spec's §5 is the authority; this is the operational summary.
+The spec's §5 is the authority; this is the operational summary. Every rule below was verified by
+running it — the raw output, the version numbers and the reason each rule exists are in
+[verified-behaviours.md](references/verified-behaviours.md). Read it before deleting a flag that
+looks redundant; several of them are, until they are not.
 
 ## Build the argument vector per subcommand family
 
-**Global prefix, every invocation.** Davide has external diff tools and pagers configured globally,
-and every invocation must be hardened against them:
+**Global prefix, every invocation:**
 
 ```
 git -c core.pager=cat -c color.ui=false -c core.quotePath=false --no-pager <subcommand> …
@@ -32,12 +29,7 @@ immediately after the subcommand rather than at the end:**
 --no-ext-diff --no-color --src-prefix=a/ --dst-prefix=b/
 ```
 
-Immediately after, because everything past `--` is a pathspec — a flag appended to a vector ending
-in a path is read as the name of another file to diff.
-
-The two prefixes are pinned because the parser strips a leading `a/` and `b/` and both strings are
-configurable: `diff.noprefix`, which is set in Davide's own configuration, removes them, and
-`diff.mnemonicPrefix` spells them `i/`, `w/` and `c/`. Neither fails.
+Immediately after, because everything past `--` is a pathspec.
 
 **`status --porcelain=v2 -z` is pinned in full**, because its bytes are the worktree's revision:
 
@@ -45,36 +37,19 @@ configurable: `diff.noprefix`, which is set in Davide's own configuration, remov
 --renames --untracked-files=all --no-branch --no-show-stash
 ```
 
-`status.showUntrackedFiles=no` empties the section. And with the collapsed default a *second* file
-appearing inside an already-untracked directory leaves the output byte for byte identical, so the
-revision does not move and the phone never refreshes.
-
-**These are not universal flags, and one of them fails silently.** Verified:
-
-```
-git status --porcelain=v2 --no-ext-diff       → error: unknown option `no-ext-diff'
-git worktree list --porcelain --no-ext-diff   → error: unknown option `no-ext-diff'
-git rev-parse --no-color --show-toplevel      → prints "--no-color" as an output line, exit 0
-```
-
-The `rev-parse` case is the dangerous one: it does not fail, it emits an extra line, so parsing the
-first line of `--show-toplevel` yields `--no-color` as the repository root.
-
-**Test the argument array, not the outcome.** A unit test asserts the exact vector each command
-family produces. "The command succeeded" is not evidence: the `rev-parse` case succeeds.
-
-**And prove the hardening against a repository configured to defeat it.** Every other fixture is
-built with `GIT_CONFIG_GLOBAL=/dev/null`, so none of them can tell a hardened invocation from an
-unhardened one — the flags above could all be deleted and the suite would stay green.
-`.fixtures/hostile` carries that configuration in its own config, where a child reads it whatever
-the environment says. When you add a flag here, add the config key that defeats it there, and check
-the new test goes red when the flag is removed.
+- **These are not universal flags, and one of them fails silently.** `--no-ext-diff` errors on
+  `status` and `worktree list`; `--no-color` on `rev-parse` is echoed as an output line with exit 0,
+  so `--show-toplevel` yields `--no-color` as the repository root.
+- **Test the argument array, not the outcome.** A unit test asserts the exact vector each command
+  family produces. "The command succeeded" is not evidence.
+- **Prove the hardening against a repository configured to defeat it.** When you add a flag here,
+  add the config key that defeats it to `.fixtures/hostile`, and check the new test goes red when
+  the flag is removed. No other fixture can tell a hardened invocation from an unhardened one.
 
 ## Environment, every child process
 
-- `GIT_OPTIONAL_LOCKS=0` — read operations never take the index lock and never fight a running Claude
-  Code session. The cost is that `git status` cannot write back a refreshed index, so each refresh
-  re-stats the worktree; that is why status is rate-limited per worktree.
+- `GIT_OPTIONAL_LOCKS=0` — read operations never take the index lock and never fight a running
+  Claude Code session. The cost is that status is rate-limited per worktree.
 - `GIT_TERMINAL_PROMPT=0`.
 - Clear inherited `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`.
 - Always an argument array, never a shell. Always `--` before paths.
@@ -83,76 +58,51 @@ the new test goes red when the flag is removed.
 
 ## Process I/O and timeouts
 
-- **Drain stdout and stderr concurrently, then await exit.** A macOS pipe buffer is 64 KiB and the
-  size guard permits a 2 MB diff, so awaiting termination before draining — or draining stdout to
-  completion before touching stderr — hangs hard on exactly the large diffs the guards exist for.
+- **Drain stdout and stderr concurrently, then await exit.** Awaiting termination before draining —
+  or draining stdout to completion before touching stderr — hangs hard on exactly the large diffs
+  the size guards exist for.
 - **Enforce the output cap by cancelling the drain**, not by letting the buffer fill.
-- **Never `killpg`.** The standard process API gives the child our own process group, so killing the
-  group signals the menu bar app itself. On a 10 s timeout: `terminate()`, wait 500 ms, then
-  `SIGKILL` the pid.
-
-This is the whole reason swift-subprocess is a dependency rather than a convenience.
+- **Never `killpg`.** The child shares our process group, so killing the group signals the menu bar
+  app itself. On a 10 s timeout: `terminate()`, wait 500 ms, then `SIGKILL` the pid.
 
 ## One comparison is the source of truth
 
-The tracked change set **and** its stats come from one comparison with identical options.
-
-Taking the file list from `status` and the stats from `diff --numstat` runs rename detection twice
-over different comparisons — status compares HEAD→index and index→worktree, diff compares
-HEAD→worktree — and they disagree routinely. A file staged as a delete plus an unstaged add is one
-rename to `diff HEAD` and two entries to `status`, which produces files with no stats, stats with no
-file, and totals that do not add up.
+The tracked change set **and** its stats come from one comparison with identical options. Mixing the
+file list from `status` with the stats from `diff --numstat` runs rename detection twice over
+different comparisons, and they disagree routinely.
 
 `status --porcelain=v2 -z` is used for the worktree revision and for conflicts, and for nothing else.
 
 ## Exit codes
 
-For the diff family, **0 and 1 are both success**; 2 and above are errors. `git diff --no-index`
-exits 1 when files differ, which is the normal case for an untracked file rendered as a full
-addition.
+For the diff family, **0 and 1 are both success**; 2 and above are errors.
 
 ## Parse bytes, and mind the two rename layouts
 
 Use `-z` wherever git offers it and split on NUL. Paths on disk are bytes and not necessarily valid
 UTF-8: decode lossily for display, keep the raw bytes for re-invocation.
 
-The two commands that report renames put the paths in **opposite orders**:
+**The two commands that report renames put the paths in opposite orders:**
 
 ```
-diff HEAD -z -M --numstat    <added>TAB<deleted>TAB NUL <oldPath> NUL <newPath> NUL
-                             ^ an extra EMPTY field marks the rename form
-                             <added>TAB<deleted>TAB<path> NUL          ← non-rename form
-
-status --porcelain=v2 -z     2 RM N… R100 <newPath> NUL <oldPath> NUL
-                                          ^ NEW first
+diff HEAD -z -M --numstat    …TAB…TAB NUL <oldPath> NUL <newPath> NUL   ← OLD first
+status --porcelain=v2 -z     2 RM N… R100 <newPath> NUL <oldPath> NUL   ← NEW first
 ```
 
-The empty field in `--numstat -z` is by design, so a reader can tell the two record shapes apart
-without looking ahead. A naive NUL splitter desynchronises for the rest of the stream at the first
-rename, and copying the porcelain-v2 field order into the numstat parser swaps old and new on every
-one. `diff HEAD -z -M --raw` follows the **numstat** order, old then new.
+An **extra empty field** marks the rename form in `--numstat -z`. A naive NUL splitter desynchronises
+for the rest of the stream at the first rename, and copying the porcelain-v2 field order into the
+numstat parser swaps old and new on every one. `diff HEAD -z -M --raw` follows the **numstat** order.
 
-## Unmerged records carry ten fields
+**Unmerged `status --porcelain=v2` records start with `u` and carry 10 fields**, not the 8 of `1`
+and `2` records. A field-count parser written for the ordinary records consumes into the next one,
+and Claude Code runs rebases and merges, so this will happen.
 
-`status --porcelain=v2` unmerged records start with `u` and have **10** fields, not the 8 of `1` and
-`2` records:
-
-```
-u UU N… 100644 100644 100644 100644 <h1> <h2> <h3> f.txt
-```
-
-A field-count parser written for the ordinary records consumes into the next one. Claude Code runs
-rebases and merges, so this will happen.
-
-Verified, and it simplifies the parser: `git diff HEAD` on a conflicted path emits a **normal**
-unified diff carrying `<<<<<<<`, `=======`, `>>>>>>>` inline — **not** a combined `diff --cc`. No
-combined-diff support is needed; those lines are tagged as conflict markers and the client renders
-them distinctly.
+**No combined-diff support is needed.** `git diff HEAD` on a conflicted path emits a normal unified
+diff carrying `<<<<<<<`, `=======`, `>>>>>>>` inline, not a `diff --cc`.
 
 ## Unborn HEAD
 
-In a repository with no commits, `git diff HEAD` exits 128 with `fatal: ambiguous argument 'HEAD'`
-while `git status` works fine. It happens with a fresh project and with `git worktree add --orphan`.
+In a repository with no commits, `git diff HEAD` exits 128 while `git status` works fine.
 
 Resolve `git rev-parse --verify --quiet HEAD` once per worktree refresh. If it fails, flag the
 worktree and substitute the empty tree object `4b825dc642cb6eb9a060e54bf8d69288fbee4904` everywhere
@@ -160,6 +110,5 @@ worktree and substitute the empty tree object `4b825dc642cb6eb9a060e54bf8d69288f
 
 ## Hashing
 
-Never read and hash file bytes yourself — a 1,000-file worktree refreshing every 400 ms would be real
-I/O. The worktree blob object id comes from a single batched `git hash-object --stdin-paths` over the
-changed paths; for a deleted file it is the all-zero id.
+Never read and hash file bytes yourself. The worktree blob object id comes from a single batched
+`git hash-object --stdin-paths` over the changed paths; for a deleted file it is the all-zero id.
