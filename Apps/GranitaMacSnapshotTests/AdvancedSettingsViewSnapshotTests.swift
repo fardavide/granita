@@ -94,6 +94,18 @@ struct AdvancedSettingsViewSnapshotTests {
                 isVerboseLogging: false,
                 storeLockHolder: StoreLockHolder(processIdentifier: 4213, processName: "granita-server"),
                 isBlockedByAnotherProcess: true
+            ),
+            // The same refusal with the holder unreadable, which is a picture rather than an
+            // afterthought: the row is drawn on *is blocked* precisely so it does not vanish here,
+            // and a claim like that is worth a baseline that fails when it stops being true.
+            Subject(
+                name: "blocked-by-an-unreadable-process",
+                git: .available(version: "2.52.0", path: "/opt/homebrew/bin/git"),
+                projectCount: 2,
+                deviceCount: 2,
+                isVerboseLogging: false,
+                storeLockHolder: nil,
+                isBlockedByAnotherProcess: true
             )
         ]
     }

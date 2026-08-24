@@ -66,7 +66,8 @@ struct MenuBarContentSnapshotTests {
                 state: .blockedByAnotherProcess(
                     StoreLockHolder(processIdentifier: 4213, processName: "granita-server")
                 )
-            )
+            ),
+            Case(name: "blocked-by-an-unreadable-process", state: .blockedByAnotherProcess(nil))
         ]
     }
 }

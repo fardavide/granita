@@ -341,6 +341,25 @@ while an unauthenticated request got `unauthorized`; a run of guesses was cut of
 `rateLimited`; and the fingerprint was **identical across a restart**, which is the property every
 paired device depends on and the one that was broken twice before it was right.
 
+**The lock file and the verbose switch's mechanism are verified by running them**, on 2026-08-24,
+against two `granita-server` processes and a `--store` in a temporary directory — no GUI involved, so
+none of it needed the Accessibility grant.
+
+- A second process against the same store printed `granita-server (process 2561) is already using
+  /tmp/…/granita.json. Quit it and try again.` and exited 1. `--add-project` was refused the same
+  way, before the document was touched.
+- The lock file beside the store held `{"processIdentifier":2561,"processName":"granita-server"}`.
+- **The crash case, which is the one a pid file gets wrong:** the holder was `kill -9`'d, leaving the
+  stale file naming a process that no longer exists. The next process took the lock anyway and
+  rewrote the holder — the kernel released it when the descriptor closed, exactly as designed.
+- **Verbosity moves on a server that has been running since launch**, which is the claim the whole
+  seam exists for. With the switch off a request wrote nothing; turning it on mid-run and repeating
+  the request wrote `GET /v1/health` and `GET /v1/health → 200` under
+  `[dev.fardavide.granita:requests]`; turning it off again mid-run and making two more requests wrote
+  nothing further. Read with `/usr/bin/log show` — `log` is a zsh builtin and returns silence.
+- The lines came back at type `Df`, which is **default**, not debug. That is the level the unified log
+  persists, and it is the one thing here no test in this repository could have caught.
+
 Still unverified, because each needs code that does not exist yet:
 
 - Highlightr's throughput on a 200-line Swift block, measured on device (M5).

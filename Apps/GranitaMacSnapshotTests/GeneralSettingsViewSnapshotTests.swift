@@ -106,6 +106,15 @@ struct GeneralSettingsViewSnapshotTests {
                 ),
                 servingSince: nil,
                 loginItem: .on
+            ),
+            // The same refusal with nobody named. Whether the lock is taken is the kernel's answer
+            // and who has it is read from a file beside it, so this is the state where the second
+            // is lost and the first still stands.
+            Case(
+                name: "blocked-by-an-unreadable-process",
+                state: .blockedByAnotherProcess(nil),
+                servingSince: nil,
+                loginItem: .on
             )
         ]
     }

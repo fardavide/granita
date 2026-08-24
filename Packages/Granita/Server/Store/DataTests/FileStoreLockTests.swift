@@ -96,6 +96,49 @@ struct FileStoreLockTests {
         #expect(outcome == .acquired)
     }
 
+    @Test
+    func `given a folder the lock cannot be written in when it is taken then it refuses`() async {
+        // given — the store's folder is a file, so neither the directory nor the lock beside it can
+        // be created. Refusing is the honest answer rather than proceeding: this process cannot
+        // show that nobody else holds the document, and serving anyway would be a guess about the
+        // one thing the lock exists to settle.
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+
+        // when
+        let outcome = await scenario.lockBesideAFile().acquire()
+
+        // then
+        #expect(outcome == .heldBy(nil))
+    }
+
+    // MARK: - What the refusal is allowed to say
+
+    @Test
+    func `given a holder when a refusal is drawn then it names the process and its identifier`() {
+        // given — both halves, because neither is enough alone: a name does not say *which*
+        // granita-server, and a bare number is something a reader has to go and resolve first.
+        let holder = StoreLockHolder(processIdentifier: 4213, processName: "granita-server")
+
+        // then — spelled out rather than rebuilt from the same expression, since three surfaces
+        // read this one string and a test that recomputes it cannot see it change.
+        #expect(holder.sentence == "granita-server (process 4213)")
+    }
+
+    @Test
+    func `given this very process when it describes itself then it carries a real name and identifier`(
+    ) {
+        // given - when — the factory both composition roots use, so neither has to know how to ask
+        // `ProcessInfo`.
+        let holder = StoreLockHolder.thisProcess
+
+        // then — asserted against the running process rather than against a literal, which is the
+        // only thing a test can honestly say about it.
+        #expect(holder.processIdentifier == ProcessInfo.processInfo.processIdentifier)
+        #expect(holder.processName == ProcessInfo.processInfo.processName)
+        #expect(holder.processName.isEmpty == false)
+    }
+
     // MARK: -
 
     private struct Scenario {
@@ -121,6 +164,17 @@ struct FileStoreLockTests {
                 processIdentifier: processIdentifier,
                 processName: processName
             ))
+        }
+
+        /// A store whose containing folder is an ordinary file, so nothing can be created beside it.
+        func lockBesideAFile() -> FileStoreLock {
+            let file = storeUrl.deletingLastPathComponent()
+                .appending(path: "a-file", directoryHint: .notDirectory)
+            try? Data("not a directory".utf8).write(to: file)
+            return FileStoreLock(
+                besideStoreAt: file.appending(path: "granita.json", directoryHint: .notDirectory),
+                holder: StoreLockHolder(processIdentifier: 1234, processName: "Granita")
+            )
         }
 
         func writeStaleLockFile(processIdentifier: Int32, processName: String) {
