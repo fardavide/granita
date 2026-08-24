@@ -71,6 +71,32 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.0.18 — 2026-08-24
+- **The verbose switch is on the Advanced tab, and it takes effect on a server that has been running
+  since you opened the app.** It is a switch rather than five log levels: there is one reader here,
+  and either the normal amount of detail is wanted or all of it. Turning it on records every request
+  and every git invocation; refusals and failures are recorded either way, and the tab says so, so
+  nobody leaves it on for a week waiting to catch something that was being written all along.
+- **The switch in the menu bar app and the one for `granita-server` are two switches.** An executable
+  has no bundle identifier, so the app writes to `dev.fardavide.granita.mac` and the terminal reads
+  the global domain. The app's is this new toggle; the terminal's is
+  `defaults write -g granita.diagnostics.verbose -bool YES`.
+- **Open in Console, beside it.** `Console.app` registers no URL scheme and cannot be handed a
+  filter, so pressing this copies `subsystem == "dev.fardavide.granita"` to the clipboard and opens
+  Console — paste it into the search field. The tab says that too, because a Console window that
+  opens unfiltered is a button that appears to have done nothing.
+- **Two Granitas can no longer both hold this Mac's settings.** A lock file sits beside the document
+  and the second process to start refuses: it does not serve, and it says which process has the
+  settings and what its process identifier is. Read on General, where the advice is to quit that
+  process rather than to check Local Network access, and again on Advanced. Both the menu bar app
+  and `granita-server` refuse the same way; the terminal prints it and stops.
+- **A refused lock is a state of its own rather than a failure wearing a different sentence.** Every
+  other way the server fails to bind is worth checking Local Network access for, and this one is
+  not — pointing you at a settings pane that is already correct is worse than saying nothing.
+- Granita has no Dock icon and no window whose red button ends it, so the blocked screen carries a
+  **Quit Granita** button — otherwise it names something you have no way to do from the screen
+  telling you to do it.
+
 ### 0.0.17 — 2026-08-24
 - **Granita writes a log now, and until this release it wrote nothing at all.** Not a line, anywhere
   — which is why the Advanced tab's verbose switch and *Open in Console* have been missing: they

@@ -162,6 +162,41 @@ make record-snapshots  # re-record all of them after a deliberate design change
 - Reference PNGs are **16-bit Display P3**. `sips` and other 8-bit tooling truncate them silently and
   will report two different images as identical.
 
+## Cover it as you write it, and run the gate before the pull request
+
+**`make coverage` gives the same verdict CI gives.** It fetches `main`'s numbers, runs the same
+measurement script through the same predicates, and exits non-zero on the same rows. Run it before
+opening a pull request that adds code. Discovering a fallen row from a red pull request costs a full
+CI round trip to learn a number that was computable locally the whole time — that happened five
+times before the target existed, and the target exists because of it.
+
+It takes several minutes: three passes, one booting a simulator and one rendering the Mac's panes.
+That is the price of the answer and a fraction of what it replaces.
+
+**The gate counts regions, and a region is smaller than you think** — an `if`, a `guard`, a `case`, a
+ternary, **or a closure body**. So write the test as you write the code, for each of these:
+
+- **Every `guard … else` and `if let … else` failure branch.** The happy path arrives free with the
+  first test; the refusal does not. A new file typically ships two or three of these and they are the
+  usual cause of a fallen Unit row.
+- **Every `??` fallback.** It is a region of its own and it is invisible until something takes it.
+- **Every new `case`** added to an enum a `switch` covers — including the ones folded in with
+  others, which the compiler will point at but the coverage export will not.
+- **Every computed property and static factory, asserted directly.** Being *used* inside another
+  test does not cover a property that test never reads. `sentence` and `thisProcess` both slipped
+  through exactly that way.
+- **Every fallback a view draws.** A `?? "Another process"` inside a `Ui` body needs a **snapshot
+  subject of its own** — the states you photograph are the states you cover, and a state you argued
+  for in a comment but never rendered is a state nothing holds you to.
+
+**The one you cannot fix with a test: an action closure in a screen.** `GranitaSettingsScreen`'s
+uncovered regions are, every one of them, closures like `onRestart: { Task { await model.restart() } }`.
+A snapshot renders a view and never invokes its actions, so adding a control to that screen lowers
+the Snapshot regions row and no test this project can currently run will lift it — only the `Ui`
+kind would, and that target cannot run without an Accessibility grant. **Do not respond by
+restructuring the screen or by widening a scope**: read the export, confirm that is what you are
+looking at, and say so to Davide. It is a known structural gap, not a thing you did wrong.
+
 ## Test kinds, and what the coverage report measures
 
 A test declares its kind by **which directory it lives in**, because a directory is already a

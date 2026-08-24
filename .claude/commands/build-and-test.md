@@ -9,6 +9,16 @@ make test     # package test suite, on the host, no simulator
 make build    # compile-check the package and both app targets, unsigned
 ```
 
+**If the change adds code, run the gate too, before opening the pull request:**
+
+```bash
+make coverage # the same verdict CI gives — main's baseline, the same script, the same predicates
+```
+
+It takes several minutes and it replaces a twenty-minute round trip. A row that falls is diagnosed
+by reading `build/coverage/{unit,snapshot,all}.json`, which it leaves behind — never by estimating
+which file moved. See the `swift-testing` skill for what to cover as you write it.
+
 `make help` lists everything else. The ones that matter day to day:
 
 ```bash

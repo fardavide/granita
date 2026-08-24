@@ -59,4 +59,22 @@ public struct AppKitSystemGestures: SystemGestures {
         }
     }
 
+    /// **Found by bundle identifier rather than by path**, because `/System/Applications/Utilities`
+    /// is a location Apple has moved before and a hard-coded path that stops resolving is a button
+    /// that silently does nothing. The path is the fallback rather than the answer.
+    public func openConsole() async {
+        await MainActor.run {
+            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.consoleBundleIdentifier)
+                ?? URL(filePath: "/System/Applications/Utilities/Console.app")
+            _ = NSWorkspace.shared.open(url)
+        }
+    }
+
+    public func quit() async {
+        await MainActor.run {
+            NSApp.terminate(nil)
+        }
+    }
+
+    private static let consoleBundleIdentifier = "com.apple.Console"
 }

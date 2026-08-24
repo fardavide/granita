@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+import CoreBrandingDomain
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import ServerApiDomain
 import ServerMacDomain
@@ -111,6 +113,33 @@ public final class ServerMacModel {
         }
     }
 
+    /// Whether another process holds this Mac's settings — Advanced's lock-file row.
+    ///
+    /// Derived from the run state rather than stored beside it, because they are one fact and a
+    /// copy would be a second place for it to be true.
+    ///
+    /// **Separate from ``storeLockHolder`` because the two answer different questions.** The lock
+    /// can be held by a process whose name could not be read, so "is this app blocked" and "who has
+    /// it" are not the same absence — a row drawn only when there is a name would vanish in exactly
+    /// the case a reader most needs it.
+    public var isBlockedByAnotherProcess: Bool {
+        if case .blockedByAnotherProcess = serverState { true } else { false }
+    }
+
+    /// Who holds it, when the lock file could say.
+    public var storeLockHolder: StoreLockHolder? {
+        guard case .blockedByAnotherProcess(let holder) = serverState else { return nil }
+        return holder
+    }
+
+    /// Whether the reader has asked for everything, as Advanced's switch draws it.
+    ///
+    /// A stored copy here and the seam underneath, which is not two sources of truth for one fact:
+    /// the server re-reads the seam per line, and this is only what the switch is drawn from. An
+    /// `@Observable` cannot track a value that lives in `UserDefaults`, so a computed property
+    /// would be a switch that writes and never redraws — a control that appears to do nothing.
+    public private(set) var isVerboseLogging: Bool
+
     /// What a reset would destroy, counted from the store rather than guessed.
     ///
     /// Two numbers rather than the whole state: this tab counts what exists in order to make one
@@ -141,6 +170,7 @@ public final class ServerMacModel {
     private let store: any Store
     private let invitations: any PairingInviting
     private let tabMemory: any SettingsTabMemory
+    private let verboseLogging: any VerboseLogging
     private let now: @Sendable () -> Date
     private var pairedDevices: [StoredDevice] = []
 
@@ -156,6 +186,7 @@ public final class ServerMacModel {
         store: any Store,
         invitations: any PairingInviting,
         tabMemory: any SettingsTabMemory,
+        verboseLogging: any VerboseLogging,
         dataFolderUrl: URL,
         now: @escaping @Sendable () -> Date
     ) {
@@ -170,9 +201,14 @@ public final class ServerMacModel {
         self.store = store
         self.invitations = invitations
         self.tabMemory = tabMemory
+        self.verboseLogging = verboseLogging
         self.dataFolderUrl = dataFolderUrl
         self.now = now
         startedAt = now()
+        // Read here for the same reason the tab is: the switch has to arrive drawn as what the
+        // server is already doing, and a pane that opened off and corrected itself a moment later
+        // would read as the switch moving on its own.
+        isVerboseLogging = verboseLogging.isVerbose
         // Read here rather than asked for later, so there is no moment in which the window could
         // open on one pane and be moved to another under a reader who has already started looking
         // at it — and no moment in which a restore could land after the menu's *Pair a device…* and
@@ -232,6 +268,29 @@ public final class ServerMacModel {
 
     public func openSystemSettings(_ pane: SystemSettingsPane) async {
         await gestures.openSystemSettings(pane)
+    }
+
+    /// Ends this run, which General offers only when another process holds the settings.
+    ///
+    /// Through the seam rather than as an `NSApp.terminate` in a view body, for the reason every
+    /// gesture here is: a button whose whole effect is a call on the running application is a
+    /// button nothing can be asked about.
+    public func quit() async {
+        await gestures.quit()
+    }
+
+    /// Opens the log, which is two gestures because Console will not take one.
+    ///
+    /// **`Console.app` registers no URL scheme**, so there is no way to hand it a filter — the
+    /// predicate goes on the pasteboard and the window opens beside it, which design §7 settled on
+    /// 22 August 2026. Copying first is deliberate: the filter is on the clipboard before the
+    /// window a reader would paste it into exists.
+    ///
+    /// The subsystem is `Branding`'s rather than a literal here, because a filter spelled a second
+    /// time is a Console window that opens on nothing.
+    public func openLogInConsole() async {
+        await gestures.copyToPasteboard("subsystem == \"\(Branding.loggingSubsystem)\"")
+        await gestures.openConsole()
     }
 
     // MARK: - Projects
@@ -491,7 +550,10 @@ public final class ServerMacModel {
             // their hand to the General tab to fix something that is already happening.
             pairingOffer = .preparing
             return
-        case .failed, .stopped:
+        case .failed, .stopped, .blockedByAnotherProcess:
+            // A blocked lock joins them rather than getting a state of its own here. The Devices
+            // tab's question is whether a phone can be given a code, and the answer is the same no
+            // for all three — General is where the difference between them is worth explaining.
             pairingOffer = .serverNotRunning
             return
         }
@@ -533,6 +595,20 @@ public final class ServerMacModel {
     public func resetAllData() async {
         try? await store.reset()
         await loadStoredCounts()
+    }
+
+    /// Turns the detail on or off, for a server that has been running since launch.
+    ///
+    /// The seam is written first and the drawn copy second, because the seam is the one the server
+    /// reads: a line written between the two must find the setting already moved rather than a
+    /// switch that has redrawn itself ahead of what it controls.
+    ///
+    /// Synchronous, like ``showSettingsTab(_:)`` and for the same reason — a `Toggle`'s `Binding`
+    /// has nowhere to put an `await`, and deferring the write by a turn is how a switch comes to
+    /// spring back under a finger that already moved it.
+    public func setVerboseLogging(_ isVerbose: Bool) {
+        verboseLogging.setVerbose(isVerbose)
+        isVerboseLogging = isVerbose
     }
 
     /// Asks the system where the login item actually stands, which is the only place that knows.

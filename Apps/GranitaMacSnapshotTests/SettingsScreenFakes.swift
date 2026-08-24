@@ -1,5 +1,6 @@
 import Foundation
 
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import CorePairingDomain
 import ServerApiDomain
@@ -25,7 +26,8 @@ enum SettingsScreenFakes {
         attempts: [ConnectionAttempt],
         git: GitInstallation,
         projects: Int,
-        devices: Int
+        devices: Int,
+        candidates: [RepositoryCandidate] = []
     ) -> ServerMacModel {
         ServerMacModel(
             host: FakeHost(state: state),
@@ -33,7 +35,7 @@ enum SettingsScreenFakes {
             connectionLog: FakeLog(reading: attempts),
             loginItems: FakeLoginItems(),
             gitInstallations: FakeGitInstallations(installation: git),
-            projectFolders: FakeProjectFolders(),
+            projectFolders: FakeProjectFolders(candidates: candidates),
             folderPicker: FakeFolderPicker(),
             gestures: FakeGestures(),
             store: FakeStore(projects: projects, devices: devices),
@@ -41,6 +43,7 @@ enum SettingsScreenFakes {
             // General, so a baseline names the pane it shows rather than inheriting a first run's
             // Projects. Every test here goes on to say which pane it wants anyway.
             tabMemory: FakeTabMemory(),
+            verboseLogging: FakeVerboseLogging(),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
             now: { Date(timeIntervalSince1970: 1_755_864_000) }
@@ -120,9 +123,14 @@ private struct FakeGitInstallations: GitInstallations {
 /// row.
 private struct FakeProjectFolders: ProjectFolders {
 
+    /// What a scan turns up, so the sheet the window presents over Projects can be photographed.
+    /// Empty by default: most baselines never scan, and a scan that found things is a state a test
+    /// asks for rather than one it inherits.
+    let candidates: [RepositoryCandidate]
+
     func contents(ofFolderAt path: String) -> ProjectContents { .worktrees(count: 2) }
     func worktreesWithChanges(inFolderAt path: String) -> Int { 1 }
-    func repositories(under root: URL) -> [RepositoryCandidate] { [] }
+    func repositories(under root: URL) -> [RepositoryCandidate] { candidates }
 }
 
 /// Nobody is at the keyboard of a snapshot, and nothing here opens a panel.
@@ -162,6 +170,16 @@ private struct FakeGestures: SystemGestures {
     func copyToPasteboard(_ text: String) {}
     func revealInFinder(_ url: URL) {}
     func openSystemSettings(_ pane: SystemSettingsPane) {}
+    func openConsole() {}
+    func quit() {}
+}
+
+/// A Mac nobody has asked for the detail on, which is what the window's own baselines should show:
+/// the switch's other position is photographed by `AdvancedSettingsViewSnapshotTests`, where it
+/// costs no extra picture.
+private struct FakeVerboseLogging: VerboseLogging {
+    var isVerbose: Bool { false }
+    func setVerbose(_ isVerbose: Bool) {}
 }
 
 private actor FakeStore: Store {

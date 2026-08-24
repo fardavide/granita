@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 import ServerMacDomain
+import ServerStoreDomain
 
 /// Advanced — the rows you set once, and the one button you hope never to press.
 ///
@@ -9,17 +10,26 @@ import ServerMacDomain
 /// Data`, so the panel opened while annoyed must not be one mis-click from the button that unpairs
 /// every device — which is also why the connection log moved out of here and got a tab.
 ///
-/// **Two of the drawn rows are absent, and neither is an oversight.** The verbose switch and *Open
-/// in Console* are controls over a subsystem that emits nothing: Granita has no logging at all
-/// today, and a switch that turns on nothing is worse than a switch that is not there. They land
-/// with the logging they describe. The lock-file row is absent for the same shape of reason — the
-/// lock file itself is not built.
+/// **The Diagnostics half arrived in 0.0.18**, one release after the logging it describes. The
+/// switch and *Open in Console* were held back while Granita wrote no log at all, because a control
+/// over a subsystem that emits nothing reads as a feature, gets pressed, and answers with a silence
+/// that looks like *nothing is wrong*.
+///
+/// **The lock row is the only one here describing a state in which the rest of the app is doing
+/// nothing**, which is why it is drawn only when it is true — and why it is drawn on *is blocked*
+/// rather than on *has a holder*, so it does not disappear in the one case where the lock file could
+/// not be read and a reader has least to go on.
 public struct AdvancedSettingsView: View {
 
     private let git: GitInstallation
     private let dataFolderUrl: URL
     private let projectCount: Int
     private let deviceCount: Int
+    private let isVerboseLogging: Bool
+    private let isBlockedByAnotherProcess: Bool
+    private let storeLockHolder: StoreLockHolder?
+    private let onSetVerboseLogging: (Bool) -> Void
+    private let onOpenLogInConsole: () -> Void
     private let onRevealDataFolder: () -> Void
     private let onResetAllData: () -> Void
 
@@ -30,6 +40,11 @@ public struct AdvancedSettingsView: View {
         dataFolderUrl: URL,
         projectCount: Int,
         deviceCount: Int,
+        isVerboseLogging: Bool,
+        isBlockedByAnotherProcess: Bool,
+        storeLockHolder: StoreLockHolder?,
+        onSetVerboseLogging: @escaping (Bool) -> Void,
+        onOpenLogInConsole: @escaping () -> Void,
         onRevealDataFolder: @escaping () -> Void,
         onResetAllData: @escaping () -> Void
     ) {
@@ -37,14 +52,56 @@ public struct AdvancedSettingsView: View {
         self.dataFolderUrl = dataFolderUrl
         self.projectCount = projectCount
         self.deviceCount = deviceCount
+        self.isVerboseLogging = isVerboseLogging
+        self.isBlockedByAnotherProcess = isBlockedByAnotherProcess
+        self.storeLockHolder = storeLockHolder
+        self.onSetVerboseLogging = onSetVerboseLogging
+        self.onOpenLogInConsole = onOpenLogInConsole
         self.onRevealDataFolder = onRevealDataFolder
         self.onResetAllData = onResetAllData
     }
 
     public var body: some View {
         Form {
-            Section("Diagnostics") {
+            Section {
+                // A switch rather than five syslog levels, which design §7 settled: levels are a
+                // vocabulary for reading somebody else's logs, and there is one reader here who
+                // wants either the normal amount or all of it.
+                Toggle("Verbose logging", isOn: Binding(
+                    get: { isVerboseLogging },
+                    set: { onSetVerboseLogging($0) }
+                ))
+                .accessibilityIdentifier("granita.advanced.verbose")
+                LabeledContent("Log") {
+                    // The button matters more than the switch, which design §7 says in as many
+                    // words: a level control with no route to the log leaves a person choosing how
+                    // much of something they cannot find.
+                    Button("Open in Console", action: onOpenLogInConsole)
+                        .accessibilityIdentifier("granita.advanced.console")
+                }
                 LabeledContent("git") { gitRow }
+                // Last in the section and drawn only when it is true, because it is the one row on
+                // this tab describing a state in which the rest of the app is doing nothing —
+                // design §7. A row permanently saying "not blocked" would be reassurance nobody
+                // asked for, on the tab with the least room for it.
+                if isBlockedByAnotherProcess {
+                    LabeledContent("Settings file") { lockRow }
+                }
+            } header: {
+                Text("Diagnostics")
+            } footer: {
+                // Three sentences, and each is here because leaving it out makes a control lie.
+                // The first says what the switch turns on; the second says what it cannot turn
+                // off, so nobody leaves it on for a week to catch something already being written;
+                // the third says the filter is on the clipboard, because Console opens unfiltered
+                // and a reader who is not told to paste has met a button that did nothing.
+                Text(
+                    """
+                    Verbose logging records every request and every git invocation. Refusals and \
+                    failures are recorded either way. Opening Console copies a filter for \
+                    Granita's log — paste it into Console's search field.
+                    """
+                )
             }
 
             Section {
@@ -91,6 +148,25 @@ public struct AdvancedSettingsView: View {
             // before it happens.
             Text(verbatim: consequences)
         }
+    }
+
+    /// SPEC §9's refusal, read where design §7 puts it.
+    ///
+    /// The same shape as the git failure above — a warning label with the detail beneath it — since
+    /// both say "this part of the Mac is not working and here is the exact thing to look at". The
+    /// process is selectable because the next thing a reader does with it is type it somewhere.
+    @ViewBuilder private var lockRow: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Label("In use by another process", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+            Text(verbatim: storeLockHolder?.sentence ?? "The lock file could not be read")
+                .font(.caption2)
+                .monospaced()
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: 300, alignment: .trailing)
     }
 
     @ViewBuilder private var gitRow: some View {

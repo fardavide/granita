@@ -66,7 +66,8 @@ public struct GranitaSettingsScreen: View {
                     onCopyAddress: { _ in Task { await model.copyAddress() } },
                     onRestart: { Task { await model.restartServer() } },
                     onOpenLocalNetworkSettings: { Task { await model.openSystemSettings(.localNetwork) } },
-                    onOpenLoginItems: { Task { await model.openSystemSettings(.loginItems) } }
+                    onOpenLoginItems: { Task { await model.openSystemSettings(.loginItems) } },
+                    onQuit: { Task { await model.quit() } }
                 )
                 .task { await model.loadLoginItem() }
             }
@@ -156,6 +157,11 @@ public struct GranitaSettingsScreen: View {
                     dataFolderUrl: model.dataFolderUrl,
                     projectCount: model.storedProjectCount,
                     deviceCount: model.storedDeviceCount,
+                    isVerboseLogging: model.isVerboseLogging,
+                    isBlockedByAnotherProcess: model.isBlockedByAnotherProcess,
+                    storeLockHolder: model.storeLockHolder,
+                    onSetVerboseLogging: { model.setVerboseLogging($0) },
+                    onOpenLogInConsole: { Task { await model.openLogInConsole() } },
                     onRevealDataFolder: { Task { await model.revealDataFolder() } },
                     onResetAllData: { Task { await model.resetAllData() } }
                 )

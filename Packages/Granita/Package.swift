@@ -469,7 +469,12 @@ let package = Package(
             // The pairing link is the Devices tab's subject and the phone's contract at once, so
             // the invitation that carries one is named here rather than behind the HTTP layer that
             // assembles it.
-            dependencies: ["CorePairingDomain"],
+            //
+            // The store is here for one value: a server that never started because another process
+            // holds the document reports that as a run state, and the state names the holder. A
+            // `Domain` may depend on another `Domain`, and the alternative — flattening the holder
+            // into two loose fields — is the same record spelled twice.
+            dependencies: ["CorePairingDomain", "ServerStoreDomain"],
             path: "Server/Api/Domain",
             swiftSettings: [swift6]
         ),
@@ -597,6 +602,7 @@ let package = Package(
             dependencies: [
                 "CoreBrandingDomain",
                 "CorePairingDomain",
+                "CoreDiagnosticsDomain",
                 "CoreDiffDomain",
                 "ServerMacUi",
                 "ServerApiDomain",
@@ -612,6 +618,7 @@ let package = Package(
             dependencies: [
                 "ServerMacPresentation",
                 "CorePairingDomain",
+                "CoreDiagnosticsDomain",
                 "CoreDiffDomain",
                 "ServerApiDomain",
                 "ServerMacDomain",

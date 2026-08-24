@@ -2568,3 +2568,124 @@ global domain for `granita-server` and to `dev.fardavide.granita.mac` for the me
 key, two places. Turning verbose on for one does not turn it on for the other. The app's switch is
 the pane that lands next; the executable's is `defaults write -g`, and the changelog says both rather
 than naming one and being wrong for whoever tried the other.
+
+## A refused lock is its own run state, because reusing `failed` points a button the wrong way
+
+The cheap version was to put the refusal's sentence into `failed(reason:)`, which already carries a
+string and already reaches every surface. It was rejected, and the reason is not tidiness: General's
+`failed` branch **names Local Network access as the likely cause and offers a button straight to that
+pane**. For a lock conflict that pane is already correct, so the advice is wrong and the button is a
+control that does something actively unhelpful — a reader follows it, finds nothing to change, and
+comes back knowing less than they started with. That is worse than a control that does nothing,
+because it costs a trip.
+
+So `blockedByAnotherProcess` is a case of its own. **The compiler found all six switches over the
+enum**, which is what the no-`default:` rule buys: three of them fold the new case in with
+`failed`/`stopped` because the answer really is the same — the menu bar's symbol, its accessibility
+label, and whether pairing can be offered — and three needed a real answer.
+
+**Three symbols in the menu bar rather than four.** The status item asks one question and a blocked
+lock answers it the same way a failure does: not serving. Which of the three reasons it is belongs
+one click below, and 0.0.16 already settled that shape.
+
+**The menu names this reason, unlike `failed`, whose reason it deliberately withholds.** The
+difference is that `failed` carries whatever went wrong — a locked keychain reaches it too — so a
+menu with no room for small print would be asserting a cause it cannot know. A held lock is a fact
+with one short noun in it and no hedge to leave out.
+
+**`ServerApiDomain` gained a dependency on `ServerStoreDomain`** for the holder the state carries.
+`Domain` may depend on `Domain`, and the alternative was flattening a two-field record into two
+loose parameters — the same record spelled twice, in the enum that exists to keep it in one place.
+
+## The lock is `flock`, and the file's contents are a message rather than a decision
+
+A pid file whose contents decide who holds the lock gets the interesting case wrong. **A Granita that
+crashed leaves a pid behind**, and the usual repair — check whether that process still exists — races
+against the identifier being reused, so the failure mode is a lock nobody can take or one two
+processes both take. The kernel already answers this exactly: a `flock` is released when the
+descriptor closes, and a descriptor closes when the process dies however it dies. Asserted by a test
+that writes a lock file naming a process that never existed and takes the lock anyway.
+
+So the decision is the kernel's and the contents are only a name to put in the refusal — which is why
+`heldBy` carries an **optional** holder. Whether the lock is taken and who has it can disagree for a
+moment: a process that has just taken it has not yet written its name into it. A refusal that
+softened into an acquisition on that window would be the two writers the lock exists to prevent, so
+the name is what is lost and never the refusal. Advanced's row draws on "is blocked" rather than on
+"has a holder" for the same reason — a row that vanished when the name could not be read would
+disappear in exactly the case a reader has least to go on.
+
+**`flock` rather than POSIX record locks, and that also decided how it is tested.** `fcntl` would
+have handed back the holder's process identifier without reading any file, which is strictly better
+information — but POSIX record locks are held per *process*, so a second lock taken inside one
+process succeeds. The tests here simulate two processes by being two, in one test binary, which only
+works because `flock` is per open file description. The holder is a constructor parameter rather than
+something read from `ProcessInfo` inside the lock for the same reason.
+
+**Outermost in the host chain**, outside `RebindingOnWake`. Inside it, the lock would be re-acquired
+on every wake — a Mac that stops serving overnight because a `granita-server` was started in a
+terminal in between. The lock is a fact about this launch, not about this bind.
+
+## Advanced grew three rows and General grew a state, in one pull request rather than three
+
+The scheduling call recorded in 0.0.17 held: all three rows change `AdvancedSettingsView`'s baselines
+and a Mac baseline costs a full round trip through CI. What was not predicted is that the lock would
+also cost **General a state and the menu a picture**, because the refusal has to be read where a
+reader looks first and not only on the tab they would reach last. Six new baselines rather than the
+two the estimate assumed, in one round trip rather than three.
+
+**The footer under the Diagnostics section is three sentences and each one prevents a control from
+lying.** What the switch turns on; what it cannot turn off, so nobody leaves it on for a week to
+catch something already being written; and that Console opens unfiltered with the predicate on the
+clipboard, because a reader who is not told to paste has met a button that did nothing.
+
+## The coverage gate runs locally now, because five times it was read from a red pull request
+
+**The measurement script always ran anywhere; nothing fetched `main`'s numbers or applied the
+verdict.** So the only way to learn what the gate would say was to push and wait, and five times that
+is exactly what happened — twenty minutes each to obtain a number that was computable in the working
+tree the whole time. Davide named the waste directly; `make coverage` is the answer.
+
+It is not an approximation of the gate. It fetches the last green `main` run's summary, runs
+`.github/scripts/measure-coverage.sh`, and hands the result to the same `render` and `enforce` the
+workflow calls — same predicates, same ratchet, same exit code and same message. Verified on
+2026-08-24: the local numbers and the runner's agreed **to the line on all six rows**, twice.
+
+**The baseline arrives as a new `coverage-summary` artifact**, a few hundred bytes beside the
+existing `coverage-exports`, which is ~300 MB — and `gh run download` cannot fetch one file out of an
+artifact, so without the small one every local check would pull all of it. Runs predating it fall
+back to the big one rather than refusing, which is what keeps the target usable on the very branch
+that adds it.
+
+**What a tool cannot supply is what to cover, so the skill gained that too**, keyed to what a region
+actually is: every `guard`/`if let` failure branch, every `??`, every new `case`, every computed
+property or static factory asserted **directly** rather than incidentally, and every fallback a view
+draws needing a snapshot subject of its own. Each was a real miss on this branch — `FileStoreLock`'s
+refusals, `StoreLockHolder.sentence`, `.thisProcess`, and three `?? "another process"` strings
+argued for in a comment and rendered by nothing.
+
+## The screen's uncovered regions are mostly closures, and "mostly" is the load-bearing word
+
+The first read of the export said all of `GranitaSettingsScreen`'s uncovered regions were action
+closures a render cannot invoke, and concluded the row was structurally unholdable by any pull
+request adding a control. **That was wrong in a way worth recording, because it nearly bought a scope
+change nobody needed.**
+
+Two corrections. The count is **47 regions, not 29** — 29 is the number of distinct source lines they
+sit on, and a line can carry several. And **four of the 47 are not closures at all**: they are the
+`.sheet` presentation path — the builder, the `if let scan = model.folderScan` branch, its implicit
+else, and the binding *read* evaluated during render. A snapshot handed a model with a folder scan
+executes every one, which took the file from 47 uncovered to 43 and the row from 84.17% to 84.94%,
+over the 84.65% baseline.
+
+So the fix was a test for a real state — the window presenting design §4's sheet over Projects, which
+no picture had ever executed, on the flow that is the security boundary. **The rescoping that the
+first reading pointed at would have been the fifth reach for one and the second wrong one.**
+
+**The remaining 43 are genuinely uncoverable by this project's current test kinds**, and that stands:
+an action closure is invoked by a person, and only the `ui` kind has one. Adding controls to that
+screen will keep pressing on this row until the Accessibility grant lets `make ui-tests-mac` run.
+
+**The baseline is named for what it shows, not for what it exercises.** A hosted view presents a
+sheet into a window of its own and the raster does not include it — the same limitation as the tab
+bar — so the picture is `projects-beneath-the-scan-sheet`. Naming it for the sheet would be a picture
+asserting the opposite of its own name, which that suite already refuses one paragraph above.
