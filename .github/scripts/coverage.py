@@ -200,9 +200,20 @@ UNREACHABLE_FILES = {
 # the other stops narrowing anything at all — silently, and in the direction that looks like good
 # news. That is precisely what happened the first time this was renamed, and the script's own tests
 # are what said so.
+# The fifth rename is the first that changes no predicate at all, and it is here because the gate's
+# un-judging mechanism is the only one there is: what moved is *how the number is taken*, not which
+# files it is taken over. The package pass runs serially now. Measured on 24 August 2026 over five
+# parallel runs of one commit, this row came back 96.121% twice and 96.037% three times, and an
+# earlier set moved `SessionTranscript` by five lines and `BonjourBrowser` by four — a plain ratchet
+# with no slack cannot tell that from a regression, and it did not: #35 failed on a sample and passed
+# on a re-run of the same commit. Serially, five runs of one commit agree to the line.
+#
+# It does not flatter the number, which is the test the four renames above are held to: the row reads
+# 95.978% where the parallel sample it replaces read up to 96.121%. What is lost is coverage that was
+# never the tests' to claim — lines a scheduler reached before something was torn down.
 DEFAULT_SCOPE = "package"
 VIEWS_SCOPE = "views-and-screens-only"
-HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit"
+HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-serial"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 

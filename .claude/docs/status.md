@@ -205,7 +205,10 @@ The spec's milestones, each ending in something runnable and a green suite, with
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
 - Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 573 package tests in 60 suites, plus
-  the snapshot suite on a simulator and the Mac's on the machine itself.
+  the snapshot suite on a simulator and the Mac's on the machine itself. **The coverage pass runs
+  serially**, because measured in parallel it reported a different percentage for identical code —
+  five runs of one commit spread across 96.037% and 96.121%, which a ratchet with no slack reads as a
+  regression. It read one, on 0.0.16, and the re-run of the same commit passed.
 - `/v1/health`, served over plain HTTP under `--insecure-http` and advertised as `_granita._tcp`
   otherwise, with the advertised port confirmed to be the one actually serving.
 - **The TLS identity and pairing.** A self-signed P-256 certificate generated at first run and kept

@@ -51,7 +51,17 @@ COVERAGE_SETTINGS=(
 # ---------------------------------------------------------------------------------------------
 
 echo "::group::Coverage — unit"
-( cd "$PACKAGE" && swift test --enable-code-coverage )
+# **Serial, and that is about the measurement rather than about the tests.** Run in parallel, this
+# suite reports a different number for identical code: measured on 24 August 2026 over five runs of
+# one commit, the unit row came back 96.121% twice and 96.037% three times, and an earlier set moved
+# `SessionTranscript` by five lines and `BonjourBrowser` by four. The gate is a plain ratchet with no
+# slack, so a pull request that added nothing can fail on the sample it happened to draw — which
+# happened, to #35, and a re-run of the same commit passed.
+#
+# What varies is which lines a scheduler got to before something was torn down, not what the tests
+# assert: `swift test` is green either way. Serialising makes the pass measure the suite instead of
+# the machine, and it costs about ten seconds on a job that already runs the suite four times.
+( cd "$PACKAGE" && swift test --enable-code-coverage --no-parallel )
 
 # SwiftPM writes the llvm-cov export itself and will tell you where — no locating a .profdata and a
 # test bundle by hand, and no `xcrun llvm-cov` invocation to keep in step with the toolchain.
