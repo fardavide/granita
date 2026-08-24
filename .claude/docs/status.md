@@ -26,6 +26,12 @@ Granita** — an `LSUIElement` app has no Dock icon and no window whose red butt
 that the instruction names something a reader cannot do from the screen giving it. Advanced reads
 the same refusal, which is where design §7 puts it.
 
+**The coverage gate runs locally now.** `make coverage` fetches `main`'s numbers and applies the same
+verdict CI applies — same script, same predicates, same exit code — because five times a fallen row
+had been read from a red pull request instead, at twenty minutes a time for a number the working tree
+could already produce. Verified against the runner on 2026-08-24: identical on all six rows. The
+`swift-testing` skill carries the other half, which no tool supplies — what to cover as you write it.
+
 **Three more controls that have never been pressed**, and the count of those is now ten. See
 "Waiting on Davide": the Accessibility grant is the whole of what stands between `make ui-tests-mac`
 and an answer, and the failure it gives has changed to one that names a prompt rather than a
