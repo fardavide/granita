@@ -10,12 +10,28 @@ import ClientConnectionDomain
 /// not survive the app being suspended.
 public struct BonjourServerDiscovery: ServerDiscovering {
 
-    public init() {}
+    private let makeBrowser: @Sendable () -> any ServiceBrowsing
+
+    /// What the app builds: a real browser, and the only place that name is written down.
+    public init() {
+        self.init(makeBrowser: { BonjourBrowser() })
+    }
+
+    /// The seam, without a default on it, so a test that means "no browser at all" has to say so.
+    ///
+    /// It exists because the question this type answers — *does the screen say something before any
+    /// browser has reported* — is about ordering rather than about networking, and answering it
+    /// against a real `NWBrowser` made the answer depend on how quickly a daemon replied. That was
+    /// measured: it moved this file's coverage between runs of identical code, which is a gate
+    /// reporting on the machine it ran on.
+    init(makeBrowser: @escaping @Sendable () -> any ServiceBrowsing) {
+        self.makeBrowser = makeBrowser
+    }
 
     public func discover() -> AsyncStream<DiscoveryState> {
         AsyncStream { continuation in
             let session = DiscoverySession(
-                makeBrowser: { BonjourBrowser() },
+                makeBrowser: makeBrowser,
                 wait: { try await Task.sleep(for: $0) }
             )
             continuation.yield(.searching)

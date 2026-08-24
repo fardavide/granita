@@ -8,12 +8,16 @@ struct BonjourServerDiscoveryTests {
 
     @Test(.timeLimit(.minutes(1)))
     func `when discovery starts then it says it is looking before any browser has reported`() async {
-        // given
-        let sut = BonjourServerDiscovery()
+        // given — a browser that reports nothing, ever. That is the precondition the question needs:
+        // *before any browser has reported* is only asserted if none has.
+        //
+        // It used to be a real `NWBrowser`, and the test passed either way — what varied was how much
+        // of this file and of `BonjourBrowser` ran before the loop was left, which moved the coverage
+        // gate between runs of identical code. A test that answers the machine it runs on is the one
+        // failure a percentage cannot describe.
+        let sut = BonjourServerDiscovery(makeBrowser: { FakeServiceBrowser(events: []) })
 
-        // when — the real browser behind this finds nothing on a build machine, so only the first
-        // state is taken: it is the one that does not depend on the network. Leaving the loop tears
-        // the stream down, which cancels the session and the browser with it.
+        // when
         var first: DiscoveryState?
         for await state in sut.discover() {
             first = state
