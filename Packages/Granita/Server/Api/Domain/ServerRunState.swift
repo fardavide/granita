@@ -1,3 +1,5 @@
+import ServerStoreDomain
+
 /// Where the server is reachable, as the menu bar reports it.
 ///
 /// The port is not always ours to choose: a Bonjour bind hands the choice to the system and
@@ -30,6 +32,18 @@ public enum ServerRunState: Hashable, Sendable {
 
     /// Not serving, and not trying to.
     case stopped
+
+    /// Another process holds this Mac's settings, so this one never started — SPEC §9's lock file,
+    /// and the second process to start is the one that refuses.
+    ///
+    /// **A state of its own rather than a `failed` carrying a different sentence**, because the two
+    /// have opposite answers. Everything else that reaches `failed` is a bind that did not happen,
+    /// and General's advice there is Local Network access — which for this is a settings pane that
+    /// is already correct, and a reader sent to check it learns nothing and comes back. Here the
+    /// thing to do is quit the other process, so the row names it.
+    ///
+    /// The holder is optional because the refusal outlives the name: see ``StoreLockOutcome``.
+    case blockedByAnotherProcess(StoreLockHolder?)
 }
 
 /// Runs the API server for as long as it is asked to, reporting what it is doing.

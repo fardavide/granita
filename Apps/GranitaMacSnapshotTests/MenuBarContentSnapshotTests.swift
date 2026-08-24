@@ -2,6 +2,7 @@ import Testing
 
 import ServerApiDomain
 import ServerMacUi
+import ServerStoreDomain
 
 /// The menu behind the status item — design §1, and under `LSUIElement` the whole app when Settings
 /// is shut.
@@ -56,7 +57,16 @@ struct MenuBarContentSnapshotTests {
                 state: .running(ServerEndpoint(host: "macbook-pro.local", port: 59_144))
             ),
             Case(name: "failed", state: .failed(reason: "NWError: -65555 PolicyDenied")),
-            Case(name: "stopped", state: .stopped)
+            Case(name: "stopped", state: .stopped),
+            // The one state whose reason the menu names rather than leaving to Settings: it is a
+            // short noun and it is the whole of what a reader has to act on, so there is no small
+            // print to leave out and no likely cause to hedge.
+            Case(
+                name: "blocked-by-another-process",
+                state: .blockedByAnotherProcess(
+                    StoreLockHolder(processIdentifier: 4213, processName: "granita-server")
+                )
+            )
         ]
     }
 }

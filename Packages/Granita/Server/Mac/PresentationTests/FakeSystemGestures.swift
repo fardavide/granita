@@ -32,6 +32,14 @@ actor FakeSystemGestures: SystemGestures {
     private(set) var revealed: [URL] = []
     private(set) var opened: [SystemSettingsPane] = []
 
+    /// Counted rather than flagged, because *Open in Console* is a button a reader presses twice
+    /// when the first press appeared to do nothing — and a `Bool` cannot tell those apart.
+    private(set) var consoleOpenings = 0
+
+    /// Counted rather than performed, which is the only way this one can be tested at all: the real
+    /// conformer ends the process.
+    private(set) var quits = 0
+
     func copyToPasteboard(_ text: String) {
         copied.append(text)
     }
@@ -42,5 +50,13 @@ actor FakeSystemGestures: SystemGestures {
 
     func openSystemSettings(_ pane: SystemSettingsPane) {
         opened.append(pane)
+    }
+
+    func openConsole() {
+        consoleOpenings += 1
+    }
+
+    func quit() {
+        quits += 1
     }
 }

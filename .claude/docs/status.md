@@ -2,7 +2,34 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.17.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.18.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**The Mac is finished for M3.** All five Settings tabs, the status item and its menu, TLS, Bonjour,
+pairing codes, the QR, logging, and now the lock file. What is left of the milestone is its
+acceptance — pairing from a real device on the LAN — which this machine cannot answer.
+
+**Advanced grew its Diagnostics half, and the switch moves a server that has been running since
+launch.** That is what the seam was for: verbosity is re-read per line, so the model writes the
+setting and not a copy of it. Both positions are photographed without either costing a baseline of
+its own. *Open in Console* beside it is two gestures rather than one link, because `Console.app`
+registers no URL scheme — the predicate goes on the pasteboard and the window opens next to it, and
+the footer says to paste, since a Console window that opens unfiltered is a button that appears to
+have done nothing.
+
+**Two Granitas can no longer both hold the document, and the second one says which one has it.**
+SPEC §9's lock file, `flock` rather than a pid file whose contents decide — a crashed Granita
+releases its lock because the descriptor closes, which is the case a pid file gets wrong. The
+refusal is **a run state of its own** rather than a `failed` carrying a different sentence, and
+that is the whole point: `failed` tells a reader to check Local Network access, which for a lock
+conflict sends them to a pane that is already correct. General names the process and offers **Quit
+Granita** — an `LSUIElement` app has no Dock icon and no window whose red button ends it, so without
+that the instruction names something a reader cannot do from the screen giving it. Advanced reads
+the same refusal, which is where design §7 puts it.
+
+**Three more controls that have never been pressed**, and the count of those is now ten. See
+"Waiting on Davide": the Accessibility grant is the whole of what stands between `make ui-tests-mac`
+and an answer, and the failure it gives has changed to one that names a prompt rather than a
+timeout.
 
 **Granita writes a log, which until 0.0.17 it did not do anywhere at all** — not a `Logger`, not an
 `os.log`, not a print, the whole package searched. Every request the server answers and every git
@@ -356,8 +383,8 @@ the executable runs, advertises it over TLS under an identity it generated for i
 is listening, re-binds when the Mac wakes, and has a Settings window whose Advanced tab shows the
 last fifty connection attempts with the reason each was turned away.
 
-**Every drawn Mac surface is now built**, with its baselines. What is left of M3 is the logging layer
-and the store's lock file:
+**Every drawn Mac surface is now built**, with its baselines, and as of 0.0.18 nothing on the Mac is
+left of M3 except the milestone's acceptance:
 
 - ~~**Settings, and one tab is left.**~~ All five are built as of 0.0.15. §5's Allow-from-the-Mac
   path stays out until its frames exist.
@@ -368,10 +395,10 @@ and the store's lock file:
   and the Mac's design review was deleted with them — it was the last two sections in it.
 - ~~**A logging layer, which nothing has needed until now.**~~ Built in 0.0.17: a seam in `Core`,
   `os.Logger` behind it, and call sites at the request boundary and every git invocation.
-- **What §7 still owes, and it is one pull request rather than two.** Advanced's verbose switch, its
-  route into Console, and the lock-file row all change the same eight baselines and the same window
-  pair. The Console filter travels **on the pasteboard**, because `Console.app` registers no URL
-  scheme and cannot be handed a predicate; that is settled and recorded.
+- ~~**What §7 still owes, and it is one pull request rather than two.**~~ Landed in 0.0.18, as one
+  pull request. The estimate was two baselines short of the truth: the lock also cost General a
+  state and the menu a picture, because the refusal has to be read where a reader looks first and
+  not only on the tab they would reach last.
 
 **Read `design-mac.md`, which is the whole record.** The frames are gone; the sheet keeps every call
 beside the alternative it beat, both open calls with the measurements that answered them, and which
@@ -387,12 +414,10 @@ Smaller things still open in these modules:
   `xcrun` is itself a subprocess and still wants its own seam.
 - ~~**Pinning the JSON encoder.**~~ Done. Both the request context and the phone's decoder now say
   `.iso8601` in as many words, so a dependency changing its default moves neither end silently.
-- **The store's lock file.** SPEC §9 wants one beside the document so a standalone `granita-server`
-  and the menu bar app cannot both hold it; today both will happily open the same file. **Answered by
-  Davide on 2026-08-22: the second one to start refuses, and names the process holding the lock.**
-  Not read-only — two processes disagreeing about what is enabled, with the phone reading one of them
-  and nobody told which, is worse than a refusal. Advanced is where the refusal is read. Still to
-  build.
+- ~~**The store's lock file.**~~ Built in 0.0.18. `flock` beside the document, the second process to
+  start refuses and names the one holding it, and both composition roots refuse the same way — the
+  app into a run state that General and Advanced read, the executable into stderr and a non-zero
+  exit.
 - ~~**The dirty-worktree count** beside the menu bar icon.~~ **Measured on 2026-08-22, and the answer
   is no.** `/v1/projects` over ten of Davide's real repositories — 38 worktrees, one Android monorepo
   carrying 16 — took **122.7 seconds**. The design offered two branches, "tens of milliseconds" and
@@ -415,17 +440,32 @@ Smaller things still open in these modules:
 ## Waiting on Davide
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
-  last thing between `make ui-tests-mac` and a green run, and it is now blocking **eight** shipped
+  last thing between `make ui-tests-mac` and a green run, and it is now blocking **ten** shipped
   controls rather than a target: the Devices tab's `Revoke`, `New Code` and `Open General`, the
-  connection log's `Pair…`, and 0.0.16's four menu bar rows — the status line that copies, *Pair a
-  device…*, *Open Local Network Settings…* and *Settings…*. Every one is asserted at the model and
+  connection log's `Pair…`, 0.0.16's three menu bar rows — the status line that copies, *Pair a
+  device…* and *Open Local Network Settings…* — and 0.0.18's three, the verbose switch, *Open in
+  Console* and *Quit Granita*. **`Settings…` is not among them and was wrongly listed here until
+  0.0.18**: it worked before 0.0.16 and its observable effect has not changed since, so counting it
+  overstated what the grant is holding up. Every one of the ten is asserted at the model and
   none has been pressed. That is the exact shape of the dead control this project shipped for eight
   releases, and no baseline can see it: a `TabView` outside a `Settings` scene draws no tab bar, and
   a `MenuBarExtra`'s menu is drawn by AppKit outside this process entirely. **Pressing them means
   driving this Mac while Davide is using it, which he ruled out on 2026-08-23**, so it is his to
-  grant or his to press. The four menu rows are reached by clicking the status item; the copy is
+  grant or his to press. The three menu rows are reached by clicking the status item; the copy is
   checked by pasting, and *Pair a device…* must land on **Devices** — press it, switch to Advanced,
   and press it again, because the second press is the one a counter would have swallowed.
+
+  **The failure message changed on 2026-08-24, and it is a better one than the one recorded before.**
+  `make ui-tests-mac` had been documented as dying with *Timed out while enabling automation mode*,
+  which names no setting. It now dies with `The test runner failed to initialize for UI testing.
+  (Underlying Error: Authentication canceled. System authentication is running.)` — macOS raising an
+  authorisation prompt rather than silently refusing. The grant is still the answer; what is new is
+  that the system asks for it rather than timing out.
+
+  **The bundle itself is ordinary XCUITest, the same kind the phone would use.** What differs is the
+  platform and not the test style: an iOS UI test runs inside a simulator that enables automation for
+  itself, while a macOS one drives the real desktop and macOS gates that behind TCC. No build
+  setting, entitlement or code change reaches it.
 
 - ~~**A design round trip for the Mac's own surfaces.**~~ Came back on 2026-08-21 and is recorded in
   [`design-mac.md`](design-mac.md). Nothing in the Settings window is blocked on a drawing any more,

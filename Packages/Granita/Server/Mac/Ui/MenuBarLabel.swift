@@ -34,7 +34,10 @@ public struct MenuBarLabel: View {
         case .running: "arrow.trianglehead.branch"
         // Unfilled, like every other warning this app draws. A filled triangle in a menu bar reads
         // as an alert that has already gone off, next to a clock and a Wi-Fi symbol that never do.
-        case .failed, .stopped: "exclamationmark.triangle"
+        // A blocked lock joins them rather than earning a fourth symbol: three symbols are one
+        // answer to the one question a menu bar asks, and "not serving" is the true answer to it
+        // here too. Which of the three reasons it is belongs one click below.
+        case .failed, .stopped, .blockedByAnotherProcess: "exclamationmark.triangle"
         }
     }
 
@@ -42,7 +45,7 @@ public struct MenuBarLabel: View {
         switch state {
         case .starting: "Granita, starting"
         case .running: "Granita, serving"
-        case .failed, .stopped: "Granita, not serving"
+        case .failed, .stopped, .blockedByAnotherProcess: "Granita, not serving"
         }
     }
 }

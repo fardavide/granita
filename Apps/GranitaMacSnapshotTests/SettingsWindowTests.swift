@@ -43,7 +43,8 @@ struct SettingsWindowTests {
                 onCopyAddress: { _ in },
                 onRestart: {},
                 onOpenLocalNetworkSettings: {},
-                onOpenLoginItems: {}
+                onOpenLoginItems: {},
+                onQuit: {}
             ),
             appearance: appearance
         )

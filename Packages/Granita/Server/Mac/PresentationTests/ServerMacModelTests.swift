@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import ServerApiDomain
 import ServerMacDomain
@@ -195,6 +196,55 @@ struct ServerMacModelTests {
 
         // then
         #expect(scenario.sut.storedProjectCount == 1)
+    }
+
+    // MARK: - The verbose switch, which is Advanced's half of the logging layer
+
+    @Test
+    func `given nobody has asked for everything when Advanced is drawn then verbose logging reads off`() {
+        // given - when - then — off is the honest default rather than a cautious one. Verbose
+        // records every request and every git invocation, which is a volume nobody wants until
+        // they are looking for something.
+        #expect(Scenario().sut.isVerboseLogging == false)
+    }
+
+    @Test
+    func `given verbose logging was left on when Advanced is drawn then the switch reads on`() {
+        // given — the setting outlives the app, so the switch has to arrive showing what the
+        // server is already doing rather than what this launch defaulted to.
+        let scenario = Scenario(isVerbose: true)
+
+        // then
+        #expect(scenario.sut.isVerboseLogging)
+    }
+
+    @Test
+    func `given a server running since launch when the switch is turned on then the setting itself moves`() {
+        // given — the whole reason verbosity is a seam rather than a `Bool` handed in at launch:
+        // the server reading it has been up since the app started, so what the switch must move is
+        // the stored setting the server re-reads per line. Writing only the model's own copy would
+        // be a switch that does nothing until the next launch.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.setVerboseLogging(true)
+
+        // then
+        #expect(scenario.verbosity.isVerbose)
+        #expect(scenario.sut.isVerboseLogging)
+    }
+
+    @Test
+    func `given verbose logging is on when the switch is turned off then the setting goes quiet again`() {
+        // given
+        let scenario = Scenario(isVerbose: true)
+
+        // when
+        scenario.sut.setVerboseLogging(false)
+
+        // then
+        #expect(scenario.verbosity.isVerbose == false)
+        #expect(scenario.sut.isVerboseLogging == false)
     }
 
     // MARK: - Opening at login, as the General tab draws it
@@ -637,6 +687,101 @@ struct ServerMacModelTests {
             return
         }
         #expect(offered.map(\.name) == ["two"])
+    }
+
+    // MARK: - The lock on the document, SPEC §9
+
+    @Test
+    func `given another process holds the document when the app starts then it says so and names it`(
+    ) async {
+        // given — the second process to start refuses, and Advanced is where the refusal is read.
+        let holder = StoreLockHolder(processIdentifier: 4213, processName: "granita-server")
+        let scenario = Scenario(states: [.blockedByAnotherProcess(holder)])
+
+        // when
+        await scenario.sut.followServer()
+
+        // then
+        #expect(scenario.sut.serverState == .blockedByAnotherProcess(holder))
+        #expect(scenario.sut.isBlockedByAnotherProcess)
+        #expect(scenario.sut.storeLockHolder == holder)
+    }
+
+    @Test
+    func `given the holder could not be read when the app is blocked then the row still appears`(
+    ) async {
+        // given — the lock is the kernel's answer and the name is a courtesy read from a file
+        // beside it. A row drawn only when there is a name would disappear in exactly the case a
+        // reader has least to go on.
+        let scenario = Scenario(states: [.blockedByAnotherProcess(nil)])
+
+        // when
+        await scenario.sut.followServer()
+
+        // then
+        #expect(scenario.sut.isBlockedByAnotherProcess)
+        #expect(scenario.sut.storeLockHolder == nil)
+    }
+
+    @Test
+    func `given the server is serving normally when Advanced is drawn then no lock holder is claimed`(
+    ) async {
+        // given — the row is the only one on the tab describing a state in which the rest of the
+        // app is doing nothing, so it must be absent whenever the app is doing something.
+        let scenario = Scenario(states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))])
+
+        // when
+        await scenario.sut.followServer()
+
+        // then
+        #expect(scenario.sut.isBlockedByAnotherProcess == false)
+        #expect(scenario.sut.storeLockHolder == nil)
+    }
+
+    @Test
+    func `given the app is blocked when Quit is pressed then the app is asked to end`() async {
+        // given — an `LSUIElement` app has no Dock icon and no window whose red button ends it, so
+        // without this the instruction "quit it and open Granita again" names something a reader
+        // has no way to do from the screen telling them to do it.
+        let scenario = Scenario(states: [.blockedByAnotherProcess(nil)])
+
+        // when
+        await scenario.sut.quit()
+
+        // then
+        #expect(await scenario.gestures.quits == 1)
+    }
+
+    // MARK: - Open in Console, which is two gestures because Console takes no URL
+
+    @Test
+    func `given the reader wants the log when Console is opened then the filter goes on the pasteboard`(
+    ) async {
+        // given — `Console.app` registers no URL scheme and cannot be handed a predicate, which is
+        // why this is a copy and an open rather than one link. Settled 22 August 2026.
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.openLogInConsole()
+
+        // then — spelled out rather than rebuilt from the same expression the subject uses. A test
+        // that recomputes the answer cannot see the answer change, and a filter spelled a second
+        // way is a Console window that opens on nothing.
+        #expect(await scenario.gestures.copied == ["subsystem == \"dev.fardavide.granita\""])
+    }
+
+    @Test
+    func `given the reader wants the log when Console is opened then Console is what opens`() async {
+        // given — the half that makes it a control rather than a silent pasteboard change: a
+        // reader who presses this and sees nothing appear has met a dead control, whatever ended
+        // up on the clipboard.
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.openLogInConsole()
+
+        // then
+        #expect(await scenario.gestures.consoleOpenings == 1)
     }
 
     // MARK: - The gestures that used to be AppKit calls inside a view body
@@ -1126,6 +1271,7 @@ private struct Scenario {
     let gestures: FakeSystemGestures
     let invitations: FakePairingInviting
     let memory: FakeSettingsTabMemory
+    let verbosity: FakeVerboseLogging
 
     init(
         states: [ServerRunState] = [],
@@ -1143,6 +1289,7 @@ private struct Scenario {
         pairingFailure: PairingInvitationError? = nil,
         codeExpiresAt: Date = Date(timeIntervalSince1970: 120),
         lastUsedTab: SettingsTab? = .general,
+        isVerbose: Bool = false,
         now: Date = Date(timeIntervalSince1970: 0)
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
@@ -1157,6 +1304,7 @@ private struct Scenario {
         gestures = FakeSystemGestures()
         invitations = FakePairingInviting(failure: pairingFailure, expiresAt: codeExpiresAt)
         memory = FakeSettingsTabMemory(stored: lastUsedTab)
+        verbosity = FakeVerboseLogging(isVerbose: isVerbose)
         sut = ServerMacModel(
             host: FakeServerHost(states: states),
             restarts: restarts,
@@ -1169,6 +1317,7 @@ private struct Scenario {
             store: store,
             invitations: invitations,
             tabMemory: memory,
+            verboseLogging: verbosity,
             dataFolderUrl: URL(filePath: "/Users/davide/Library/Application Support/Granita"),
             now: { now }
         )

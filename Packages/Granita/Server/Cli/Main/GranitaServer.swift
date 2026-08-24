@@ -29,6 +29,21 @@ struct GranitaServer {
             return
         }
 
+        // SPEC §9 line 810, and it is taken before the document is touched at all — including by
+        // `--add-project` and `--token`, which write to it. The menu bar app refuses the same way
+        // and reads the refusal on Advanced; a terminal has stderr, so this one says it and stops.
+        //
+        // Held for the life of the process by the descriptor inside it, which is why the lock is
+        // kept in a `let` that outlives this scope rather than discarded once it has answered.
+        let lock = FileStoreLock(besideStoreAt: arguments.storeUrl, holder: .thisProcess)
+        if case .heldBy(let holder) = await lock.acquire() {
+            log("""
+                \(holder?.sentence ?? "Another process") is already using \
+                \(arguments.storeUrl.path(percentEncoded: false)). Quit it and try again.
+                """)
+            exit(1)
+        }
+
         let store = JsonDocumentStore(fileUrl: arguments.storeUrl)
         let git = LoggingGitClient(
             client: ProcessGitClient(

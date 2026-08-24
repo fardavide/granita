@@ -4,6 +4,7 @@ import Testing
 import ServerApiDomain
 import ServerMacDomain
 import ServerMacUi
+import ServerStoreDomain
 
 /// Every state the General tab can be in, in both appearances.
 ///
@@ -32,7 +33,8 @@ struct GeneralSettingsViewSnapshotTests {
                 onCopyAddress: { _ in },
                 onRestart: {},
                 onOpenLocalNetworkSettings: {},
-                onOpenLoginItems: {}
+                onOpenLoginItems: {},
+                onQuit: {}
             ),
             appearance: appearance,
             named: subject.name
@@ -93,6 +95,17 @@ struct GeneralSettingsViewSnapshotTests {
                 state: .running(ServerEndpoint(host: "macbook-pro.local", port: 59_144)),
                 servingSince: .nineTwelve,
                 loginItem: .refused(reason: "Operation not permitted")
+            ),
+            // SPEC §9's lock, and the reason it is a state of its own rather than a `failed`
+            // carrying a different sentence: this is the one picture in the set where the advice is
+            // not Local Network access, and where the button ends the app rather than retrying it.
+            Case(
+                name: "blocked-by-another-process",
+                state: .blockedByAnotherProcess(
+                    StoreLockHolder(processIdentifier: 4213, processName: "granita-server")
+                ),
+                servingSince: nil,
+                loginItem: .on
             )
         ]
     }

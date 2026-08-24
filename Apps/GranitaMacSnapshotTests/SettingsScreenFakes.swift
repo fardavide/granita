@@ -1,5 +1,6 @@
 import Foundation
 
+import CoreDiagnosticsDomain
 import CoreDiffDomain
 import CorePairingDomain
 import ServerApiDomain
@@ -41,6 +42,7 @@ enum SettingsScreenFakes {
             // General, so a baseline names the pane it shows rather than inheriting a first run's
             // Projects. Every test here goes on to say which pane it wants anyway.
             tabMemory: FakeTabMemory(),
+            verboseLogging: FakeVerboseLogging(),
             dataFolderUrl: URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support/Granita", directoryHint: .isDirectory),
             now: { Date(timeIntervalSince1970: 1_755_864_000) }
@@ -162,6 +164,16 @@ private struct FakeGestures: SystemGestures {
     func copyToPasteboard(_ text: String) {}
     func revealInFinder(_ url: URL) {}
     func openSystemSettings(_ pane: SystemSettingsPane) {}
+    func openConsole() {}
+    func quit() {}
+}
+
+/// A Mac nobody has asked for the detail on, which is what the window's own baselines should show:
+/// the switch's other position is photographed by `AdvancedSettingsViewSnapshotTests`, where it
+/// costs no extra picture.
+private struct FakeVerboseLogging: VerboseLogging {
+    var isVerbose: Bool { false }
+    func setVerbose(_ isVerbose: Bool) {}
 }
 
 private actor FakeStore: Store {

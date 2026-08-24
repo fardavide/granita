@@ -30,6 +30,22 @@ public protocol SystemGestures: Sendable {
     func revealInFinder(_ url: URL) async
 
     func openSystemSettings(_ pane: SystemSettingsPane) async
+
+    /// Console, with nothing said to it.
+    ///
+    /// **Separate from the copy that precedes it, because `Console.app` registers no URL scheme**
+    /// — there is no way to hand it a predicate, so the filter travels on the pasteboard and this
+    /// only opens the window. Two gestures for one press, and the order matters: the filter is on
+    /// the clipboard before the window a reader would paste it into exists.
+    func openConsole() async
+
+    /// Ends this run of the app.
+    ///
+    /// Offered on General only when another process holds the document, which is the one state in
+    /// which the app is doing nothing and cannot start doing anything: everything else it draws is
+    /// either working or retryable. `LSUIElement` is why it needs saying at all — there is no Dock
+    /// icon to quit from and no window whose red button ends the process.
+    func quit() async
 }
 
 /// The panes this app sends a reader to, named rather than spelled.

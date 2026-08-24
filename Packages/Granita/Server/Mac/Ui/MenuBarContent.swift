@@ -97,6 +97,12 @@ public struct MenuBarContent: View {
             // and it is no way at all to reach this one — the server's life is the app's life, so
             // stopped means it fell over.
             Text("Not serving")
+        case .blockedByAnotherProcess(let holder):
+            // Named here rather than left to Settings, unlike `failed` above. The difference is
+            // that this reason is one short noun and it is the whole of what a reader has to act
+            // on — there is no small print to leave out and no likely cause to hedge, because the
+            // lock is a fact rather than a guess.
+            Text(verbatim: "Not serving — \(holder?.sentence ?? "another process") has the settings")
         }
     }
 
@@ -110,7 +116,9 @@ public struct MenuBarContent: View {
     private var canPair: Bool {
         switch state {
         case .starting, .running: true
-        case .failed, .stopped: false
+        // A blocked lock is the one refusal that will not resolve itself by waiting, so unlike
+        // `.starting` there is nothing here for a reader with a phone in their hand to wait for.
+        case .failed, .stopped, .blockedByAnotherProcess: false
         }
     }
 }

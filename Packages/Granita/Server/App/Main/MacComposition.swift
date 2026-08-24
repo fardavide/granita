@@ -50,11 +50,13 @@ final class MacComposition {
         // panel prints it beside the version it got by running it.
         let gitPath = GitExecutablePath.firstAvailable(among: GitExecutablePath.defaultCandidates)
             ?? "/usr/bin/git"
-        // Read per line rather than captured, so the switch Advanced will grow takes effect on a
-        // server that has been running since launch rather than only at the next one.
+        // One instance rather than two, because Advanced's switch and the server that obeys it are
+        // the two ends of the same setting. Read per line rather than captured, so moving the
+        // switch takes effect on a server that has been running since launch.
+        let verboseLogging = UserDefaultsVerboseLogging(defaults: .standard)
         let diagnostics = VerbosityFilteringDiagnostics(
             wrapped: OsLogDiagnostics(),
-            verbosity: UserDefaultsVerboseLogging(defaults: .standard)
+            verbosity: verboseLogging
         )
         // Wrapped rather than told to log, so the thing that runs a subprocess keeps having exactly
         // one job — and so the libgit2 client this protocol exists for would arrive logged without
@@ -102,19 +104,26 @@ final class MacComposition {
         model = ServerMacModel(
             // Wrapped rather than replaced: waking is the only thing this adds, and everything
             // about how the server binds stays in one place.
-            host: RebindingOnWake(
-                host: TransportResolvingServerHost(
-                    dependencies: dependencies,
-                    binding: .bonjourService(name: MachineName.computer),
-                    // Asked per run, not once here. A rebind after waking has to be able to fail
-                    // for a reason someone can act on — a locked keychain, an identity deleted by
-                    // hand — and a transport resolved at launch could only report that as the app
-                    // never having started.
-                    transport: { () async throws(ServerIdentityError) -> ApiTransport in
-                        .tls(try await identities.keychainIdentity().reference)
-                    }
+            // **Outermost, so the lock is taken before anything binds and nothing binds if it is
+            // not.** Inside `RebindingOnWake` it would be asked again on every wake, which is a
+            // Mac that stops serving overnight because a `granita-server` was started in a terminal
+            // in the meantime — the lock is a fact about this launch, not about this bind.
+            host: StoreLockingServerHost(
+                host: RebindingOnWake(
+                    host: TransportResolvingServerHost(
+                        dependencies: dependencies,
+                        binding: .bonjourService(name: MachineName.computer),
+                        // Asked per run, not once here. A rebind after waking has to be able to
+                        // fail for a reason someone can act on — a locked keychain, an identity
+                        // deleted by hand — and a transport resolved at launch could only report
+                        // that as the app never having started.
+                        transport: { () async throws(ServerIdentityError) -> ApiTransport in
+                            .tls(try await identities.keychainIdentity().reference)
+                        }
+                    ),
+                    wakes: rebinds
                 ),
-                wakes: rebinds
+                lock: FileStoreLock(besideStoreAt: storeUrl, holder: .thisProcess)
             ),
             restarts: rebinds,
             connectionLog: log,
@@ -126,6 +135,7 @@ final class MacComposition {
             store: store,
             invitations: PairingInvitations(pairing: pairing, identities: identities),
             tabMemory: UserDefaultsSettingsTabMemory(defaults: .standard),
+            verboseLogging: verboseLogging,
             dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }
         )

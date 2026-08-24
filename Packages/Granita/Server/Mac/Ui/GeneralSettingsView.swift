@@ -3,6 +3,7 @@ import SwiftUI
 
 import ServerApiDomain
 import ServerMacDomain
+import ServerStoreDomain
 
 /// General — this Mac's own address, whether anything is listening, and whether Granita comes back
 /// after a restart.
@@ -29,6 +30,7 @@ public struct GeneralSettingsView: View {
     private let onRestart: () -> Void
     private let onOpenLocalNetworkSettings: () -> Void
     private let onOpenLoginItems: () -> Void
+    private let onQuit: () -> Void
 
     public init(
         state: ServerRunState,
@@ -38,7 +40,8 @@ public struct GeneralSettingsView: View {
         onCopyAddress: @escaping (String) -> Void,
         onRestart: @escaping () -> Void,
         onOpenLocalNetworkSettings: @escaping () -> Void,
-        onOpenLoginItems: @escaping () -> Void
+        onOpenLoginItems: @escaping () -> Void,
+        onQuit: @escaping () -> Void
     ) {
         self.state = state
         self.servingSince = servingSince
@@ -48,6 +51,7 @@ public struct GeneralSettingsView: View {
         self.onRestart = onRestart
         self.onOpenLocalNetworkSettings = onOpenLocalNetworkSettings
         self.onOpenLoginItems = onOpenLoginItems
+        self.onQuit = onQuit
     }
 
     public var body: some View {
@@ -97,7 +101,7 @@ public struct GeneralSettingsView: View {
                 .help("Copy this Mac's address")
                 .accessibilityLabel("Copy this Mac's address")
             }
-        case .starting, .failed, .stopped:
+        case .starting, .failed, .stopped, .blockedByAnotherProcess:
             Text(verbatim: "—")
                 .foregroundStyle(.tertiary)
         }
@@ -126,6 +130,34 @@ public struct GeneralSettingsView: View {
             notServing(reason: reason)
         case .stopped:
             notServing(reason: nil)
+        case .blockedByAnotherProcess(let holder):
+            blocked(by: holder)
+        }
+    }
+
+    /// The lock refusal, which gets its own sentence rather than borrowing the one below.
+    ///
+    /// **Not `notServing`, and that is the whole reason this is a state of its own.** That sentence
+    /// names Local Network access as the usual cause and offers a button straight to it — advice
+    /// that is simply wrong here, since the pane it opens is already correct and a reader sent to
+    /// check it comes back no better off. The thing to do is quit the other process, so that is
+    /// what the row says and what the button does.
+    @ViewBuilder private func blocked(by holder: StoreLockHolder?) -> some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            Label("Not serving", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+            // The holder in the sentence rather than in small print underneath: it is not a
+            // diagnostic here, it is the instruction. A process identifier can be looked up and
+            // quit; "another copy is running" is something a reader can do nothing with.
+            Text(verbatim: """
+                \(holder?.sentence ?? "Another process") is already using this Mac's settings, so \
+                Granita left them alone. Quit it and open Granita again.
+                """)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.trailing)
+            Button("Quit Granita", action: onQuit)
+                .accessibilityIdentifier("granita.general.quit")
         }
     }
 
