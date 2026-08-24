@@ -40,7 +40,17 @@ public struct OsLogDiagnostics: Diagnostics {
         loggers[subject]?.notice("\(message, privacy: .public)")
     }
 
+    /// **`.notice` as well, where `.debug` is the obvious choice and the wrong one.** The unified
+    /// log does not persist `.debug`: those lines live in a memory buffer and are gone unless
+    /// somebody enabled debug logging for this subsystem beforehand. A reader who turns the verbose
+    /// switch on, presses *Open in Console* and meets an empty window has met the defect this
+    /// project cares most about — and no test here would notice, because a fake records what it was
+    /// handed whatever level it was written at.
+    ///
+    /// The level has nothing to gate, because `VerbosityFilteringDiagnostics` already did: by the
+    /// time a line reaches here, somebody has asked for it. Verified by running `granita-server`
+    /// and reading the lines back out of `log show`.
     public func detail(_ message: String, about subject: DiagnosticSubject) {
-        loggers[subject]?.debug("\(message, privacy: .public)")
+        loggers[subject]?.notice("\(message, privacy: .public)")
     }
 }

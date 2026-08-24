@@ -2550,3 +2550,21 @@ unauthenticated request does not return a 401 through the middleware — the aut
 the refusal takes the note path and survives the switch being off. That is the better half to land
 in, and it was written down as an assertion only because the first version of the test asserted the
 other thing and failed.
+
+**Detail is written at `.notice`, not `.debug`, and no test in this repository could have said so.**
+`.debug` is the obvious level for it and the wrong one: the unified log does not persist debug lines,
+so they are gone unless somebody enabled debug logging for the subsystem first. A reader who turns
+the verbose switch on, presses *Open in Console* and meets an empty window has met the defect this
+project cares most about — and every test would have stayed green, because a fake records what it was
+handed whatever level it was written at. The level has nothing left to gate anyway, since
+`VerbosityFilteringDiagnostics` decided before the line got here.
+
+Confirmed by running `granita-server --add-project` and reading the lines back with `log show`, which
+is also how the next fact was found.
+
+**The two roots do not share a defaults domain, and pretending otherwise would have made the switch
+look broken.** An executable has no bundle identifier, so `UserDefaults.standard` resolves to the
+global domain for `granita-server` and to `dev.fardavide.granita.mac` for the menu bar app: the same
+key, two places. Turning verbose on for one does not turn it on for the other. The app's switch is
+the pane that lands next; the executable's is `defaults write -g`, and the changelog says both rather
+than naming one and being wrong for whoever tried the other.

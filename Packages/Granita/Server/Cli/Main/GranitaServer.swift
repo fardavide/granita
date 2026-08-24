@@ -71,9 +71,14 @@ struct GranitaServer {
             // The terminal has stderr for this; the log is here because the menu bar app draws it
             // and both composition roots build the same dependencies.
             connectionLog: InMemoryConnectionLog(now: { Date() }),
-            // The same subsystem the Mac app writes to, so `log stream --predicate` reads either
-            // one. Verbose is the same defaults key too — this root has no switch to offer, and a
-            // second way of turning it on would be a second answer to one question.
+            // The same subsystem the Mac app writes to, so one predicate reads either.
+            //
+            // **The same key, but not the same defaults domain, and that is worth knowing rather
+            // than papering over.** An executable has no bundle identifier, so `UserDefaults`
+            // resolves to the global domain here and to `dev.fardavide.granita.mac` in the app:
+            // turning verbose on for one does not turn it on for the other. `defaults write -g` is
+            // this one's switch, since a terminal already has a flag for everything else and a
+            // second mechanism would be a second answer to one question.
             diagnostics: VerbosityFilteringDiagnostics(
                 wrapped: OsLogDiagnostics(),
                 verbosity: UserDefaultsVerboseLogging(defaults: .standard)

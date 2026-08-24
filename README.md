@@ -86,8 +86,11 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
   stays on your Mac, which is the point of the product, and a log has a longer life and more readers
   than the thing it was taken from.
 - The switch itself, and the button that opens Console, arrive with the next release alongside the
-  lock-file row — all three are on the same tab. Until then verbose is turned on with
-  `defaults write dev.fardavide.granita granita.diagnostics.verbose -bool YES`.
+  lock-file row — all three are on the same tab. Until then the detail is turned on by hand:
+  `defaults write dev.fardavide.granita.mac granita.diagnostics.verbose -bool YES` for the menu bar
+  app, and `defaults write -g granita.diagnostics.verbose -bool YES` for `granita-server`, which has
+  no bundle of its own to keep preferences in. Read it back with
+  `log show --last 5m --predicate 'subsystem == "dev.fardavide.granita"'`.
 
 ### 0.0.16 — 2026-08-24
 - **The menu bar item now does things instead of only saying them.** The status line is a button:
