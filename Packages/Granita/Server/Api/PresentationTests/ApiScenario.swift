@@ -26,6 +26,7 @@ struct ApiScenario {
     let storeDirectory: URL
     let pairing: Pairing
     let connectionLog: InMemoryConnectionLog
+    let diagnostics: FakeDiagnostics
     let location: RepositoryLocation
 
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
@@ -46,6 +47,9 @@ struct ApiScenario {
 
         pairing = Pairing(store: store, now: { Date() })
         connectionLog = InMemoryConnectionLog(now: { Date() })
+        // Unfiltered, deliberately: what the middleware records is this suite's question, and
+        // whether the verbose switch would have suppressed it is `VerbosityFilteringDiagnostics`'s.
+        diagnostics = FakeDiagnostics()
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
                 store: store,
@@ -60,6 +64,7 @@ struct ApiScenario {
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
             connectionLog: connectionLog,
+            diagnostics: diagnostics,
             serverVersion: "0.0.4",
             requiresAuthentication: requiresAuthentication
         )
@@ -146,6 +151,7 @@ extension ApiScenario {
             pairing: Pairing(store: store, now: { Date() }),
             failedAttempts: FailedAttempts(now: { Date() }),
             connectionLog: InMemoryConnectionLog(now: { Date() }),
+            diagnostics: FakeDiagnostics(),
             serverVersion: serverVersion,
             requiresAuthentication: false
         )

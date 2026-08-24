@@ -2,7 +2,35 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.16.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.0.17.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+
+**Granita writes a log, which until 0.0.17 it did not do anywhere at all** — not a `Logger`, not an
+`os.log`, not a print, the whole package searched. Every request the server answers and every git
+invocation goes to the unified log under `dev.fardavide.granita`, in two categories a reader can
+filter by. **A note is never behind the switch**: a git command that could not be run and a request
+that was refused are written whatever the setting, because a fault someone has to enable logging to
+see is one they learn about too late. The detail is what the switch will gate, and until Advanced
+grows it that is `defaults write dev.fardavide.granita granita.diagnostics.verbose -bool YES`.
+
+**What is written is narrower than what is available**, and that is the security boundary rather than
+tidiness: the git decorator logs the command and the checkout, never git's standard output, which is
+a private repository's contents; the middleware logs the method and the path, never the query or the
+body, because `/v1/pair` carries a live code and `?projectID=` resolves to a folder on this Mac. Both
+are asserted. `os.Logger`'s default redaction is turned off, narrowly, and is safe because of exactly
+that.
+
+**Two decorators, not two dependencies.** `LoggingGitClient` wraps a `GitClient` and
+`DiagnosticsMiddleware` sits on the router — so `ProcessGitClient` keeps one job, and the libgit2
+client the protocol exists for would arrive logged without knowing it. The middleware is on the
+router rather than the authenticated group, because the requests most worth reading about never get
+that far; a test found that a refusal arrives as a thrown error rather than a 401, so it takes the
+note path and survives the switch being off.
+
+**The verbose switch and *Open in Console* are still not built, and that is now a scheduling call
+rather than the recorded one.** `decisions.md` said they land with the layer; they land with the
+lock-file row instead, because all three change `AdvancedSettingsView`'s eight baselines and the
+window's `serving-advanced` pair, and a Mac baseline costs a full round trip. One round trip instead
+of two.
 
 **The menu bar item does things now, and all seven of the Mac's drawn surfaces are built.** The
 status line is a `Button` that copies — `macbook-pro.local:59144`, with no scheme, because the
@@ -97,9 +125,9 @@ composition root as code a rendered baseline executes.
 candidate paths won — that is the whole point of it, because a path that is executable and broken
 looks exactly like a working one until something runs it — and in failure it carries git's own
 standard error. Beside it the data folder with a Reveal, and `Reset All Data` counting what it would
-destroy before it does. **Its Diagnostics half is deliberately absent**: the verbose switch and *Open
-in Console* describe logging that **does not exist anywhere in this product**, so both land with a
-logging layer rather than as controls over nothing. The lock-file row waits on the lock file.
+destroy before it does. **Its Diagnostics half is still absent**, and the reason has changed: the
+logging those two rows describe exists as of 0.0.17, so what they are waiting on is now the baseline
+round trip they share with the lock-file row. All three change the same eight pictures.
 
 **The macOS UI test target exists, is built by CI, and has never been seen to pass.** That is the
 honest state rather than a half-landing: a UI test bundle is a separate runner app that must be
@@ -204,7 +232,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 573 package tests in 60 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 591 package tests in 64 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself. **The coverage pass runs
   serially**, because measured in parallel it reported a different percentage for identical code —
   five runs of one commit spread across 96.037% and 96.121%, which a ratchet with no slack reads as a
@@ -338,10 +366,12 @@ and the store's lock file:
   and others at five, which is what a scanner reads as noise.
 - ~~**§1, the status item and its menu, and the rest of §2.**~~ Built in 0.0.16, with baselines,
   and the Mac's design review was deleted with them — it was the last two sections in it.
-- **A logging layer, which nothing has needed until now.** Advanced's verbose switch and its route
-  into Console are the first thing that does, and both are blocked on it. The Console filter travels
-  **on the pasteboard**, because `Console.app` registers no URL scheme and cannot be handed a
-  predicate; that is settled and recorded.
+- ~~**A logging layer, which nothing has needed until now.**~~ Built in 0.0.17: a seam in `Core`,
+  `os.Logger` behind it, and call sites at the request boundary and every git invocation.
+- **What §7 still owes, and it is one pull request rather than two.** Advanced's verbose switch, its
+  route into Console, and the lock-file row all change the same eight baselines and the same window
+  pair. The Console filter travels **on the pasteboard**, because `Console.app` registers no URL
+  scheme and cannot be handed a predicate; that is settled and recorded.
 
 **Read `design-mac.md`, which is the whole record.** The frames are gone; the sheet keeps every call
 beside the alternative it beat, both open calls with the measurements that answered them, and which

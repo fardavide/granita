@@ -2,10 +2,13 @@ import Foundation
 import Observation
 
 import CoreBrandingDomain
+import CoreDiagnosticsData
+import CoreDiagnosticsDomain
 import CorePairingDomain
 import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
+import ServerGitDomain
 import ServerIdentityData
 import ServerIdentityDomain
 import ServerMacData
@@ -47,10 +50,22 @@ final class MacComposition {
         // panel prints it beside the version it got by running it.
         let gitPath = GitExecutablePath.firstAvailable(among: GitExecutablePath.defaultCandidates)
             ?? "/usr/bin/git"
-        let git = ProcessGitClient(
-            executablePath: gitPath,
-            outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
-            timeout: ProcessGitClient.defaultTimeout
+        // Read per line rather than captured, so the switch Advanced will grow takes effect on a
+        // server that has been running since launch rather than only at the next one.
+        let diagnostics = VerbosityFilteringDiagnostics(
+            wrapped: OsLogDiagnostics(),
+            verbosity: UserDefaultsVerboseLogging(defaults: .standard)
+        )
+        // Wrapped rather than told to log, so the thing that runs a subprocess keeps having exactly
+        // one job — and so the libgit2 client this protocol exists for would arrive logged without
+        // knowing it.
+        let git = LoggingGitClient(
+            client: ProcessGitClient(
+                executablePath: gitPath,
+                outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
+                timeout: ProcessGitClient.defaultTimeout
+            ),
+            diagnostics: diagnostics
         )
         let service = WorktreeService(git: git, limits: .standard)
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
@@ -73,6 +88,7 @@ final class MacComposition {
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
             connectionLog: log,
+            diagnostics: diagnostics,
             serverVersion: Branding.serverVersion,
             // The plaintext escape hatch is a flag on the executable and is never reachable from
             // here. A token over plaintext is a token everyone on the network already has.
