@@ -249,6 +249,15 @@ answer. Note for §1: the menu's copy is drawn as `http://macbook-pro.local:5914
 0.0.6 and is not now — that row is built with the rest of §1 and the scheme is a decision it has to
 make rather than inherit.
 
+**A third call, made in 0.0.18: one non-serving state does not use that sentence at all.** The
+paragraph above hedges *the usual cause* precisely because `failed` carries whatever went wrong — but
+hedging is not enough when the cause is known and is something else entirely. A store lock held by
+another process reaches this tab too, and there Local Network access is not merely unlikely, it is a
+pane that is already correct: a reader who follows the button finds nothing to change and comes back
+knowing less. So that refusal is a **run state of its own**, and this tab leads with its own sentence,
+names the process holding the settings, and offers **Quit Granita** — which the app needs anyway,
+having no Dock icon and no window whose red button ends it.
+
 Should feel like the Sharing pane.
 
 ## §4 — Projects
@@ -444,12 +453,12 @@ Beside it, **Open in Console**, filtered to Granita's subsystem — and the butt
 the switch, because a level control with no route to the log leaves a person choosing how much of
 something they cannot find.
 
-> **Neither is built, and the reason is that there is nothing to switch.** Granita writes no log at
-> all — no `Logger`, no `os.log`, anywhere. Both rows land with the logging layer they describe.
-> Two things are settled in advance: the filter reaches Console **on the pasteboard**, because
-> `Console.app` registers no URL scheme and cannot be handed a predicate; and what the verbose
-> switch turns on is what the footnote already promises — every request and every git invocation.
-> See [`decisions.md`](decisions.md).
+> **Both are built as of 0.0.18**, one release after the logging they describe. The filter reaches
+> Console **on the pasteboard**, as this sheet settled in advance: `Console.app` registers no URL
+> scheme and cannot be handed a predicate, so pressing the button copies the filter and opens the
+> window, and the section footer says to paste — a Console window that opens unfiltered is a button
+> that appears to have done nothing. What the switch turns on is what the footnote promises, and the
+> footer also says what it cannot turn **off**: refusals and failures are written either way.
 
 **git gets a version, not just a path.** `GitExecutablePath` picks the first of three candidates that
 is executable, and the interesting question is never which won but whether the one that won works.
@@ -465,6 +474,15 @@ was not issued by this Mac".
 where the refusal is read: the row names the process holding the lock rather than saying another
 Granita is running, because a process identifier can be acted on and a noun cannot. It is the only
 row here that describes a state in which the rest of the app is doing nothing.
+
+> **Built in 0.0.18, and it turned out not to be only this tab.** The row is here as drawn — drawn
+> only when it is true, and on *is blocked* rather than on *has a holder*, so it does not vanish in
+> the case where the lock file could not be read and a reader has least to go on. What the sheet did
+> not anticipate is that the refusal also needed **§3**: Advanced is the tab a reader reaches last,
+> and a Mac that is not serving is a question they ask on General first. So the refusal is a run
+> state of its own, and General leads with it, names the process and offers **Quit Granita** rather
+> than the *Open Local Network Settings* that every other non-serving state offers — that pane is
+> already correct for a lock conflict, and sending a reader to it costs them a trip.
 
 Rejected: a five-level picker; a "Reveal in Finder" row for the log as well as the data folder, when
 the log's home is Console; and a second confirm typed by hand, which is disproportionate for one

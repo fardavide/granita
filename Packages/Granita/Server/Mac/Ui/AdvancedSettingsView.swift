@@ -10,9 +10,15 @@ import ServerStoreDomain
 /// Data`, so the panel opened while annoyed must not be one mis-click from the button that unpairs
 /// every device — which is also why the connection log moved out of here and got a tab.
 ///
-/// **The verbose switch is here as of 0.0.18**, over a subsystem that emits something. It was held
-/// back while Granita wrote no log at all, because a switch that turns on nothing is worse than a
-/// switch that is not there.
+/// **The Diagnostics half arrived in 0.0.18**, one release after the logging it describes. The
+/// switch and *Open in Console* were held back while Granita wrote no log at all, because a control
+/// over a subsystem that emits nothing reads as a feature, gets pressed, and answers with a silence
+/// that looks like *nothing is wrong*.
+///
+/// **The lock row is the only one here describing a state in which the rest of the app is doing
+/// nothing**, which is why it is drawn only when it is true — and why it is drawn on *is blocked*
+/// rather than on *has a holder*, so it does not disappear in the one case where the lock file could
+/// not be read and a reader has least to go on.
 public struct AdvancedSettingsView: View {
 
     private let git: GitInstallation
