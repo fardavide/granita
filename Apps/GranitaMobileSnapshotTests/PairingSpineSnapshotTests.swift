@@ -63,7 +63,7 @@ struct PairingSpineSnapshotTests {
         // before the first frame arrives.
         let phone = aPhone()
         let model = aModel(camera: .granted, joining: .refused(.pairingExpired), resolving: .failure(.localNetworkDenied))
-        await model.readCode(as: phone.device)
+        await model.readCode(on: aDiscoveredMac, as: phone.device)
 
         // when - then
         assertScreenSnapshot(

@@ -413,6 +413,7 @@ struct ClientWorktreesModelTests {
             )
             self.preferences = preferences
             sut = ClientWorktreesModel(
+                macName: "Mac Studio",
                 repository: repository,
                 preferences: preferences,
                 now: { aMoment }

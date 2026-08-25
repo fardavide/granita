@@ -118,3 +118,39 @@ dependencies included, and no flag changes it.
 
 A region is an `if`, a `guard`, a `case`, a ternary or a closure body, and it moves when a path stops
 being taken even though the line total holds.
+
+## The `All tests` row is not comparable between this machine and the runner
+
+`make coverage` gives the runner's verdict on five of the six values and **not on `All tests`
+lines**, and that is measured rather than suspected. On 25 August 2026, on a clean tree at `1a7acef`
+with nothing changed, the local run read 12 covered lines below the number `main`'s own run published
+for that same commit. The other five values matched to the line.
+
+The per-file exports say where, which is why they exist:
+
+| Δ (runner − here) | File |
+|---|---|
+| **+17** | `Server/Api/Presentation/ApiServer.swift` |
+| −4 | `Client/Connection/Data/BonjourBrowser.swift` |
+| −1 | `Server/Sessions/Data/SessionIndex.swift` |
+
+All three are code that **runs because a snapshot suite is app-hosted**, not code any test drives.
+`TEST_HOST` launches the real app, so the Mac's suite starts the real server and the phone's starts a
+real browser, and how far each gets before the first baseline is rendered depends on the machine: a
+laptop that already has Granita's port taken, a browser the simulator answers differently, a run
+where the Mac's suite is red from the first assertion. Merging those profiles is what `all` is, so
+`all` inherits the variance and the two single-kind rows do not.
+
+**So read a fallen `All tests` lines row here as a question rather than an answer**, and settle it by
+comparing the *uncovered line count* against a clean-tree run of the same working copy — that number
+is stable across the difference, and it is the one the report prints beside the table. The five other
+values are the verdict, unchanged.
+
+Downloading the runner's own per-file export is one command and is what settled this:
+
+```bash
+gh run download <run-id> --repo fardavide/granita -n coverage-exports -D <dir>
+```
+
+It is ~300 MB, which is why `Scripts/fetch-coverage-baseline.sh` takes the six numbers instead — but
+when a row falls and the arithmetic does not explain it, this is the thing that does.

@@ -38,7 +38,11 @@ final class FakeMacJoining: MacJoining {
         self.answeringWriteAfter = answeringWriteAfter
     }
 
-    func pair(with attempt: PairingAttempt, as device: PairingDevice) async -> PairingOutcome {
+    func pair(
+        with attempt: PairingAttempt,
+        on mac: DiscoveredServer,
+        as device: PairingDevice
+    ) async -> PairingOutcome {
         attempts.withLock { $0.append(attempt) }
         // Cancelling is how a test lets go of a Mac it deliberately made slow: the answer it
         // configured still arrives, which is what leaves the model in the state after the wait

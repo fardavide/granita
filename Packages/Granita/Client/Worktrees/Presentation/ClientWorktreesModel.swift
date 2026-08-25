@@ -17,6 +17,14 @@ import CoreDiffDomain
 @Observable
 public final class ClientWorktreesModel {
 
+    /// What the reader calls the Mac these worktrees are on, which design §5 makes the list's title.
+    ///
+    /// It sits on the model rather than being threaded through the split view into the sidebar,
+    /// because it is a fact about the Mac this model reads from — the same reason the repository
+    /// under it is per Mac — and because the detail column will want the same string once §3 gives
+    /// it something to show.
+    public let macName: String
+
     public private(set) var state: WorktreeSidebarState = .loading
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
@@ -35,10 +43,12 @@ public final class ClientWorktreesModel {
     private let now: @Sendable () -> Date
 
     public init(
+        macName: String,
         repository: any GranitaRepository,
         preferences: any WorktreeListPreferences,
         now: @escaping @Sendable () -> Date
     ) {
+        self.macName = macName
         self.repository = repository
         self.preferences = preferences
         self.now = now

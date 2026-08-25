@@ -13,7 +13,16 @@ import CorePairingDomain
 public protocol MacJoining: Sendable {
 
     /// Spends a pairing code and keeps the only copy of what it buys.
-    func pair(with attempt: PairingAttempt, as device: PairingDevice) async -> PairingOutcome
+    ///
+    /// **The Mac is named separately from the credential**, because a credential does not carry a
+    /// name a reader would recognise: a scanned link carries a host, six words carry neither. What
+    /// the reader tapped is what titles every screen from here on, so it is passed rather than
+    /// derived.
+    func pair(
+        with attempt: PairingAttempt,
+        on mac: DiscoveredServer,
+        as device: PairingDevice
+    ) async -> PairingOutcome
 
     /// Writes down a token for a pairing that already happened, and nothing else.
     func saveToken(of pairing: PairedMac) async -> PairingOutcome
@@ -61,7 +70,11 @@ public struct MacPairing: MacJoining {
     /// Returns rather than throws, because three of the four outcomes are not errors in any useful
     /// sense — they are what the screen shows next, and a caller that had to catch them would be
     /// deciding which of its `catch` blocks was really a success.
-    public func pair(with attempt: PairingAttempt, as device: PairingDevice) async -> PairingOutcome {
+    public func pair(
+        with attempt: PairingAttempt,
+        on mac: DiscoveredServer,
+        as device: PairingDevice
+    ) async -> PairingOutcome {
         let server = handshake(attempt)
         let paired: PairedDevice
         do {
@@ -80,7 +93,12 @@ public struct MacPairing: MacJoining {
             return .refused(.notUnderstood(diagnostic: "the Mac was reached without presenting a key"))
         }
         return await saveToken(
-            of: PairedMac(device: paired, address: attempt.address, fingerprint: fingerprint)
+            of: PairedMac(
+                name: mac.name,
+                device: paired,
+                address: attempt.address,
+                fingerprint: fingerprint
+            )
         )
     }
 

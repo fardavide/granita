@@ -367,6 +367,7 @@ private struct Scenario {
 /// A pairing that is entirely about where it points, since that is what these two tests are for.
 private func aPairedMac(at host: String, port: Int) -> PairedMac {
     PairedMac(
+        name: "Mac Studio",
         device: PairedDevice(
             token: token,
             deviceId: DeviceId(rawValue: "8C4F2A11-0000-4E5D-9A3B-77F1C0DE0001"),
