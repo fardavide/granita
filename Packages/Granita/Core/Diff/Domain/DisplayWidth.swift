@@ -18,7 +18,7 @@ struct DisplayWidth: Hashable {
         var needsMeasurement = false
         for scalar in text.unicodeScalars {
             if scalar == "\t" {
-                columns += tabStop - columns % tabStop
+                columns += MonospacedGrid.tabStop - columns % MonospacedGrid.tabStop
                 continue
             }
             columns += scalar.displayColumns
@@ -28,8 +28,6 @@ struct DisplayWidth: Hashable {
         self.needsMeasurement = needsMeasurement
     }
 }
-
-private let tabStop = 4
 
 private extension Unicode.Scalar {
 
