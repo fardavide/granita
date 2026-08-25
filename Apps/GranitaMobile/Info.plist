@@ -33,6 +33,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>itms-beta</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -43,7 +47,7 @@
 		<string>_granita._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Granita reads the pairing code your Mac displays.</string>
+	<string>Granita reads the pairing code your Mac displays. Nothing is photographed and nothing is stored.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Granita finds your Mac on your local network so you can read the diffs it serves.</string>
 	<key>UILaunchScreen</key>

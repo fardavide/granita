@@ -21,6 +21,26 @@ public struct HttpGranitaRepository: GranitaRepository {
         client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .bearer(token))
     }
 
+    /// Built from the pairing the handshake came back with.
+    ///
+    /// The address and the token travel together because they arrived together, and turning a host
+    /// and a port into a URL is this layer's job rather than the composition root's — it is the only
+    /// layer that knows the scheme is `https`, and the only one with a test that can watch where a
+    /// request actually went. The pairing route two files over is addressed the same way and for the
+    /// same reasons.
+    ///
+    /// A host that will not go into a URL addresses nothing rather than trapping, which surfaces as
+    /// a Mac that did not answer — the closest true thing this app can say about a name it cannot
+    /// dial. **An IPv6 address is not one of those**, and used to be: what a v6 literal costs a URL
+    /// is on the address this is built through.
+    public init(mac pairing: PairedMac, transport: any HttpTransport) {
+        self.init(
+            macAt: pairing.address.httpsUrl ?? URL(filePath: "/nowhere"),
+            token: pairing.device.token,
+            transport: transport
+        )
+    }
+
     public func projects() async throws(ApiFailure) -> [Project] {
         try await client.get("/v1/projects", returning: [Project].self)
     }

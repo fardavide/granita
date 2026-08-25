@@ -6,6 +6,7 @@ import NIOCore
 
 import ClientConnectionData
 import ClientConnectionDomain
+import CorePairingDomain
 
 /// The phone's transport, wired to the real router in-process.
 ///
@@ -24,6 +25,14 @@ struct RouterTransport: HttpTransport {
             throw .unreachable(diagnostic: "\(error)")
         }
     }
+
+    /// Nothing, and truthfully so: there is no TLS in this process, so no key was ever presented.
+    ///
+    /// These tests are about the contract — the path, the query, the headers, the body and the
+    /// bytes back — and the pinned session is precisely the part they substitute for. Answering
+    /// with an invented fingerprint would let a round trip claim something about pinning that this
+    /// wiring cannot possibly check.
+    func trustedFingerprint() async -> SpkiFingerprint? { nil }
 }
 
 extension RouterTransport {

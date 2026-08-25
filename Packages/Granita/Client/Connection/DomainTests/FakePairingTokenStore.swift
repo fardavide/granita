@@ -9,7 +9,7 @@ actor FakePairingTokenStore: PairingTokenStore {
 
     private(set) var saved: [ServerInstanceId: PairingToken]
 
-    private let refusal: PairingTokenStoreFailure?
+    private var refusal: PairingTokenStoreFailure?
 
     init(holding saved: [ServerInstanceId: PairingToken] = [:]) {
         self.saved = saved
@@ -21,6 +21,14 @@ actor FakePairingTokenStore: PairingTokenStore {
     init(refusing refusal: PairingTokenStoreFailure) {
         saved = [:]
         self.refusal = refusal
+    }
+
+    /// Stops refusing, so a retry can be told from a first attempt.
+    ///
+    /// `errSecInteractionNotAllowed` is transient, and a fake that could only ever refuse could not
+    /// express the case the retry exists for — it would assert that trying again changes nothing.
+    func recover() {
+        refusal = nil
     }
 
     func token(issuedBy server: ServerInstanceId) async throws(PairingTokenStoreFailure) -> PairingToken? {

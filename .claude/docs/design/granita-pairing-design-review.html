@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<!--
+  Granita pairing design review, 25 August 2026, drawn against 0.0.19.
+
+  Working material for the pairing screens, not documentation. When a section is implemented its
+  frames are deleted from this file, because the built screen is then pinned by its own snapshot
+  baselines and a second drawing of it can only go stale. When the last section goes, this file goes.
+
+  The durable half is ../design.md §5, which keeps every call and the alternative it beat, and
+  ../decisions.md for the two that are expensive to reverse.
+
+  Imported from the Claude Design project "Granita" and flattened: the component's two props are
+  resolved to the values it was returned under (annotations shown, camera ordered first), and the
+  runtime that read them is gone. `assets/pair-qr.svg`, an illustrative QR shown inside the two
+  viewfinder frames, was NOT copied - it lives in the project at
+  https://claude.ai/design/p/7a8bd161-884b-4993-9c88-0b09f1cd625e and the frames using it are the
+  ones this slice deletes.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<style>
+  @media print { body { background: #fff } }
+  a { color: #6B5B3E; text-decoration: underline; text-underline-offset: 2px }
+  a:hover { color: #23211E }
+  body { margin: 0 }
+</style>
+
+<div style="background:#F4F2EE;width:1608px;box-sizing:border-box;padding:80px 64px 200px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;color:#23211E;-webkit-font-smoothing:antialiased">
+<div style="width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:96px">
+
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:end;border-bottom:1px solid #D8D2C6;padding-bottom:40px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">Granita 0.0.19 &nbsp;·&nbsp; pairing &nbsp;·&nbsp; 25 August 2026</div>
+      <h1 style="font-size:52px;line-height:1.04;font-weight:400;letter-spacing:-0.02em;margin:0 0 20px">Two screens, thirteen states,<br>one thing I cannot draw around.</h1>
+      <p style="font-size:19px;line-height:1.55;margin:0;max-width:46ch;color:#4A463F">Nothing here invents a control. Two pushed screens and one result screen, all built from <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ContentUnavailableView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">TextField</span> and buttons. The four open calls are answered first, with what they beat. The last section is the one place a screen cannot help you.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Drawn against</div>
+      <div style="font-size:15px;line-height:1.7;color:#4A463F">iPhone 13 Pro, 390 × 844pt — the layout the snapshot suite asserts.<br>iPad Pro 11″ landscape, 1194 × 834pt, 420pt clamp.<br>Every state named after its case in your §3.<br>The &ldquo;Pairing is not ready yet&rdquo; placeholder did not arrive with the brief; nothing here depends on seeing it.</div>
+    </div>
+  </div>
+
+  <div>
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:28px">Your five open calls, answered</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:#D8D2C6;border:1px solid #D8D2C6">
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">CALL 1 · CAMERA</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Camera first, words beside it — not under it</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Both are full-width buttons on one entry screen. The camera cannot be the first thing, because at a cold pair the Mac is not showing a code yet.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">CALL 2 · COUNTDOWN</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">No countdown on the phone</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">The payload carries no mint time, so any timer the phone draws starts at a lie of up to 120 seconds. Expiry and refusal also share one remedy, so the number buys no decision.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">CALL 3 · PRESENTATION</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Pushed, in the stack discovery already has</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Scanner and words are siblings one level down, so switching between them is a back tap, not a dismissal. A sheet would put the camera in a detent and fight the keyboard.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">CALL 4 · SUCCESS</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Straight in. You are right</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Silence reads as nothing only when the destination looks like the origin. A camera becomes a populated list titled with the Mac's name. One success haptic, no screen.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">AND ONE YOU DID NOT ASK</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">The six words carry no key</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">The QR is a pin; typed words are not, and no Bonjour field can make them one. §6 says what the screen owes the reader instead. This is the finding of the round.</div>
+      </div>
+    </div>
+    <p style="font-size:16.5px;line-height:1.65;color:#4A463F;margin:28px 0 0;max-width:88ch">Your §3.3 question — must the reader also type the Mac's address — is no. The words screen is reachable only from a browse result, so host and port are already in hand, and I would not add a field that lets a reader point the app at an address Bonjour never returned. The input that is genuinely missing from that path is not the address. It is the key.</p>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section one · new</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">Pairing entry</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">The screen that replaces the placeholder. It exists for one reason, and it is not the choice between two credentials: it is the only place that can tell the reader to go and do something on the Mac.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+              <svg width="62" height="46" viewBox="0 0 62 46" fill="none" stroke="#8E8E93" stroke-width="1.6" stroke-linejoin="round" style="margin-bottom:18px"><rect x="1" y="4" width="40" height="26" rx="2.4"/><path d="M1 34h40l-3 5H4z"/><rect x="42" y="14" width="19" height="30" rx="3.4" fill="#fff"/><path d="M49 18.4h5"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Pair with this Mac</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">Open Granita in your Mac's menu bar and choose &ldquo;Pair a device&rdquo;. It shows a QR code and six words. Either one pairs this iPhone.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding-bottom:16px">
+              <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;gap:8px">
+                <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><path d="M2 6.4V3.6A1.6 1.6 0 0 1 3.6 2h2.8M13.6 2h2.8A1.6 1.6 0 0 1 18 3.6v2.8M18 13.6v2.8a1.6 1.6 0 0 1-1.6 1.6h-2.8M6.4 18H3.6A1.6 1.6 0 0 1 2 16.4v-2.8"/><rect x="6.4" y="6.4" width="7.2" height="7.2" rx="0.9"/></svg>
+                Scan the QR Code
+              </div>
+              <div style="height:50px;border-radius:12px;background:rgba(120,120,128,0.12);color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;gap:8px">
+                <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#007AFF" stroke-width="1.7" stroke-linecap="round"><rect x="1.6" y="5" width="16.8" height="10" rx="2"/><path d="M5 8.4h.01M8 8.4h.01M11 8.4h.01M14 8.4h.01M6.4 11.6h7.2"/></svg>
+                Enter the Six Words
+              </div>
+            </div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:30px">MacBook-Pro.local:59144</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;right:14px;top:296px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;text-align:right;line-height:1.35">macbook.and.iphone</div>
+            <div style="position:absolute;left:24px;right:24px;top:669px;height:120px;border:1.5px dashed #3E7C4A;border-radius:14px;opacity:0.55"></div>
+            <div style="position:absolute;left:24px;top:634px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.35">two peers · 50pt each · no link</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.1 a &nbsp;·&nbsp; ready to pair &nbsp;·&nbsp; recommended</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">Mac Studio</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+              <svg width="62" height="46" viewBox="0 0 62 46" fill="none" stroke="#8E8E93" stroke-width="1.6" stroke-linejoin="round" style="margin-bottom:18px"><rect x="1" y="4" width="40" height="26" rx="2.4"/><path d="M1 34h40l-3 5H4z"/><rect x="42" y="14" width="19" height="30" rx="3.4" fill="#fff"/><path d="M49 18.4h5"/><circle cx="51.5" cy="30" r="6.6" fill="#fff" stroke="#3E7C4A"/><path d="M48.6 30.2l2 2 4-4.2" stroke="#3E7C4A" stroke-linecap="round"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Already paired</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">This iPhone paired with Mac Studio on 12 August. Pair again only if the Mac no longer lists it.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding-bottom:16px">
+              <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center">Open Mac Studio</div>
+              <div style="height:50px;border-radius:12px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center">Pair Again</div>
+            </div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:30px">Mac-Studio.local:59144</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:20px;right:20px;top:731px;height:58px;border:1.5px solid #B4453C;border-radius:14px;opacity:0.6"></div>
+            <div style="position:absolute;left:24px;top:640px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#B4453C;line-height:1.35">plain, not bordered — this is the rarer intent</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.1 b &nbsp;·&nbsp; already paired &nbsp;·&nbsp; needs a record change</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">Call 1 &nbsp;·&nbsp; CAMERA OR WORDS</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">Camera first, and the words are not a footnote — they are the other button</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> Keep an entry screen, and put both credentials on it as full-width buttons, 50pt each, camera above. The camera is <em>ordered</em> first, not privileged: it is one motion when the Mac is in front of you, and it is the only path that carries the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">spki</span> (see §6, which is the real reason it leads). The words sit directly beneath it, same width, same weight, same height. No &ldquo;or enter a code&rdquo; link, because a link is a confession that one of the two is for people who failed.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Rejected: opening the camera immediately.</strong> This is the option I wanted, and it does not survive the sequence. The reader taps a Mac in discovery <em>before</em> going to the Mac; at that instant there is no code on screen — the QR only exists after &ldquo;Pair a device&rdquo; is chosen. A viewfinder that opens onto a desktop with nothing to find is a screen that says nothing while asking for the one thing the reader has not done yet. So the entry screen's real job is not the choice. It is the sentence <em>&ldquo;open Granita in your Mac's menu bar and choose Pair a device&rdquo;</em> — the only instruction in the flow that concerns the other machine, and there is nowhere else to put it.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Also rejected: words first.</strong> Your Screens case is real and recurring, but it is recurring <em>for you</em>: one reader who develops the app, on the two devices that make the camera impossible. Ordering the six words above the camera for everyone taxes the ordinary pair — a Mac two feet away — to spare the unusual one, and the unusual one is already spared by a button of equal size that is never more than one tap away. If the same-device case turns out to be common in TestFlight, the fix is not a reorder: it is remembering the last credential this phone used and putting that one on top.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">On the already-paired state, and the Bonjour field.</strong> Draw it, then design it away. The record change is worth making — but the payoff is not this screen, it is the <em>row</em> in discovery: a paired Mac's row can go straight to its worktrees, and then the only readers who ever see &ldquo;Already paired&rdquo; are the ones whose token the Mac has revoked. That is the state worth having, and it is why the second button is plain and not bordered: re-pairing is a repair, not an option. Two costs I would take alongside it: the token store must remember a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">pairedAt</span> date, or the sentence loses &ldquo;on 12 August&rdquo; and gets duller; and the row must not claim &ldquo;Paired&rdquo; from a TXT record alone once §6 is settled.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the Apple TV remote pairing screen. It does not ask you to choose a method. It tells you what to do on the other machine, and then it waits without hurrying you.</p>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section two · new</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The scanner</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">One screen, five states, and the same button in the bottom safe area of every one of them. The scanner is the only place in Granita that is dark in light mode, and it should be — the camera decides that, not the app.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+    <div style="display:flex;gap:32px;align-items:flex-start">
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#0B0B0C">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#fff"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative">
+            <span style="color:#fff;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+              <svg width="52" height="52" viewBox="0 0 20 20" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.4" stroke-linecap="round" style="margin-bottom:16px"><path d="M2 6.4V3.6A1.6 1.6 0 0 1 3.6 2h2.8M13.6 2h2.8A1.6 1.6 0 0 1 18 3.6v2.8M18 13.6v2.8a1.6 1.6 0 0 1-1.6 1.6h-2.8M6.4 18H3.6A1.6 1.6 0 0 1 2 16.4v-2.8"/><rect x="6.4" y="6.4" width="7.2" height="7.2" rx="0.9"/></svg>
+              <div style="font-size:15px;line-height:1.4;color:rgba(255,255,255,0.55);max-width:260px">Waiting for camera access.</div>
+            </div>
+            <div style="height:50px;align-self:stretch;border-radius:12px;background:rgba(255,255,255,0.16);color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:46px">Enter the Six Words</div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4)"></div>
+          <div style="position:absolute;left:47px;top:296px;width:270px;border-radius:14px;background:rgba(242,242,242,0.86);backdrop-filter:blur(20px);font-family:-apple-system,'SF Pro Text',sans-serif;text-align:center;overflow:hidden">
+            <div style="padding:19px 16px 16px">
+              <div style="font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px;margin-bottom:4px">&ldquo;Granita&rdquo; Would Like to Access the Camera</div>
+              <div style="font-size:13px;line-height:1.35;color:#000">Granita reads the pairing code your Mac shows. Nothing is photographed or stored.</div>
+            </div>
+            <div style="height:0.5px;background:rgba(60,60,67,0.29)"></div>
+            <div style="display:flex">
+              <div style="flex:1;padding:11px 0;font-size:17px;color:#007AFF">Don't Allow</div>
+              <div style="width:0.5px;background:rgba(60,60,67,0.29)"></div>
+              <div style="flex:1;padding:11px 0;font-size:17px;font-weight:600;color:#007AFF">Allow</div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#fff;opacity:0.7"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;right:24px;top:744px;height:58px;border:1.5px solid #6BAE79;border-radius:14px"></div>
+            <div style="position:absolute;left:24px;top:716px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#6BAE79;line-height:1.35">the way out is already on screen, behind the alert</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 a &nbsp;·&nbsp; never asked &nbsp;·&nbsp; the usage string is ours</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+              <svg width="58" height="46" viewBox="0 0 24 20" fill="none" stroke="#8E8E93" stroke-width="1.4" stroke-linejoin="round" style="margin-bottom:18px"><path d="M2.6 5.4h4.1l1.5-2.2h6.6l1.5 2.2h4.1a1.6 1.6 0 0 1 1.6 1.6v8.4a1.6 1.6 0 0 1-1.6 1.6H2.6A1.6 1.6 0 0 1 1 15.4V7a1.6 1.6 0 0 1 1.6-1.6z"/><circle cx="12" cy="11" r="3.4"/><path d="M2 18.6 21.4 2.2" stroke-width="1.5"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Camera access is off</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">You do not need it. Your Mac shows six words under the QR code, and typing them pairs this iPhone just as well.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;padding-bottom:16px">
+              <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;gap:8px">
+                <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="1.6" y="5" width="16.8" height="10" rx="2"/><path d="M5 8.4h.01M8 8.4h.01M11 8.4h.01M14 8.4h.01M6.4 11.6h7.2"/></svg>
+                Enter the Six Words
+              </div>
+              <div style="height:50px;border-radius:12px;color:#007AFF;font-size:17px;font-weight:400;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center">Turn the Camera On in Settings</div>
+            </div>
+            <div style="height:30px"></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;right:14px;top:306px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;text-align:right;line-height:1.35">camera.slash</div>
+            <div style="position:absolute;left:20px;right:20px;top:744px;height:58px;border:1.5px solid #B4453C;border-radius:14px;opacity:0.6"></div>
+            <div style="position:absolute;left:24px;top:656px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#B4453C;line-height:1.35">Settings is the demoted action here, not the offer</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 b &nbsp;·&nbsp; refused &nbsp;·&nbsp; the words are the action</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">3.2 a &nbsp;/&nbsp; b &nbsp;·&nbsp; PERMISSION</div>
+      <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">A refusal is a preference, so stop treating it as a fault</h3>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation for the pre-alert state.</strong> Draw the screen the alert lands on, because the reader reads it while deciding. It holds the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">qrcode.viewfinder</span> symbol, one line — &ldquo;Waiting for camera access&rdquo; — and, already, the six-words button. Whichever way they answer, the screen behind the alert had the answer on it. And the alert's own message is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NSCameraUsageDescription</span>, which is copy <em>we</em> write and the one string in this flow that has to earn a tap: it names what is read, and says nothing is photographed or stored.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation for the refusal.</strong> The primary action is <em>Enter the Six Words</em>, and the description does not mention Settings at all: &ldquo;You do not need it.&rdquo; Nothing has gone wrong — the reader declined a camera and there is a second credential built precisely for that. Settings drops to a plain button underneath, named for what it does rather than where it goes: <em>Turn the Camera On in Settings</em>. It stays because a reader who declined by reflex should be able to change their mind in one tap; it is demoted because it leaves the app, and leaving the app to fix a state that has an in-app remedy is the wrong first suggestion.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> A <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ContentUnavailableView</span> whose only action opens Settings — that is the shape this state usually ships in, and it is a dead end that happens to have a button. Also rejected: pre-flighting the permission on the entry screen so the alert appears before the camera is chosen. It asks for a capability the reader may never use, and it burns the one prompt iOS gives you at the moment it is least explicable.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> being offered the stairs when the lift is out — not being told the lift is out.</p>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:36px">
+    <div style="display:flex;gap:35px;align-items:flex-start">
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#0B0B0C">
+          <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,#3A3B3F 0%,#17181A 60%,#0B0B0C 100%)"></div>
+          <div style="position:absolute;left:70px;top:300px;width:250px;height:170px;border-radius:8px;background:#D8D6D1;box-shadow:0 24px 60px rgba(0,0,0,0.5)">
+            <div style="padding:16px;display:flex;justify-content:center"><img src="assets/pair-qr.svg" alt="Pairing QR code on the Mac, seen through the viewfinder" style="width:120px;height:120px;display:block;opacity:0.92" /></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:0;height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#fff"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="position:absolute;left:0;right:0;top:52px;height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <span style="color:#fff;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="position:absolute;left:65px;top:294px;width:260px;height:182px;border-radius:22px;box-shadow:0 0 0 2000px rgba(0,0,0,0.42)"></div>
+          <svg width="260" height="182" viewBox="0 0 260 182" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" style="position:absolute;left:65px;top:294px"><path d="M2 40V18A16 16 0 0 1 18 2h24M218 2h24a16 16 0 0 1 16 16v22M258 142v22a16 16 0 0 1-16 16h-24M42 180H18a16 16 0 0 1-16-16v-22"/></svg>
+          <div style="position:absolute;left:0;right:0;top:508px;text-align:center;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;color:rgba(255,255,255,0.9);padding:0 50px;line-height:1.4">Point this at the QR code on your Mac.</div>
+          <div style="position:absolute;left:24px;right:24px;bottom:46px;height:50px;border-radius:12px;background:rgba(255,255,255,0.16);color:#fff;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="1.6" y="5" width="16.8" height="10" rx="2"/><path d="M5 8.4h.01M8 8.4h.01M11 8.4h.01M14 8.4h.01M6.4 11.6h7.2"/></svg>
+            Enter the Six Words
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#fff;opacity:0.7"></div></div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 c &nbsp;·&nbsp; looking</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#0B0B0C">
+          <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,#3A3B3F 0%,#17181A 60%,#0B0B0C 100%)"></div>
+          <div style="position:absolute;left:88px;top:318px;width:214px;height:140px;border-radius:6px;background:#C9C7C2;box-shadow:0 24px 60px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center">
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9px;color:rgba(0,0,0,0.45);text-align:center;line-height:1.5">▚▚▞▚▞▞▚▞<br>▞▚▞▚▚▞▚▞<br>▚▞▞▚▞▚▞▚</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:0;height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#fff"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="position:absolute;left:0;right:0;top:52px;height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <span style="color:#fff;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="position:absolute;left:65px;top:294px;width:260px;height:182px;border-radius:22px;box-shadow:0 0 0 2000px rgba(0,0,0,0.42)"></div>
+          <svg width="260" height="182" viewBox="0 0 260 182" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="3.4" stroke-linecap="round" style="position:absolute;left:65px;top:294px"><path d="M2 40V18A16 16 0 0 1 18 2h24M218 2h24a16 16 0 0 1 16 16v22M258 142v22a16 16 0 0 1-16 16h-24M42 180H18a16 16 0 0 1-16-16v-22"/></svg>
+          <div style="position:absolute;left:44px;right:44px;top:500px;display:flex;justify-content:center">
+            <div style="display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:20px;background:rgba(28,28,30,0.82);backdrop-filter:blur(12px);font-family:-apple-system,'SF Pro Text',sans-serif;font-size:14px;color:#fff;line-height:1.3">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#FF9F0A" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.9v3.4M8 10.8v.6"/></svg>
+              That is not a Granita pairing code.
+            </div>
+          </div>
+          <div style="position:absolute;left:24px;right:24px;bottom:46px;height:50px;border-radius:12px;background:rgba(255,255,255,0.16);color:#fff;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="1.6" y="5" width="16.8" height="10" rx="2"/><path d="M5 8.4h.01M8 8.4h.01M11 8.4h.01M14 8.4h.01M6.4 11.6h7.2"/></svg>
+            Enter the Six Words
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#fff;opacity:0.7"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:556px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#6BAE79;line-height:1.4">replaces the hint, not the screen ·<br>throttled to one per 2s · camera keeps running</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 d &nbsp;·&nbsp; a QR that is not ours</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#0B0B0C">
+          <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 40%,#26272A 0%,#131416 60%,#0B0B0C 100%)"></div>
+          <div style="position:absolute;left:70px;top:300px;width:250px;height:170px;border-radius:8px;background:#8E8D89;opacity:0.5">
+            <div style="padding:16px;display:flex;justify-content:center"><img src="assets/pair-qr.svg" alt="The pairing code, found" style="width:120px;height:120px;display:block;opacity:0.5" /></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:0;height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#fff"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="position:absolute;left:0;right:0;top:52px;height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <span style="color:rgba(255,255,255,0.3);font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <svg width="150" height="150" viewBox="0 0 150 150" fill="none" style="position:absolute;left:120px;top:310px"><circle cx="75" cy="75" r="16" stroke="rgba(255,255,255,0.25)" stroke-width="3.4"/><path d="M75 59a16 16 0 0 1 16 16" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>
+          <div style="position:absolute;left:0;right:0;top:500px;text-align:center;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:17px;font-weight:600;color:#fff;letter-spacing:-0.2px">Pairing with MacBook Pro</div>
+          <div style="position:absolute;left:0;right:0;top:528px;text-align:center;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:14px;color:rgba(255,255,255,0.55)">Checking the Mac, then spending the code.</div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#fff;opacity:0.7"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:112px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#6BAE79;line-height:1.4">back disabled while a code is in flight</div>
+            <div style="position:absolute;left:24px;top:600px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#6BAE79;line-height:1.4">ProgressView() — this one finishes,<br>so a spinner is honest · six-words button gone</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 e &nbsp;·&nbsp; found, and being spent</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">Call 3 &nbsp;·&nbsp; PRESENTATION, AND WHAT THE VIEWFINDER OWES</div>
+        <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">A pushed screen, because the two credentials have to be siblings</h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> Push it, in the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">NavigationStack</span> discovery already has. Four screens, one spine: <em>Macs → this Mac → Scan or Words → the result</em>. The scanner and the six-word field are then siblings at the same depth, and moving between them is a back tap and a second tap — a reader who cannot scan does not have to dismiss anything, and no state is ever behind a state.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: a sheet.</strong> Detents are for content you consult while the screen underneath still matters. Here it does not, and the two things a sheet is good at both work against us: it can be dragged away mid-spend, and it leaves the entry screen visible behind a viewfinder, which reads as though the camera were a widget on that screen rather than the step after it. On the six-word screen the objection is plainer — a keyboard and a detent argue about the same 300pt.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">fullScreenCover</span>.</strong> It buys 96pt of camera and costs the two things the flow needs most: the Mac's name in a title bar, and a success that pushes rather than dismisses-then-pushes. Do not hide the navigation bar over the viewfinder either. It is translucent, it is where the reader looks to confirm <em>which</em> Mac they are pointing at, and the title is the only place that fact appears once the camera fills the screen.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The wrong-QR state is a line, not an interruption.</strong> An alert would stop the camera and demand a tap for something that recurs every time the phone drifts over a sticker on the lid. So the hint line under the reticle is replaced by a capsule for two seconds — <em>&ldquo;That is not a Granita pairing code.&rdquo;</em> — throttled to one appearance per two seconds, and the scanner never stops. Note it does not say <em>which</em> code it found: nothing on the phone should imply it read a stranger's QR back to them.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">One behaviour to build with the spend.</strong> The moment a Granita link is found, the camera session stops, the preview dims and freezes, and the back button is disabled until the outcome lands. A code that works once must not be abandonable halfway by an edge swipe — and freezing the frame is also the only acknowledgement the reader gets that the phone saw the code at all.</p>
+      </div>
+      <div>
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:22px 24px 24px;margin-bottom:24px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Call 2 · the countdown, in full</div>
+          <div style="font-size:15.5px;line-height:1.6;color:#4A463F">The phone learns a code exists at the instant it reads it, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">granita://pair?host=&amp;port=&amp;code=&amp;spki=</span> carries no mint time. So a phone-side 2:00 can be up to 120 seconds wrong, and it is wrong in the dangerous direction: it reads 1:47 while the true remaining is nil, and the reader trusts it.<br><br>There is also nothing to decide with the number. Expiry and a code that never existed produce the same sentence and the same remedy — get a new code — so a countdown cannot change what anybody does. The Mac's countdown is different: the Mac minted the code, so its timer is true, and it is standing in front of the person.<br><br><strong style="font-weight:400;color:#23211E">If you want a clock on the phone anyway,</strong> the honest version is not a countdown but a consequence: after a refusal, the words screen keeps what was typed and says the code is stale. That is the same information, arriving when it is actionable.</div>
+        </div>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the Wi-Fi QR scanner in Camera: you point, it recognises, and the recognition is the whole event. Nothing pulses, nothing counts, nothing asks you to confirm what you just aimed at.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section three · new</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The six words</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">One field, not six boxes. The reader is copying a phrase off a screen across the room, and the screen's job is to show them what it understood — in the same shape the Mac showed it.</p>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:36px">
+    <div style="display:flex;gap:35px;align-items:flex-start">
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:457px;box-sizing:border-box;font-family:-apple-system,'SF Pro Text',sans-serif;padding:28px 24px 0;display:flex;flex-direction:column">
+            <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;color:#000;margin-bottom:8px">The six words on your Mac</div>
+            <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);margin-bottom:22px">Under the QR code. Spaces, hyphens or the middle dots — type it however you read it.</div>
+            <div style="height:52px;border-radius:11px;background:rgba(118,118,128,0.12);display:flex;align-items:center;padding:0 14px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;color:rgba(60,60,67,0.3)">
+              <span style="width:1.5px;height:22px;background:#007AFF;margin-right:2px"></span>six words
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:8px 4px 0;font-size:13px;color:rgba(60,60,67,0.6)"><span>&nbsp;</span><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px">0 of 6</span></div>
+            <div style="flex:1"></div>
+            <div style="font-size:11.5px;line-height:1.4;color:rgba(60,60,67,0.3);padding:0 4px 14px">The QR code also carries your Mac's key. Typed words trust the Mac that answers, so use them on a network you trust.</div>
+            <div style="height:50px;border-radius:12px;background:rgba(120,120,128,0.12);color:rgba(60,60,67,0.3);font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:18px">Pair</div>
+          </div>
+          <div style="height:291px;box-sizing:border-box;background:#D1D5DB;font-family:-apple-system,'SF Pro Text',sans-serif;padding:8px 3px 0;display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;gap:6px;justify-content:center">
+              <span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#000;box-shadow:0 1px 0 rgba(0,0,0,0.3)">q</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">w</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">e</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">r</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">t</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">y</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">u</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">i</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">o</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">p</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;padding:0 18px">
+              <span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">a</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">s</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">d</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">f</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">g</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">h</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">j</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">k</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">l</span>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;align-items:center">
+              <span style="width:42px;height:42px;background:#ADB3BE;border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(0,0,0,0.3)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#000" stroke-width="1.4" stroke-linejoin="round"><path d="M8 2.4 2.6 8h2.6v5.2h5.6V8h2.6z"/></svg></span>
+              <span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">z</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">x</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">c</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">v</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">b</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">n</span><span style="flex:1;max-width:35px;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">m</span>
+              <span style="width:42px;height:42px;background:#ADB3BE;border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(0,0,0,0.3)"><svg width="19" height="15" viewBox="0 0 20 16" fill="none" stroke="#000" stroke-width="1.4"><path d="M6.4 2.2h11.4a1.4 1.4 0 0 1 1.4 1.4v8.8a1.4 1.4 0 0 1-1.4 1.4H6.4L1.2 8z"/><path d="M9.6 6l4.4 4M14 6l-4.4 4" stroke-linecap="round"/></svg></span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;padding:0 3px">
+              <span style="width:44px;height:42px;background:#ADB3BE;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 1px 0 rgba(0,0,0,0.3)">123</span>
+              <span style="width:44px;height:42px;background:#ADB3BE;border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(0,0,0,0.3)"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#000" stroke-width="1.2"><circle cx="8" cy="8" r="6.4"/><path d="M1.6 8h12.8M8 1.6c3 3.4 3 9 0 12.8M8 1.6c-3 3.4-3 9 0 12.8"/></svg></span>
+              <span style="flex:1;height:42px;background:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px;color:rgba(0,0,0,0.55);box-shadow:0 1px 0 rgba(0,0,0,0.3)">space</span>
+              <span style="width:82px;height:42px;background:#ADB3BE;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px;color:rgba(0,0,0,0.4);box-shadow:0 1px 0 rgba(0,0,0,0.3)">Go</span>
+            </div>
+          </div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:336px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">monospaced field, matching the Mac's 13pt<br>autocapitalisation off · autocorrect off<br>smart dashes off</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.3 &nbsp;·&nbsp; empty &nbsp;·&nbsp; keyboard up on appear</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:457px;box-sizing:border-box;font-family:-apple-system,'SF Pro Text',sans-serif;padding:28px 24px 0;display:flex;flex-direction:column">
+            <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;color:#000;margin-bottom:8px">The six words on your Mac</div>
+            <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);margin-bottom:22px">Under the QR code. Spaces, hyphens or the middle dots — type it however you read it.</div>
+            <div style="min-height:52px;border-radius:11px;background:rgba(118,118,128,0.12);display:flex;align-items:center;padding:8px 14px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;color:#000;line-height:1.35;flex-wrap:wrap">Civic walnut-ember branch<span style="width:1.5px;height:22px;background:#007AFF;margin-left:2px"></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 4px 0;gap:10px">
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;color:rgba(60,60,67,0.6);line-height:1.45">civic · walnut · ember</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6);flex:0 0 auto">3 of 6</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;padding:10px 4px 0">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#C93A31" stroke-width="1.5" stroke-linecap="round" style="flex:0 0 auto;margin-top:1px"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.9v3.4M8 10.8v.6"/></svg>
+              <span style="font-size:13px;line-height:1.35;color:#C93A31">&ldquo;branch&rdquo; is not one of the words. Check it against your Mac.</span>
+            </div>
+            <div style="flex:1"></div>
+            <div style="height:50px;border-radius:12px;background:rgba(120,120,128,0.12);color:rgba(60,60,67,0.3);font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:18px">Pair</div>
+          </div>
+          <div style="height:291px;background:#D1D5DB;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(0,0,0,0.32);letter-spacing:0.06em">the same keyboard</div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;right:24px;top:299px;height:26px;border:1.5px solid #3E7C4A;border-radius:8px;opacity:0.5"></div>
+            <div style="position:absolute;left:24px;top:366px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">the echo, in the Mac's own format —<br>what you typed above, what we understood below</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.3 &nbsp;·&nbsp; partially typed, one word not in the list</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:457px;box-sizing:border-box;font-family:-apple-system,'SF Pro Text',sans-serif;padding:28px 24px 0;display:flex;flex-direction:column">
+            <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;color:#000;margin-bottom:8px">The six words on your Mac</div>
+            <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);margin-bottom:22px">Under the QR code. Spaces, hyphens or the middle dots — type it however you read it.</div>
+            <div style="min-height:52px;border-radius:11px;background:rgba(118,118,128,0.12);display:flex;align-items:center;padding:8px 14px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;color:#000;line-height:1.4;flex-wrap:wrap">Civic walnut-ember lantern harbour quill<span style="width:1.5px;height:22px;background:#007AFF;margin-left:2px"></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 4px 0;gap:10px">
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;color:rgba(60,60,67,0.6);line-height:1.45">civic · walnut · ember · lantern · harbour · quill</span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#3E7C4A;flex:0 0 auto">6 of 6</span>
+            </div>
+            <div style="flex:1"></div>
+            <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:18px">Pair</div>
+          </div>
+          <div style="height:291px;background:#D1D5DB;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <div style="width:82px;height:42px;background:#007AFF;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#fff;box-shadow:0 1px 0 rgba(0,0,0,0.3)">Go</div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;color:rgba(0,0,0,0.4);letter-spacing:0.05em;text-align:center;line-height:1.4">submitLabel(.go) lights at six words<br>and does what Pair does</div>
+          </div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:412px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">no word count in the button, no &ldquo;ready&rdquo; label —<br>the button turning blue is the whole announcement</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.3 &nbsp;·&nbsp; six words entered</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">3.3 &nbsp;·&nbsp; THE FIELD</div>
+        <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">One field, and an echo in the Mac's own format</h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> A single <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">TextField</span>, monospaced at body size to match the Mac's 13pt mono, with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.textInputAutocapitalization(.never)</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.autocorrectionDisabled()</span>, focus on appear, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.submitLabel(.go)</span>. Beneath it, two lines that do the actual work: the words the phone recognised, joined by middle dots exactly as the Mac joins them, and a count. The reader's eye can then compare the phone's line with the Mac's line character for character, which is a different and easier task than proofreading their own typing.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The field must not correct anything.</strong> Your server lowercases and accepts spaces, hyphens and middle dots, so the field has nothing to fix — and the capitalised first word you predicted is not an error to be caught, it is a keystroke the normaliser eats. Two settings matter more than they look: autocorrect will happily turn a word from a 128-word list into an English word that is not in it, and smart punctuation turns a typed hyphen into an en dash. If your normaliser does not accept en dashes, that is a two-character fix in the parser and I would do it there as well as here, because the reader can also paste.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The unknown-word line needs the word list on the phone.</strong> It is the one thing here you cannot build today: flagging <em>&ldquo;branch&rdquo; is not one of the words</em> means the client ships the same 128 words the Mac uses. It is worth it — it stops a wasted round trip, and a wasted round trip costs more than it looks now that five failures in a minute lock the address out. If you would rather not duplicate the list, delete that line and keep the count; nothing else in the screen changes.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: six boxes.</strong> Six auto-advancing fields is the shape people copy from SMS codes, and it is wrong twice here. It is not a stock control, so it would be the one hand-built thing in the app; and it makes a phrase into a form. Words are variable-length, the reader is reading them in a line, and paste — which is how the same-device case will really be solved — has to land in one place.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">Also rejected: a word-by-word suggestion bar.</strong> Autocompleting from the 128 words would be quick to build and it would be a small oracle: it tells anyone holding the phone which words are candidates. The list is public, so this leaks nothing about the code — but it is the kind of convenience that ends up filling in words the reader never read, and a phrase they did not verify is a phrase they cannot correct.</p>
+      </div>
+      <div>
+        <div style="border:1px solid #D8D2C6;background:#FBFAF7;padding:20px 22px 22px;margin-bottom:22px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">3.4 d &nbsp;·&nbsp; refused, drawn where it happens</div>
+          <div style="width:342px;background:#fff;border:1px solid rgba(60,60,67,0.18);border-radius:12px;padding:16px 14px;font-family:-apple-system,'SF Pro Text',sans-serif">
+            <div style="min-height:52px;border-radius:11px;background:rgba(118,118,128,0.12);display:flex;align-items:center;padding:8px 14px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;color:#000;line-height:1.4;flex-wrap:wrap">Civic walnut-ember lantern harbour quill</div>
+            <div style="display:flex;gap:6px;align-items:flex-start;padding:12px 4px 0">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#C93A31" stroke-width="1.5" stroke-linecap="round" style="flex:0 0 auto;margin-top:1px"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.9v3.4M8 10.8v.6"/></svg>
+              <span style="font-size:13px;line-height:1.35;color:#C93A31">That code is no longer valid. On your Mac, choose &ldquo;Pair a device&rdquo; for a new one.</span>
+            </div>
+            <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-top:16px">Pair</div>
+          </div>
+          <div style="font-size:14.5px;line-height:1.6;color:#6A655C;margin-top:16px">A refusal is the one failure that does not get a screen. It arrives back on the field that produced it, the typing is kept, and the button stays live — because the remedy is a new code and a re-read, and both of those happen here. One sentence covers expired and never-existed, and it names neither.</div>
+        </div>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> reading a phone number back to somebody. You say it, they repeat it, and the repeating is what makes it safe.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section four · new</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">Spending the code</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">One result screen, five outcomes on it, and three of them with no button at all. Success is the sixth and it has no screen. The sentence &ldquo;the code was not used&rdquo; appears twice and nowhere else, because only this screen knows it.</p>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:36px">
+    <div style="display:flex;gap:35px;align-items:flex-start">
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:40px">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.4" stroke-linejoin="round" style="margin-bottom:18px"><rect x="1.4" y="3.4" width="21.2" height="14" rx="2"/><path d="M1.4 20.6h21.2"/><path d="M12 13.6V7.4M9 10.4l3-3 3 3" stroke-linecap="round"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Your Mac needs a newer Granita</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">MacBook Pro is running an older version than this iPhone can talk to. Update Granita on the Mac, then pair again. The code was not used.</div>
+            </div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.45;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:44px">/v1/health · contract: Mac offers 4,<br>this build requires 5</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:560px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">no action: nothing on the phone helps</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.4 b &nbsp;·&nbsp; the Mac is behind</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+              <svg width="46" height="52" viewBox="0 0 20 24" fill="none" stroke="#8E8E93" stroke-width="1.4" stroke-linejoin="round" style="margin-bottom:18px"><rect x="2.4" y="1.4" width="15.2" height="21.2" rx="2.6"/><path d="M8.2 3.6h3.6"/><path d="M10 18.4V9.6M7 12.6l3-3 3 3" stroke-linecap="round"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">This iPhone needs a newer Granita</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">MacBook Pro is running a newer version than this build can talk to. Install the latest Granita from TestFlight, then pair again. The code was not used.</div>
+            </div>
+            <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:22px">Open TestFlight</div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.45;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:44px">/v1/health · contract: Mac offers 6,<br>this build speaks 5</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:664px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#B4453C;line-height:1.45">only if the URL opens TestFlight on a<br>device that has it — otherwise delete it</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.4 c &nbsp;·&nbsp; the phone is behind</div>
+      </div>
+      <div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+          <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+          <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+          </div>
+          <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:40px">
+              <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.4" stroke-linecap="round" style="margin-bottom:18px"><circle cx="11" cy="13" r="9.6"/><path d="M11 7.6V13l3.6 2.4"/><path d="M21.6 3.4v4.2M21.6 9.8v.5"/></svg>
+              <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Too many attempts</div>
+              <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">MacBook Pro has stopped taking pairing codes for a minute. Wait, then ask your Mac for a new code.</div>
+            </div>
+            <div style="height:44px"></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+          <div style="position:absolute;inset:0;pointer-events:none;display:block">
+            <div style="position:absolute;left:24px;top:552px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">no action, no countdown, no diagnostic —<br>waiting is the whole remedy</div>
+          </div>
+        </div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.4 e &nbsp;·&nbsp; rate limited</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:840px 1fr;gap:60px;align-items:start">
+      <div style="display:flex;gap:32px;align-items:flex-start">
+        <div>
+          <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+            <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+            <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+              <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+            </div>
+            <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+                <svg width="54" height="46" viewBox="0 0 26 22" fill="none" stroke="#8E8E93" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:18px"><path d="M1.4 6.6a16 16 0 0 1 17.4-2.8M4.6 10.8a11.4 11.4 0 0 1 10.6-1.2M8 15a6.6 6.6 0 0 1 5 0"/><circle cx="10.6" cy="19.2" r="1.3" fill="#8E8E93" stroke="none"/><path d="M23 4v8.4M23 15.6v.6"/></svg>
+                <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Could not reach MacBook Pro</div>
+                <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:300px">It was on the network a moment ago but did not answer. Trying again usually works.</div>
+              </div>
+              <div style="height:50px;border-radius:12px;background:#007AFF;color:#fff;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-bottom:22px">Try Again</div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.45;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:44px">Could not connect to the server.<br>NSURLErrorDomain −1004</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+            <div style="position:absolute;inset:0;pointer-events:none;display:block">
+              <div style="position:absolute;left:24px;top:806px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#3E7C4A;line-height:1.45">caption2 · monospaced · tertiary · selectable</div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.4 f &nbsp;·&nbsp; unreachable</div>
+        </div>
+        <div>
+          <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#fff">
+            <div style="height:52px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 4px;font-family:-apple-system,'SF Pro Text',sans-serif;font-size:15px;font-weight:600;color:#000"><span>9:41</span><span style="letter-spacing:0.08em;font-size:12px">▮▮▮ ᯤ ▰</span></div>
+            <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;font-family:-apple-system,'SF Pro Text',sans-serif;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+              <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+            </div>
+            <div style="height:748px;box-sizing:border-box;display:flex;flex-direction:column;font-family:-apple-system,'SF Pro Text',sans-serif;padding:0 24px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:20px">
+                <svg width="54" height="50" viewBox="0 0 26 24" fill="none" stroke="#8E8E93" stroke-width="1.5" stroke-linejoin="round" style="margin-bottom:18px"><circle cx="8.6" cy="8.6" r="4.6"/><path d="M12 11.6 21 20.6" stroke-linecap="round"/><path d="M17.6 16.2l2.6-2.6M20.2 18.8l2.2-2.2" stroke-linecap="round"/><path d="M2.2 21.8 22.8 2.2" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <div style="font-size:22px;font-weight:600;letter-spacing:-0.4px;margin-bottom:8px;color:#000">Paired, but the key was not saved</div>
+                <div style="font-size:15px;line-height:1.4;color:rgba(60,60,67,0.6);max-width:306px">MacBook Pro now lists this iPhone, but this iPhone could not store the key it was given — so every request it makes will be refused.<br><br>On the Mac, open Granita ▸ Settings ▸ Devices, remove this iPhone, then pair again.</div>
+              </div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.45;color:rgba(60,60,67,0.3);text-align:center;padding-bottom:44px">Keychain OSStatus −25308 ·<br>errSecInteractionNotAllowed</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center"><div style="width:140px;height:5px;border-radius:3px;background:#000;opacity:0.85"></div></div>
+            <div style="position:absolute;inset:0;pointer-events:none;display:block">
+              <div style="position:absolute;left:24px;top:600px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:9.5px;letter-spacing:0.05em;color:#B4453C;line-height:1.45">no button — and see the argument:<br>one condition would earn one</div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.4 g &nbsp;·&nbsp; paired, key not saved</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;color:#8A8378;margin-bottom:10px">3.4 &nbsp;·&nbsp; OUTCOMES, AND CALL 4</div>
+        <h3 style="font-size:26px;font-weight:400;line-height:1.2;margin:0 0 18px;letter-spacing:-0.01em">One screen, and a button only where the phone can act</h3>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> One destination for a spent credential, five appearances of it. Three carry no action, and that is the whole reason the other two are believable: <em>Try Again</em> re-runs the health probe and the spend, <em>Open TestFlight</em> leaves the app. The two contract states say &ldquo;the code was not used&rdquo; because your handshake refuses before spending, and the reader cannot know that from anywhere else — it is the difference between walking back to the Mac and just tapping again.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Call 4: straight in, and you are right.</strong> No confirmation screen. On success the phone plays a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.success</span> notification haptic and the stack replaces the pairing screens with the worktree list, titled with the Mac's name. A silent success reads as nothing having happened when the destination resembles the origin; here a frozen viewfinder becomes a populated list, which is the loudest thing that has happened in the app so far. The haptic is not decoration — it is what tells the reader who looked away that the phone finished. And the replacement matters: <em>back</em> must return to the Mac list, never to a scanner holding a spent code.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Why g gets its own screen.</strong> Every other failure says &ldquo;try again here&rdquo;. This one says &ldquo;go and delete something on the Mac&rdquo;, and it is the only screen in the app that asks the reader to repair the <em>other</em> machine. It also has to state a fact no other screen states — the Mac now believes this iPhone is paired — because without it, the advice sounds like superstition. Two behaviours belong with it: the phone must discard the token it could not store rather than keep it in memory and pretend, and the screen must not offer <em>Pair Again</em>, which would leave a second device record beside the orphan.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">The one condition that would earn g a button.</strong> If the use case can hold the token in memory and retry only the Keychain write, then <em>Try Again</em> becomes this screen's primary action and the trip to the Mac drops to the second sentence — worth it, because the common cause of <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">errSecInteractionNotAllowed</span> is transient. I have drawn it without the button because I do not know that the token survives that far, and a button that cannot work is the defect you named. Tell me it can and this screen changes by one control.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> Alerts for all of these — an alert would dismiss to a live viewfinder that immediately re-reads the same dead QR, which is a loop. Also rejected: a &ldquo;Contact support&rdquo; or bug-report action on g; the reader is the developer, and the selectable <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">OSStatus</span> is the whole bug report.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;padding:14px 18px;background:#FBFAF7;border:1px solid #D8D2C6"><strong style="font-weight:400">A premise to check before the rate-limit copy ships.</strong> Your §3.4 e says &ldquo;from this address&rdquo;, and the Mac review found the limiter keyed on <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">request.head.authority</span> — the address the phone dialled, which is the same string for every device. If that is still true, five failures from anywhere lock out everyone, and the copy must stay device-neutral, as drawn. If you key it per peer, the sentence can say &ldquo;from this iPhone&rdquo; and be kinder.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a receipt. It tells you what happened, whether it cost you anything, and the one thing left to do.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Section five · the iPad</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">420pt, camera included</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">The clamp holds, and it holds for the viewfinder too. Nobody lifts an 11-inch iPad to aim it; they turn it toward the Mac. A preview that fills 1194pt promises a gesture the reader will not make.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+    <div>
+      <div style="width:952px;height:665px;border:1px solid rgba(60,60,67,0.22);border-radius:16px;overflow:hidden;background:#F2F2F7;position:relative;font-family:-apple-system,'SF Pro Text',sans-serif">
+        <div style="height:34px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:13px;font-weight:600;color:#000"><span>9:41&nbsp;&nbsp;Mon 25 Aug</span><span style="letter-spacing:0.08em;font-size:11px">▮▮▮ ᯤ ▰</span></div>
+        <div style="height:44px;box-sizing:border-box;display:flex;align-items:center;padding:0 20px;position:relative;border-bottom:0.5px solid rgba(60,60,67,0.18)">
+          <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:2px;letter-spacing:-0.2px"><span style="font-size:22px;font-weight:500;line-height:1">‹</span>Macs</span>
+          <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000;letter-spacing:-0.2px">MacBook Pro</span>
+        </div>
+        <div style="height:587px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+          <div style="width:335px;display:flex;flex-direction:column;align-items:center">
+            <div style="width:335px;height:250px;border-radius:16px;overflow:hidden;position:relative;background:radial-gradient(120% 90% at 50% 45%,#3A3B3F 0%,#17181A 65%,#0B0B0C 100%)">
+              <div style="position:absolute;left:88px;top:64px;width:160px;height:110px;border-radius:5px;background:#D8D6D1;display:flex;align-items:center;justify-content:center"><img src="assets/pair-qr.svg" alt="Pairing QR code seen through the iPad viewfinder" style="width:84px;height:84px;display:block;opacity:0.92" /></div>
+              <svg width="196" height="140" viewBox="0 0 196 140" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" style="position:absolute;left:70px;top:55px"><path d="M2 32V16A14 14 0 0 1 16 2h20M160 2h20a14 14 0 0 1 14 14v16M194 108v16a14 14 0 0 1-14 14h-20M36 138H16A14 14 0 0 1 2 124v-16"/></svg>
+            </div>
+            <div style="font-size:15px;color:rgba(60,60,67,0.6);margin-top:14px;text-align:center;line-height:1.4">Point this at the QR code on your Mac.</div>
+            <div style="width:335px;height:46px;border-radius:12px;background:rgba(120,120,128,0.12);color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.2px;display:flex;align-items:center;justify-content:center;margin-top:20px">Enter the Six Words</div>
+          </div>
+        </div>
+        <div style="position:absolute;inset:0;pointer-events:none;display:block">
+          <div style="position:absolute;left:308px;top:78px;bottom:14px;width:335px;border-left:1.5px dashed #3E7C4A;border-right:1.5px dashed #3E7C4A;opacity:0.7"></div>
+          <div style="position:absolute;left:308px;top:52px;width:335px;text-align:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10px;letter-spacing:0.05em;color:#3E7C4A">420pt clamp · 335pt at this scale</div>
+        </div>
+      </div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-top:12px">3.2 c on iPad Pro 11″ landscape · 1194 × 834pt, drawn at 0.8</div>
+    </div>
+    <div>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> The preview is a 420pt-wide, 4:3 rounded card inside the clamp, on the normal grouped background — the iPad scanner does <em>not</em> go dark. Dark is right on the phone because the camera fills the screen and the app disappears behind it. On iPad the camera is one element among several, and blacking out 1194pt to host a 420pt card makes a modal out of a pushed screen.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">Detection does not suffer. The metadata output reads the whole capture frame, not the preview, so a smaller preview costs the reader aim and nothing else — and aim is easier at arm's length on a stand than it is with the whole slab raised.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected.</strong> A full-bleed iPad viewfinder with the controls floating over it: it is the phone layout scaled to a surface nobody holds that way, and it breaks the one rule these pre-pairing screens share — that everything before a paired Mac lives in a 420pt column, title included.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px">The six-word screen needs no iPad-specific drawing: the same 420pt column, the field at the top of it, and the keyboard takes the bottom third. It is also the path most iPad readers will take, since an iPad on a stand next to a Mac is exactly the geometry that makes scanning tedious.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the same screen you used on the phone, sitting still in a bigger room.</p>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:36px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#B4453C;margin-bottom:14px">Section six · where a premise broke</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">The six words carry no key</h2>
+      </div>
+      <p style="font-size:17px;line-height:1.6;margin:0;color:#4A463F">This is the finding I would most like to be wrong about, and it is the only place in the brief where a screen cannot carry the difference. Settle it before the words screen is built, because the answer could change call 1.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:60px;align-items:start">
+    <div>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch">You wrote that the two credentials redeem the same pairing, and that the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">spki</span> in the link is a security boundary rather than a convenience. Both are true, and together they mean the credentials are not peers. The QR carries the fingerprint over a channel nobody on the network can write to: your Mac's own screen. The six words carry a code and nothing else — no host, no port, no key — and the host and port they borrow come from a Bonjour record any device on the LAN can publish.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch">So the words path has to pin the certificate it is handed on first contact. That is trust on first use: whoever answers for <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">MacBook-Pro.local</span> at that moment becomes the pinned Mac, and a device that answers first learns the code the instant the phone sends it. The QR path has no such window, which is precisely what the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">spki</span> parameter is for.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">What I am not recommending: putting the spki in the TXT record.</strong> It would fix the already-paired state and it would look like it fixes this, and it does not. A TXT record is in-band — an impostor advertises its own key alongside its own host, and the phone pins exactly what the attacker chose. One field, two features, and only one of them real. Add the instance identifier for the paired-row work if you want it; do not let the key ride along.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">What I recommend.</strong> Keep the six words exactly as drawn, accept trust on first use for that path, and let the design carry the asymmetry in two cheap places instead of one expensive one. First, the camera is ordered above the words on the entry screen — which is call 1, and this is its real argument. Second, one caption at the bottom of the six-word screen, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.caption2</span>, tertiary, no icon and no box: <em>&ldquo;The QR code also carries your Mac's key. Typed words trust the Mac that answers, so use them on a network you trust.&rdquo;</em> That is a true sentence about a pin, not the plaintext warning you retired — the connection is TLS either way.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: a fingerprint comparison.</strong> The Mac shows four characters of the key beside the words, the phone shows what it saw, the reader confirms. It is the SSH ceremony, it is buildable, and I would not ship it. It puts a security decision in front of the one reader who has already been pushed onto the harder path, at the moment they are squinting across a room — and comparisons like that get approved, not performed. A check nobody performs is worse than an honest sentence, because it launders the risk.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;max-width:82ch;color:#6A655C"><strong style="font-weight:400;color:#23211E">And if the client refuses to pair without an spki today,</strong> then the six-word screen cannot ship at all, the permission-refused state has no way out, and camera-first stops being a preference and becomes the only path. That is why this is the first thing to answer.</p>
+    </div>
+    <div>
+      <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:24px 26px 26px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:18px">What I need from you, in order</div>
+        <div style="display:flex;flex-direction:column;gap:14px;font-size:15px;line-height:1.55;color:#4A463F">
+          <div><strong style="font-weight:400;color:#23211E">1.</strong> What does the words path pin? Trust on first use, or does it refuse without an <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">spki</span>? Blocks §3.3 and could overturn call 1.</div>
+          <div><strong style="font-weight:400;color:#23211E">2.</strong> Can the phone ship the 128 words? If not, the unknown-word line goes and the count stays.</div>
+          <div><strong style="font-weight:400;color:#23211E">3.</strong> Can the pairing use case retry only the Keychain write? If yes, state g gets a primary action.</div>
+          <div><strong style="font-weight:400;color:#23211E">4.</strong> Is the rate limiter keyed per device or per dialled address? The sentence differs.</div>
+          <div><strong style="font-weight:400;color:#23211E">5.</strong> Does a TestFlight URL open reliably on a tester's device? Otherwise 3.4 c loses its button.</div>
+          <div><strong style="font-weight:400;color:#23211E">6.</strong> Will the token store keep a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">pairedAt</span> date? One field, one better sentence in 3.1 b.</div>
+          <div><strong style="font-weight:400;color:#23211E">7.</strong> Does the normaliser accept an en dash? iOS smart punctuation will produce one from a typed hyphen.</div>
+        </div>
+        <div style="height:1px;background:#D8D2C6;margin:22px 0 18px"></div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Not drawn, on purpose</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#6A655C">No countdown, anywhere on the phone. No manual address entry. No confirmation screen after success. No &ldquo;Recent&rdquo; or &ldquo;Other Macs&rdquo; in discovery, no Mac-side approval surface, and nothing from v2.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid #D8D2C6;padding-top:32px;display:grid;grid-template-columns:1fr 460px;gap:80px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Two premises that did not survive the drawing</div>
+      <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px;max-width:82ch"><strong style="font-weight:400">The scanner cannot be the first screen.</strong> §5's first call assumes the choice is camera or words. Drawn in sequence, the entry screen turns out to exist for a third reason neither option covers: at the moment the reader taps a Mac, the Mac is not showing a code yet, and somebody has to say so.</p>
+      <p style="font-size:16.5px;line-height:1.65;margin:0;max-width:82ch"><strong style="font-weight:400">&ldquo;Already paired&rdquo; is a discovery problem wearing a pairing screen.</strong> §3.1 b asks for the state and it draws fine — but if the record change lands, the right behaviour is a row that goes straight to the worktrees, and this state shrinks to the case where the Mac revoked the token. Build the row; keep the screen for that one case.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Controls used</div>
+      <div style="font-size:15px;line-height:1.75;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ContentUnavailableView</span> ×7 · <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">TextField</span> ×1 · <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">Button</span> (prominent, bordered, plain) · <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ProgressView</span> ×1 · <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">NavigationStack</span> push ×3 · one <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">AVCaptureVideoPreviewLayer</span>.<br><br>Nothing hand-built. No sheet, no alert, no spinner where the protocol does not finish.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

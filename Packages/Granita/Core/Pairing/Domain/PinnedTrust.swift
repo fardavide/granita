@@ -36,4 +36,23 @@ public enum PinnedTrust {
         }
         return pinned.matches(SpkiFingerprint(subjectPublicKeyInfoDer: key.derRepresentation))
     }
+
+    /// What a key would be pinned as, with nothing to check it against.
+    ///
+    /// **This is trust on first use, and it is deliberately a different function from the one
+    /// above.** Judging and recording are not the same act: one refuses a Mac that is not the
+    /// paired one, and this one has no paired Mac yet and answers *what am I about to trust*. Making
+    /// the judgement take an optional pin instead would have put "accept anything" one `nil` away
+    /// from the code path every authenticated request uses, which is the last place in this app
+    /// where a default should be able to go wrong quietly. See `.claude/docs/decisions.md`.
+    ///
+    /// Still refuses bytes that are not a P-256 point, for the same reason the judgement does: a key
+    /// this Mac could not have served is not one to record as the thing this phone trusts from here
+    /// on.
+    public static func fingerprint(ofLeafPublicKeyX963 leaf: some ContiguousBytes) -> SpkiFingerprint? {
+        guard let key = try? P256.Signing.PublicKey(x963Representation: leaf) else {
+            return nil
+        }
+        return SpkiFingerprint(subjectPublicKeyInfoDer: key.derRepresentation)
+    }
 }

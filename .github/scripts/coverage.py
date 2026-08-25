@@ -145,6 +145,18 @@ UNREACHABLE_FILES = {
     # module that is judged. The pane spellings stayed behind in `SystemSettingsPaneUrl.swift`
     # precisely so the part that *is* a pure function keeps being measured.
     "Server/Mac/Data/AppKitSystemGestures.swift",
+    # A camera, and a host test process has none. `AVCaptureDevice.default(for: .video)` answers
+    # `nil` there, so the configuration this file exists to perform returns before it has performed
+    # any of it and every line after that point is unreachable rather than untested — the same bar
+    # the two Keychain stores met, and met the same way: by construction, not by omission.
+    #
+    # **The decidable part was taken out before this was added**, which is what makes the exemption
+    # an exemption rather than a hiding place. Turning whatever a metadata object carries into a
+    # `ScannedCode` is a pure function, it lives in `MachineReadableCode.swift`, and it is tested
+    # there against a nil string, an empty one, somebody else's QR and a damaged Granita link. What
+    # is left here is session configuration, one delegate that AVFoundation calls, and a lifecycle
+    # guard — no branch a reader could ever see the wrong side of.
+    "Client/Connection/Data/CaptureSessionCodeScanner.swift",
 }
 
 # What each kind's percentage is measured over, and the name that says so in the summary.
@@ -213,7 +225,7 @@ UNREACHABLE_FILES = {
 # never the tests' to claim — lines a scheduler reached before something was torn down.
 DEFAULT_SCOPE = "package"
 VIEWS_SCOPE = "views-and-screens-only"
-HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-serial"
+HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-no-camera-serial"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
 

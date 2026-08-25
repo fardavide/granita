@@ -1,16 +1,18 @@
 # Design
 
-The client's four screens, judged and drawn. This is the authority on **what the phone and the iPad
+The client's eight screens, judged and drawn. This is the authority on **what the phone and the iPad
 look like and why**, and it is the half that lasts. The Mac's own surfaces are in
 [`design-mac.md`](design-mac.md).
 
-The drawings do not. [`design/granita-design-review.html`](design/granita-design-review.html) is
-working material for the screens still to be built — open it for §2, §3 and §4, whose frames carry
-measurements this prose only summarises — and each section is **deleted from it as it is
-implemented**. §1's frames have already gone; what pins that screen now is its snapshot baselines.
+The drawings do not. The two files in [`design/`](design/) are working material for the screens
+still to be built — open them for §3 and §4, whose frames carry measurements this prose only
+summarises — and each section is **deleted from them as it is implemented**. §1's, §2's and eleven
+of §5's twelve frames have already gone that way; what pins those screens now is their snapshot
+baselines.
 
-Reviewed against 0.0.4 on 21 August 2026, at iPhone 13 Pro 390 × 844pt and iPad Pro 11″ landscape
-1194 × 834pt, at Dynamic Type Large and xxLarge.
+§1–§4 were reviewed against 0.0.4 on 21 August 2026 and §5 against 0.0.19 on 25 August 2026, both at
+iPhone 13 Pro 390 × 844pt and iPad Pro 11″ landscape 1194 × 834pt, at Dynamic Type Large and
+xxLarge.
 
 Everything here stays inside the system idiom: semantic colours, SF Symbols, stock controls. Where a
 control is wrong the review names the right one. Where the specification cannot be drawn at 390pt it
@@ -21,9 +23,15 @@ says so and shows the measurement.
 | Section | Screen | Milestone | State |
 |---|---|---|---|
 | §1 | Server discovery | built | **applied** — the code matches this document |
-| §2 | The worktree sidebar | M4 | drawn, not built |
+| §2 | The worktree sidebar | M4 | built |
 | §3 | The file selector | M5 | drawn, not built |
 | §4 | The continuous diff | M5 | drawn, not built |
+| §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
+
+**§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
+number rather than renumbering four sections that a dozen documents already cite; in the reader's
+path it sits between §1 and §2, which is where its own prose puts it. Its four screens make §2
+reachable — until 0.1.0 the worktree sidebar was built and nothing in the app could open it.
 
 Two things the review could not decide from drawings, and that a device has to answer before §4 is
 built:
@@ -548,3 +556,268 @@ column is where focus mode lives, reached by selecting a file in column two rath
 header.
 
 *Should feel like* a review tool. The phone version should feel like the same tool, carried.
+
+## §5 — Pairing *(M4, built in 0.1.0)*
+
+Reviewed on 25 August 2026 against 0.0.19, at the same two layouts as §1–§4. Four screens, twelve
+states, and **nothing hand-built**: seven unavailable-content views, one text field, one progress
+view, one capture preview, three pushes. The review's own count, and it is the reason every call
+below is about hierarchy and sequence rather than about a look.
+
+One thing it found that no frame could draw, and it is the section to read first: **the two
+credentials are not peers.** [§5.6](#56--the-six-words-carry-no-key-and-the-screen-says-so) is
+where that goes, and it is what orders the two buttons on the first screen.
+
+### The entry screen exists for the Mac, not for the choice
+
+The obvious reading of this flow is *camera or words*, and the obvious build is to open the
+viewfinder the instant a Mac is tapped. Drawn in sequence, that does not survive: **at the moment
+the reader taps a Mac, the Mac is not showing a code yet.** The QR only exists once somebody chooses
+*Pair a device…* in the menu bar, and a viewfinder opening onto a desktop with nothing on it is a
+screen that says nothing while asking for the one thing that has not been done.
+
+So the entry screen's real job is the one sentence in the whole flow that concerns the other
+machine — *open Granita in your Mac's menu bar and choose "Pair a device"* — and there is nowhere
+else to put it. The two credentials are full-width buttons beneath it, same width, same weight,
+50pt each, camera first.
+
+**No "or enter a code" link.** A link under a button is a confession that one of the two is for
+people who failed, and the six words are not that: they are the path for a reader whose camera and
+whose Mac are the same screen, which is a geometry rather than a mistake.
+
+> Rejected: opening the camera immediately, for the reason above. Rejected: ordering the words
+> first. Davide's Screens case is real and recurring, but it recurs *for him* — one reader, on the
+> two devices that make a camera impossible — and taxing the ordinary pair to spare the unusual one
+> is the wrong trade when the unusual one is already one tap away at equal size. If TestFlight says
+> otherwise the fix is not a reorder, it is remembering which credential this phone used last.
+
+*Should feel like* the Apple TV remote pairing screen. It does not ask you to choose a method; it
+tells you what to do on the other machine, and then waits without hurrying you.
+
+### A refused camera is a preference, so it is not treated as a fault
+
+Two states, and the first is the one usually left undrawn: **the screen the permission alert lands
+on.** The reader reads it while deciding, so it holds the viewfinder symbol, one line — *"Waiting
+for camera access."* — and, already, the six-words button. Whichever way they answer, the answer was
+behind the alert. The alert's own text is `NSCameraUsageDescription`, which is copy we write and the
+one string in this flow that has to earn a tap: it names what is read and says nothing is
+photographed or stored.
+
+When the camera is refused, **the primary action is *Enter the Six Words*** and the description does
+not mention Settings at all — *"You do not need it."* Nothing has gone wrong. *Turn the Camera On in
+Settings* drops to a plain button underneath, named for what it does rather than where it goes: it
+stays because a reader who declined by reflex should be able to change their mind in one tap, and it
+is demoted because leaving the app to fix a state with an in-app remedy is the wrong first
+suggestion.
+
+> Rejected: an unavailable-content view whose only action opens Settings — the shape this state
+> usually ships in, and a dead end that happens to have a button. Rejected: pre-flighting the
+> permission on the entry screen, which asks for a capability the reader may never use and burns the
+> one prompt iOS gives you at the moment it is least explicable.
+
+*Should feel like* being offered the stairs when the lift is out — not being told the lift is out.
+
+### The viewfinder is pushed, and it is the only dark screen in the app
+
+Four screens, one spine: *Macs → this Mac → Scan or Words → the outcome*. Pushing puts the scanner
+and the six-word field at the same depth, so moving between them is a back tap and a second tap and
+no state is ever behind another state.
+
+**The navigation bar stays over the camera.** It is translucent, it is where the reader looks to
+confirm *which* Mac they are pointing at, and once the preview fills the screen the title is the
+only place that fact appears.
+
+> Rejected: a sheet. A detent is for content consulted while the screen underneath still matters,
+> and here it does not; worse, a sheet can be dragged away mid-spend, and on the six-word screen a
+> keyboard and a detent argue about the same 300pt. Rejected: `fullScreenCover` — it buys 96pt of
+> camera and costs the Mac's name in a title bar and a success that pushes rather than
+> dismisses-then-pushes.
+
+**Dark, and the camera decides that rather than the app.** This is the one screen in Granita that is
+dark in light mode, and only on the phone — see §5.5 for why the iPad is not.
+
+**A QR that is not ours is a line, not an interruption.** An alert would stop the camera and demand
+a tap for something that recurs every time the phone drifts over a sticker on a laptop lid. So the
+hint under the reticle is replaced for two seconds by a capsule — *"That is not a Granita pairing
+code."* — throttled to one appearance every two seconds, and the scanner never stops. It does not
+say *which* code it found: nothing on this phone should read a stranger's QR back to them.
+
+**Finding one freezes the frame.** The session stops, the preview dims, and the back button is
+disabled until the outcome lands: a code that works once must not be abandonable halfway by an edge
+swipe, and the frozen frame is also the only acknowledgement the reader gets that the phone saw
+anything at all. This is the one place in the app a `ProgressView` is right — unlike a Bonjour
+browse, this request finishes.
+
+*Should feel like* the Wi-Fi QR scanner in Camera. You point, it recognises, and the recognition is
+the whole event.
+
+### No countdown, anywhere on the phone
+
+The link carries no mint time, so a phone-side 2:00 starts up to 120 seconds wrong — **and it is
+wrong in the dangerous direction**, reading 1:47 when the true remaining is nil, with the reader
+trusting it. There is also nothing to decide with the number: an expired code and one that never
+existed produce the same sentence and the same remedy, so a clock cannot change what anybody does.
+
+The Mac's countdown is different and stays: the Mac minted the code, so its timer is true, and it is
+standing in front of the person.
+
+> Rejected: deriving a countdown from the moment of the scan. That is the honest version of a
+> dishonest number. What replaces it is a consequence rather than a clock — after a refusal the
+> words screen keeps what was typed and says the code is stale, which is the same information
+> arriving when it is actionable.
+
+### One field, and an echo in the Mac's own format
+
+A single text field, monospaced at body size to match the Mac's 13pt mono, autocapitalisation off,
+autocorrection off, **smart dashes off**, focused on appear, `submitLabel(.go)`. Beneath it two
+lines that do the actual work: the words the phone recognised, joined by middle dots exactly as the
+Mac joins them, and a count.
+
+That echo is the whole idea. The reader's eye then compares the phone's line against the Mac's line
+character for character, which is a different and far easier task than proofreading their own
+typing.
+
+**The field corrects nothing.** The server lowercases and accepts spaces, hyphens and middle dots,
+so there is nothing to fix, and the capitalised first word everyone types is a keystroke the
+normaliser eats rather than an error to catch. Two of those settings matter more than they look:
+autocorrect will happily turn a word from a 128-word list into an English word that is not in it,
+and **smart punctuation turns a typed hyphen into an en dash** — which the normaliser did not
+accept, so it now does, on both ends, because the reader can also paste.
+
+**Six words entered lights the button and nothing else.** No word count in the label, no "ready"
+badge: the button turning blue is the whole announcement.
+
+> Rejected: six auto-advancing boxes. It is the shape copied from SMS codes and it is wrong twice —
+> it is not a stock control, so it would be the one hand-built thing in the app, and it turns a
+> phrase into a form when the words are variable-length and paste has to land in one place.
+> Rejected: a suggestion bar autocompleting from the 128 words. It leaks nothing, since the list is
+> public, but it fills in words the reader never read, and a phrase they did not verify is a phrase
+> they cannot correct.
+
+*Should feel like* reading a phone number back to somebody. You say it, they repeat it, and the
+repeating is what makes it safe.
+
+### One outcome screen, and a button only where the phone can act
+
+A spent credential has one destination and five appearances of it. **Three carry no action, and that
+is precisely what makes the other two believable.**
+
+| Outcome | Action | Why |
+|---|---|---|
+| The Mac is behind | none | Nothing on the phone helps. The fix is on the other machine |
+| The phone is behind | *Open TestFlight*, **when the device has it** | It leaves the app, so it only appears when the URL can be opened |
+| Rate limited | none | Waiting is the whole remedy. No countdown and no diagnostic |
+| Unreachable | *Try Again* | Re-runs the health probe and the spend |
+| Paired, key not saved | *Try Again* | Retries the Keychain write alone — see below |
+
+**Both contract states say "the code was not used".** The handshake reads `/v1/health` before it
+spends anything, so that sentence is true, and the reader cannot learn it anywhere else — it is the
+difference between walking back to the Mac and simply tapping again. It appears twice in the app and
+nowhere else.
+
+**Success has no screen.** A `.success` notification haptic, and the stack replaces the pairing
+screens with the worktree list titled by the Mac's name. Silence reads as nothing having happened
+only when the destination resembles the origin, and here a frozen viewfinder becomes a populated
+list, which is the loudest thing that has ever happened in this app. **The replacement is
+load-bearing**: back must return to the Mac list, never to a scanner holding a spent code.
+
+**Why the Keychain failure earns its own screen.** Every other failure says *try again here*; this
+one has to state a fact no other screen states — the Mac now believes this iPhone is paired — or the
+advice that follows sounds like superstition. It does not offer *Pair Again*, which would leave a
+second device record beside the orphan.
+
+**It does get a button, and that is a departure from the frame.** The review drew it without one
+because it could not tell whether the token survives a failed write. It does: the outcome carries
+it, so *Try Again* retries the write alone, and the trip to the Mac drops to the second sentence.
+`errSecInteractionNotAllowed` is transient far more often than not. Davide's call, 25 August 2026,
+against the drawn version.
+
+> Rejected: alerts for any of these. An alert dismisses to a live viewfinder that immediately
+> re-reads the same dead QR, which is a loop. Rejected: a *Contact support* or bug-report action —
+> the reader is the developer, and the selectable `OSStatus` is the whole bug report.
+
+*Should feel like* a receipt. It tells you what happened, whether it cost you anything, and the one
+thing left to do.
+
+### iPad: 420pt, camera included
+
+The clamp holds, and it holds for the viewfinder. The preview is a 420pt-wide 4:3 rounded card
+inside the measure, on the ordinary grouped background — **the iPad scanner does not go dark.** Dark
+is right on the phone because the camera fills the screen and the app disappears behind it; on iPad
+the camera is one element among several, and blacking out 1194pt to host a 420pt card makes a modal
+out of a pushed screen.
+
+Detection does not suffer: the metadata output reads the whole capture frame rather than the
+preview, so a smaller preview costs aim and nothing else — and aim is easier at arm's length on a
+stand than with the whole slab raised. Nobody lifts an 11-inch iPad to point it at a Mac.
+
+The six-word screen needs no iPad drawing of its own: the same measure, the field at the top, the
+keyboard taking the bottom third. It is also the path most iPad readers will take, because an iPad
+on a stand beside a Mac is exactly the geometry that makes scanning tedious.
+
+> Rejected: a full-bleed iPad viewfinder with the controls floating over it. It is the phone layout
+> scaled onto a surface nobody holds that way, and it breaks the rule every pre-pairing screen
+> shares — everything before a paired Mac lives in a 420pt column, title included.
+
+*Should feel like* the same screen you used on the phone, sitting still in a bigger room.
+
+### §5.6 — The six words carry no key, and the screen says so
+
+**This is the finding of the round, and it is the only place in the flow where a screen cannot carry
+the difference.** The QR carries the fingerprint over a channel nobody on the network can write
+to — the Mac's own screen. The six words carry a code and nothing else; the host and port they
+borrow come from a Bonjour record any device on the LAN can publish. So the two credentials redeem
+the same pairing and **are not peers**, and no amount of layout makes them so.
+
+The words path therefore pins on first contact: whoever answers for `MacBook-Pro.local` at that
+moment becomes the pinned Mac. The QR path has no such window, which is the whole reason `spki=` is
+in the link.
+
+The design carries the asymmetry in two cheap places rather than one expensive one:
+
+1. **The camera is ordered above the words**, which is the real argument for that order.
+2. **One caption at the bottom of the six-word screen** — caption2, tertiary, no icon and no box:
+   *"The QR code also carries your Mac's key. Typed words trust the Mac that answers, so use them on
+   a network you trust."* That is a true sentence about a pin, not a revival of the plaintext
+   warning 0.0.7 retired — the connection is TLS either way.
+
+> **Not recommended: putting the fingerprint in the Bonjour TXT record.** It would look like a fix
+> and is not one. A TXT record is in-band: an impostor advertises its own key beside its own host
+> and the phone pins exactly what the attacker chose. One field, two features, and only one of them
+> real. The instance identifier the discovery list needs may still ride there; the key may not.
+>
+> Rejected: a fingerprint comparison — the Mac shows four characters of the key, the phone shows
+> what it saw, the reader confirms. It is the SSH ceremony, it is buildable, and it does not ship:
+> it puts a security decision in front of the one reader already pushed onto the harder path, at the
+> moment they are squinting across a room. **A check nobody performs is worse than an honest
+> sentence, because it launders the risk.**
+
+**Whether the words path ships at all was Davide's to decide and he delegated it**; the decision, and
+what it cost, is in [`decisions.md`](decisions.md).
+
+### The seven questions the return came back with
+
+It ended with a list rather than a conclusion, which is the shape a review should end in. Five were
+answered by reading this repository, one by Davide and one by a decision recorded next door.
+
+| | Question | Answer |
+|---|---|---|
+| 1 | What does the words path pin? | Trust on first use. The reasoning and what it beat are in `decisions.md` |
+| 2 | Can the phone ship the 128 words? | **Yes** — they are the contract both ends spend, so they moved to `CorePairingDomain` beside the link that carries the code. The unknown-word line ships |
+| 3 | Can the use case retry only the Keychain write? | **Yes**, and it does. §3.4 g gained a primary action |
+| 4 | Is the limiter keyed per device or per dialled address? | **Per source IP address.** The review's premise came from the Mac round trip and the code had already moved on, so the kinder sentence is the one that ships |
+| 5 | Does a TestFlight URL open reliably? | Unanswerable without a device — so the button appears **only when the system says it can open it**, which is this project's own rule rather than a guess |
+| 6 | Will the token store keep a `pairedAt` date? | Not yet, and it does not matter yet: the already-paired state needs a Bonjour record the Mac does not publish, so **§3.1 b is the one frame this slice did not build** |
+| 7 | Does the normaliser accept an en dash? | It did not. It does now, on both ends, and the field turns smart dashes off as well |
+
+### Where this contradicts `SPEC.md`
+
+Two places, both recorded in [`decisions.md`](decisions.md) as departures rather than resolved
+quietly:
+
+- **§8 asks for the six-word fallback *and* for SPKI pinning**, and the words cannot carry a pin.
+  The spec contains the tension rather than settling it, which is why it went to Davide.
+- **§10 asks for manual host entry as a fallback**, and there is none. The words screen is reachable
+  only from a browse result, so the host and port are already in hand — and a field that lets a
+  reader point this app at an address Bonjour never returned is a hole, not a fallback. §0 lists
+  Bonjour-plus-QR as PROPOSED rather than locked, so this is the weakest of the departures here.

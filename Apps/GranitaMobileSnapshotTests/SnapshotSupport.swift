@@ -41,6 +41,18 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
 
     var testDescription: String { name }
 
+    /// Whether iOS calls this width regular, which is the question every screen in this app that
+    /// lays out twice actually asks — never the device, because an iPad in a narrow multitasking
+    /// width is the phone's layout too.
+    ///
+    /// It is here rather than in the one suite that reads it because it is a fact about the layout
+    /// and not about the screen: a suite that wants to know which of its four renderings is the one
+    /// with a sidebar beside it is asking this, and asking it of `traits` spelled out at the call
+    /// site reads as plumbing rather than as the distinction it is.
+    var isRegularWidth: Bool {
+        configuration.traits.horizontalSizeClass == .regular
+    }
+
     /// iPhone and iPad, light and dark. Four renderings per state.
     ///
     /// The device configurations describe size and safe-area traits, not a specific simulator — the

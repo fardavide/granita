@@ -17,11 +17,11 @@ struct MacPairingTests {
         let scenario = Scenario()
 
         // when
-        let outcome = await scenario.sut.pair(with: aLink, as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
 
         // then — the Mac keeps a hash and this is the only copy of the token there is, so an
         // outcome that reported success without writing it down would lock the phone out silently.
-        #expect(outcome == .paired(aPairedDevice))
+        #expect(outcome == .paired(aPairedMac))
         #expect(await scenario.tokens.saved == [aPairedDevice.serverInstanceId: aPairedDevice.token])
     }
 
@@ -32,7 +32,7 @@ struct MacPairingTests {
         let scenario = Scenario(servingApiVersion: Branding.apiVersion - 1)
 
         // when
-        let outcome = await scenario.sut.pair(with: aLink, as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
 
         // then
         #expect(outcome == .wrongContract(.macIsBehind(serving: Branding.apiVersion - 1)))
@@ -48,7 +48,7 @@ struct MacPairingTests {
         let scenario = Scenario(pairing: .failure(.pairingExpired))
 
         // when
-        let outcome = await scenario.sut.pair(with: aLink, as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
 
         // then
         #expect(outcome == .refused(.pairingExpired))
@@ -60,7 +60,7 @@ struct MacPairingTests {
         let scenario = Scenario(pairing: .failure(.rateLimited))
 
         // when
-        let outcome = await scenario.sut.pair(with: aLink, as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
 
         // then
         #expect(outcome == .refused(.rateLimited))
@@ -74,10 +74,92 @@ struct MacPairingTests {
         let scenario = Scenario(keychainRefusing: .refused(status: -34018))
 
         // when
-        let outcome = await scenario.sut.pair(with: aLink, as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
 
         // then
-        #expect(outcome == .tokenNotStored(.refused(status: -34018)))
+        #expect(outcome == .tokenNotStored(aPairedMac, .refused(status: -34018)))
+    }
+
+    // MARK: - What gets pinned, and which path knew it in advance
+
+    @Test
+    func `given a scanned link when pairing then what is pinned is the key the link carried`() async {
+        // given — the QR travelled over a channel nobody on the network can write to, so the
+        // fingerprint was known before a single byte was sent.
+        let scenario = Scenario()
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+
+        // then
+        #expect(outcome == .paired(aPairedMac))
+        #expect(aPairedMac.fingerprint == aLink.fingerprint)
+    }
+
+    @Test
+    func `given six words when pairing then what is pinned is the key first contact found`() async {
+        // given — the words carry a code and nothing else, so there is no pin to check against and
+        // whoever answers becomes the Mac. That is trust on first use, and the point of asserting it
+        // here is that the fingerprint is **read back from the handshake** rather than invented: an
+        // implementation that made one up would pin a Mac it never spoke to.
+        let scenario = Scenario(presenting: anObservedKey)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), as: anIphone)
+
+        // then
+        #expect(outcome == .paired(PairedMac(device: aPairedDevice, address: anAddress, fingerprint: anObservedKey)))
+        #expect(await scenario.server.codesOffered == [sixWords])
+    }
+
+    @Test
+    func `given a Mac that presented no key when pairing then it is not reported as paired`() async {
+        // given — not reachable through a real transport, since a handshake happened by definition
+        // if a code was spent. It is expressible, though, and the alternative to answering it is a
+        // force-unwrap on the one value the whole of this app's transport security rests on.
+        let scenario = Scenario(presenting: nil)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), as: anIphone)
+
+        // then
+        #expect(outcome == .refused(.notUnderstood(diagnostic: "the Mac was reached without presenting a key")))
+    }
+
+    // MARK: - The write that failed and can be tried again
+
+    @Test
+    func `given the Keychain refused when the write is retried then the token is written down`() async {
+        // given — `errSecInteractionNotAllowed` is transient far more often than not, so the phone
+        // keeps the pairing rather than sending the reader to another machine to repair something
+        // this one can repair itself.
+        let scenario = Scenario(keychainRefusing: .refused(status: -25308))
+        guard case .tokenNotStored(let pairing, _) = await scenario.sut.pair(with: .scanned(aLink), as: anIphone) else {
+            Issue.record("a refused Keychain has to hand the pairing back, or there is nothing to retry")
+            return
+        }
+        await scenario.tokens.recover()
+
+        // when
+        let outcome = await scenario.sut.saveToken(of: pairing)
+
+        // then — and no second code is spent, because the one that bought this token is gone.
+        #expect(outcome == .paired(aPairedMac))
+        #expect(await scenario.tokens.saved == [aPairedDevice.serverInstanceId: aPairedDevice.token])
+        #expect(await scenario.server.codesOffered == [aLink.code])
+    }
+
+    @Test
+    func `given a Keychain that still refuses when the write is retried then it says so again`() async {
+        // given
+        let scenario = Scenario(keychainRefusing: .refused(status: -25308))
+
+        // when
+        let outcome = await scenario.sut.saveToken(of: aPairedMac)
+
+        // then — the same outcome carrying the same pairing, so the screen can be tried a third
+        // time rather than becoming a dead end after one attempt.
+        #expect(outcome == .tokenNotStored(aPairedMac, .refused(status: -25308)))
     }
 
     @Test
@@ -125,6 +207,7 @@ private struct Scenario {
     init(
         servingApiVersion apiVersion: Int = Branding.apiVersion,
         pairing: Result<PairedDevice, ApiFailure> = .success(aPairedDevice),
+        presenting key: SpkiFingerprint? = aLink.fingerprint,
         holdingTokens held: [ServerInstanceId: PairingToken] = [:],
         keychainRefusing refusal: PairingTokenStoreFailure? = nil
     ) {
@@ -133,7 +216,8 @@ private struct Scenario {
             answeringHealth: .success(
                 HealthResponse(name: "Granita", apiVersion: apiVersion, serverVersion: "0.0.9")
             ),
-            answeringPairing: pairing
+            answeringPairing: pairing,
+            presenting: key
         )
         let mac = server
         sut = MacPairing(tokens: tokens, handshake: { _ in mac })
@@ -154,3 +238,17 @@ private let aLink = PairingLink(
 )
 
 private let anIphone = PairingDevice(name: "Davide's iPhone", platform: "iOS")
+
+private let anAddress = ServerAddress(host: "davides-macbook-pro.local", port: 59144)
+
+/// What the scanned path ends up holding: the pin arrived with the link.
+private let aPairedMac = PairedMac(
+    device: aPairedDevice,
+    address: anAddress,
+    fingerprint: aLink.fingerprint
+)
+
+/// A key nothing told the phone about in advance, which is the whole of the spoken path.
+private let anObservedKey = SpkiFingerprint(rawValue: "9f86d081884c7d659a2feaa0c55ad015")
+
+private let sixWords = "cabin-cactus-camera-candle-harbour-lantern"

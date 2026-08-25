@@ -95,6 +95,52 @@ struct HttpServerPairingTests {
     }
 
     @Test
+    func `given a link naming an IPv6 address when pairing then the literal is bracketed`() async throws {
+        // given — a QR minted on a Mac whose only address is v6, which is what a network with no
+        // IPv4 on it produces. Bare, the colons read as the port separator and there is no URL at
+        // the end of it.
+        let scenario = Scenario(
+            mac: PairingLink(
+                host: "2001:db8::a1",
+                port: 61022,
+                code: "9d41e0c7a2b85f36",
+                fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+            ),
+            status: 200,
+            json: acceptedPairing
+        )
+
+        // when
+        _ = try await scenario.sut.pair(with: "code", as: PairingDevice(name: "iPhone", platform: "iOS"))
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.absoluteString == "https://[2001:db8::a1]:61022/v1/pair")
+        #expect(request.url.port == 61022)
+    }
+
+    @Test
+    func `given a Mac that answered on a link-local address when six words are spent then the zone survives`() async throws {
+        // given — what `NWPath` hands back on a link-local route, zone attached, and the address
+        // the words path borrows. Both halves need saying: without the brackets there is no URL,
+        // and without `%25` in place of the `%` there is no zone — and a v6 link-local address
+        // without its zone is not routable at all.
+        let scenario = Scenario(
+            mac: .spoken(code: "cabin-cactus-camera-candle-harbour-lantern", at: ServerAddress(host: "fe80::1%en0", port: 61022)),
+            status: 200,
+            json: acceptedPairing
+        )
+
+        // when
+        _ = try await scenario.sut.pair(with: "code", as: PairingDevice(name: "iPhone", platform: "iOS"))
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.absoluteString == "https://[fe80::1%25en0]:61022/v1/pair")
+        #expect(request.url.port == 61022)
+    }
+
+    @Test
     func `given a link whose host cannot go in a url then it addresses nothing rather than trapping`() async {
         // given — a damaged scan. The reader is pointing at the right screen and it is not working,
         // which is a sentence, not a crash.
@@ -257,6 +303,13 @@ private struct Scenario {
     init(mac link: PairingLink, status: Int, json: String) {
         transport = FakeHttpTransport(status: status, json: json)
         sut = HttpServerPairing(mac: link, transport: transport)
+    }
+
+    /// And the other way the app addresses it: from whichever credential the reader offered, which
+    /// is the only path an address the Mac was *resolved* to travels on.
+    init(mac attempt: PairingAttempt, status: Int, json: String) {
+        transport = FakeHttpTransport(status: status, json: json)
+        sut = HttpServerPairing(mac: attempt, transport: transport)
     }
 
     init(failing failure: ApiFailure) {

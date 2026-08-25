@@ -1,5 +1,6 @@
 import ClientConnectionDomain
 import CoreApiDomain
+import CorePairingDomain
 
 /// A Mac that answers the handshake however a test needs it to.
 ///
@@ -16,13 +17,22 @@ actor FakeServerPairing: ServerPairing {
     private let answeringHealth: Result<HealthResponse, ApiFailure>
     private let answeringPairing: Result<PairedDevice, ApiFailure>
 
+    /// The key this Mac presents. Configurable and **optional** because the two paths differ
+    /// exactly here: a scanned link knew the answer before anything was sent, and six words find
+    /// out by asking.
+    private let presented: SpkiFingerprint?
+
     init(
         answeringHealth: Result<HealthResponse, ApiFailure>,
-        answeringPairing: Result<PairedDevice, ApiFailure>
+        answeringPairing: Result<PairedDevice, ApiFailure>,
+        presenting presented: SpkiFingerprint?
     ) {
         self.answeringHealth = answeringHealth
         self.answeringPairing = answeringPairing
+        self.presented = presented
     }
+
+    func trustedFingerprint() async -> SpkiFingerprint? { presented }
 
     func health() async throws(ApiFailure) -> HealthResponse {
         switch answeringHealth {

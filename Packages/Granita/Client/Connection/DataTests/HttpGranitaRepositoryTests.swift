@@ -6,6 +6,7 @@ import ClientConnectionDomain
 import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiffDomain
+import CorePairingDomain
 
 /// Everything the phone reads once it is paired, and the two rules that hold across all of it: a
 /// bearer on every request, and a refusal that arrives as something the phone has a screen for
@@ -27,6 +28,71 @@ struct HttpGranitaRepositoryTests {
         let request = try #require(await scenario.transport.sent.first)
         #expect(request.headers["Authorization"] == "Bearer 1f0e4d7c6b5a49382736251403f2e1d0")
         #expect(request.headers[Branding.apiVersionHeader] == String(Branding.apiVersion))
+    }
+
+    // MARK: - Where a Mac this phone paired with is
+
+    @Test
+    func `given a pairing that worked when the phone reads from it then the request goes to that Mac`() async throws {
+        // given — the alternative is the composition root building this address, which puts URL
+        // construction in the one layer no test can reach. The same argument put the pairing
+        // route's own address behind this line.
+        let scenario = Scenario(mac: aPairedMac(at: "mac-studio.local", port: 61022), status: 200, json: "[]")
+
+        // when
+        _ = try await scenario.sut.projects()
+
+        // then — https because the Mac serves TLS, the port it answered the handshake on, and the
+        // token that pairing bought rather than one carried here beside it.
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.scheme == "https")
+        #expect(request.url.host() == "mac-studio.local")
+        #expect(request.url.port == 61022)
+        #expect(request.headers["Authorization"] == "Bearer 1f0e4d7c6b5a49382736251403f2e1d0")
+    }
+
+    @Test
+    func `given a pairing with a Mac that answered on IPv6 when the phone reads then the literal is bracketed`() async throws {
+        // given — the same address the handshake was made against, and the reason this is asserted
+        // here as well as one file over: the pairing route and every read route build their URL the
+        // same way, so a v6 Mac that could be paired with and then not read from would be the worst
+        // of the two failures.
+        let scenario = Scenario(mac: aPairedMac(at: "2001:db8::a1", port: 61022), status: 200, json: "[]")
+
+        // when
+        _ = try await scenario.sut.projects()
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.absoluteString == "https://[2001:db8::a1]:61022/v1/projects")
+        #expect(request.url.port == 61022)
+    }
+
+    @Test
+    func `given a pairing with a link-local Mac when the phone reads then the zone survives`() async throws {
+        // given — `NWPath` stringifies a link-local address with its zone attached, and an address
+        // that loses it is not routable: `fe80::1` alone names an interface nobody chose.
+        let scenario = Scenario(mac: aPairedMac(at: "fe80::1%en0", port: 61022), status: 200, json: "[]")
+
+        // when
+        _ = try await scenario.sut.projects()
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.absoluteString == "https://[fe80::1%25en0]:61022/v1/projects")
+        #expect(request.url.port == 61022)
+    }
+
+    @Test
+    func `given a pairing whose host cannot go in a url then it addresses nothing rather than trapping`() async {
+        // given — the same fallback the pairing route takes, and for the same reason: a name that
+        // will not go into a URL surfaces as a Mac that did not answer, not as a crash.
+        let scenario = Scenario(mac: aPairedMac(at: "not a host", port: 61022), status: 200, json: "[]")
+
+        // when - then
+        await #expect(throws: Never.self) {
+            _ = try? await scenario.sut.projects()
+        }
     }
 
     // MARK: - The routes
@@ -290,6 +356,25 @@ private struct Scenario {
         transport = FakeHttpTransport(status: status, body: body)
         sut = HttpGranitaRepository(macAt: macAddress, token: token, transport: transport)
     }
+
+    /// Addressed the way the app addresses it: from the pairing the handshake came back with.
+    init(mac: PairedMac, status: Int, json: String) {
+        transport = FakeHttpTransport(status: status, json: json)
+        sut = HttpGranitaRepository(mac: mac, transport: transport)
+    }
+}
+
+/// A pairing that is entirely about where it points, since that is what these two tests are for.
+private func aPairedMac(at host: String, port: Int) -> PairedMac {
+    PairedMac(
+        device: PairedDevice(
+            token: token,
+            deviceId: DeviceId(rawValue: "8C4F2A11-0000-4E5D-9A3B-77F1C0DE0001"),
+            serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
+        ),
+        address: ServerAddress(host: host, port: port),
+        fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+    )
 }
 
 /// Where the Mac is. A literal, so the failable initialiser Foundation offers cannot fail here.

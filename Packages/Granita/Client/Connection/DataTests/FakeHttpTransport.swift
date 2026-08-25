@@ -2,12 +2,24 @@ import Foundation
 
 import ClientConnectionData
 import ClientConnectionDomain
+import CorePairingDomain
 
 /// Answers every request the same way, and remembers what it was asked.
 ///
 /// One answer rather than a script of them: every route here is a single request, and a fake that
 /// replays a queue invites tests that depend on call order without ever saying so.
 actor FakeHttpTransport: HttpTransport {
+
+    /// What this transport claims to have trusted. `nil` unless a test says otherwise, because
+    /// almost none of them are about the handshake — and a fake that invented a fingerprint would
+    /// let a pairing test pass while asserting nothing about what got pinned.
+    var presented: SpkiFingerprint?
+
+    func present(_ fingerprint: SpkiFingerprint) {
+        presented = fingerprint
+    }
+
+    func trustedFingerprint() async -> SpkiFingerprint? { presented }
 
     /// Every request that reached it, so a test can assert the method, the address and the headers
     /// the client sends without a server on the other end.

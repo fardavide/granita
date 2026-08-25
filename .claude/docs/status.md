@@ -2,16 +2,72 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.0.19.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight**.
+**Version 0.1.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
+TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
+put on a phone rather than what is on one now.
 
-**M4's worktree sidebar is built, and nothing in the app can reach it.** That is the design rather
-than an unfinished edge: the list needs a paired Mac, pairing has no frames and therefore no screen,
-and a row leading somewhere that cannot load is the defect this project shipped for eight releases.
-A debug-only route was offered and declined for the same reason. So **none of this screen's controls
-has ever been pressed** — the two swipes, the toolbar menu's picker and toggle, the hidden-count
-footer, Try Again and Show them anyway. Every one is asserted at the model and photographed in four
-layouts, and a picture cannot say whether anything is behind a swipe. They get pressed the day
-pairing lands, which is also the day the screen becomes reachable.
+**The pairing design came back on 25 August 2026 and is now built.** Four
+screens, twelve states, and a finding no frame could carry: **the six words carry no key.** The QR
+carries the fingerprint over a channel nobody on the network can write to; the words carry a code,
+and the host and port they borrow come from a Bonjour record any device on the LAN can publish. The
+client had already settled that in the strictest direction by accident — `PairingLink(url:)` throws
+without an `spki` and the pinned transport cannot build a session without one — so on 0.0.19 the
+six-word screen could not have been built whatever it looked like. `SPEC.md` §8 asks for the pin
+*and* for the fallback, so the spec contains the tension rather than settling it; Davide delegated
+it, and **the answer is trust on first use**, carried by ordering the camera first and by one
+caption2 line that says what the difference is. Every call, and the five other questions the return
+came back with, are in [`design.md`](design.md) §5 and [`decisions.md`](decisions.md).
+
+**The slice landed foundation first and screens second.** `SpokenWords` moved to
+`CorePairingDomain` — the list is contract, both ends spend a credential against it, and the phone
+needs it to say *"branch" is not one of the words* before a round trip that costs a fifth of the
+rate limit. The normaliser now accepts an en and an em dash, because iOS smart punctuation types one
+whether or not anyone meant to and **paste is the path no field setting reaches**. Then the camera,
+the Bonjour endpoint resolution the words path needs, the model behind all four screens, the four
+screens themselves, the spine that joins them, and the iPad's split view. 786 tests.
+
+**Then an adversarial read of that slice found six defects, and five of them were invisible to every
+test kind here.** One model serves the whole app and had no notion of an attempt ending, so *Try
+Again* could spend one Mac's QR code while the screen was titled another's, the viewfinder re-opened
+on the frozen frame of a spend that had finished, and a second Mac's six-word screen arrived with
+the first Mac's phrase already typed. An IPv6 address — bracketed by nobody, its zone escaped by
+nobody — produced a `file://` base URL on **both** the pairing route and every read route, so a Mac
+reached over v6 was reported unreachable twice for reasons a reader would have read as one. A
+newline fused two words, which broke the paste that §5 makes the answer for the same-device case,
+and the Go key over that field could never have submitted anything. The iPad opened every worktree
+on a screen titled *This worktree*, because the composition root rebuilds the model on every
+evaluation and only the sidebar had pinned one. All six are in
+[`decisions.md`](decisions.md); the IPv6 entry there **replaces one that recorded the defect and
+argued for leaving it**, and was wrong about how much of the app it reached.
+
+**The iPad has its two columns, and getting them cost two broken renders.** §2's 320pt sidebar and
+its *Choose a worktree* detail column waited for a composition root that presents this screen, and
+pairing brought one. A split view that folds in a compact width draws no content at all when it is
+inside a navigation stack, so the phone branches to the sidebar directly; and a split view keeps the
+destinations declared inside its columns, so the rows — value-based links whose destination has
+lived beside them since §2 shipped — stopped reaching anything, which is this project's oldest
+defect arriving through the door built to stop it. Both were found by a photograph rather than by
+reading, both are in [`decisions.md`](decisions.md), and the row's destination is now declared on
+each container that can claim a tap. The root's 420pt measure stops at the paired Mac, which is
+where §5's column and §2's sidebar meet.
+
+**Tapping a Mac now leads somewhere, and so does pairing with one.** The spine is *Macs → this Mac →
+Scan or Words → the outcome*, pushed on a path the composition root holds, and a pairing that works
+**replaces** the pairing screens with that Mac's worktree list rather than pushing a fifth screen —
+so back returns to the Mac list and never to a viewfinder holding a spent code. Success is a
+`.success` haptic and that replacement, which is the whole of it. `PairingNotReadyView`, which said
+for one release that pairing had no screen, is gone.
+
+**One thing the return assumed that this repository still does not have.** Nothing joins a
+discovered Mac to a stored token — the identifier that would is the TXT record SPEC §8 asks for and
+the Mac does not publish — so §5's already-paired state is unreachable and its frames are the only
+ones still in `.claude/docs/design/`.
+
+**None of the pairing screens or the sidebar's controls has been pressed on a device.** Every one is
+asserted at the model, but a camera, a Keychain and a QR held across a room are three things this
+machine cannot produce — and the viewfinder's own preview is the one piece of this slice **no test
+kind that runs here can execute a line of**. M3's acceptance and M4's are the same afternoon with a
+phone in hand.
 
 **Design §2's drawings contradicted its own prose in two places, and the prose won both.** The
 rename sheet's footer previews the session summary rather than the branch, because the footer's
@@ -26,11 +82,12 @@ because a grouping separator is the environment's decision and this machine's si
 runner's — a baseline nothing in the diff would have explained. The snapshot helper now pins
 `en_US`, which asserts one layout deliberately instead of whichever the simulator happened to be on.
 
-**What §2 draws and this slice does not build is the iPad's split view** — the 320pt sidebar and the
-*Choose a worktree* detail column. Both are a `NavigationSplitView`, and the split view belongs to
-whichever composition root presents this screen, which is the one pairing brings. So **the iPad
-baselines photograph the sidebar at full width, which is not the iPad layout that will ship**, and
-they are re-recorded when the root arrives.
+**What §2 drew and M4 could not build was the iPad's split view** — the 320pt sidebar and the
+*Choose a worktree* detail column, which needed a composition root that presents this screen. Built
+now, above. What did **not** follow is a re-record of the sidebar's own 52 baselines: they
+photograph the view and the screen across the whole iPad width, which is a width the row never has,
+and the layout that ships has a subject of its own instead. Re-recording another slice's screens
+inside the commit that wires navigation is a review nobody can perform.
 
 **The Mac is finished for M3.** All five Settings tabs, the status item and its menu, TLS, Bonjour,
 pairing codes, the QR, logging, and now the lock file. What is left of the milestone is its
@@ -229,11 +286,12 @@ the row answers is the same for both. **General is the first tab built from a fr
 with its baselines in the same pull request, which is the rule that makes "we built the design"
 checkable.
 
-**Both halves are now designed.** The client's four screens were reviewed and redrawn against 0.0.4
-on 2026-08-21 ([`design.md`](design.md)); the Mac's seven surfaces were drawn for the first time on
-the same day and are recorded in [`design-mac.md`](design-mac.md). Discovery is the only screen of
-the eleven that exists, and it matches its drawing. **Nothing is blocked on a design any more** — the
-Mac's tabs are blocked on the snapshot kind the Mac has never had.
+**Both halves are now designed, and everything drawn for the phone is built.** The client's four
+screens were reviewed and redrawn against 0.0.4 on 2026-08-21 ([`design.md`](design.md)); the Mac's
+seven surfaces were drawn for the first time on the same day and are recorded in
+[`design-mac.md`](design-mac.md); §5's pairing round came back on 2026-08-25 and landed with it.
+**Nothing is blocked on a design any more** — what is left is drawn and built, and the one frame of
+§5 that is not built is unreachable rather than undrawn.
 
 Read `design-mac.md` rather than the Mac frames: they were drawn against 0.0.6 and 0.0.7 landed
 after, repairing two of the five premises they overturn and making a third obsolete.
@@ -242,18 +300,15 @@ The two halves find each other **on real hardware**: the Mac serves `/v1/health`
 Bonjour, and the phone lists it. Confirmed on Davide's iPhone against his MacBook on 2026-08-19 —
 across a wired Mac and a wireless phone, so his network bridges mDNS between the two segments.
 
-Selecting a Mac now says why it cannot connect rather than doing nothing, and pairing is the **only**
-thing missing behind it. The phone
-has the whole client built and tested behind that tap: it reads a Mac's health, refuses to pair when
-the two ends speak different contracts, spends a pairing code, keeps the token in the Keychain, and
-reads every route SPEC §8 serves. What it has no way to start is the camera — the QR scanner and the
-pairing screen have no frames, and the `design-handoff` rule forbids a pull request touching a screen
-that has none.
+Selecting a Mac opens its own screen and both credentials lead somewhere from it. The phone has the
+whole client built and tested behind that tap: it reads a Mac's health, refuses to pair when the two
+ends speak different contracts, spends a pairing code from a QR or from six typed words, keeps the
+token in the Keychain, and reads every route SPEC §8 serves. **What no test kind here can start is
+the camera**, and the viewfinder's own preview is the one piece of this with no line a test executes.
 
-**So the client is wired up to the seam rather than into the app.** The composition root builds the
-browse and nothing else; `MacPairing` is composed by the pull request that draws the screen calling
-it. That is deliberate: a dependency wired into a root that no screen can reach is code nothing can
-be measured against, which is what the coverage gate said in as many words.
+**The composition root is wired all the way through now**, which the entry it replaces in
+`decisions.md` had recorded as deliberately deferred: `MacPairing` is composed by the pull request
+that drew the screens calling it, which is the day that argument said to wait for.
 
 ## Milestones
 
@@ -292,8 +347,8 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - **The whole server.** Worktree enumeration, the change set and its stats from one comparison,
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
-  repository and `--insecure-http` serves it; the phone cannot read any of it yet.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 667 package tests in 70 suites, plus
+  repository and `--insecure-http` serves it.
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 786 package tests in 77 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself. **The coverage pass runs
   serially**, because measured in parallel it reported a different percentage for identical code —
   five runs of one commit spread across 96.037% and 96.121%, which a ratchet with no slack reads as a
@@ -369,11 +424,18 @@ The spec's milestones, each ending in something runnable and a green suite, with
   would rather not have been offered.
 - **One model for the client's connection unit**, replacing the discovery view model. Nothing in the
   client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
-  method on the model, and the model carries only the browse: the pairing surface lands with the
-  screen that reads it, because a property no screen has agreed to is a property nothing can be
-  measured against. `MacPairing.alreadyPaired()` is what the discovery list's *Recent* and *Other
-  Macs* sections will be ordered by, once the Mac's Bonjour TXT record carries the instance
-  identifier that joins a discovered Mac to a stored token.
+  method on the model, and the model carries the browse and one attempt at a time: opening a Mac's
+  own screen clears what the last attempt left behind, and the retry is handed the Mac it is titled
+  after rather than reading whatever the model still happens to hold. `MacPairing.alreadyPaired()`
+  is what the discovery list's *Recent* and *Other Macs* sections will be ordered by, once the Mac's
+  Bonjour TXT record carries the instance identifier that joins a discovered Mac to a stored token —
+  and the copy of that history the model briefly held is gone for the **second** time, because a
+  property no screen has agreed to is a property nothing can be measured against.
+- **The four pairing screens and the iPad's split view, with their baselines.** The entry screen,
+  the viewfinder against a drawn still, the six-word field in five states and the outcome's five
+  appearances; plus a suite that photographs the four *pushes* rather than the four screens, which
+  is the half a view test cannot reach. The split view has one of the fallback its destination draws
+  when a chosen worktree is no longer in the list.
 - An Xcode Cloud workflow archiving `main` to TestFlight for internal testers.
 
 ## Verified against the real environment
@@ -446,15 +508,28 @@ sets up delivery.
 
 ## What to pick up next
 
-**M4's remaining half is pairing, and it is a design away.** The sidebar is built and cannot be
-opened; the QR scanner and the pairing screen are what open it. When their frames come back, one
-slice does all of it: `ClientConnectionModel` gets back the pairing surface it owes —
-`PairingState`, `pairing`, `pairedServers`, `loadPairingHistory()`, `join(_:as:)` and the
-`MacPairing` dependency — the root wires the handshake, `PairingNotReadyView` goes, and the
-discovery row leads to the sidebar rather than to a sentence about the camera. The same slice owns
-the `NavigationSplitView` §2 draws for the iPad and re-records the four iPad baselines that are
-currently full width, and it is the first chance anyone has had to **press** the eleven controls
-across both screens.
+**M4's remaining half was pairing and it is built**, and the adversarial pass over it is landed too,
+so what is left of that slice is what a machine cannot answer, two calls that are Davide's, and a
+version that has not moved.
+
+- **Press it on a phone.** The camera, the Keychain, the local-network prompt and a QR held across a
+  room are four things this Mac cannot produce, and the viewfinder's preview is the one piece of the
+  slice no test kind that runs here executes a line of. **Three of the six defects the adversarial
+  pass found were about what a screen is showing rather than what a model holds** — a title, a
+  frozen frame, and a keyboard key that submitted nothing — which is the class a phone in hand
+  catches in a minute and nothing here catches at all.
+- **The list is still titled *Worktrees*, not after the Mac**, which is the one clause of §5 that
+  did not land: an outer `navigationTitle` cannot override the one §2's view sets, so it costs 52
+  re-recorded baselines. Davide's call, in `decisions.md`.
+- **`.notReached(.localNetworkDenied)` reaches a screen §5 never drew.** Six typed words against a
+  Mac the phone may not speak to at all is a real ending with a real remedy, and the outcome screen
+  renders it out of the vocabulary it has rather than out of a frame. Davide's call, in
+  `decisions.md`.
+- **0.1.0's changelog entry does not mention the defect pass**, which is a call rather than an
+  oversight: the version is already bumped and the release has not merged, so these six fixes are
+  part of it rather than a release of their own. Three of them change what a reader sees — a retry
+  that can no longer reach the wrong Mac, a Go key that submits, and an iPad row that opens a screen
+  titled after the worktree — and the entry as written promises the third of those outright.
 
 
 **M3, the menu bar app: everything that is not a screen is done.** The Mac app runs the same backend
@@ -559,17 +634,15 @@ Smaller things still open in these modules:
   layout. §5's drawn half — the QR, the six words, the countdown, the paired rows with Revoke —
   ships without it.
 - **Pairing from a real device on the LAN**, which is M3's acceptance and cannot be answered from
-  this machine — the simulator does not implement local network privacy at all. Until the phone has
-  a pairing screen, the way to try it is `make run` with `--pair`: it prints a `granita://pair` link
-  and six words every two minutes, and the fingerprint on that line is what the phone must pin.
-- **A design for the QR scanner and the pairing screen**, which is now the only thing between the
-  phone and a paired Mac — and, since 0.0.19, between the worktree sidebar and a reader who can open
-  it. Everything behind those screens is built and tested; what has no frames is the viewfinder, the
-  six-word fallback field, and what a reader sees while a code is being spent and when it is refused.
-  The client round trip of 2026-08-21 did not include them. **The prompt had never been written**,
-  which is why this had been outstanding for eight releases without anyone waiting on an answer — it
-  was written on 2026-08-24 and handed over in chat. Until the frames come back, no branch touching
-  those screens becomes a pull request; see the `design-handoff` skill.
+  this machine — the simulator does not implement local network privacy at all. The phone has its
+  pairing screens now, so the way to try it is the app; `make run` with `--pair` is still the way to
+  read what the Mac is offering, since it prints a `granita://pair` link and six words every two
+  minutes and the fingerprint on that line is what the phone must pin.
+- ~~**A design for the QR scanner and the pairing screen.**~~ Came back on 2026-08-25 and is
+  recorded in [`design.md`](design.md) §5 — four screens, twelve states, and the finding that the
+  six words carry no key. Built in the same slice, with its baselines. It had been outstanding for
+  eight releases without anyone waiting on an answer, because **the prompt had never been written**;
+  it was written on 2026-08-24 and the round trip took a day.
 - **The refused-permission path, seen on device.** Granting works and is confirmed, and 0.0.4 fixed
   the false refusal Davide hit by backgrounding the app and coming back. What is still unconfirmed on
   hardware is the true one: whether a browser that iOS really is withholding permission from dies

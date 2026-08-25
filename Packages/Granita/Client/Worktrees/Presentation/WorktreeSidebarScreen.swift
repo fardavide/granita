@@ -10,10 +10,12 @@ import CoreDiffDomain
 /// The screen lives here rather than in `Ui` because it owns state, and owning state is what
 /// separates the two layers: `Ui` renders what it is handed, `Presentation` decides what that is.
 ///
-/// **Nothing in the app routes here yet, and that is deliberate.** The list needs a paired Mac and
-/// pairing has no screen, so a route to it would be a row leading somewhere that cannot load —
-/// which is the defect this project shipped for eight releases. Absent is a legitimate state; a
-/// link to a screen that cannot answer is not.
+/// **The whole screen, and on the iPad only one column of it.** Pairing routes here now, so it is
+/// reached two ways: directly from the stack in a compact width, and as the sidebar of `§2`'s split
+/// view otherwise — which is why the destination below is declared here *and* on the containers
+/// `WorktreeSplitScreen` owns. A split view keeps what its columns declare, and a row whose
+/// destination is kept from the container that receives it is a row that does nothing, which is the
+/// defect this project shipped for eight releases.
 public struct WorktreeSidebarScreen: View {
 
     @State private var model: ClientWorktreesModel
@@ -43,7 +45,7 @@ public struct WorktreeSidebarScreen: View {
         // its destination drifting apart in two modules — the exact way this app came to ship a row
         // that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
         .navigationDestination(for: WorktreeID.self) { worktree in
-            WorktreeNotReadyView(worktreeName: name(of: worktree))
+            WorktreeNotReadyView(worktreeName: model.displayName(of: worktree))
         }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(
@@ -66,14 +68,5 @@ public struct WorktreeSidebarScreen: View {
             Text("The row is still as it was. Trying again usually works.")
         }
         .task { await model.load() }
-    }
-
-    /// The name the row was showing, so the pushed screen is titled the thing that was tapped.
-    /// A worktree that stopped being in the list between the tap and the push is the reason there is
-    /// a fallback rather than a force-unwrap.
-    private func name(of worktree: WorktreeID) -> String {
-        guard case .listing(let listing) = model.state else { return "This worktree" }
-        let rows = listing.sections.flatMap(\.rows)
-        return rows.first { $0.id == worktree }?.displayName ?? "This worktree"
     }
 }
