@@ -115,6 +115,7 @@ struct WorktreeSplitScreenSnapshotTests {
 @MainActor
 private func aLoadableModel() -> ClientWorktreesModel {
     ClientWorktreesModel(
+        macName: aMacName,
         repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: nil),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
         now: { aFixedMoment }

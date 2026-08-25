@@ -42,7 +42,7 @@ struct PairingScannerScreen: View {
         // The camera opens with the screen and closes with it: leaving cancels this, which ends the
         // run, which stops the session. A green dot lit over the list the reader went back to is
         // what the alternative looks like.
-        .task { await model.readCode(as: phone.device) }
+        .task { await model.readCode(on: server, as: phone.device) }
         .onChange(of: model.pairing) { _, pairing in
             guard pairing.needsTheOutcomeScreen else { return }
             replaceThisScreen(with: .theOutcome)

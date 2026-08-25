@@ -38,7 +38,11 @@ struct FakeMacJoining: MacJoining {
 
     let answering: PairingOutcome
 
-    func pair(with attempt: PairingAttempt, as device: PairingDevice) async -> PairingOutcome {
+    func pair(
+        with attempt: PairingAttempt,
+        on mac: DiscoveredServer,
+        as device: PairingDevice
+    ) async -> PairingOutcome {
         answering
     }
 
@@ -149,6 +153,7 @@ nonisolated let aMacAddress = ServerAddress(host: "Mac-Studio.local", port: 54_3
 /// A pairing that bought a token, for the one screen that is drawn after one was bought and could
 /// not be written down. Nothing on that screen renders any of these fields.
 nonisolated let aPairedMac = PairedMac(
+    name: aMacName,
     device: PairedDevice(
         token: PairingToken(rawValue: "not-a-token-any-Mac-ever-issued"),
         deviceId: DeviceId(rawValue: "device-1"),

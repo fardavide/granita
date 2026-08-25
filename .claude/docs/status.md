@@ -2,9 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.1.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
+**Version 0.1.1, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
 TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
 put on a phone rather than what is on one now.
+
+**The worktree list is titled after the Mac, which is the last clause of design §5 and the one 0.1.0
+did not build.** `PairedMac` carries the name now, and it is passed into the pairing rather than
+derived from anything the credential holds: a scanned link carries a host and six words carry
+neither, so the only string a reader would recognise is the one they tapped in the Mac list. The
+title is set inside the sidebar because a `.navigationTitle` on the container outside it does not
+override one applied within — which is what deferred this in the first place, and is now
+demonstrated rather than argued, since the outer one had been sitting in the composition root's
+comment for a release. **Sixty-eight baselines**, four of them a state nobody had photographed: a
+Mac whose name is longer than the iPad's 320pt sidebar.
 
 **The pairing design came back on 25 August 2026 and is now built.** Four
 screens, twelve states, and a finding no frame could carry: **the six words carry no key.** The QR
@@ -111,11 +121,18 @@ Granita** — an `LSUIElement` app has no Dock icon and no window whose red butt
 that the instruction names something a reader cannot do from the screen giving it. Advanced reads
 the same refusal, which is where design §7 puts it.
 
-**The coverage gate runs locally now.** `make coverage` fetches `main`'s numbers and applies the same
-verdict CI applies — same script, same predicates, same exit code — because five times a fallen row
-had been read from a red pull request instead, at twenty minutes a time for a number the working tree
-could already produce. Verified against the runner on 2026-08-24: identical on all six rows. The
-`swift-testing` skill carries the other half, which no tool supplies — what to cover as you write it.
+**The coverage gate runs locally, and it answers five of the six values rather than six.**
+`make coverage` fetches `main`'s numbers and applies the same verdict CI applies — same script, same
+predicates, same exit code — because five times a fallen row had been read from a red pull request
+instead, at twenty minutes a time for a number the working tree could already produce. **`All tests`
+lines is the exception, and it was read rather than estimated**: on a clean tree at 0.1.0 it comes
+back 12 lines under what the runner published for that same commit, and the runner's own per-file
+export names all three files — `ApiServer` by seventeen, `BonjourBrowser` and `SessionIndex` back the
+other way. None of them is code a test drives; all of them run because a snapshot suite is app-hosted
+and the host starts a real server and a real browser, which get different distances on a laptop than
+on a runner. The 2026-08-24 verification that said "identical on all six rows" predates the Mac
+suite's contribution growing that far. The `swift-testing` skill carries both halves now: what to
+cover as you write it, and how to read that one row.
 
 **Three more controls that have never been pressed**, and the count of those is now ten. See
 "Waiting on Davide": the Accessibility grant is the whole of what stands between `make ui-tests-mac`
@@ -407,8 +424,8 @@ The spec's milestones, each ending in something runnable and a green suite, with
   against each other**, not each against its own idea of the contract: the phone's real client runs
   against the Mac's real router in one process, pairing with a code the Mac issued and with the six
   words under it, and driving the partial update through all three of its states.
-- **The worktree sidebar, design §2, unreachable on purpose.** Every checkout an agent has been
-  working in: grouped under one Pinned section and then by project, or flat and most recently changed
+- **The worktree sidebar, design §2, titled after the Mac it is reading.** Every checkout an agent has
+  been working in: grouped under one Pinned section and then by project, or flat and most recently changed
   first, with pins above everything in both. A name the reader can trust rendered proportionally and
   a generated directory name rendered monospaced, because that font switch encodes the whole question
   of whether the string means anything. Primary checkout and detachment earn a word rather than a
@@ -518,9 +535,11 @@ version that has not moved.
   pass found were about what a screen is showing rather than what a model holds** — a title, a
   frozen frame, and a keyboard key that submitted nothing — which is the class a phone in hand
   catches in a minute and nothing here catches at all.
-- **The list is still titled *Worktrees*, not after the Mac**, which is the one clause of §5 that
-  did not land: an outer `navigationTitle` cannot override the one §2's view sets, so it costs 52
-  re-recorded baselines. Davide's call, in `decisions.md`.
+- ~~**The list is still titled *Worktrees*, not after the Mac.**~~ Landed in 0.1.1. `PairedMac`
+  carries the name, `MacJoining.pair` is told which Mac it is spending against, and the title is set
+  inside the sidebar rather than around it. It is **inline** rather than large, which the first
+  render decided: a 34pt title drops a Bonjour name's tail, and the tail is the half that says which
+  Mac. Both calls are in `decisions.md` and `design.md` §2.
 - **`.notReached(.localNetworkDenied)` reaches a screen §5 never drew.** Six typed words against a
   Mac the phone may not speak to at all is a real ending with a real remedy, and the outcome screen
   renders it out of the vocabulary it has rather than out of a frame. Davide's call, in

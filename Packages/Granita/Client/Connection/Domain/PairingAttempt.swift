@@ -64,13 +64,23 @@ public enum PairingAttempt: Hashable, Sendable {
     }
 }
 
-/// A Mac this phone is now paired with, and everything needed to read from it.
+/// A Mac this phone is now paired with, and everything needed to read from it and to name it.
 ///
-/// The three facts have to travel together: the token authenticates, the address says where, and
-/// the fingerprint is what makes a session refuse to reach anywhere else. Splitting them would let
-/// a caller build a session for one Mac with another one's pin, which is the mistake the pinned
-/// transport exists to make impossible.
+/// The three technical facts have to travel together: the token authenticates, the address says
+/// where, and the fingerprint is what makes a session refuse to reach anywhere else. Splitting them
+/// would let a caller build a session for one Mac with another one's pin, which is the mistake the
+/// pinned transport exists to make impossible.
+///
+/// **The name travels with them for a reason of the same kind.** Design §5 titles the worktree list
+/// with the Mac's name, and nothing else in this value is that name: the address is a host and a
+/// port, and a Mac reached over `192.168.1.24` would put an IP address at the top of the one screen
+/// this product exists for. Deriving it there would also be a second answer to a question the Mac
+/// list already answered.
 public struct PairedMac: Hashable, Sendable {
+
+    /// What the reader calls this Mac, which is the string they tapped in the Mac list and saw at
+    /// the top of every pairing screen after it. The Bonjour instance's own display name.
+    public let name: String
 
     public let device: PairedDevice
 
@@ -82,7 +92,13 @@ public struct PairedMac: Hashable, Sendable {
     /// not observe.
     public let fingerprint: SpkiFingerprint
 
-    public init(device: PairedDevice, address: ServerAddress, fingerprint: SpkiFingerprint) {
+    public init(
+        name: String,
+        device: PairedDevice,
+        address: ServerAddress,
+        fingerprint: SpkiFingerprint
+    ) {
+        self.name = name
         self.device = device
         self.address = address
         self.fingerprint = fingerprint

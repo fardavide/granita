@@ -72,9 +72,9 @@ public struct GranitaMobileScene: Scene {
                 )
                 // The list this product exists for, in design §2's own container: one sidebar and
                 // one detail column, which the phone collapses back to the list alone. It titles
-                // itself *Worktrees* rather than after the Mac, which is the one clause of §5 this
-                // does not build — a title applied out here does not override one applied in there,
-                // measured rather than assumed. See `.claude/docs/decisions.md`.
+                // itself after the Mac, which §5 asks for — and which is set inside that screen
+                // rather than out here, because a title applied to a container does not override
+                // one applied within it. See `.claude/docs/decisions.md`.
                 .navigationDestination(for: PairedMac.self) { mac in
                     WorktreeSplitScreen(model: Self.worktrees(of: mac))
                 }
@@ -144,6 +144,7 @@ public struct GranitaMobileScene: Scene {
     /// come from the same pairing, so a request cannot leave for a machine nobody vouched for.
     private static func worktrees(of mac: PairedMac) -> ClientWorktreesModel {
         ClientWorktreesModel(
+            macName: mac.name,
             repository: HttpGranitaRepository(
                 mac: mac,
                 transport: UrlSessionHttpTransport(pinnedTo: mac.fingerprint)

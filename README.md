@@ -71,6 +71,11 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.1.1 — 2026-08-25
+- **The worktree list is titled with your Mac's name.** It said *Worktrees*, which is the one thing
+  you already knew: you had just tapped a Mac to get there. If you have two Macs serving, the title
+  is now the only thing on the screen that tells them apart.
+
 ### 0.1.0 — 2026-08-25
 - **You can pair your phone with your Mac, and then read what an agent has been doing.** This is the
   first release that does the thing the product is for. Choose *Pair a device* in Granita's menu bar,

@@ -125,7 +125,7 @@ struct ClientConnectionModelTests {
         // given — the state usually left undrawn: the alert lands on this screen and the reader
         // reads it while deciding, so it exists for exactly as long as somebody is thinking.
         let scenario = Scenario(cameraSaying: .notAsked, answering: .granted, answeredAfter: .seconds(60))
-        let reading = Task { await scenario.sut.readCode(as: anIphone) }
+        let reading = Task { await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone) }
 
         // when
         await scenario.settling(from: .notStarted)
@@ -143,7 +143,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .notAsked, answering: .granted, thenEnding: true)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.camera.timesAsked == 1)
@@ -157,7 +157,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .notAsked, answering: .refused)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .cameraRefused)
@@ -169,7 +169,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .refused, answering: .granted)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then — asking again returns the standing answer and shows nothing, so the only thing a
         // second ask could do is make the screen look like it is waiting for a reader who already
@@ -185,7 +185,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .restricted, answering: .restricted)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .cameraRestricted)
@@ -200,7 +200,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .notAsked, answering: .notAsked)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .cameraRefused)
@@ -214,7 +214,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(cameraSaying: .granted, answering: .granted, thenEnding: true)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .looking)
@@ -227,7 +227,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.somethingElse], thenEnding: true)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .sawSomethingElse)
@@ -243,7 +243,7 @@ struct ClientConnectionModelTests {
         )
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .sawSomethingElse)
@@ -256,7 +256,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.somethingElse, .somethingElse], thenEnding: true)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .sawSomethingElse)
@@ -269,7 +269,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.somethingElse], thenEnding: true, hintReturnsAfter: .zero)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
         await scenario.settling(from: .sawSomethingElse)
 
         // then — and the camera was never stopped, so what comes back is a viewfinder rather than a
@@ -284,7 +284,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.somethingElse, .pairingLink(aLink)])
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .finished(.paired(aPairedMac)))
@@ -297,7 +297,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.pairingLink(aLink)])
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.scanner.isStopped)
@@ -312,7 +312,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(reading: [.pairingLink(aLink), .somethingElse], thenEnding: true)
 
         // when
-        await scenario.sut.readCode(as: anIphone)
+        await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .finished(.paired(aPairedMac)))
@@ -322,7 +322,7 @@ struct ClientConnectionModelTests {
     func `given the reader leaves the scanner when the run is cancelled then the camera is stopped`() async {
         // given — a session nobody is watching is the green dot lit over the list they went back to.
         let scenario = Scenario(reading: [.somethingElse])
-        let reading = Task { await scenario.sut.readCode(as: anIphone) }
+        let reading = Task { await scenario.sut.readCode(on: aMacTheBrowseFound, as: anIphone) }
         await scenario.settling(from: .notStarted)
 
         // when
@@ -340,7 +340,7 @@ struct ClientConnectionModelTests {
         // given — the one place in this app a progress view is right: unlike a browse, this request
         // finishes.
         let scenario = Scenario(answeringPairAfter: .seconds(60))
-        let joining = Task { await scenario.sut.join(.scanned(aLink), as: anIphone) }
+        let joining = Task { await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone) }
 
         // when
         await scenario.settling(from: .notStarted)
@@ -358,7 +358,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario()
 
         // when
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .finished(.paired(aPairedMac)))
@@ -370,7 +370,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(answeringPair: .refused(.pairingExpired))
 
         // when
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .finished(.refused(.pairingExpired)))
@@ -383,7 +383,7 @@ struct ClientConnectionModelTests {
         let scenario = Scenario(answeringPair: .wrongContract(.phoneIsBehind(serving: 9)))
 
         // when
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // then
         #expect(scenario.sut.pairing == .finished(.wrongContract(.phoneIsBehind(serving: 9))))
@@ -527,7 +527,7 @@ struct ClientConnectionModelTests {
         // the code it carries is worth exactly what it was.
         let scenario = Scenario(answeringPair: .refused(.unreachable(diagnostic: "NWError -72004")))
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // when
         await scenario.sut.spendAgain(on: aMacTheBrowseFound, as: anIphone)
@@ -581,7 +581,7 @@ struct ClientConnectionModelTests {
             resolving: .failure(.localNetworkDenied)
         )
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
         scenario.sut.typedWords = sixWords
         await scenario.sut.spendTypedWords(on: aMacTheBrowseFound, as: anIphone)
 
@@ -600,7 +600,7 @@ struct ClientConnectionModelTests {
         // handed the Mac whose name is in the title bar.
         let scenario = Scenario(answeringPair: .refused(.pairingExpired))
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
         scenario.sut.typedWords = sixWords
 
         // when
@@ -624,7 +624,7 @@ struct ClientConnectionModelTests {
             resolving: .failure(.unreachable(diagnostic: "No such record"))
         )
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
         scenario.sut.beginPairing(with: theOtherMacTheBrowseFound)
         scenario.sut.typedWords = sixWords
         await scenario.sut.spendTypedWords(on: theOtherMacTheBrowseFound, as: anIphone)
@@ -644,7 +644,7 @@ struct ClientConnectionModelTests {
         // visible rather than merely absent.
         let scenario = Scenario(answeringPair: .refused(.pairingExpired))
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
         scenario.sut.beginPairing(with: theOtherMacTheBrowseFound)
         scenario.sut.typedWords = sixWords
         await scenario.sut.spendTypedWords(on: theOtherMacTheBrowseFound, as: anIphone)
@@ -669,7 +669,7 @@ struct ClientConnectionModelTests {
         // and hides its back button for a spend that is not happening.
         let scenario = Scenario(answeringPair: .refused(.pairingExpired))
         scenario.sut.beginPairing(with: aMacTheBrowseFound)
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // when
         scenario.sut.beginPairing(with: theOtherMacTheBrowseFound)
@@ -721,7 +721,7 @@ struct ClientConnectionModelTests {
             answeringPair: .tokenNotStored(aPairedMac, .refused(status: -25308)),
             answeringWriteAfter: .seconds(60)
         )
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
         let writing = Task { await scenario.sut.saveTokenAgain() }
 
         // when
@@ -741,7 +741,7 @@ struct ClientConnectionModelTests {
             answeringPair: .tokenNotStored(aPairedMac, .refused(status: -25308)),
             answeringWrite: .paired(aPairedMac)
         )
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // when
         await scenario.sut.saveTokenAgain()
@@ -758,7 +758,7 @@ struct ClientConnectionModelTests {
             answeringPair: .tokenNotStored(aPairedMac, .refused(status: -25308)),
             answeringWrite: .paired(aPairedMac)
         )
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // when
         await scenario.sut.saveTokenAgain()
@@ -774,7 +774,7 @@ struct ClientConnectionModelTests {
             answeringPair: .tokenNotStored(aPairedMac, .refused(status: -25308)),
             answeringWrite: .tokenNotStored(aPairedMac, .refused(status: -25308))
         )
-        await scenario.sut.join(.scanned(aLink), as: anIphone)
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
 
         // when
         await scenario.sut.saveTokenAgain()
@@ -889,6 +889,7 @@ private let aPairedDevice = PairedDevice(
 )
 
 private let aPairedMac = PairedMac(
+    name: aMacTheBrowseFound.name,
     device: aPairedDevice,
     address: anAddress,
     fingerprint: aLink.fingerprint

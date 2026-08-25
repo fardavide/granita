@@ -100,6 +100,7 @@ private func theSidebar(of model: ClientWorktreesModel, in layout: SnapshotLayou
 @MainActor
 private func aModel(writeFailure: ApiFailure? = nil) -> ClientWorktreesModel {
     ClientWorktreesModel(
+        macName: aMacName,
         repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: writeFailure),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
         now: { aFixedMoment }
