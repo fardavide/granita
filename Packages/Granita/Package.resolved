@@ -1,5 +1,5 @@
 {
-  "originHash" : "6771b60595c4bd068f436c97910ee052bf97ae26849c7765b163a231ec9bf6c1",
+  "originHash" : "891820541150466fb3d0c5d26c7d6bd3161a74e6a7ff43c5be4e91d2e82f3dc9",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -98,15 +98,6 @@
       "state" : {
         "revision" : "47d3869a7291f085c1fb9fb1e6d3b97a793f45c6",
         "version" : "4.5.1"
-      }
-    },
-    {
-      "identity" : "swift-custom-dump",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pointfreeco/swift-custom-dump",
-      "state" : {
-        "revision" : "e9c34fd54ece006b491a0e6d23fe9a6024b9a828",
-        "version" : "1.7.0"
       }
     },
     {
@@ -227,15 +218,6 @@
       }
     },
     {
-      "identity" : "swift-snapshot-testing",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
-      "state" : {
-        "revision" : "59a99c458de4d2dee580529b61b4f78dca7b7fa6",
-        "version" : "1.19.4"
-      }
-    },
-    {
       "identity" : "swift-subprocess",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-subprocess.git",
@@ -245,30 +227,12 @@
       }
     },
     {
-      "identity" : "swift-syntax",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-syntax",
-      "state" : {
-        "revision" : "79e4b74a295b6eb74a8b585e3a39d29e70c1dbd1",
-        "version" : "603.0.2"
-      }
-    },
-    {
       "identity" : "swift-system",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-system",
       "state" : {
         "revision" : "869129b7bf4ecc57b97d0193ad29690ca2134750",
         "version" : "1.8.1"
-      }
-    },
-    {
-      "identity" : "xctest-dynamic-overlay",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
-      "state" : {
-        "revision" : "7bbd97af585672a3dcdf6575ad37b339ad41b579",
-        "version" : "1.13.0"
       }
     }
   ],

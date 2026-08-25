@@ -41,15 +41,20 @@ build: ## Compile-check the package and both apps
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
 
 .PHONY: coverage
-coverage: ## Run the coverage gate locally — the same verdict CI gives, before the pull request
+coverage: ## Run the coverage gate locally — CI's verdict on five of the six values
 	@# **This exists so a falling row is found here rather than twenty minutes later.** The gate is a
 	@# plain ratchet with no slack against the last `main` run, so any change that adds code can push
 	@# a row under it — and every time that has been discovered from a red pull request instead of
 	@# from here, the cost was a full CI round trip to learn a number that was already computable.
 	@#
-	@# It runs the same script CI runs and hands the result to the same predicates, so the verdict is
-	@# the verdict rather than an approximation of it. Verified on 24 August 2026: the local numbers
-	@# matched the runner's to the line on all six rows.
+	@# It runs the same script CI runs and hands the result to the same predicates. **Five of the six
+	@# values are therefore the verdict; `All tests` lines is not.** Measured on 25 August 2026 on a
+	@# clean tree: it reads 12 lines below what the runner published for the same commit, because
+	@# `all` merges the profiles of two app-hosted suites whose hosts start a real server and a real
+	@# browser, and how far those get differs per machine. Read a fall in that one row against a
+	@# clean-tree run of the same working copy — the uncovered line count printed under the table is
+	@# stable across the difference. The `swift-testing` skill's coverage reference has the per-file
+	@# measurement.
 	@#
 	@# **It is not fast** — three passes, one of which builds the iOS app and boots a simulator, and
 	@# one of which renders the Mac's panes. Several minutes. That is the price of the answer, and it

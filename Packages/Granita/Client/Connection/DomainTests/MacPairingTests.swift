@@ -148,10 +148,16 @@ struct MacPairingTests {
         let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then — the browse's own string, not the link's host, so what titles the list is what the
-        // reader tapped in the Mac list one screen earlier.
+        // reader tapped in the Mac list one screen earlier. Read off the outcome rather than off
+        // the fixture: the two are compared above, and an assertion against a constant this file
+        // wrote is a sentence about this file.
+        guard case .paired(let pairing) = outcome else {
+            Issue.record("a Mac that agrees has to come back paired, or there is no name to check")
+            return
+        }
         #expect(outcome == .paired(aPairedMac))
-        #expect(aPairedMac.name == "Davide's MacBook Pro")
-        #expect(aPairedMac.name != aLink.host)
+        #expect(pairing.name == "Davide's MacBook Pro")
+        #expect(pairing.name != aLink.host)
     }
 
     // MARK: - The write that failed and can be tried again

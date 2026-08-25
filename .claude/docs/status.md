@@ -121,11 +121,18 @@ Granita** — an `LSUIElement` app has no Dock icon and no window whose red butt
 that the instruction names something a reader cannot do from the screen giving it. Advanced reads
 the same refusal, which is where design §7 puts it.
 
-**The coverage gate runs locally now.** `make coverage` fetches `main`'s numbers and applies the same
-verdict CI applies — same script, same predicates, same exit code — because five times a fallen row
-had been read from a red pull request instead, at twenty minutes a time for a number the working tree
-could already produce. Verified against the runner on 2026-08-24: identical on all six rows. The
-`swift-testing` skill carries the other half, which no tool supplies — what to cover as you write it.
+**The coverage gate runs locally, and it answers five of the six values rather than six.**
+`make coverage` fetches `main`'s numbers and applies the same verdict CI applies — same script, same
+predicates, same exit code — because five times a fallen row had been read from a red pull request
+instead, at twenty minutes a time for a number the working tree could already produce. **`All tests`
+lines is the exception, and it was read rather than estimated**: on a clean tree at 0.1.0 it comes
+back 12 lines under what the runner published for that same commit, and the runner's own per-file
+export names all three files — `ApiServer` by seventeen, `BonjourBrowser` and `SessionIndex` back the
+other way. None of them is code a test drives; all of them run because a snapshot suite is app-hosted
+and the host starts a real server and a real browser, which get different distances on a laptop than
+on a runner. The 2026-08-24 verification that said "identical on all six rows" predates the Mac
+suite's contribution growing that far. The `swift-testing` skill carries both halves now: what to
+cover as you write it, and how to read that one row.
 
 **Three more controls that have never been pressed**, and the count of those is now ten. See
 "Waiting on Davide": the Accessibility grant is the whole of what stands between `make ui-tests-mac`

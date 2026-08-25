@@ -3464,3 +3464,20 @@ Davide's call, 25 August 2026, against two rendered layouts rather than against 
 alternatives it beat are in [`design.md`](design.md) §2, and the frames that would have settled it do
 not exist — §2's were deleted when §2 shipped, which is that rule working: what survives a drawing is
 the argument, and this is one the drawing never had to make because §2's title was one word.
+
+### What this name is not, and the case it gets wrong
+
+**A QR scanned at one Mac while another Mac's screen is open is named after the one that was open.**
+The spine is *Macs → this Mac → Scan*, so the viewfinder, the outcome and now the list are all titled
+after the row the reader tapped; the link they hold up carries a host, a port and a key, and the
+pairing goes to whichever machine those describe. Point the camera at the wrong Mac and the
+connection is right and the label is wrong.
+
+It is left that way rather than repaired, and the alternatives are why. A link carries no name, so the
+only thing to fall back on is `link.host` — which is `davides-macbook-pro.local`, a string the design
+spends §1 keeping off the screen. Comparing the link's host against the opened Mac's resolved address
+would catch it, at the price of a resolution on the scanned path that path deliberately does not need:
+the QR is the credential that already knows where it is going. What this costs is a wrong word on a
+screen whose content is correct, in a sequence the reader had to leave halfway through to produce. The
+mismatch is older than this entry — every pairing screen has been titled that way since 0.1.0 — and
+what changed is that it now survives past the pairing.
