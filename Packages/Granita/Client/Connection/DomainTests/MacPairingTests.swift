@@ -17,7 +17,7 @@ struct MacPairingTests {
         let scenario = Scenario()
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then — the Mac keeps a hash and this is the only copy of the token there is, so an
         // outcome that reported success without writing it down would lock the phone out silently.
@@ -32,7 +32,7 @@ struct MacPairingTests {
         let scenario = Scenario(servingApiVersion: Branding.apiVersion - 1)
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .wrongContract(.macIsBehind(serving: Branding.apiVersion - 1)))
@@ -48,7 +48,7 @@ struct MacPairingTests {
         let scenario = Scenario(pairing: .failure(.pairingExpired))
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .refused(.pairingExpired))
@@ -60,7 +60,7 @@ struct MacPairingTests {
         let scenario = Scenario(pairing: .failure(.rateLimited))
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .refused(.rateLimited))
@@ -74,7 +74,7 @@ struct MacPairingTests {
         let scenario = Scenario(keychainRefusing: .refused(status: -34018))
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .tokenNotStored(aPairedMac, .refused(status: -34018)))
@@ -89,7 +89,7 @@ struct MacPairingTests {
         let scenario = Scenario()
 
         // when
-        let outcome = await scenario.sut.pair(with: .scanned(aLink), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .paired(aPairedMac))
@@ -105,10 +105,19 @@ struct MacPairingTests {
         let scenario = Scenario(presenting: anObservedKey)
 
         // when
-        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), on: theMacTheReaderOpened, as: anIphone)
 
         // then
-        #expect(outcome == .paired(PairedMac(device: aPairedDevice, address: anAddress, fingerprint: anObservedKey)))
+        #expect(
+            outcome == .paired(
+                PairedMac(
+                    name: theMacTheReaderOpened.name,
+                    device: aPairedDevice,
+                    address: anAddress,
+                    fingerprint: anObservedKey
+                )
+            )
+        )
         #expect(await scenario.server.codesOffered == [sixWords])
     }
 
@@ -120,10 +129,29 @@ struct MacPairingTests {
         let scenario = Scenario(presenting: nil)
 
         // when
-        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), as: anIphone)
+        let outcome = await scenario.sut.pair(with: .spoken(code: sixWords, at: anAddress), on: theMacTheReaderOpened, as: anIphone)
 
         // then
         #expect(outcome == .refused(.notUnderstood(diagnostic: "the Mac was reached without presenting a key")))
+    }
+
+    // MARK: - What the reader calls the Mac, which travels with the pairing
+
+    @Test
+    func `given a Mac the reader opened when pairing then the pairing carries the name they saw`() async {
+        // given — design §5 titles the worktree list with the Mac's name, and the address is not it:
+        // a pairing reached over `192.168.1.24` would put an IP address at the top of the one screen
+        // this product exists for.
+        let scenario = Scenario()
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then — the browse's own string, not the link's host, so what titles the list is what the
+        // reader tapped in the Mac list one screen earlier.
+        #expect(outcome == .paired(aPairedMac))
+        #expect(aPairedMac.name == "Davide's MacBook Pro")
+        #expect(aPairedMac.name != aLink.host)
     }
 
     // MARK: - The write that failed and can be tried again
@@ -134,7 +162,8 @@ struct MacPairingTests {
         // keeps the pairing rather than sending the reader to another machine to repair something
         // this one can repair itself.
         let scenario = Scenario(keychainRefusing: .refused(status: -25308))
-        guard case .tokenNotStored(let pairing, _) = await scenario.sut.pair(with: .scanned(aLink), as: anIphone) else {
+        let refused = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+        guard case .tokenNotStored(let pairing, _) = refused else {
             Issue.record("a refused Keychain has to hand the pairing back, or there is nothing to retry")
             return
         }
@@ -241,8 +270,16 @@ private let anIphone = PairingDevice(name: "Davide's iPhone", platform: "iOS")
 
 private let anAddress = ServerAddress(host: "davides-macbook-pro.local", port: 59144)
 
+/// The row in the Mac list that was tapped. Its name is deliberately not the link's host: those are
+/// two different strings for one machine, and only one of them is what a reader recognises.
+private let theMacTheReaderOpened = DiscoveredServer(
+    id: "Davide's MacBook Pro._granita._tcp.local.",
+    name: "Davide's MacBook Pro"
+)
+
 /// What the scanned path ends up holding: the pin arrived with the link.
 private let aPairedMac = PairedMac(
+    name: theMacTheReaderOpened.name,
     device: aPairedDevice,
     address: anAddress,
     fingerprint: aLink.fingerprint

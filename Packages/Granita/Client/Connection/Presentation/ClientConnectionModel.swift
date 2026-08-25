@@ -181,11 +181,16 @@ public final class ClientConnectionModel {
     /// Opens the camera if it may be opened, and reads until a code is found or the screen goes
     /// away.
     ///
+    /// **The Mac is handed in rather than read off this model**, the same way the two spends below
+    /// take it: what a scanned link buys is titled after the Mac whose screen the reader was
+    /// pointing at, and one model serving the whole app cannot be trusted to still be holding that
+    /// one.
+    ///
     /// **The alert is raised from here rather than on the way in.** iOS gives an app one of them,
     /// ever, and design §5 rejects pre-flighting it on the entry screen precisely because that burns
     /// the one prompt at the moment it is least explicable. The state is set before the ask so that
     /// the screen the alert lands on is a screen rather than a blank.
-    public func readCode(as device: PairingDevice) async {
+    public func readCode(on server: DiscoveredServer, as device: PairingDevice) async {
         var access = camera.current
         if access == .notAsked {
             pairing = .waitingForCameraAccess
@@ -193,7 +198,7 @@ public final class ClientConnectionModel {
         }
         switch access {
         case .granted:
-            await read(as: device)
+            await read(on: server, as: device)
         case .notAsked, .refused:
             // Still unanswered after the one prompt this app gets is not a state AVFoundation
             // produces, and the refusal screen is where it belongs anyway: it is the one that offers
@@ -216,7 +221,11 @@ public final class ClientConnectionModel {
             let address = try await addresses.address(of: server)
             // What the echo showed, rather than what was typed: the reader's proof that the phone
             // read the phrase they meant is that line, so the line is what gets spent.
-            await join(.spoken(code: spokenWords.joined(separator: "-"), at: address), as: device)
+            await join(
+                .spoken(code: spokenWords.joined(separator: "-"), at: address),
+                on: server,
+                as: device
+            )
         } catch {
             // Nothing left the phone, so nothing is held for a retry to re-send. Saying so is the
             // point: what is here otherwise is a credential from an attempt the reader has already
@@ -236,7 +245,7 @@ public final class ClientConnectionModel {
         if pairingWith == server, case .scanned(let link) = spentCredential {
             // The QR is still on the Mac's screen and the handshake never reached the Mac, so the
             // code it carries is still worth what it was.
-            await join(.scanned(link), as: device)
+            await join(.scanned(link), on: server, as: device)
         } else {
             // Six words are resolved again before they are spent: the address they borrow is
             // precisely the thing that can have gone stale between the two taps, and a phrase that
@@ -246,10 +255,10 @@ public final class ClientConnectionModel {
     }
 
     /// Spends a credential and records what came of it.
-    func join(_ attempt: PairingAttempt, as device: PairingDevice) async {
+    func join(_ attempt: PairingAttempt, on server: DiscoveredServer, as device: PairingDevice) async {
         pairing = .spending
         spentCredential = attempt
-        pairing = .finished(await joining.pair(with: attempt, as: device))
+        pairing = .finished(await joining.pair(with: attempt, on: server, as: device))
     }
 
     /// Retries the Keychain write, and nothing else.
@@ -267,7 +276,7 @@ public final class ClientConnectionModel {
     }
 
     /// Runs the camera until a code is found or the reader leaves.
-    private func read(as device: PairingDevice) async {
+    private func read(on server: DiscoveredServer, as device: PairingDevice) async {
         pairing = .looking
         // Whatever ends this — a code spent, or SwiftUI cancelling the task the screen was driving —
         // the camera goes off with it. Saying so twice is allowed and is what the protocol asks for.
@@ -279,7 +288,7 @@ public final class ClientConnectionModel {
                 // the reader gets that the phone saw anything at all — so it happens before the
                 // request rather than after it.
                 scanner.stop()
-                await join(.scanned(link), as: device)
+                await join(.scanned(link), on: server, as: device)
             case .damagedPairingLink, .somethingElse:
                 sayThatWasNotOurs()
             }

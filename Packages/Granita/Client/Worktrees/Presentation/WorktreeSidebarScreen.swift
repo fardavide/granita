@@ -30,6 +30,7 @@ public struct WorktreeSidebarScreen: View {
 
     public var body: some View {
         WorktreeSidebarView(
+            macName: model.macName,
             state: model.state,
             mode: model.mode,
             showsQuietWorktrees: model.showsQuietWorktrees,

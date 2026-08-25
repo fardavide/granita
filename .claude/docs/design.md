@@ -265,6 +265,27 @@ Of the four git flags, one and a half earn pixels:
 > which is the work the pin exists to skip. Rejected: duplicating the row in both places — a row that
 > appears twice is a worse bug than a row that appears once in a surprising place.
 
+### The title is the Mac's name, and it is inline *(measured 25 August 2026)*
+
+§5 ends by saying the reader lands on "the worktree list titled by the Mac's name", and this is that
+title. It said *Worktrees* for one release, which is the one thing the reader already knew — they had
+just tapped a Mac to get here.
+
+**Inline rather than large, and that is a departure this screen paid for rather than chose.** The
+name is a Bonjour device name, and §1 derives truncation from what a string *is*: those differ at
+their end, which is why the Mac list truncates them in the middle. A large title cannot be told to do
+that. At 34pt bold it holds about sixteen characters at 390pt and fewer in the 320pt sidebar, and it
+drops the rest off the tail — *Davide's 16-inch MacBook Pro* rendered as *Davide's 16-inch Mac…* on
+the phone and *Davide's 16-inch…* on the iPad, which loses exactly the half that says which Mac. At
+17pt semibold the whole name fits, and the list gets back the 52pt a large title spends on every
+scroll.
+
+> Rejected: keeping the large title and accepting the truncation — defensible, because the reader
+> chose this Mac one screen earlier, and indefensible the moment a second Mac is serving, which is
+> the case the title exists for. Rejected: a custom principal toolbar item that scales the name down
+> to fit — a hand-rolled title, for a control the system already has, to preserve a size nothing in
+> the design asks for. Davide's call, 25 August 2026, against two rendered layouts.
+
 ### The mode control is a toolbar menu, not a segmented picker
 
 This is the strongest single recommendation in §2. A segmented picker is a permanent 32pt band plus

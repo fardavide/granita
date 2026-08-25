@@ -41,6 +41,7 @@ struct WorktreeSidebarViewSnapshotTests {
         assertScreenSnapshot(
             NavigationStack {
                 WorktreeSidebarView(
+                    macName: subject.macName,
                     state: subject.state,
                     mode: subject.mode,
                     showsQuietWorktrees: subject.showsQuietWorktrees,
@@ -67,11 +68,29 @@ struct WorktreeSidebarViewSnapshotTests {
 struct SidebarCase: Sendable, CustomTestStringConvertible {
 
     let name: String
+    let macName: String
     let state: WorktreeSidebarState
     let mode: WorktreeListMode
     let showsQuietWorktrees: Bool
 
     var testDescription: String { name }
+
+    /// The Mac's name is the same in every case but one, so it is defaulted here rather than
+    /// repeated ten times: what each of these varies is the state, and a field spelled identically
+    /// on every line reads as noise until the one line that changes it.
+    init(
+        name: String,
+        macName: String = aMacName,
+        state: WorktreeSidebarState,
+        mode: WorktreeListMode,
+        showsQuietWorktrees: Bool
+    ) {
+        self.name = name
+        self.macName = macName
+        self.state = state
+        self.mode = mode
+        self.showsQuietWorktrees = showsQuietWorktrees
+    }
 
     static let all: [SidebarCase] = [
         // The list as design §2 draws it: one Pinned section above the projects, a pinned row
@@ -154,7 +173,19 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
 
         // A request that has neither answered nor failed. Unlike a Bonjour browse this one finishes,
         // so a progress view is not a promise this screen cannot keep.
-        SidebarCase(name: "loading", state: .loading, mode: .groupedByProject, showsQuietWorktrees: false)
+        SidebarCase(name: "loading", state: .loading, mode: .groupedByProject, showsQuietWorktrees: false),
+
+        // A Mac called what Macs are actually called. The title is the reader's only answer to
+        // "which machine am I reading", so what it does when the name is longer than the column is
+        // a state somebody has to have looked at rather than one nobody photographed — and the
+        // iPad's 320pt sidebar is narrower than the phone, so it is the harder of the two.
+        SidebarCase(
+            name: "long-mac-name",
+            macName: "Davide's 16-inch MacBook Pro",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false
+        )
     ]
 }
 

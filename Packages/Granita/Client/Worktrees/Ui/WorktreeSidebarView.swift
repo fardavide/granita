@@ -12,6 +12,7 @@ import CoreDiffDomain
 /// a Mac, a network or a paired device.
 public struct WorktreeSidebarView: View {
 
+    private let macName: String
     private let state: WorktreeSidebarState
     private let mode: WorktreeListMode
     private let showsQuietWorktrees: Bool
@@ -27,6 +28,7 @@ public struct WorktreeSidebarView: View {
     private let onRetry: () -> Void
 
     public init(
+        macName: String,
         state: WorktreeSidebarState,
         mode: WorktreeListMode,
         showsQuietWorktrees: Bool,
@@ -36,6 +38,7 @@ public struct WorktreeSidebarView: View {
         onSetPinned: @escaping (Bool, WorktreeID) -> Void,
         onRetry: @escaping () -> Void
     ) {
+        self.macName = macName
         self.state = state
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
@@ -64,7 +67,23 @@ public struct WorktreeSidebarView: View {
                 list(listing)
             }
         }
-        .navigationTitle("Worktrees")
+        // **The Mac's name, which design §5 asks for and which has to be set here.** A
+        // `.navigationTitle` applied to the container outside this screen does not override one
+        // applied inside it — measured, not assumed — so *Worktrees* stood at the top of this list
+        // for a release while the pairing that opened it knew perfectly well whose Mac it was.
+        // Nothing else on the screen says which machine is being read, and a phone that can reach
+        // two of them has no other way to tell.
+        .navigationTitle(macName)
+        // **Inline, and that is what the name cost.** A large title is 34pt bold, which fits about
+        // sixteen characters at 390pt and fewer in the iPad's 320pt sidebar — and it truncates at
+        // the tail, so *Davide's 16-inch MacBook Pro* arrived as *Davide's 16-inch Mac…*. Design §1
+        // derives the direction from what the string is, and a Bonjour device name differs at its
+        // end: tail truncation drops precisely the half that says which Mac. Inline is 17pt
+        // semibold, so the whole name fits and the list gets back 52pt of every scroll. Measured,
+        // and recorded in `design.md` §2 with the alternative it replaces.
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar { arrangement }
     }
 
