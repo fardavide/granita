@@ -13,6 +13,11 @@ public final class UrlSessionHttpTransport: HttpTransport {
 
     private let session: URLSession
 
+    /// What this transport ended up trusting. A closure because the two ways of building one answer
+    /// it from different places — a pin is known at construction, a first contact only after a
+    /// handshake — and the caller above must not have to know which kind it holds.
+    private let trusted: @Sendable () async -> SpkiFingerprint?
+
     public init(pinnedTo fingerprint: SpkiFingerprint) {
         // Ephemeral: nothing about a diff belongs in a URL cache on disk, and a 304 against a
         // revision the phone is polling for would be a change it never learns about.
@@ -21,6 +26,24 @@ public final class UrlSessionHttpTransport: HttpTransport {
             delegate: PinnedServerTrust(pinnedTo: fingerprint),
             delegateQueue: nil
         )
+        // A pinned session refuses everything else, so what it trusted is the pin by construction.
+        trusted = { fingerprint }
+    }
+
+    /// A transport for a Mac nobody vouched for, which is what six typed words amount to.
+    ///
+    /// **Only ever for the pairing handshake.** What comes back from `trustedFingerprint()` is what
+    /// the repository's own transport is then pinned to, so the window in which anything is
+    /// unpinned is one exchange long and ends the moment pairing does. The screen that offers this
+    /// path says what it means; see `.claude/docs/decisions.md`.
+    public init(trustingFirstAnswer: Void = ()) {
+        let trust = FirstContactServerTrust()
+        session = URLSession(configuration: .ephemeral, delegate: trust, delegateQueue: nil)
+        trusted = { await trust.fingerprint() }
+    }
+
+    public func trustedFingerprint() async -> SpkiFingerprint? {
+        await trusted()
     }
 
     public func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse {

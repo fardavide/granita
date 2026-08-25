@@ -33,7 +33,7 @@ packages:
 # .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.0.19
+    MARKETING_VERSION: 0.1.0
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -114,8 +114,21 @@ targets:
           Granita finds your Mac on your local network so you can read the diffs it serves.
         NSBonjourServices:
           - _granita._tcp
+        # The one string in the pairing flow that has to earn a tap, and the only copy in it we
+        # write for a system alert rather than for a screen: design §5 asks it to name what is read
+        # and to say what is not kept, because the reader is being asked for a camera by an app that
+        # has never wanted one before. The second sentence is the whole of what makes the first
+        # answerable.
         NSCameraUsageDescription: >-
-          Granita reads the pairing code your Mac displays.
+          Granita reads the pairing code your Mac displays. Nothing is photographed and nothing is
+          stored.
+        # What lets the outcome screen ask whether there is a TestFlight to send the reader to.
+        # `canOpenURL` answers `false` for any scheme not listed here, whatever is installed — so
+        # without this line the *phone is behind* state would never draw its one action, and the
+        # decision recorded for it ("the button appears only when the system says it can open it")
+        # would be a rule that always answers no.
+        LSApplicationQueriesSchemes:
+          - itms-beta
         # A custom trust evaluation in a URLSessionDelegate satisfies App Transport Security on
         # its own, so no exception is required. This key is kept as a declaration of intent, and
         # because it is what a plaintext fallback would need if TLS ever had to be turned off.

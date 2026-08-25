@@ -16,22 +16,36 @@ public struct HttpServerPairing: ServerPairing {
         client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .unauthenticated)
     }
 
-    /// Built from the link the camera read.
+    /// Built from whichever credential the reader offered.
     ///
     /// Turning a host and a port into an address is this layer's job rather than the composition
-    /// root's: it is the only layer that knows the scheme is `https` because the Mac serves TLS, and
-    /// the only one with a test that can watch where a request actually went.
+    /// root's, for the same reason it always was: it is the only layer that knows the scheme is
+    /// `https`, and the only one with a test that can watch where a request actually went.
+    public init(mac attempt: PairingAttempt, transport: any HttpTransport) {
+        self.init(macAt: attempt.address.httpsUrl ?? URL(filePath: "/nowhere"), transport: transport)
+    }
+
+    /// Built from the link the camera read.
     ///
     /// A host that will not go into a URL is a scanned code that is damaged, and the fallback treats
     /// it as one — an address nothing answers on, which surfaces as "could not reach your Mac"
     /// rather than as a crash. That is the same sentence a reader gets from pointing the camera at
     /// the right screen on the wrong network, which is the closest true thing this app can say.
+    ///
+    /// **It is a fallback rather than a resting place**, and an IPv6 address used to land in it: see
+    /// the URL this is built through for what an address has to survive before it earns that
+    /// sentence.
     public init(mac link: PairingLink, transport: any HttpTransport) {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = link.host
-        components.port = link.port
-        self.init(macAt: components.url ?? URL(filePath: "/nowhere"), transport: transport)
+        self.init(
+            macAt: ServerAddress(host: link.host, port: link.port).httpsUrl ?? URL(filePath: "/nowhere"),
+            transport: transport
+        )
+    }
+
+    /// Asked of the transport rather than remembered here, because on the spoken path the answer
+    /// does not exist until a handshake has happened.
+    public func trustedFingerprint() async -> SpkiFingerprint? {
+        await client.transport.trustedFingerprint()
     }
 
     public func health() async throws(ApiFailure) -> HealthResponse {

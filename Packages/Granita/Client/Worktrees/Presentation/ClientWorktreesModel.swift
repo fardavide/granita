@@ -101,6 +101,20 @@ public final class ClientWorktreesModel {
         writeFailure = nil
     }
 
+    /// What the row was showing for this worktree, so the screen it opens is titled the thing that
+    /// was tapped.
+    ///
+    /// Read off the arranged rows rather than off the raw worktrees, because the display name is
+    /// the Mac's resolution of four fields and the row is the only place that resolution lands.
+    ///
+    /// The fallback is a word rather than an empty title: an agent removes a worktree every day, so
+    /// one can stop being in the list between the tap and the push, and every state that is not a
+    /// listing holds no rows at all.
+    public func displayName(of worktree: WorktreeID) -> String {
+        guard case .listing(let listing) = state else { return "This worktree" }
+        return listing.sections.flatMap(\.rows).first { $0.id == worktree }?.displayName ?? "This worktree"
+    }
+
     /// Puts the Mac's own answer back in the list rather than the patch that was sent, because the
     /// display name is resolved over there: a row updated from the request would show the alias
     /// while the Mac had decided something else was the name.

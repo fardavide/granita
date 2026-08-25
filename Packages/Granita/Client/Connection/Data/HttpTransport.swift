@@ -1,6 +1,7 @@
 import Foundation
 
 import ClientConnectionDomain
+import CorePairingDomain
 
 /// One request, as the API client describes it and a transport performs it.
 public struct HttpRequest: Hashable, Sendable {
@@ -50,4 +51,13 @@ public struct HttpResponse: Hashable, Sendable {
 /// mapped away.
 public protocol HttpTransport: Sendable {
     func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse
+
+    /// The key the server presented, once a handshake has happened.
+    ///
+    /// **A pinned transport already knows this and a first-contact one only learns it**, which is
+    /// the entire difference between the two credentials a reader can offer, and it is why this is
+    /// asked rather than assumed anywhere above.
+    ///
+    /// `nil` before anything has been sent, and never after a request has succeeded.
+    func trustedFingerprint() async -> SpkiFingerprint?
 }

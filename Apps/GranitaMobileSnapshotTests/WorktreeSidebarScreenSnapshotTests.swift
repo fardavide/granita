@@ -38,7 +38,7 @@ struct WorktreeSidebarScreenSnapshotTests {
 
         // when - then
         assertScreenSnapshot(
-            NavigationStack { WorktreeSidebarScreen(model: model) },
+            theSidebar(of: model, in: layout),
             layout: layout,
             named: "screen"
         )
@@ -56,7 +56,7 @@ struct WorktreeSidebarScreenSnapshotTests {
 
         // when - then
         assertScreenSnapshot(
-            NavigationStack { WorktreeSidebarScreen(model: model) },
+            theSidebar(of: model, in: layout),
             layout: layout,
             named: "screen-beneath-the-rename-sheet"
         )
@@ -74,7 +74,7 @@ struct WorktreeSidebarScreenSnapshotTests {
 
         // when - then
         assertScreenSnapshot(
-            NavigationStack { WorktreeSidebarScreen(model: model) },
+            theSidebar(of: model, in: layout),
             layout: layout,
             named: "screen-beneath-the-refusal"
         )
@@ -82,6 +82,20 @@ struct WorktreeSidebarScreenSnapshotTests {
 }
 
 // MARK: -
+
+/// The screen in the room the composition root gives it: on the iPad the 320pt column of §2's split
+/// view, and on the phone the whole window.
+///
+/// The clamp is outside the navigation container, because iOS draws a title in the bar rather than
+/// in the content and a measure applied inside would assert an alignment the app does not have.
+/// Leading rather than centred, because that is the edge the column is against — what sits beside it
+/// on a real iPad is the detail column, and that is the split screen's own suite.
+@MainActor
+private func theSidebar(of model: ClientWorktreesModel, in layout: SnapshotLayout) -> some View {
+    NavigationStack { WorktreeSidebarScreen(model: model) }
+        .frame(maxWidth: layout.isRegularWidth ? WorktreeSplitScreen.sidebarWidth : nil)
+        .frame(maxWidth: .infinity, alignment: .leading)
+}
 
 @MainActor
 private func aModel(writeFailure: ApiFailure? = nil) -> ClientWorktreesModel {

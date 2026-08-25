@@ -1,5 +1,6 @@
 import CoreApiDomain
 import CoreDiffDomain
+import CorePairingDomain
 
 /// The two routes a phone may reach before it has a token.
 ///
@@ -17,6 +18,18 @@ public protocol ServerPairing: Sendable {
 
     /// Spends a one-time code and returns the only copy of the token it bought.
     func pair(with code: String, as device: PairingDevice) async throws(ApiFailure) -> PairedDevice
+
+    /// The key this Mac presented, once anything has spoken to it.
+    ///
+    /// **Read back rather than assumed, and that is the point of it existing.** On the scanned path
+    /// it is the pin the link carried and this only confirms it. On the spoken path there was no pin
+    /// to check against, so this is the whole of what got trusted — and a caller that constructed a
+    /// fingerprint instead of asking would pin a Mac it never handshook with.
+    ///
+    /// `nil` before first contact. After a code has been spent a handshake has happened by
+    /// definition, so a `nil` there is a transport that cannot say what it trusted, which is not a
+    /// pairing anyone should be told succeeded.
+    func trustedFingerprint() async -> SpkiFingerprint?
 }
 
 /// Everything the phone reads from a Mac it has paired with.

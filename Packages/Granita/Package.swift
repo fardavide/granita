@@ -204,7 +204,9 @@ let package = Package(
         ),
         .target(
             name: "ClientConnectionUi",
-            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain"],
+            // The word list is contract and lives in `Core`, and the six-word screen needs the one
+            // number in it that a screen can be wrong about: how many words a code is made of.
+            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain", "CorePairingDomain"],
             path: "Client/Connection/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),

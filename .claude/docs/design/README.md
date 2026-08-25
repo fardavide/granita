@@ -15,6 +15,16 @@ a question that now has a real one. When a file's last section ships, the file g
 | File | Still to build | Read the calls in |
 |---|---|---|
 | [`granita-design-review.html`](granita-design-review.html) | The file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
+| [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which needs a Bonjour record change nothing has. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
+
+The pairing return arrived with **twelve** states and left with one, because the pull request that
+recorded it also built the other eleven. What it carried that no frame could — that the six words
+carry no key, and what a screen owes a reader instead — is in §5 and in
+[`../decisions.md`](../decisions.md).
+
+Its one illustrative asset, `assets/pair-qr.svg`, was deliberately **not** copied: the only frames
+that used it are frames this slice deleted, and the original is in the Claude Design project at
+`https://claude.ai/design/p/7a8bd161-884b-4993-9c88-0b09f1cd625e` if it is ever wanted again.
 
 Server discovery was in that file too, and was implemented in 0.0.6; its frames went with it. The
 worktree sidebar followed in 0.0.19 — and its frames left with **two of their strings recorded in

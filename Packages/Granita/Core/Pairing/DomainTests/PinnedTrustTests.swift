@@ -51,6 +51,47 @@ struct PinnedTrustTests {
         #expect(trusted == false)
     }
 
+    // MARK: - Reading a key nobody vouched for
+
+    @Test func `given a key with nothing to check it against then its fingerprint is what would be pinned`() throws {
+        // given — the spoken path. There is no pin, so the question is not "is this the right Mac"
+        // but "what exactly am I about to trust", and the answer has to be the same string the
+        // scanned path would have compared against or the two paths pin differently.
+        let key = P256.Signing.PrivateKey().publicKey
+
+        // when
+        let observed = PinnedTrust.fingerprint(ofLeafPublicKeyX963: key.x963Representation)
+
+        // then
+        #expect(observed == SpkiFingerprint(subjectPublicKeyInfoDer: key.derRepresentation))
+    }
+
+    @Test func `given the observed fingerprint when it is judged against itself then it is trusted`() throws {
+        // given — the property the whole of trust on first use rests on: whatever first contact
+        // recorded must be accepted by the strict evaluation on every request after it, or a paired
+        // Mac becomes unreachable one screen later.
+        let key = P256.Signing.PrivateKey().publicKey
+        let observed = try #require(PinnedTrust.fingerprint(ofLeafPublicKeyX963: key.x963Representation))
+
+        // when
+        let trusted = PinnedTrust.isTrusted(leafPublicKeyX963: key.x963Representation, against: observed)
+
+        // then
+        #expect(trusted)
+    }
+
+    @Test func `given bytes that are not a p256 point when a fingerprint is read then there is none`() {
+        // given — the same refusal the judgement makes, and for the same reason: a key this Mac
+        // could not have served is not one to record as the thing we now trust forever.
+        let notAKey = Data(repeating: 0x04, count: 65)
+
+        // when
+        let observed = PinnedTrust.fingerprint(ofLeafPublicKeyX963: notAKey)
+
+        // then
+        #expect(observed == nil)
+    }
+
     @Test func `given bytes that are not a p256 point when judged then it is refused`() {
         // given
         let scenario = Scenario()

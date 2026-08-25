@@ -337,6 +337,48 @@ struct ClientWorktreesModelTests {
         #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
     }
 
+    // MARK: - Naming what was chosen
+
+    @Test
+    func `given a chosen worktree when its name is asked for then it is the name the row showed`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita", alias: "Scroll")])
+        await scenario.sut.load()
+
+        // when
+        let name = scenario.sut.displayName(of: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then — the resolved display name rather than the branch, because the row showed the alias
+        // and a screen titled anything else reads as having opened something different.
+        #expect(name == "Scroll")
+    }
+
+    @Test
+    func `given a worktree that left the list when its name is asked for then a name still comes back`() async {
+        // given — read, chosen, and gone from the next read before the screen it opened was drawn.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+
+        // when
+        let name = scenario.sut.displayName(of: WorktreeID(rawValue: "w-vanished"))
+
+        // then — the screen is titled by this, so absence has to be a word rather than nothing.
+        #expect(name == "This worktree")
+    }
+
+    @Test
+    func `given nothing has been read yet when a name is asked for then a name still comes back`() {
+        // given — the quiet worktrees are hidden and the list is a refusal, both of which leave the
+        // state holding no rows at all while a chosen identifier is still on the stack.
+        let scenario = Scenario(worktrees: [], readFailure: .unreachable(diagnostic: "NWError -65563"))
+
+        // when
+        let name = scenario.sut.displayName(of: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then
+        #expect(name == "This worktree")
+    }
+
     // MARK: -
 
     private struct Scenario {

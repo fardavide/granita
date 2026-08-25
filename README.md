@@ -71,6 +71,26 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.1.0 — 2026-08-25
+- **You can pair your phone with your Mac, and then read what an agent has been doing.** This is the
+  first release that does the thing the product is for. Choose *Pair a device* in Granita's menu bar,
+  point your phone's camera at the QR code, and the Mac's worktrees appear.
+- **No camera, or the camera is the screen you are pairing from?** Type the six words under the QR
+  instead. One field, and the phone shows you the words it understood in the same shape the Mac shows
+  them, so you check its reading rather than proofread your own typing.
+- **The two are not equally safe, and the screen says so rather than pretending.** The QR carries your
+  Mac's key over a channel nobody on the network can write to. Typed words carry a code and nothing
+  else, so that path trusts whichever Mac answers first — which is why the camera is offered first and
+  why one line at the bottom of the words screen tells you to use them on a network you trust.
+- **Declining the camera is not an error.** The screen offers you the six words, and the trip to
+  Settings is the small button underneath, not the one thing on offer.
+- **Every way pairing can fail says which end has the problem and whether your code was spent.** A Mac
+  running an older Granita, a phone running an older one, too many attempts, a Mac that stopped
+  answering, and the rare case where pairing worked but your phone could not save the key — that last
+  one now retries saving rather than sending you back to the Mac.
+- **On iPad the worktree list is a proper sidebar** with the diff column beside it, instead of one
+  column stretched across the screen.
+
 ### 0.0.19 — 2026-08-24
 - **The worktree sidebar is built, and nothing in the app opens it yet.** It needs a paired Mac, and
   pairing has no screen, so there is deliberately no way to reach it: a row leading to a screen that

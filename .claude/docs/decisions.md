@@ -2786,3 +2786,634 @@ from the specification belongs, and this is the second in §2 — the other bein
 offering the suggestion rather than prefilling it. Everything else §10 asks of this sidebar is built
 as written: the row's six fields, the swipe actions, pinned above everything in both modes with a
 single Pinned section in grouped, and renaming writing the alias and never touching git.
+
+## The six words pin on first contact, because refusing them leaves a state with no way out
+
+The pairing design review's finding, and the one thing in it no frame could carry: **the two
+credentials are not peers.** The QR carries the SPKI fingerprint over a channel nobody on the network
+can write to — the Mac's own screen. The six words carry a code and nothing else, and the host and
+port they borrow come from a Bonjour record any device on the LAN can publish. They redeem the same
+pairing and they do not buy the same guarantee.
+
+The client had already decided this by accident and in the strictest direction: `PairingLink(url:)`
+throws `missingField(named: "spki")`, and `UrlSessionHttpTransport(pinnedTo:)` cannot build a session
+without a fingerprint at all. So on 0.0.19 the six-word path could not be built, whatever a screen
+looked like.
+
+**`SPEC.md` contains the tension rather than settling it.** §8 requires the SPKI pin *and* requires a
+six-word fallback "for when the camera is unavailable", and the second cannot satisfy the first. That
+is why it went to Davide rather than being resolved here; he delegated it back on 25 August 2026.
+
+**The words path pins the certificate it is handed on first contact**, and everything downstream
+follows from that being said out loud rather than hidden. What decided it was the alternative's cost
+rather than this one's comfort: refusing without an `spki` deletes SPEC §8's fallback outright, and it
+leaves design §5's refused-camera state with **no in-app remedy at all** — an unavailable-content view
+whose only action leaves the app, which is the shape this project spent eight releases learning not to
+ship. It also makes the same-device case unreachable, which is the case Davide actually hits.
+
+The asymmetry is carried in two cheap places instead of one expensive one: the camera is **ordered
+first** on the entry screen, and one caption2 line on the six-word screen says what the difference is
+— *"The QR code also carries your Mac's key. Typed words trust the Mac that answers, so use them on a
+network you trust."* That is a true sentence about a pin, and it is not the plaintext warning 0.0.7
+retired: the connection is TLS on both paths.
+
+Rejected: **putting the fingerprint in the Bonjour TXT record.** It repairs the already-paired state
+and it looks like it repairs this, and it does not — a TXT record is in-band, so an impostor
+advertises its own key beside its own host and the phone pins precisely what the attacker chose. One
+field, two features, one of them imaginary. The instance identifier the discovery list is waiting for
+may still ride there; the key may not, and this entry exists partly so that nobody adds it later
+believing it helps.
+
+Rejected: **a fingerprint the reader compares.** Four characters beside the words on the Mac, four on
+the phone, and a confirmation. It is the SSH ceremony and it is entirely buildable. It does not ship
+because a check nobody performs is worse than an honest sentence — it launders the risk — and this one
+would be performed by the reader who has already been pushed onto the harder path, squinting across a
+room.
+
+Rejected: **refusing to pair over words unless the network is trusted**, in any automated form. There
+is no signal on iOS that answers that question, and a screen that claims to know is a worse lie than
+the one it replaces.
+
+The scope that makes this affordable is `SPEC.md` §0's, and it is LOCKED: **the network is LAN only in
+v1.** The day v2 adds remote access this entry is the first thing to re-read, because trust on first
+use across the internet is a different proposition from trust on first use across a flat.
+
+## The 128 words are contract, so they live in `Core` rather than on the Mac
+
+`SpokenWords` was `internal` to `ServerApiPresentation`, which was right while the Mac was the only
+reader of its own codes. Design §5 asks the phone to say *"branch" is not one of the words* before a
+round trip is spent, and that needs the list on this side.
+
+The move is the same argument `CoreApiDomain` already won and is recorded above: **a word list both
+ends spend a credential against is the wire contract**, and a second copy on the client would make a
+list edit a version skew that nothing catches until somebody across a room reads six words aloud and
+is refused. So it goes to `CorePairingDomain`, beside the link that carries the code, and the five
+tests asserting the list's four promises go with it.
+
+What that buys beyond one sentence on a screen is worth stating, because it is the reason it is worth
+the move rather than deleting the line: five failures a minute lock the source address out, so a
+wasted round trip on a mistyped word costs more than it looks.
+
+Rejected: copying the list into the client. Same failure as copying `ApiErrorCode` would have been.
+Rejected: dropping the unknown-word line and keeping only the count, which the review offered as the
+cheap way out — it is cheaper than the move by about twenty lines and it spends a fifth of the rate
+limit to learn what the phone already knew.
+
+## The normaliser accepts an en dash, because iOS types one whether or not anyone meant to
+
+`SpokenWords.normalised` split on space, hyphen, tab and the middle dot the Devices tab draws. iOS
+smart punctuation turns a typed hyphen between two words into an **en dash**, so a reader typing the
+code exactly as the Mac shows it would have been refused for punctuation the keyboard chose.
+
+Fixed in two places rather than one, and both were needed. The field turns smart dashes off, which
+stops it happening while typing; the normaliser accepts en and em dashes, which is what covers a
+**paste** — the path the same-device case will actually take, and the one no field setting reaches.
+
+Recorded because it is the second time this exact class of defect has been found here: the middle dot
+was added for the same reason, that a code shown in a form the server will not accept is worse than no
+fallback at all.
+
+## The already-paired state is the one frame this slice did not build
+
+Design §5 draws it, it draws fine, and it is unreachable: nothing joins a Bonjour instance to a stored
+token. The phone keeps its tokens against `ServerInstanceId`, a discovered Mac is only a Bonjour
+instance name, and the `serverInstanceID` that would join them is the TXT record entry SPEC §8 asks
+for and the Mac does not publish — which is on `status.md`'s "Waiting on Davide" for design §1's
+*Recent* and *Other Macs* sections already, and is now blocking a second thing.
+
+So the frames for that state stay in `.claude/docs/design/`, alone, and the rest are deleted with the
+sections that shipped. **A `pairedAt` date on the token store is not added either**, for the same
+reason: it is one field and one better sentence on a screen no reader can currently reach, and adding
+it now would be API a screen has not agreed to — which is the mistake `ClientConnectionModel` already
+made once and had a whole entry written about.
+
+The review's own reading of that state is worth keeping, because it changes what to build when the
+record lands: **already-paired is a discovery problem wearing a pairing screen.** The right behaviour
+is a paired Mac's *row* going straight to its worktrees, after which the only readers who ever see
+this screen are the ones whose token the Mac revoked. Build the row; keep the screen for that one
+case.
+
+## There is no manual host entry, which is a departure from `SPEC.md` §10
+
+§10 asks for "manual host entry as fallback" beside Bonjour discovery. There is none, and there will
+not be one in v1.
+
+The words screen is reachable only from a browse result, so the host and port are already in hand
+before a reader could type anything — the input genuinely missing from that path is the key, not the
+address, which is the entry two above. And a field that lets a reader point this app at an address
+Bonjour never returned is not a fallback: combined with the entry two above it is a way to hand a
+pairing code to any address somebody can be talked into typing, which is a strictly worse hole than
+the one trust on first use accepts.
+
+The weakest departure recorded here, and deliberately so: §0 lists Bonjour-plus-QR as **PROPOSED,
+override freely** rather than LOCKED, so this is a proposal being narrowed rather than a decision
+being overturned. It is written down anyway, because "the spec says do X and we did not" is exactly
+what this file is for.
+
+## A pairing that could not be written down gets its button back
+
+`MacPairing.pair` held the `PairedDevice` in hand when `tokens.save` threw and dropped it on the
+floor, returning `.tokenNotStored(error)`. The design drew that screen without a primary action for a
+stated reason — the reviewer could not tell whether the token survived that far, and **a button that
+cannot work is the defect this project is named for**.
+
+It survives. So the outcome carries it, *Try Again* on that screen retries the Keychain write **alone**
+rather than re-running a handshake against a code that is now spent, and the walk to the Mac drops to
+the second sentence. `errSecInteractionNotAllowed`, the common cause, is transient.
+
+Davide's call on 25 August 2026, against the drawn version. The cost is stated rather than waved
+through: a live bearer token now sits in memory for as long as that screen is on screen, where before
+it was discarded immediately. It is not written anywhere, it dies with the screen, and the alternative
+was sending the reader to another machine to fix something the phone could have fixed itself.
+
+Still rejected, and the review is right about both: **no *Pair Again* on that screen**, which would
+leave a second device record beside the orphan, and no dropping of the sentence that says the Mac now
+believes this iPhone is paired — without it the advice to go and revoke it sounds like superstition.
+
+## *Open TestFlight* appears only when the system says it can open it
+
+Design §5's *the phone is behind* state offers it, with the reviewer's own note attached: *only if the
+URL opens TestFlight on a device that has it — otherwise delete it.* Neither this machine nor the
+simulator can answer that.
+
+So neither answer is picked. The button is rendered only when `canOpenURL` says the device can open
+it, which turns an unanswerable question into a condition evaluated on the device where it has an
+answer — and it lands on this project's own rule rather than on a guess: a control ships if it works,
+is absent, is disabled and says why, or explains what is not built. **Absent is a legitimate state**,
+and a reader with no TestFlight is not missing anything, because the sentence above already tells them
+what to do.
+
+Rejected: shipping it unconditionally and finding out from Davide. That is the eight-release defect
+with a better excuse. Rejected: disabling it with a caption — a greyed *Open TestFlight* explains
+less than no button at all on a screen that has already said which end is behind.
+
+## The rate limit is keyed per source address, and the review's premise was one release stale
+
+The return asks whether the limiter counts per device or per dialled address, having found
+`request.head.authority` in the Mac round trip — the address the phone dialled, which is the same
+string for every device, so five failures from anywhere would lock out everyone. Its copy was drawn
+device-neutral to survive that being true.
+
+It is not true any more. `GranitaRequestContext.source` is `remoteAddress?.ipAddress`, the peer's
+address without its port, and it has been since the connection log needed a source worth reading. So
+the limiter is **per device on any ordinary LAN**, and the kinder sentence is the one that ships:
+*MacBook Pro has stopped taking pairing codes from this iPhone for a minute.*
+
+Worth an entry only because of the shape: this is the second time a returned review has argued from a
+premise the repository had already repaired — the Mac's plaintext warning was the first — and both
+times the answer was to check the code rather than to build the drawing. A return is a recommendation.
+
+## `MacJoining` comes back, because the day its own doc comment named has arrived
+
+`MacPairing` shipped 0.0.19 saying it would need a protocol "the day a screen drives it and wants a
+double for the whole sequence", and that day is this one: the model behind design §5's four screens
+drives all three of its members and is tested against them. So the protocol is back, with the two
+members the outcome screen can act on separately — a code is spent once, and the Keychain write it
+bought is retried on its own afterwards — plus the history the discovery list is ordered by.
+
+**What it beat is the version that drives the two fakes already sitting under `MacPairing`.** That is
+the option worth taking seriously, since `FakePairingTokenStore` and `FakeServerPairing` are written,
+configurable and asserted against. It loses on two counts and the first is structural: they live in
+`ClientConnectionDomainTests`, so a `Presentation` test reaching them means either a second copy of
+both in a second bundle or a test target depending on a test target — one protocol and one fake is
+less machinery than either. The second is the reason the entry above this one was written at all:
+every model test would then re-run health, spend a code and write a token, which is a second copy of
+`MacPairingTests` sitting one layer up and drifting from it the first time the sequence changes. The
+model's tests should be able to say "the Mac refused" in one line and look at what the screen shows.
+
+The cost is stated rather than waved through: it is one more name to learn, and for the moment it has
+exactly one production implementation, which is the shape the `architecture` skill tells us to be
+suspicious of. It clears that bar the ordinary way — there is a fake behind it today, in
+`ClientConnectionPresentationTests`, and thirteen tests that could not be written without one.
+
+### `PairingState` goes to `Domain`, which is not where it was removed from
+
+It was nested in `ClientConnectionModel` when the pairing surface was taken out. It comes back as a
+file beside `DiscoveryState` for the reason that one is there: the views that render it are in `Ui`,
+which may see a `Domain` type and may not see a `Presentation` one. Nesting it would have forced the
+screens to decompose it into primitives on the way down, which is the same enumeration written twice.
+
+**Ten cases for design §5's twelve states, and the arithmetic is worth writing down** because two of
+them are this repository's rather than the review's, and a later reader should not have to guess
+which. The camera's *waiting*, *refused* and *restricted*; the viewfinder's *looking*, *not ours* and
+*spending*; the entry screen; and the outcome. The two extra:
+
+- **`savingToken`.** The outcome screen gained a button — recorded above, Davide's call — and with it
+  the moment between the tap and the answer. The frame had no in-flight state because the frame had
+  no button, and without one a write that fails a second time redraws the screen the reader was
+  already looking at. That is a control that appears to do nothing, which is the defect this project
+  is named for, arriving through the subtlest door it has.
+- **`notReached`.** Six typed words with nowhere to send them. It carries
+  `ServerAddressResolutionFailure` rather than a sentence because that enumeration's two cases do not
+  share a remedy: *Try Again* is right for a Mac that slept, and it is a dead control in front of a
+  local-network permission that will never grant itself. **§5 draws the first and not the second**,
+  which is the one gap this slice found in that section — the refused-permission idiom §1 already
+  owns is what the screen should reach for, and if that is wrong the answer belongs in `design.md`
+  before it belongs in a screen.
+
+`cameraRestricted` is not a third extra: §5 draws two permission states and `CameraAccess` has four
+cases for the reason recorded with it, so folding a restriction into a refusal would ship *Turn the
+Camera On in Settings* over a switch a policy is holding shut.
+
+### The composition root is wired now, and that is not the mistake it looks like
+
+The entry that removed this surface said do not ship a screen's API before the screen, and this
+commit ships the model before the screens land. The difference is the ordering rather than the rule:
+the screens are the next commit on this branch and no pull request opens between them, so nothing
+reaches `main` with a property no view reads. What made the earlier case a defect was that the screens
+had **no frames**, and the `design-handoff` rule forbade the pull request that would have drawn them;
+§5 is drawn now.
+
+Wiring the root is what gives `HttpServerPairing.init(mac:)` and
+`UrlSessionHttpTransport.init(trustingFirstAnswer:)` their first production caller, which is what
+those two were left uncalled and measured for. The root is also the only place allowed to see that
+the two credentials build different sessions — pinned for a scanned link, trusting the first answer
+for six words — and that is one closure rather than a branch anywhere above it.
+
+## The pairing spine is one path, and only one of its three pushes is an ordinary push
+
+Design §5 asks for four screens pushed in the stack discovery already has: *Macs → this Mac → Scan
+or Words → the outcome*. Pushed is what shipped. What §5 does not draw is what happens when the
+reader taps **back** from the fourth screen, and answering that is what shaped the other two.
+
+**The outcome replaces the viewfinder and pushes over the field**, which looks like an inconsistency
+and is two of §5's own sentences applied to the same event. Behind the words screen there is a
+phrase worth returning to: "after a refusal the words screen keeps what was typed and says the code
+is stale", which is the consequence that replaces the countdown this phone deliberately does not
+draw. Behind the viewfinder there is a frozen frame, a stopped camera and a code that has already
+been spent — §5's own reason for replacing the stack on success is "back must return to the Mac
+list, never to a scanner holding a spent code", and a refusal leaves exactly the same screen behind.
+So the scanner swaps itself out and back from the outcome lands on the Mac, one tap from either
+credential.
+
+**The two credentials are siblings by swapping the top of the stack, not by pushing.** *Enter the
+Six Words* on the viewfinder removes the viewfinder and puts the field in its place, which is what
+"the same depth" means when the button that moves between them is on the screen rather than in the
+navigation bar. §5's prose describes the reader's route as "a back tap and a second tap"; the button
+is that route in one gesture, and it lands them in the same place.
+
+**Nothing about this is expressible without a path the screens can assign to**, so the stack gained
+one and the composition root holds it. That is also the whole of why success can be what §5 says it
+is — a replacement rather than a fifth screen — and it is the reason `NavigationPath` is
+type-erased here rather than an array of one route enum: each hop keeps its own value type, so each
+destination can be declared beside the link that reaches it.
+
+### One route type for the three pairing screens, because "beside the link" needs help two levels in
+
+The rule this project learned the hard way is that a link and its destination live in one file. It
+holds for the Mac's row and for the two credentials, whose links are on the screen that declares
+them. It cannot hold literally for the outcome, whose links are on the two screens *below* the one
+that declares it.
+
+So `PairingStep` is one enum with one destination and one **exhaustive** switch over it. What that
+buys is stronger than proximity: a step added without a screen does not compile. The alternative
+considered was a `navigationDestination` in each of the two credential screens — legal, since they
+are never in the stack together — and it is two copies of one composition, drifting from the day the
+outcome screen gains a parameter.
+
+`PairingStep.theOutcome` carries **no payload**, which is what removed the last argument for those
+two copies. The screen draws the model's state, and what *Try Again* would spend again is the
+credential the model kept — so the model grew `spentCredential`, and a route that carried either of
+them would have been a second copy able to disagree with the first.
+
+### Going back is refused in two places, because a code is spent in two
+
+The viewfinder hides its back button while a credential is in flight, which is where §5 draws it.
+The outcome screen hides its own for `spending` and `savingToken`, which §5 does not draw because
+the frame it drew had no button and therefore no wait: the words path spends its code on *this*
+screen, and the Keychain retry that Davide added spends the token it bought here too. Hidden rather
+than dimmed in both, for the reason recorded when the viewfinder shipped — SwiftUI has no disabled
+back button, and drawing our own is hand-building the one piece of chrome the system owns.
+
+## Success routes into the worktree list, which makes it the first control in this app that had none
+
+The sidebar shipped with "no way to reach it, and that is the point": pairing had no screen, so a
+route to it would have been a link to a screen that cannot load. Pairing has four screens now, so
+the route is built rather than deferred — a pairing that succeeds and goes nowhere is precisely the
+defect the previous entry was written about, arriving one release later through the same door.
+
+**`HttpGranitaRepository` learned to address a `PairedMac`**, rather than the composition root
+assembling `https://host:port` from one. Same argument as the pairing route two files over, and it
+is recorded again because it was nearly repeated: the root is the one layer no test can reach, and
+"which address did the request actually go to" is exactly the question a test should be able to ask.
+
+**The route value is the `PairedMac` itself**, and a pair of it with the Mac's name was written and
+then taken out again. §5 titles the list with that name, so carrying it looked obviously right — and
+nothing reads it, for the reason below, which makes it API a screen has not agreed to. This file
+already has an entry about shipping exactly that, so the second one lasted an hour rather than a
+release.
+
+### The one clause of §5 this does not build is that title, and the reason was measured
+
+`WorktreeSidebarView` titles itself *Worktrees*. §2 never says what the title should be, so that was
+the implementer's choice rather than a competing decision, and §5's sentence is the only statement
+on the matter — which would ordinarily settle it.
+
+What stopped it is arithmetic rather than doubt. **A `navigationTitle` applied outside a view that
+sets its own does not override it**, which was checked rather than assumed: the sidebar screen's
+baseline was rendered with `.navigationTitle("Mac Studio")` wrapped around it and the suite stayed
+green, so the outer one changes nothing at all. Titling the list therefore means threading a name
+through §2's view, and that moves **52 committed baselines** across two suites — a re-record of
+another slice's screens, in the commit that wires navigation, reviewed by an eye that cannot look at
+52 pictures properly. A re-record is a design change and gets its own pass.
+
+So the route carries the name and the screen does not wear it yet, and the modifier that would have
+been a no-op is **not** left in place looking like it works. Davide's call: build it with the
+re-record, or let the list stay *Worktrees* and amend §5.
+
+## The viewfinder gets a camera, and the session had to outlive the run to give it one
+
+`CaptureSessionCodeScanner` said the live preview was not its business and that "the composition
+root is the one place allowed to see both, which is where that join goes when the screen lands". The
+screen has landed. What the join needed was not a new seam but a smaller change to the old one: the
+session is now made **once, at construction, and never replaced**.
+
+A preview layer follows a session *object*. One built per run, as this file did, cannot be attached
+to anything before the camera opens — and the screen has to draw a viewfinder while the permission
+alert is still up, which is the state §5 spends a paragraph on. An empty session opens no camera and
+needs no grant, so it can exist from the moment the scanner does, and a second run reuses it: the
+input stays on it, because taking the camera off to put an identical one back would blank the
+preview in front of the reader, and only the metadata output is replaced, because the delegate it
+reports to belongs to one run.
+
+**The view that draws it is in `Ui`, not in the composition root**, even though the root is what
+hands the session over. `AVCaptureVideoPreviewLayer` is a system framework and a `Ui` target may see
+those; what a `Main` target may not hold is a `UIViewRepresentable` and a `UIView` subclass, because
+a `Main` module is exempt from both coverage rows and logic left in one is untested code that no
+longer looks untested.
+
+The cost is stated rather than waved through: **not one line of any of this can be run on a build
+machine**, so the only check that means anything is a device, and the session's own file has said
+that about itself since it was written. What the design calls a frozen frame is a stopped session,
+which is what §5's own sentence describes ("the session stops, the preview dims") and is not the
+same as a held still.
+
+### Two smaller calls in the same commit
+
+**The entry screen resolves its own address line.** §5's frame draws `MacBook-Pro.local:59144` under
+the two credentials and its prose never mentions it, so the drawing is the only authority and the
+line is built. The lookup **returns rather than records** — a value kept on the model would sit
+under the *next* Mac's name for as long as its own lookup took, which is a lie rather than a stale
+caption — and it is silent on failure, which is right for a caption under two buttons: a Mac that
+will not resolve says so properly, with a screen and a remedy, the moment a credential is spent on
+it.
+
+**TestFlight's scheme is declared in the property list**, because `canOpenURL` answers `false` for
+any scheme that is not, whatever is installed. Without that line the decision recorded above it —
+that the button appears only when the system says it can open it — would have been a rule that
+always answers no, which is the same defect as the button that cannot work, wearing the rule that
+was written to prevent it.
+
+**`PairingNotReadyView` is deleted**, with its suite and its four baselines. It existed to say that
+pairing had no screen, and it said so honestly for one release rather than leaving a row that did
+nothing. There is a screen now.
+
+## The iPad's split view arrives, and it broke twice in ways only a photograph could show
+
+Design §2's other half — a 320pt sidebar and a *Choose a worktree* detail column — has been waiting
+for "whichever composition root presents this screen", and pairing brought it. Two things this file
+would otherwise have recorded as reasoning are recorded as measurements instead, because both of the
+first two attempts compiled, read correctly, and rendered a broken screen.
+
+**A collapsed split view inside a navigation stack draws its chrome and none of its content.** The
+first build let the phone take the documented collapse — a split view in a compact width folds into
+its sidebar — and the iPhone baseline came back with the title, the toolbar menu and *no rows at
+all*. It has to be inside a stack, because §5 requires that back returns to the Mac list. So the
+compact width is a branch rather than a collapse: the phone gets the sidebar screen directly, which
+is what the fold was supposed to produce, and both widths are photographed. The question asked is
+the horizontal size class and not the device, because an iPad in a narrow multitasking width is the
+phone's layout too.
+
+**A split view keeps the destinations declared inside its columns.** The list's rows have been
+value-based links since §2 shipped, with their destination declared in the sidebar screen beside
+them — the placement this project adopted after shipping a row that did nothing. Put the split view
+around that screen and the declaration no longer reaches the stack outside it: a worktree pushed on
+the root's own path rendered the system's yellow missing-destination placeholder. That is the same
+defect returning through the door that was built to keep it out, and a snapshot found it because
+this suite photographs the pushed value rather than the resting screen.
+
+So **the destination is declared twice, on both containers that can claim a tap**, written once as
+one modifier so the two cannot drift. The stack's half is asserted by a baseline; the split view's
+half cannot be, because no test kind that runs here can tap a row and only a finger can say which
+container SwiftUI hands the value to. Both lead to the same screen, so the one outcome that is ruled
+out is the row going quiet. It collapses back to one declaration the day design §3 gives the detail
+column something of its own to show.
+
+### The measure stops at the paired Mac, which is two designs meeting in the root
+
+§5 says "everything before a paired Mac lives in a 420pt column, title included" and §1 says that
+measure goes around the navigation container rather than around the screen. §2 then puts the list
+itself in a split view whose sidebar is 320. Both hold, and they hold in the same container, so the
+root's clamp is now conditional: a 420pt cap around a two-column split view would leave an iPad
+reading its worktrees through a phone-shaped slot.
+
+**It cannot be read off the path**, which is why the root gained a second piece of navigation state
+beside it. `NavigationPath` is type-erased on purpose — that is what lets each destination be
+declared beside the link that reaches it — and a paired Mac and a Mac about to be paired with both
+sit at depth one. Back out of the list is watched on the path emptying rather than reported by the
+screen, because the button that performs it belongs to the system and tells us nothing.
+
+### Two smaller calls in the same commit
+
+**The row's name moved from the screen to the model.** `WorktreeSidebarScreen` resolved the tapped
+worktree's display name in a private helper; the detail column needs the same answer, and a second
+copy of a lookup is how two containers come to disagree about what was opened. `displayName(of:)`
+is on the model with three tests — the alias the row showed, a worktree that left the list between
+the tap and the push, and a state holding no rows at all — which is two more assertions than the
+helper ever had.
+
+**The handshake's two branches are spelled out.** `attempt.pin.map(...) ?? UrlSessionHttpTransport()`
+was correct and said nothing: the label that names trust on first use had been left to its default,
+in the one line of the composition root where getting it wrong pins nothing and looks identical.
+
+## `waiting` is terminal for a connection, which is the opposite of the recorded browser lesson
+
+`BonjourBrowser.change(for:)` treats `.waiting` as **recoverable** and says so in as many words: a
+waiting browser is alive and comes back on its own, so the stream stays open and the session does not
+replace it. That lesson is recorded, it is right, and it is about a *browser*.
+
+**An `NWConnection` is the other way round, and a later reader will "fix" this if nobody writes it
+down.** A connection that reports `.waiting` has failed to establish and will not establish itself;
+what recovers it is a new connection, not patience. So `BonjourServiceConnection` reports waiting as
+terminal, ends the stream, and lets the resolver answer. Two types, two opposite readings of one
+enumeration case name, and the only thing standing between them is this entry.
+
+The failure enum has exactly **two** cases — unreachable, carrying the diagnostic, and
+localNetworkDenied — because those are the two design §5's outcome screen can say something different
+about. `localNetworkDenied` is kept out of `unreachable` rather than folded into it precisely because
+folding it would offer *Try Again* against a permission that never grants itself, which is a control
+that cannot work. Rejected: a case per `NWError` code, which is a vocabulary no screen branches on.
+
+Recorded rather than left in a doc comment because the agent that wrote it judged this file too
+contended to touch from a worktree, and was right to hand it back rather than risk a three-thousand
+line collision.
+
+## An IPv6 address is bracketed and its zone escaped, and that was two routes rather than one
+
+**This entry replaces one that said the opposite.** It recorded the defect below, argued that
+degrading was honest enough for v1, and named the fix it was not doing. It was wrong on the size of
+the hole: the same four lines are written three times, so the failure was never confined to the
+words path — a Mac reached over IPv6 could not be *read from* either, which is a paired phone that
+lists no worktrees. The fix is now built and this says what it does.
+
+`NWPath`'s resolved endpoint stringifies an IPv6 address with its zone attached — `fe80::1%en0` —
+and `URLComponents` will not take either half of that as a host: a bare literal's colons read as a
+port separator, and a `%` is an escape that never was one. `components.url` comes out nil, so
+`HttpServerPairing` **and** `HttpGranitaRepository` both fell back to their documented
+nowhere-address, which is a `file://` URL handed to an HTTPS client. A Mac plainly sitting on the
+desk was reported unreachable, twice, for two different reasons a reader would have read as one.
+
+`ServerAddress.httpsUrl` is now the one place any of it is built, in `ClientConnectionData` beside
+the two callers. RFC 6874 is the shape: the literal in square brackets, the zone's `%` written
+`%25`, and it goes in through `percentEncodedHost` because the plain setter escapes the escape.
+Whether an address is a literal at all is asked by looking for a colon, which a host name cannot
+contain — no parsing, and nothing that a v4 address or a `.local` name takes a different path
+through.
+
+The nowhere-address fallback stays, and keeping it is the point of the change rather than an
+oversight: a host that genuinely cannot go into a URL is a damaged scan, and *could not reach your
+Mac* is the closest true thing this app can say about one. What was wrong was how much fell into
+that sentence.
+
+Kept from the entry this replaces, because the diagnosis is the expensive part: the symptom is
+*could not reach your Mac* against a Mac that is plainly there, which reads exactly like a firewall
+and costs an afternoon. Both routes are asserted for a literal with a zone and without one, and the
+connection's own suite pins that the address arrives carrying the zone rather than being tidied on
+the way through — an address that lost it names an interface nobody chose.
+
+## The camera joins the two Keychains as unrunnable, and the scope is renamed a fourth time
+
+`CaptureSessionCodeScanner` is 137 lines of `AVCaptureSession` configuration that a host test process
+cannot execute one branch of: there is no camera, `AVCaptureDevice.default(for: .video)` answers nil,
+and the configuration returns before it has performed any of itself. That is the bar the two Keychain
+stores met — unrunnable by construction rather than merely untested — and the login item after them.
+
+**The decidable part was taken out before the exemption was added**, which is what separates this from
+a hiding place. Turning whatever a metadata object carries into a `ScannedCode` is a pure function; it
+lives in `MachineReadableCode` and is tested against a nil string, an empty one, a stranger's QR and a
+damaged Granita link. What stays behind is session configuration, one delegate AVFoundation calls, and
+a lifecycle guard — no branch a reader could ever see the wrong side of.
+
+**This one raises the number, and that is the test this file applies to every rescoping**, so it is
+argued rather than asserted: without it the Unit row reads 92.7% and with it 95.0%. The 2.3 points are
+not tests that were written; they are lines that stopped being counted. What justifies counting them
+out is that no test of any kind that this repository can run — host, snapshot, or the `ui` target that
+does not exist — could ever reach them, so their presence in a denominator makes the row answer a
+question about a camera rather than about the code.
+
+`host-reachable-no-system-services-no-screens-no-appkit-serial` becomes
+`…-no-appkit-no-camera-serial`. The rename is the mechanism working rather than a tidy-up: it makes
+the Unit and All rows **unjudged for one run** and rejoin on the next `main` run, so nothing is
+compared across two different file sets. **A reviewer should read this slice's green Unit row as
+unjudged rather than as held** — the two rows that are genuinely judged here are the Snapshot ones,
+and they went up.
+
+## An attempt belongs to one Mac, and the model was letting one outlive its screen
+
+One `ClientConnectionModel` serves the whole app, which is the right shape — discovery and pairing
+are one question — and it had no notion of an attempt ending. Nothing cleared what a spend left
+behind, so three of design §5's four screens could be drawn about a machine the reader had walked
+away from.
+
+The worst of it was *Try Again*. The outcome screen chose between the two credentials by asking the
+model what it last spent; the words path, when the address would not resolve, set a state and left
+that value untouched. So: scan one Mac, be refused, back out, open a second, type its six words,
+watch the lookup fail, tap Try Again — and the first Mac's link is spent, at the first Mac, under
+the second Mac's name in the title bar. **The screen a reader is looking at would have been about a
+different computer than the one they paired with.**
+
+Three changes, and each is a different half of the same rule.
+
+1. **Opening a Mac's own screen starts an attempt.** `beginPairing(with:)` clears the outcome, the
+   phrase and the credential, and the entry screen calls it from the task it already had. It sits
+   under all three of the others, so it is the one place that sees every arrival. Unconditional
+   rather than only when the Mac changes: coming back to the Mac that just refused you is starting
+   an attempt too, and that is the case where the viewfinder re-opened on a dimmed frame reading
+   *Pairing with…* with its back button hidden for a request nobody had made.
+2. **Every path that tries to spend says what it spent, including the ones that spend nothing.** Six
+   words that never found an address spent nothing, so that path now writes `nil` rather than
+   leaving an older attempt's credential for a retry to find.
+3. **The retry is handed the Mac.** `spendAgain(on:as:)` lives on the model and takes the Mac the
+   screen is titled after, and a credential recorded against any other one is not offered back. That
+   is the guarantee that does not depend on a view lifecycle, and it is asserted without one: a test
+   drives the whole cross-Mac sequence and a second drives it with the reset deliberately skipped.
+
+**`spentCredential` went private with the third change, and that is the point rather than a
+side-effect.** It was public because a screen switched on it; now the model answers the question
+instead, so there is one place that decides what a retry means rather than a value and a screen that
+can disagree about it. `join(_:as:)` stopped being public for the same reason — nothing outside this
+module ever called it.
+
+Rejected: leaving the choice in `PairingOutcomeScreen` and merely clearing more state. It would have
+fixed today's sequence and left the next screen free to make the same reading, and the thing that
+went wrong here is precisely that a value with no owner was consulted by something that could not
+know what it meant.
+
+## `loadPairingHistory()` and `pairedServers` are removed for the second time
+
+The entry above them — *the row is right twice, and the second time it says: do not ship a screen's
+API before the screen* — took these two out of this model once already, in the release that split
+the pairing sequence into `Domain`. They came back with the pairing screens, and no screen reads
+them: only their own tests did.
+
+What they are waiting on has not moved either. Design §1's *Recent* and *Other Macs* sections are
+the reader for this, and they need a join between a Bonjour instance name and a stored token — which
+is the `serverInstanceID` in the TXT record SPEC §8 asks for and the Mac does not publish. Until that
+lands, the discovery list ships as the single unlabelled section the design says it degrades to, and
+a set of identifiers nothing can match against anything is a property no screen has agreed to.
+
+`MacJoining.alreadyPaired()` **stays**, and so does the store method under it: they are `Domain`,
+they are asserted where they happen in `MacPairingTests`, and they are what the section will be
+ordered by on the day the record carries the identifier. What is removed is the copy held on a model
+that draws screens, plus the `finish` step that maintained it — which, once it stopped inserting,
+was a one-line rename of an assignment and is inlined at both call sites.
+
+Written down a second time because the first entry did not stop it happening again. The rule is not
+"delete these two properties"; it is that a model in a layer the Snapshot row measures may not carry
+state that nothing renders, and the tell is a test being the only caller.
+
+## The six-word field lost its vertical axis, because Go has to do something
+
+`PairingWordsView` carried `submitLabel(.go)` and `onSubmit(onPair)` over a `TextField(axis:
+.vertical)`. A field on a vertical axis takes Return as a newline and never submits, so the key that
+reads as the action was not the action — the shape of dead control this project is named for, drawn
+beautifully in four baselines the whole time.
+
+The axis goes. §5 asks for one field with Go on it and that is now what ships, at the price the
+vertical axis was buying: a six-word phrase is longer than one line at 390pt, so the field truncates
+rather than wrapping. **That price is smaller than it looks, because the field was never the thing
+being compared.** §5's argument is that the reader checks the *echo* against the Mac's line — a
+different and far easier task than proofreading their own typing — and the echo wraps. Twenty of
+that screen's baselines and the spine's `the-six-words` four were re-recorded against the new shape;
+the field is the only thing in them that moved.
+
+**And the normaliser now takes a line ending as a separator**, which is the defect underneath the
+control one. A newline mid-phrase fused the two words either side into a token in no list, so the
+echo read `apple⏎badge` and the unknown-word line named a word the reader never typed while pointing
+them back at a Mac showing the right ones. Return was one way in and is now gone; **paste is the
+other and cannot be**, and §5 makes paste the answer for the reader whose camera and whose Mac are
+the same screen. `\r\n` is in the separator set beside `\r` and `\n` because a `Character` is a
+grapheme cluster and the pair is one of them — a set holding only the halves matches neither.
+
+## The iPad's worktree list is pinned, because its destination was reading a model nobody loaded
+
+`WorktreeSplitScreen` held its model as a plain property. The composition root presents it from
+inside a `navigationDestination` closure that **builds a new `ClientWorktreesModel` on every
+evaluation**, and the sidebar underneath pins the first one in `@State` and is the only thing that
+loads it. So the rows came from a loaded model and the destination declared beside them resolved the
+chosen row's name against whichever instance the last evaluation had produced — one that had read
+nothing, whose display name is therefore the fallback word. **Every worktree opened on the iPad was
+titled *This worktree*.** The phone was unaffected: it branches to the sidebar screen, which pins.
+
+The screen pins now, the same way the sidebar and the discovery screen already do and for a stronger
+reason — for them a swapped instance is a task driving a discarded object, here it is two halves of
+one screen disagreeing about what is on it.
+
+**No snapshot kind can see this, and that is worth stating rather than working around.** A picture
+is taken of one view value built once; the defect needs a second evaluation with a different
+instance, which a test that constructs the view cannot produce and a wrapper that forced one would
+race the raster it is trying to assert. What the suite gained instead is a baseline of the fallback
+itself — a chosen worktree that is no longer in the list, which is the one case *This worktree* is
+legitimately the answer, since an agent removes a checkout every day and one can stop being in the
+list between the tap and the push. It is photographed so that word is a state somebody chose rather
+than one nobody could see.

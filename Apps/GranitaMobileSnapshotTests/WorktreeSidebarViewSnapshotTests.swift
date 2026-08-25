@@ -1,5 +1,6 @@
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import ClientWorktreesPresentation
 import ClientWorktreesUi
 import CoreDiffDomain
 import Foundation
@@ -32,6 +33,11 @@ struct WorktreeSidebarViewSnapshotTests {
         // the title and the one control this screen puts in the bar.
         //
         // No 420pt measure, unlike design §1's screens: that clamp is for the pre-pairing screens.
+        // **This one is §2's own**, and it is not a measure at all but the width the split view gives
+        // the sidebar — 320, which is narrower than the phone's 390, so the iPad is the harder layout
+        // for this row rather than the easier one. Until the root that builds that split view existed
+        // these baselines were taken across the whole 1,194pt: a width the row has on no device, and
+        // the one where §2's drop order never has to do anything.
         assertScreenSnapshot(
             NavigationStack {
                 WorktreeSidebarView(
@@ -44,7 +50,11 @@ struct WorktreeSidebarViewSnapshotTests {
                     onSetPinned: { _, _ in },
                     onRetry: {}
                 )
-            },
+            }
+            .frame(maxWidth: layout.isRegularWidth ? WorktreeSplitScreen.sidebarWidth : nil)
+            // Leading rather than centred, because that is the edge the column is against. What is
+            // beside it on a real iPad is the detail column, which is the split screen's own suite.
+            .frame(maxWidth: .infinity, alignment: .leading),
             layout: layout,
             named: subject.name
         )
