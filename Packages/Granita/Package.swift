@@ -336,7 +336,16 @@ let package = Package(
         ),
         .target(
             name: "ClientViewerPresentation",
-            dependencies: ["ClientViewerUi", "ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "ClientViewerUi",
+                "ClientViewerDomain",
+                // The repository and its refusals are the connection unit's Domain, and a sibling
+                // Domain is what a Presentation target may see. Reaching for the `Data` target that
+                // implements it is what the graph refuses.
+                "ClientConnectionDomain",
+                "CoreDiffDomain",
+                "CoreTreeDomain"
+            ],
             path: "Client/Viewer/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -348,7 +357,13 @@ let package = Package(
         ),
         .testTarget(
             name: "ClientViewerPresentationTests",
-            dependencies: ["ClientViewerPresentation", "ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "ClientViewerPresentation",
+                "ClientViewerDomain",
+                "ClientConnectionDomain",
+                "CoreDiffDomain",
+                "CoreTreeDomain"
+            ],
             path: "Client/Viewer/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
