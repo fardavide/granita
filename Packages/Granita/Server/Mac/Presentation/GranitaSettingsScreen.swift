@@ -125,6 +125,7 @@ public struct GranitaSettingsScreen: View {
                         now: model.currentTime,
                         failure: model.devicesFailure,
                         onNewCode: { Task { await model.offerPairing() } },
+                        onCopySpokenCode: { Task { await model.copySpokenCode() } },
                         onRevoke: { id in Task { await model.revokeDevice(id: id) } },
                         onOpenGeneral: { model.showSettingsTab(.general) }
                     )

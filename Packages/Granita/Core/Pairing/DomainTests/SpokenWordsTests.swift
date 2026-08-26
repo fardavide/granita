@@ -103,6 +103,32 @@ struct SpokenWordsTests {
         #expect(normalised == "delta-pepper-amber-kelp-jasper-meadow")
     }
 
+    @Test func `given a stored code when it is drawn then it reads as the Mac shows it`() {
+        // given
+        let code = "delta-pepper-amber-kelp-jasper-meadow"
+
+        // when
+        let drawn = SpokenWords.drawn(code)
+
+        // then — the string the Devices tab shows and the string its Copy button puts on the
+        // pasteboard are this one, so the line and the clipboard cannot disagree.
+        #expect(drawn == "delta · pepper · amber · kelp · jasper · meadow")
+    }
+
+    @Test func `given a code drawn for a reader when a phone normalises it back then nothing was lost`() {
+        // given — the round trip the Copy button rests on, asserted rather than described: the tab
+        // chooses the punctuation and the phone has to accept the tab's choice back, and the failure
+        // if it ever stops doing so is the worst this fallback has — everything on screen looks
+        // right and the pairing is refused for punctuation the reader never chose.
+        let code = "delta-pepper-amber-kelp-jasper-meadow"
+
+        // when
+        let round = SpokenWords.normalised(SpokenWords.drawn(code))
+
+        // then
+        #expect(round == code)
+    }
+
     @Test func `given a hyphen iOS turned into an en dash when it is normalised then it is the stored form`() {
         // given
         // Not a hypothetical. Smart punctuation replaces a hyphen between two words as it is typed,

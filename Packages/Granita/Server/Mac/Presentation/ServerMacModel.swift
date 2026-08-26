@@ -4,6 +4,7 @@ import Observation
 import CoreBrandingDomain
 import CoreDiagnosticsDomain
 import CoreDiffDomain
+import CorePairingDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerStoreDomain
@@ -259,6 +260,27 @@ public final class ServerMacModel {
     public func copyAddress() async {
         guard case .running(let endpoint) = serverState else { return }
         await gestures.copyToPasteboard("\(endpoint.host):\(endpoint.port)")
+    }
+
+    /// Puts the six words where they can be pasted into a phone.
+    ///
+    /// **Read from the offer here rather than taken from the view**, which is `copyAddress`'s rule
+    /// and matters more here: the words *are* the credential, and a clipboard spelling them
+    /// differently from the line above it would be refused by the phone with a reason that names the
+    /// code rather than the punctuation.
+    ///
+    /// What goes on the pasteboard is the line **as drawn**, middle dots and all, because
+    /// `SpokenWords.normalised` accepts that separator back — a promise `SpokenWords` now holds in
+    /// one place and asserts as a round trip.
+    ///
+    /// **Copies nothing at all unless a code is live**, and expiry is checked here rather than left
+    /// to the button's absence. The words are only drawn while a code has time on it, so a spent one
+    /// cannot be pressed — but a credential lives two minutes and the difference between "the button
+    /// is not there" and "this will not copy something that cannot work" is one re-evaluation of a
+    /// pane nobody is looking at.
+    public func copySpokenCode() async {
+        guard case .offered(let invitation) = pairingOffer, invitation.expiresAt > now() else { return }
+        await gestures.copyToPasteboard(SpokenWords.drawn(invitation.spokenCode))
     }
 
     /// Finder, pointed at the document actually in use rather than at where it usually lives.

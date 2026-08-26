@@ -144,6 +144,7 @@ struct DevicesSettingsViewSnapshotTests {
             now: Self.now,
             failure: failure,
             onNewCode: {},
+            onCopySpokenCode: {},
             onRevoke: { _ in },
             onOpenGeneral: {}
         )
