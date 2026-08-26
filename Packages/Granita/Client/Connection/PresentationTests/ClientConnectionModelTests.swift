@@ -784,6 +784,43 @@ struct ClientConnectionModelTests {
         #expect(scenario.sut.pairing == .finished(.tokenNotStored(aPairedMac, .refused(status: -25308))))
     }
 
+    // MARK: - The step that never answered
+
+    @Test
+    func `given the Keychain never answered when the write is retried then the pairing is kept`() async {
+        // given — a write that never came back and a write that came back refused leave the phone in
+        // the same place: paired, holding a token, with the code that bought it spent. So the retry
+        // has to reach both, and reaching only one is a *Try Again* that does nothing at all.
+        let scenario = Scenario(
+            answeringPair: .neverAnswered(.writingTheKey(aPairedMac)),
+            answeringWrite: .paired(aPairedMac)
+        )
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
+
+        // when
+        await scenario.sut.saveTokenAgain()
+
+        // then
+        #expect(scenario.sut.pairing == .finished(.paired(aPairedMac)))
+        #expect(scenario.joining.attemptsOffered == [.scanned(aLink)])
+    }
+
+    @Test
+    func `given a Mac that never answers when a credential is spent then the reader is told rather than shown a spinner`() async {
+        // given — the behaviour this whole bound exists for, asserted where a screen reads it: a
+        // collaborator that never returns must still leave the model in a state design §5 draws.
+        // **This is the general rule and the specific defect is the cheap half of it** — 0.1.0 could
+        // reach `.spending` and stay there, and a spinner is the one thing a receipt must never be.
+        let scenario = Scenario(answeringPair: .neverAnswered(.spendingTheCode))
+
+        // when
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
+
+        // then
+        #expect(scenario.sut.pairing == .finished(.neverAnswered(.spendingTheCode)))
+        #expect(scenario.sut.pairing.needsTheOutcomeScreen)
+    }
+
     @Test
     func `given nothing was ever paired when the write is retried then nothing happens`() async {
         // given — the pairing comes out of the state rather than from the caller, so there is one

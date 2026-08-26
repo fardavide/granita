@@ -15,6 +15,7 @@ struct PairingScannerScreen: View {
     private let model: ClientConnectionModel
     private let server: DiscoveredServer
     private let phone: ThisPhone
+    private let onPaired: (PairedMac) -> Void
 
     @Binding private var path: NavigationPath
 
@@ -22,12 +23,14 @@ struct PairingScannerScreen: View {
         model: ClientConnectionModel,
         server: DiscoveredServer,
         phone: ThisPhone,
-        path: Binding<NavigationPath>
+        path: Binding<NavigationPath>,
+        onPaired: @escaping (PairedMac) -> Void
     ) {
         self.model = model
         self.server = server
         self.phone = phone
         _path = path
+        self.onPaired = onPaired
     }
 
     var body: some View {
@@ -47,6 +50,10 @@ struct PairingScannerScreen: View {
             guard pairing.needsTheOutcomeScreen else { return }
             replaceThisScreen(with: .theOutcome)
         }
+        // **Success has no screen, and this is the frontmost screen on the scanned path.** The
+        // reader is looking at a frozen viewfinder while the code is spent, so nothing is pushed
+        // over this one and nothing beneath it is still watching. See `PairedMacHandover`.
+        .handsOverAPairedMac(from: model.pairing, to: onPaired)
     }
 
     private func showTheWordsInstead() {

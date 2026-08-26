@@ -16,11 +16,18 @@ struct PairingOutcomeScreen: View {
     private let model: ClientConnectionModel
     private let server: DiscoveredServer
     private let phone: ThisPhone
+    private let onPaired: (PairedMac) -> Void
 
-    init(model: ClientConnectionModel, server: DiscoveredServer, phone: ThisPhone) {
+    init(
+        model: ClientConnectionModel,
+        server: DiscoveredServer,
+        phone: ThisPhone,
+        onPaired: @escaping (PairedMac) -> Void
+    ) {
         self.model = model
         self.server = server
         self.phone = phone
+        self.onPaired = onPaired
     }
 
     var body: some View {
@@ -39,6 +46,10 @@ struct PairingOutcomeScreen: View {
         #if !os(macOS)
         .navigationBarBackButtonHidden(model.pairing == .spending || model.pairing == .savingToken)
         #endif
+        // **Success has no screen, and this screen is what a spend is pushed in front of.** The
+        // six-word path pushes it before the code leaves, and both retries happen on it, so it is
+        // frontmost for every ending that is not the scanner's. See `PairedMacHandover`.
+        .handsOverAPairedMac(from: model.pairing, to: onPaired)
     }
 
     /// Whether there is an app to leave for.

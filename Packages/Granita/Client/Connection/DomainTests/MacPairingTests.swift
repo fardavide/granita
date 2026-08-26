@@ -41,6 +41,23 @@ struct MacPairingTests {
     }
 
     @Test
+    func `given a Mac that will not answer the contract read when pairing then nothing is spent`() async {
+        // given — the read route is first precisely so that a Mac which cannot be reached costs the
+        // reader nothing: a code is single use, and one spent against a machine that never answered
+        // is a walk back to the other room for another one.
+        let scenario = Scenario(refusingHealth: .unreachable(diagnostic: "Could not connect to the server."))
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then — the Mac's own words survive rather than becoming a sentence of ours, which is what
+        // the outcome screen prints in small print under one.
+        #expect(outcome == .refused(.unreachable(diagnostic: "Could not connect to the server.")))
+        #expect(await scenario.server.codesOffered.isEmpty)
+        #expect(await scenario.tokens.saved.isEmpty)
+    }
+
+    @Test
     func `given a code the Mac refused when pairing then the phone does not guess why`() async {
         // given — the Mac answers the same way whether the code never existed or merely ran out, on
         // purpose. Inventing the distinction back on this side would put a sentence on screen that
@@ -197,6 +214,89 @@ struct MacPairingTests {
         #expect(outcome == .tokenNotStored(aPairedMac, .refused(status: -25308)))
     }
 
+    // MARK: - The step that never answers
+
+    @Test
+    func `given a Mac that never answers the contract read when pairing then it says so and nothing is spent`() async {
+        // given — the bound is a backstop rather than a policy: every step below it already has a
+        // timeout of its own, and this is what is left when one of them does not honour it.
+        let scenario = Scenario(silentOn: .readingTheContract)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        #expect(outcome == .neverAnswered(.readingTheContract))
+        #expect(await scenario.server.codesOffered.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that never answers after the code is sent when pairing then it does not claim the code is unused`() async {
+        // given — the dangerous one. The code left the phone, so the Mac may already hold a device
+        // record for it, and the sentence the reader gets has to be as careful as the Keychain one.
+        let scenario = Scenario(silentOn: .spendingTheCode)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        #expect(outcome == .neverAnswered(.spendingTheCode))
+        #expect(await scenario.server.codesOffered == [aLink.code])
+    }
+
+    @Test
+    func `given a Mac that never says what it presented when pairing then the code counts as spent`() async {
+        // given — reading back what was trusted is the one step with no timeout of its own on either
+        // path, and it happens after the code has gone.
+        let scenario = Scenario(silentOn: .readingTheKey)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        #expect(outcome == .neverAnswered(.spendingTheCode))
+    }
+
+    @Test
+    func `given a Keychain that never answers when pairing then the write is what is reported`() async {
+        // given — the case this whole bound exists for: `SecItemAdd` is a call into another process
+        // and nothing above it can call it off, so a wedged one used to end as a spinner with no
+        // screen behind it.
+        let scenario = Scenario(keychainNeverAnswering: true)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then — it carries the pairing, so the screen can offer the write on its own, exactly as a
+        // refused write does.
+        #expect(outcome == .neverAnswered(.writingTheKey(aPairedMac)))
+    }
+
+    @Test
+    func `given a Keychain that never answers when the write is retried then it says so again`() async {
+        // given
+        let scenario = Scenario(keychainNeverAnswering: true)
+
+        // when
+        let outcome = await scenario.sut.saveToken(of: aPairedMac)
+
+        // then
+        #expect(outcome == .neverAnswered(.writingTheKey(aPairedMac)))
+    }
+
+    @Test
+    func `given a Keychain that never enumerates when the history is read then nothing is claimed`() async {
+        // given — the same reasoning as a Keychain that refuses, and the same answer: an ordering is
+        // not worth a screen that never arrives.
+        let scenario = Scenario(keychainNeverAnswering: true)
+
+        // when
+        let known = await scenario.sut.alreadyPaired()
+
+        // then
+        #expect(known.isEmpty)
+    }
+
     @Test
     func `given tokens for two Macs when the history is read then both are known`() async {
         // given
@@ -233,6 +333,58 @@ struct MacPairingTests {
 
 // MARK: -
 
+/// The one-shot the bound is built on, asserted directly.
+///
+/// Both of its rules are about the loser of a race, and `answer(from:)` gives a test no say in which
+/// of the two tasks wins — so the sequence above can assert that a stall ends in a sentence, and
+/// only this can assert what happens to the answer that arrives anyway.
+@Suite("The first of two answers")
+struct FirstAnswerTests {
+
+    @Test
+    func `given a caller already waiting when the step answers then that is what it reads`() async {
+        // given — the ordinary shape: the sequence suspends on the one-shot, and whichever of the
+        // step and the patience gets there first is what wakes it.
+        let first = FirstAnswer<String>()
+        let waiting = Task { await first.answer() }
+
+        // when
+        await first.settle(on: "the Mac said yes")
+
+        // then
+        #expect(await waiting.value == "the Mac said yes")
+    }
+
+    @Test
+    func `given an answer that arrived first when it is read then it comes back rather than waiting`() async {
+        // given — a step that answers before the caller gets round to reading, which is every step
+        // on a Mac that is awake. Suspending here would be a sequence waiting for an answer it
+        // already has, and nothing would ever resume it.
+        let first = FirstAnswer<String>()
+        await first.settle(on: "the Mac said yes")
+
+        // when - then
+        #expect(await first.answer() == "the Mac said yes")
+    }
+
+    @Test
+    func `given the patience gave up when the step answers anyway then the giving up stands`() async {
+        // given — the shape of every stall this bound produces. The step was never cancellable, so
+        // it finishes eventually, and by then the reader has been told the attempt ended; a second
+        // answer that replaced the first would be a screen changing under somebody who has moved on.
+        let first = FirstAnswer<String>()
+        await first.settle(on: nil)
+
+        // when
+        await first.settle(on: "the Mac said yes, forty seconds late")
+
+        // then
+        #expect(await first.answer() == nil)
+    }
+}
+
+// MARK: -
+
 private struct Scenario {
 
     let sut: MacPairing
@@ -241,21 +393,42 @@ private struct Scenario {
 
     init(
         servingApiVersion apiVersion: Int = Branding.apiVersion,
+        refusingHealth healthRefusal: ApiFailure? = nil,
         pairing: Result<PairedDevice, ApiFailure> = .success(aPairedDevice),
         presenting key: SpkiFingerprint? = aLink.fingerprint,
         holdingTokens held: [ServerInstanceId: PairingToken] = [:],
-        keychainRefusing refusal: PairingTokenStoreFailure? = nil
+        keychainRefusing refusal: PairingTokenStoreFailure? = nil,
+        keychainNeverAnswering isKeychainSilent: Bool = false,
+        silentOn: FakeServerPairing.SilentStep? = nil
     ) {
-        tokens = refusal.map(FakePairingTokenStore.init(refusing:)) ?? FakePairingTokenStore(holding: held)
+        if isKeychainSilent {
+            tokens = FakePairingTokenStore(neverAnswering: ())
+        } else {
+            tokens = refusal.map(FakePairingTokenStore.init(refusing:)) ?? FakePairingTokenStore(holding: held)
+        }
+        let health: Result<HealthResponse, ApiFailure> = if let healthRefusal {
+            .failure(healthRefusal)
+        } else {
+            .success(HealthResponse(name: "Granita", apiVersion: apiVersion, serverVersion: "0.0.9"))
+        }
         server = FakeServerPairing(
-            answeringHealth: .success(
-                HealthResponse(name: "Granita", apiVersion: apiVersion, serverVersion: "0.0.9")
-            ),
+            answeringHealth: health,
             answeringPairing: pairing,
-            presenting: key
+            presenting: key,
+            silentOn: silentOn
         )
         let mac = server
-        sut = MacPairing(tokens: tokens, handshake: { _ in mac })
+        // **The initialiser the app calls, wherever a test is not about the bound.** The shipped
+        // patience is seventy-five seconds and no test can wait for it, so a sut built through the
+        // seam every time would leave the one initialiser the composition root uses unrun — and a
+        // default that stopped producing a working sequence would be nobody's failing test.
+        if isKeychainSilent || silentOn != nil {
+            // Milliseconds, because what is under test here is that a step which never answers still
+            // ends in an outcome — not how long the reader waits for it.
+            sut = MacPairing(tokens: tokens, handshake: { _ in mac }, patience: .milliseconds(50))
+        } else {
+            sut = MacPairing(tokens: tokens, handshake: { _ in mac })
+        }
     }
 }
 
