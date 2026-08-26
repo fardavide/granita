@@ -93,6 +93,18 @@ struct PairingLinkTests {
         }
     }
 
+    @Test func `given our link with nothing on it when reading it then it names the first field it wants`() throws {
+        // given — a QR read through a fingerprint, or a link truncated by whatever carried it. There
+        // are no query items at all, which is a different absence from a field being empty and must
+        // not be one: reading it as "no fields" is what turns it into the sentence below.
+        let url = try #require(URL(string: "\(Branding.urlScheme)://pair"))
+
+        // when - then
+        #expect(throws: PairingLinkError.missingField(named: "host")) {
+            try PairingLink(url: url)
+        }
+    }
+
     @Test func `given a link with no fingerprint when reading it then it names the field it wants`() throws {
         // given
         let url = try #require(URL(string: "\(Branding.urlScheme)://pair?host=a&port=1&code=b"))

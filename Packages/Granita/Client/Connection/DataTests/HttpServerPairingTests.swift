@@ -66,6 +66,25 @@ struct HttpServerPairingTests {
         #expect(request.headers[Branding.apiVersionHeader] == String(Branding.apiVersion))
     }
 
+    // MARK: - What the handshake ended up trusting
+
+    @Test
+    func `given a Mac that presented a key when it is asked what it trusted then the transport answers`() async {
+        // given — the spoken path carries no pin, so what got trusted does not exist until a
+        // handshake has happened. Asking the transport is the whole implementation, and the reason
+        // it is not remembered here: a fingerprint this type held would be one it was told rather
+        // than one it saw.
+        let scenario = Scenario(status: 200, json: acceptedPairing)
+        await scenario.transport.present(SpkiFingerprint(rawValue: "9f86d081884c7d659a2feaa0c55ad015"))
+
+        // when
+        let trusted = await scenario.sut.trustedFingerprint()
+
+        // then — this is the value that gets pinned for every later request, so a wrong one is a
+        // phone that trusts a machine it never spoke to.
+        #expect(trusted == SpkiFingerprint(rawValue: "9f86d081884c7d659a2feaa0c55ad015"))
+    }
+
     // MARK: - Where a scanned link points
 
     @Test
@@ -138,6 +157,24 @@ struct HttpServerPairingTests {
         let request = try #require(await scenario.transport.sent.first)
         #expect(request.url.absoluteString == "https://[fe80::1%25en0]:61022/v1/pair")
         #expect(request.url.port == 61022)
+    }
+
+    @Test
+    func `given six words resolved to a host that cannot go in a url then it addresses nothing rather than trapping`() async {
+        // given — the twin of the case below, on the other credential. The spoken path takes the
+        // address a browse resolved rather than one a QR carried, and a resolver that hands back
+        // something no URL will hold must end as "could not reach your Mac" rather than as a trap on
+        // the one screen a reader cannot leave.
+        let scenario = Scenario(
+            mac: .spoken(code: "cabin-cactus-camera-candle-harbour-lantern", at: ServerAddress(host: "not a host", port: 61022)),
+            status: 200,
+            json: acceptedPairing
+        )
+
+        // when - then
+        await #expect(throws: Never.self) {
+            _ = try? await scenario.sut.pair(with: "code", as: PairingDevice(name: "iPhone", platform: "iOS"))
+        }
     }
 
     @Test
@@ -265,6 +302,22 @@ struct HttpServerPairingTests {
         // when - then
         await #expect(
             throws: ApiFailure.notUnderstood(diagnostic: "worktreeQuarantined: that worktree is in quarantine")
+        ) {
+            try await scenario.sut.health()
+        }
+    }
+
+    @Test
+    func `given a refusal that is not the contract at all then the status is all there is to say`() async {
+        // given — a proxy, a captive portal or a load balancer answering for a Mac that never saw the
+        // request. There is no code in the body to read, so the only true thing left is the number.
+        let scenario = Scenario(status: 502, json: "<html><body>Bad Gateway</body></html>")
+
+        // when - then
+        await #expect(
+            throws: ApiFailure.notUnderstood(
+                diagnostic: "the Mac refused with 502 and a body this version could not read"
+            )
         ) {
             try await scenario.sut.health()
         }

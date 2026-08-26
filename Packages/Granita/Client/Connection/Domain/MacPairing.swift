@@ -207,7 +207,13 @@ public struct MacPairing: MacJoining {
 ///
 /// It exists so that a step which never returns cannot keep the caller: the patience settles this
 /// with nothing, the caller reads it, and the step is left to finish or not finish on its own.
-private actor FirstAnswer<Value: Sendable> {
+///
+/// **Internal rather than file-private, for the same reason the patience seam above it is.** Both of
+/// its guarantees are about the loser of a race — a second answer that is dropped, and a first one
+/// that is still readable after it arrived — and neither can be produced on demand through
+/// `answer(from:)`, which is a race the harness does not get to schedule. Asserted here, they are
+/// two sentences; asserted through the sequence, they are a coin flip.
+actor FirstAnswer<Value: Sendable> {
 
     private var settled: Value??
     private var waiting: CheckedContinuation<Value?, Never>?

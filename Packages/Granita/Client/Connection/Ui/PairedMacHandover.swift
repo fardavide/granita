@@ -23,7 +23,13 @@ extension View {
     ///
     /// So: the two screens that can be frontmost when a credential is spent apply this, and no
     /// screen beneath them watches for anything.
-    func handsOverAPairedMac(
+    ///
+    /// **It lives in `Ui` because it is a view and nothing else** — it takes a `Domain` state and
+    /// reports what happened, which is the whole definition of this layer. Filed under
+    /// `Presentation` it was a view body in the one scope that excludes view bodies by construction
+    /// and outside the one that renders them: the Unit row was charged for every line of it and the
+    /// snapshot pass covered seventeen of them for no credit. See `.claude/docs/decisions.md`.
+    public func handsOverAPairedMac(
         from pairing: PairingState,
         to onPaired: @escaping (PairedMac) -> Void
     ) -> some View {
