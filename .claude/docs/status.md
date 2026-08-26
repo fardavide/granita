@@ -12,7 +12,24 @@ phone's tolerance are one fact with a round-trip assertion behind it. **It does 
 same-device case** — a reader on Screens is looking at this Mac from the phone being paired, and the
 two have different clipboards. That is still the Allow path.
 
-**Version 0.3.1, not yet merged; 0.3.0 is published.** Scaffold complete, CI green, `main` protected,
+**Four defects found by running the product on a phone, and three of them were invisible to every
+test kind here.** Davide connected an iPhone, read a diff, pressed Back and got *Could not read your
+Mac* with a *Try Again* that looked dead. The Mac's log said `hashWorktreeFiles` was failing over and
+over. Root cause: a **symlink pointing at a directory** in two `bandlab-android` worktrees — git
+refuses to hash it and exits 128 for the whole batch, so `/v1/worktrees` could answer nothing. The
+error on screen was a second defect: `NSURLErrorCancelled` folded into `unreachable`, so the app was
+blaming the Mac for a read the app itself had cancelled. The dead-looking button was a third — a
+retry with no feedback against an endpoint measured at 122.7 seconds. And the reason the first had to
+be reproduced by hand rather than read is a fourth: the git failure log line spent its whole
+kilobyte on `RepositoryRelativePath(bytes: 36 bytes)` and truncated before git's stderr. All four are
+in [`decisions.md`](decisions.md).
+
+**Two more are known, confirmed and not yet fixed**, both about a connection that should persist:
+nothing joins a discovered Mac to a stored token, so selecting a paired Mac asks to pair again; and
+nothing re-resolves via Bonjour before using a stored address, so a Mac that restarts on a new port
+strands an already-paired phone. See "What to pick up next".
+
+**Version 0.3.2, not yet merged; 0.3.1 is published.** Scaffold complete, CI green, `main` protected,
 **shipping to TestFlight** — and merging is what publishes, so the version in `project.yml` is what
 this tree will put on a phone rather than what is on one now.
 
@@ -619,6 +636,21 @@ sets up delivery.
 
 
 ## What to pick up next
+
+**The connection does not persist, and it is two defects rather than one.** Both confirmed by
+reading the code after Davide hit them on 26 August; neither is fixed.
+
+- **Nothing joins a discovered Mac to a stored token.** `MacPairing.alreadyPaired()` exists, is
+  tested, and has **no production caller** — because the Keychain keys tokens by `ServerInstanceId`
+  and a discovered Mac is only a Bonjour instance name. `SPEC.md` §8 asks for the identifier in the
+  TXT record, which the Mac does not publish; but `/v1/health` is already fetched the moment a Mac
+  is selected, so carrying it there closes the join with no Bonjour change at all. **What that alone
+  does not solve**: the Keychain stores the token and nothing else, so a reconnect has no
+  fingerprint to pin with — the pairing's identity would have to be persisted beside the token, and
+  trusting first contact again instead would throw away the pin, which is the security boundary.
+- **Nothing re-resolves via Bonjour before using a stored address**, which `SPEC.md` §10 requires in
+  as many words. The port moves on every launch, so restarting the Mac app strands a paired phone
+  permanently, with no recovery but re-pairing.
 
 **M5's next pieces, in the order §4 puts them.** The scroll, §3's selector and the viewed toggle are
 built and wired; what is drawn and not built is the file header's second form, the collapsed bars and

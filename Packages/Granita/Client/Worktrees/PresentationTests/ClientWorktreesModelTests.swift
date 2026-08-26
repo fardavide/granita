@@ -48,6 +48,39 @@ struct ClientWorktreesModelTests {
     }
 
     @Test
+    func `given a read this phone called off when it ends then the Mac is not blamed for it`() async {
+        // given — **this is the screen it happened on.** A `.task` is cancelled the moment its view
+        // goes away, so opening a worktree while this list is still loading tears the read down. It
+        // came back as *Could not read your Mac* with `NSURLErrorDomain Code=-999 "cancelled"` in
+        // the small print, on the screen the reader reached by pressing Back — the app blaming the
+        // Mac for something the app did. Seen on a real iPhone.
+        let scenario = Scenario(worktrees: [], readFailure: .cancelled)
+
+        // when
+        await scenario.sut.load()
+
+        // then — no failure screen, and no invented content either.
+        #expect(scenario.sut.state != .failed(.cancelled))
+    }
+
+    @Test
+    func `given a failed read when the reader retries then the screen stops showing the failure`() async {
+        // given — `/v1/worktrees` builds a change set for every worktree of every enabled project,
+        // measured at over two minutes across ten real repositories. A retry that left the failure
+        // on screen for that long was reported as a button with nothing behind it.
+        let scenario = Scenario(worktrees: [], readFailure: .unreachable(diagnostic: "NWError -65563"))
+        await scenario.sut.load()
+        #expect(scenario.sut.state == .failed(.unreachable(diagnostic: "NWError -65563")))
+
+        // when — the reader presses Try Again against a Mac that now answers
+        let answering = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await answering.sut.load()
+
+        // then
+        #expect(answering.sut.state != .failed(.unreachable(diagnostic: "NWError -65563")))
+    }
+
+    @Test
     func `given nothing has been read yet when the model is built then it says it is loading`() {
         // given - when
         let scenario = Scenario(worktrees: [])

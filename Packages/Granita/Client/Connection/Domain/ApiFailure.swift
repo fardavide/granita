@@ -59,6 +59,19 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// completed", which is true of every failure there has ever been and actionable in none.
     case unreachable(diagnostic: String)
 
+    /// **This phone called the request off, so nothing failed.**
+    ///
+    /// A `.task` is cancelled the moment its view goes away, which in a navigation stack is every
+    /// time the reader opens something — so an in-flight read is routinely torn down by the app
+    /// itself. Folded into `unreachable` it became *Could not read your Mac*, with `NSURLErrorDomain
+    /// Code=-999 "cancelled"` in the small print: the app blaming the Mac for something the app did,
+    /// on a screen the reader reached by pressing Back. Seen on a real iPhone.
+    ///
+    /// It is a case rather than a `nil` return because the transport cannot decide what to do about
+    /// it and the screen can: a model that was still loading has simply stopped, and the right screen
+    /// is the one that was already there.
+    case cancelled
+
     /// The Mac answered with something this version cannot read — a body that is not the shape the
     /// contract describes, or a refusal code a newer Mac invented.
     ///
@@ -80,6 +93,9 @@ public enum ApiFailure: Error, Hashable, Sendable {
         switch self {
         case .unauthorized, .pairingExpired, .rateLimited, .projectNotVisible: nil
         case .worktreeGone, .fileGone, .staleContentHash, .tooLarge, .unsupportedApiVersion: nil
+        // Nothing to print, because nothing is meant to be on screen: a cancelled read leaves the
+        // screen the reader was already looking at.
+        case .cancelled: nil
         case .gitFailure(let message): message
         case .badRequest(let message): message
         case .requestNotBuildable(let diagnostic): diagnostic
