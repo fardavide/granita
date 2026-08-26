@@ -12,9 +12,9 @@ phone's tolerance are one fact with a round-trip assertion behind it. **It does 
 same-device case** — a reader on Screens is looking at this Mac from the phone being paired, and the
 two have different clipboards. That is still the Allow path.
 
-**Version 0.3.1, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
-TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
-put on a phone rather than what is on one now.
+**Version 0.3.1, not yet merged; 0.3.0 is published.** Scaffold complete, CI green, `main` protected,
+**shipping to TestFlight** — and merging is what publishes, so the version in `project.yml` is what
+this tree will put on a phone rather than what is on one now.
 
 **Design §3's file selector is built, and with it the mark that is this product's whole point.**
 Tapping a worktree opened one continuous scroll and no way to move around it; there is a file list
