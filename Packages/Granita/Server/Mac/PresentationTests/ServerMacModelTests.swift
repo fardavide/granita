@@ -1073,6 +1073,56 @@ struct ServerMacModelTests {
     }
 
     @Test
+    func `given a live code when the words are copied then the pasteboard reads as the tab shows them`() async {
+        // given
+        let scenario = Scenario(states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))])
+        await scenario.sut.followServer()
+        await scenario.sut.offerPairing()
+
+        // when
+        await scenario.sut.copySpokenCode()
+
+        // then — the line as drawn, middle dots and all. The words *are* the credential, so a
+        // clipboard spelling them differently from the line above it would be refused by the phone
+        // with a reason that names the code rather than the punctuation.
+        #expect(await scenario.gestures.copied == ["delta · pepper · amber · kelp · jasper · meadow"])
+    }
+
+    @Test
+    func `given a code that has run out when the words are copied then nothing is put on the pasteboard`() async {
+        // given — the words are not drawn in this state, so the button is not there to press. What
+        // this holds is the other half: a credential lives two minutes, and "the button is absent"
+        // and "this will not hand a reader something spent" are one re-evaluation apart.
+        let scenario = Scenario(
+            states: [.running(ServerEndpoint(host: "MacBook-Pro.local", port: 59_144))],
+            codeExpiresAt: Date(timeIntervalSince1970: 120),
+            now: Date(timeIntervalSince1970: 300)
+        )
+        await scenario.sut.followServer()
+        await scenario.sut.offerPairing()
+
+        // when
+        await scenario.sut.copySpokenCode()
+
+        // then
+        #expect(await scenario.gestures.copied.isEmpty)
+    }
+
+    @Test
+    func `given nothing is serving when the words are copied then nothing is put on the pasteboard`() async {
+        // given — there is no code at all here, and the pane says pairing needs the server.
+        let scenario = Scenario(states: [.failed(reason: "the local network is blocked")])
+        await scenario.sut.followServer()
+        await scenario.sut.offerPairing()
+
+        // when
+        await scenario.sut.copySpokenCode()
+
+        // then
+        #expect(await scenario.gestures.copied.isEmpty)
+    }
+
+    @Test
     func `given the server is still binding when Devices is opened then it says a code is being made`() async {
         // given — a bind takes a moment and a rebind after waking takes longer. "Nothing is serving"
         // during it sends a reader holding a phone to General to fix something already happening.

@@ -49,6 +49,25 @@ public enum SpokenWords {
             .joined(separator: "-")
     }
 
+    /// What the Mac puts between the words, and what the normaliser below accepts back.
+    ///
+    /// **One constant rather than a character in two files.** The Devices tab drew a middle dot and
+    /// this list learned to accept one, which is a promise held in two places until it was named
+    /// here — and the failure mode if they ever drift is the worst this fallback has: everything on
+    /// screen looks right and the pairing is refused for punctuation the reader never chose.
+    public static let drawnSeparator: Character = "·"
+
+    /// The code as a reader sees it on the Mac, which is what a copy of it has to put on a
+    /// pasteboard.
+    ///
+    /// The Devices tab draws the words one at a time so the separator can be dimmed, and the button
+    /// beside them copies this — so the line and the clipboard cannot spell one credential two ways.
+    /// That the phone accepts it back is asserted rather than described: `normalised(drawn(code))`
+    /// is `code`.
+    public static func drawn(_ code: String) -> String {
+        code.split(separator: "-").joined(separator: " \(drawnSeparator) ")
+    }
+
     /// What somebody typed, in the shape this file stores.
     ///
     /// Nobody types the hyphens, and somebody reading six words off a screen across the room will
@@ -107,6 +126,6 @@ public enum SpokenWords {
     /// so a set holding only the two separately matches neither half of the pair that a Windows-
     /// authored or clipboard-round-tripped phrase actually carries.
     private static let separators: Set<Character> = [
-        " ", "-", "\t", "\n", "\r", "\r\n", "·", "\u{2013}", "\u{2014}"
+        " ", "-", "\t", "\n", "\r", "\r\n", drawnSeparator, "\u{2013}", "\u{2014}"
     ]
 }

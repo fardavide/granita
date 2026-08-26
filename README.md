@@ -71,6 +71,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.3.1 — 2026-08-26
+- **The six words on your Mac have a Copy button.** They are there for when the camera cannot do it —
+  and until now getting them off the screen meant dragging a selection across six words in a 13pt
+  monospaced line. It sits on the same line as the words, so the countdown underneath does not move.
+- What it copies is the line exactly as the tab shows it, middle dots included, because that is what
+  your phone accepts back. Nothing goes on the clipboard once a code has run out.
+
 ### 0.3.0 — 2026-08-26
 - **There is a file list, and tapping a file jumps the diff to it.** Pull it up from the *N files*
   button in the toolbar and it stays up while you read: the diff keeps scrolling behind it, so you

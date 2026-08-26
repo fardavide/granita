@@ -28,6 +28,7 @@ public struct DevicesSettingsView: View {
     private let now: Date
     private let failure: StoreWriteFailure?
     private let onNewCode: () -> Void
+    private let onCopySpokenCode: () -> Void
     private let onRevoke: (String) -> Void
     private let onOpenGeneral: () -> Void
 
@@ -37,6 +38,7 @@ public struct DevicesSettingsView: View {
         now: Date,
         failure: StoreWriteFailure?,
         onNewCode: @escaping () -> Void,
+        onCopySpokenCode: @escaping () -> Void,
         onRevoke: @escaping (String) -> Void,
         onOpenGeneral: @escaping () -> Void
     ) {
@@ -45,6 +47,7 @@ public struct DevicesSettingsView: View {
         self.now = now
         self.failure = failure
         self.onNewCode = onNewCode
+        self.onCopySpokenCode = onCopySpokenCode
         self.onRevoke = onRevoke
         self.onOpenGeneral = onOpenGeneral
     }
@@ -234,18 +237,33 @@ public struct DevicesSettingsView: View {
     /// Six words at 13pt monospace, directly under the QR and as an equal.
     ///
     /// Drawn word by word with a separator between, so the line stays readable across a room — and
-    /// the separator is one the server accepts back, because a reader who selects this line and
-    /// pastes it into a phone must not be refused for the punctuation this tab chose.
+    /// the separator is `SpokenWords`' own, because a reader who takes this line to a phone must not
+    /// be refused for the punctuation this tab chose. It is read from there rather than typed here
+    /// so that the tab's choice and the normaliser that accepts it cannot drift apart.
+    ///
+    /// **Copy sits on the same line as the words**, which is a measurement rather than a preference:
+    /// this pane fits the 560pt window only because its stack was tightened, and design §5 records
+    /// that the next *line* added here puts the countdown below the fold — the one part of the pane a
+    /// reader is watching. A trailing button costs no height at all.
     @ViewBuilder private func spokenCode(_ code: String) -> some View {
         let words = code.split(separator: "-").map(String.init)
         HStack(spacing: 6) {
             ForEach(Array(words.enumerated()), id: \.offset) { position, word in
                 if position > 0 {
-                    Text(verbatim: "·")
+                    Text(verbatim: String(SpokenWords.drawnSeparator))
                         .foregroundStyle(.tertiary)
                 }
                 Text(verbatim: word)
             }
+            // General's row and the menu bar's status line copy through the same shape and the same
+            // symbol, because three places that put a fact on the clipboard should not each look
+            // like a different gesture.
+            Button(action: onCopySpokenCode) {
+                Image(systemName: "doc.on.doc")
+            }
+            .buttonStyle(.borderless)
+            .help("Copy these words")
+            .accessibilityLabel("Copy these words")
         }
         .font(.system(size: 13, design: .monospaced))
         .textSelection(.enabled)

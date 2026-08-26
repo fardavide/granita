@@ -2,9 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.3.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
-TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
-put on a phone rather than what is on one now.
+**The six words have a Copy button, which finishes a sentence design §5 started.** The separator
+under the QR was chosen so a reader who *selects the line and pastes it* is not refused for the
+tab's own punctuation — and the tab then left them to drag a selection across six words in a 13pt
+monospaced line. It is `doc.on.doc` on the same line as the words, because §5 records that the next
+*line* added to that pane puts the countdown below the fold. What it copies is the line as drawn,
+and `SpokenWords` now owns both the separator and the drawn spelling so the tab's choice and the
+phone's tolerance are one fact with a round-trip assertion behind it. **It does not solve the
+same-device case** — a reader on Screens is looking at this Mac from the phone being paired, and the
+two have different clipboards. That is still the Allow path.
+
+**Version 0.3.1, not yet merged; 0.3.0 is published.** Scaffold complete, CI green, `main` protected,
+**shipping to TestFlight** — and merging is what publishes, so the version in `project.yml` is what
+this tree will put on a phone rather than what is on one now.
 
 **Design §3's file selector is built, and with it the mark that is this product's whole point.**
 Tapping a worktree opened one continuous scroll and no way to move around it; there is a file list
@@ -726,8 +736,10 @@ Smaller things still open in these modules:
   blocked on the answer** — the selector ships either way.
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
-  last thing between `make ui-tests-mac` and a green run, and it is now blocking **ten** shipped
-  controls rather than a target: the Devices tab's `Revoke`, `New Code` and `Open General`, the
+  last thing between `make ui-tests-mac` and a green run, and it is now blocking **eleven** shipped
+  controls rather than a target: the Devices tab's `Revoke`, `New Code`, `Open General` and 0.3.1's
+  Copy beside the six words — whose pasteboard content is asserted at the model, which is exactly as
+  far as this machine can take it — the
   connection log's `Pair…`, 0.0.16's three menu bar rows — the status line that copies, *Pair a
   device…* and *Open Local Network Settings…* — and 0.0.18's three, the verbose switch, *Open in
   Console* and *Quit Granita*. **`Settings…` is not among them and was wrongly listed here until

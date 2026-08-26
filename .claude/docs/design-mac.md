@@ -28,7 +28,7 @@ becomes.
 | §2 | The window — five tabs | **complete as of 0.0.16.** Five tabs since 0.0.15, fixed at 620 × 560pt with Advanced last; the last-used pane is restored across launches and a first run opens Projects. Frames deleted |
 | §3 | General | **built in 0.0.10**, with its baselines. Frames deleted |
 | §4 | Projects | **built in 0.0.14**, with baselines. Frames deleted. Two departures, both below: the second figure is filled in progressively, and the scan follows the specification's skip list rather than the sheet's own drawing |
-| §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The Allow-from-the-Mac path is still out — no frames and no protocol |
+| §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The six words grew a Copy button in 0.3.1, which the frames do not draw — below. The Allow-from-the-Mac path is still out: no frames and no protocol |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**; the `Pair…` affordance landed in 0.0.15 with the tab it opens. Frames deleted |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
 
@@ -397,6 +397,34 @@ same again.
 middle dot; `SpokenWords.normalised` split on spaces and hyphens only, so a reader who selected the
 line and pasted it would have been refused for the punctuation this tab chose. Also
 [`decisions.md`](decisions.md).
+
+### The words got a Copy button, which the frames do not draw *(26 August 2026)*
+
+The call above finishes half a sentence: the separator was chosen so that **a reader who selects this
+line and pastes it** is not refused, which means selecting and pasting is the flow this tab was
+already designed around. It just left the reader to drag a selection across six words in a 13pt
+monospaced line to start it. A button is one gesture for the same thing, and this app already has the
+shape for it — General's address row and the menu bar's status line, `doc.on.doc`, borderless, with
+the label going to `help` and the accessibility label.
+
+**It is on the same line as the words, and that is this section's own measurement rather than a
+preference.** The paragraph above records that the pane fits the 560pt window only after the stack
+was tightened, and that the next *line* added here puts the countdown below the fold — the one part
+of the pane a reader is watching. A trailing button costs no height at all.
+
+**What it copies is the line as drawn**, middle dots and all, because that is the form the phone
+accepts back. The drawn spelling and the separator now live in `SpokenWords` beside the normaliser
+that accepts them, so the tab's choice and the phone's tolerance are one fact — and the round trip is
+asserted rather than described.
+
+> Rejected: copying the hyphenated wire form. It is what the Mac stores and it is *not* what the
+> reader is looking at, and this tab has already decided once that the line on screen and the line a
+> phone receives must be the same line. Rejected: a Copy under the words, which is the line this
+> section says costs the countdown.
+
+**It does not solve the same-device case**, and should not be read as doing so. A reader on Screens
+is looking at this Mac *from* the phone being paired, and the two have different clipboards. That is
+still the Allow path, which has no frames and no protocol.
 
 ## §6 — Connections
 

@@ -144,10 +144,59 @@ struct DevicesSettingsViewSnapshotTests {
             now: Self.now,
             failure: failure,
             onNewCode: {},
+            onCopySpokenCode: {},
             onRevoke: { _ in },
             onOpenGeneral: {}
         )
     }
+
+    /// **The three spellings of a sighting that no picture had ever held, and a platform that is
+    /// neither of the two this tab knows.**
+    ///
+    /// The row above photographs *Seen 4 min ago* and *Not seen since 11:32*; the two either side of
+    /// that — a device seen seconds ago and one seen hours ago — are strings a reader gets and
+    /// nothing rendered. The glyph is the same class of gap: the tab picks an iPhone or an iPad and
+    /// falls through to a desktop for anything else, and "anything else" is a real value, because
+    /// the platform is a string the *device* chose and the package's own host build introduces
+    /// itself as macOS.
+    ///
+    /// A view fallback nobody has drawn is a state nobody has agreed to, which is the rule this
+    /// suite exists to keep.
+    @Test(arguments: MacAppearance.all)
+    func `given sightings at every distance when Devices renders then each is spelled its own way`(
+        appearance: MacAppearance
+    ) {
+        // given - when - then
+        assertSettingsSnapshot(
+            view(devices: Self.everySighting, offer: .offered(Self.invitation(expiresIn: 106))),
+            appearance: appearance,
+            named: "every-sighting"
+        )
+    }
+
+    private static let everySighting = [
+        PairedDevice(
+            id: "just-now",
+            name: "Davide's iPhone",
+            platform: "iOS",
+            pairedAt: Date(timeIntervalSince1970: 1_754_179_200),
+            sighting: .seen(at: now.addingTimeInterval(-12))
+        ),
+        PairedDevice(
+            id: "hours",
+            name: "iPad Pro",
+            platform: "iPadOS",
+            pairedAt: Date(timeIntervalSince1970: 1_754_956_800),
+            sighting: .seen(at: now.addingTimeInterval(-7_500))
+        ),
+        PairedDevice(
+            id: "another-mac",
+            name: "Mac mini",
+            platform: "macOS",
+            pairedAt: Date(timeIntervalSince1970: 1_755_000_000),
+            sighting: .seen(at: now.addingTimeInterval(-260))
+        )
+    ]
 
     private static let devices = [
         PairedDevice(
