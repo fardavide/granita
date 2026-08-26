@@ -24,13 +24,25 @@ import CoreDiffDomain
 /// builds comes from the composition root. **It is a required parameter**, so a row that leads
 /// nowhere does not compile — which is a stronger guarantee than the comment this project relied on
 /// for the eight releases it shipped one.
+///
+/// **The name goes with the identifier, and that is a defect this repository has already had once.**
+/// The builder is written in the composition root, whose `navigationDestination` closure is
+/// re-evaluated and builds a *new* worktrees model every time — while this screen pins the first one
+/// and is the only thing that loads it. A builder that resolved the name itself would resolve it
+/// against whichever instance the last evaluation produced, one that has read nothing, and every
+/// worktree would open titled *This worktree*. That is 0.1.0's iPad defect exactly, and passing the
+/// resolved name is what stops it coming back through the door built to keep a row from going
+/// quiet.
 public struct WorktreeSidebarScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
 
-    private let opening: (WorktreeID) -> Opened
+    private let opening: (WorktreeID, String) -> Opened
 
-    public init(model: ClientWorktreesModel, @ViewBuilder opening: @escaping (WorktreeID) -> Opened) {
+    public init(
+        model: ClientWorktreesModel,
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String) -> Opened
+    ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
         // does it: the composition root rebuilds this on every parent re-evaluation, and a plain
         // property would swap the displayed model while the running .task kept driving the discarded
@@ -56,7 +68,9 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         // **Declared beside the rows that link to it**, which is the placement that stops a link and
         // its destination drifting apart in two modules — the exact way this app came to ship a row
         // that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
-        .navigationDestination(for: WorktreeID.self, destination: opening)
+        .navigationDestination(for: WorktreeID.self) { worktree in
+            opening(worktree, model.displayName(of: worktree))
+        }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(
                 subject: subject,

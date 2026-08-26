@@ -3673,3 +3673,24 @@ non-deterministic and an assertion that a row leads to a spinner. The viewer mod
 *before* the render now, by a helper the two screen suites await, and what those baselines hold is
 the diff. The sidebar suite was already `.serialized` for the same class of reason; the split suite
 now is too.
+
+### The name travels with the identifier, because the same defect tried to come back
+
+An adversarial read of the wiring, before it merged, found 0.1.0's iPad defect reappearing through
+the mechanism built to prevent a *different* one.
+
+The builder is written in the composition root, inside a `navigationDestination` closure that is
+re-evaluated and **builds a new `ClientWorktreesModel` every time** — while the screen below pins the
+first one and is the only thing that loads it. The first version of the builder resolved the title
+itself, from the local the root had just constructed. That model has read nothing, so
+`displayName(of:)` falls through to its fallback and **every worktree would have opened titled *This
+worktree*** — which is word for word the entry three above this one, in a new place.
+
+So the closure takes `(WorktreeID, displayName)` and the screen that holds the loaded model resolves
+the name. The root is handed the answer rather than the means to compute it wrongly.
+
+**No test kind here would have caught it.** A snapshot constructs one view value with one model that
+was loaded before the render; the defect needs a *second* evaluation with a fresh instance, which is
+the same thing the entry above says about pinning. It was found by reading the wiring end to end,
+which is the one review this repository has now recorded twice as the only thing that finds this
+class — and 0.1.0's lesson was to budget for exactly that pass and not let it grade work it did.

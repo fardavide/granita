@@ -26,13 +26,16 @@ public struct WorktreeSplitScreen<Opened: View>: View {
     /// What a chosen row opens. Handed in because the diff screen is another feature's
     /// `Presentation` and this target may not see one — see `WorktreeSidebarScreen`, which carries
     /// the whole argument.
-    private let opening: (WorktreeID) -> Opened
+    private let opening: (WorktreeID, String) -> Opened
 
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
-    public init(model: ClientWorktreesModel, @ViewBuilder opening: @escaping (WorktreeID) -> Opened) {
+    public init(
+        model: ClientWorktreesModel,
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String) -> Opened
+    ) {
         // **Pinned in `@State`, and here that is a fix rather than a precaution.** The composition
         // root presents this screen from inside a `navigationDestination` closure, so every
         // re-evaluation of that closure builds a **brand new model that has read nothing** — while
@@ -76,7 +79,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
             // value is meant to arrive.
             NavigationStack {
                 NoWorktreeChosenView()
-                    .openingTheChosenWorktree(with: opening)
+                    .openingTheChosenWorktree(of: model, with: opening)
             }
         }
         // **And again on the stack around the split view, which is not superstition.** Two
@@ -88,7 +91,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
         // that cannot happen is the row going quiet, which is the defect this app shipped for eight
         // releases. It collapses to one declaration the day §3's file selector gives the detail
         // column something of its own to show.
-        .openingTheChosenWorktree(with: opening)
+        .openingTheChosenWorktree(of: model, with: opening)
     }
 }
 
@@ -100,8 +103,14 @@ private extension View {
     /// that they cannot answer the same tap with two different screens — or, as this app has
     /// managed before, with none.
     func openingTheChosenWorktree(
-        with opening: @escaping (WorktreeID) -> some View
+        of model: ClientWorktreesModel,
+        with opening: @escaping (WorktreeID, String) -> some View
     ) -> some View {
-        navigationDestination(for: WorktreeID.self, destination: opening)
+        // Resolved against **this** model rather than by the builder, which the composition root
+        // writes and which would otherwise reach a freshly-built instance that has loaded nothing.
+        // See `WorktreeSidebarScreen`, which carries the whole argument.
+        navigationDestination(for: WorktreeID.self) { worktree in
+            opening(worktree, model.displayName(of: worktree))
+        }
     }
 }

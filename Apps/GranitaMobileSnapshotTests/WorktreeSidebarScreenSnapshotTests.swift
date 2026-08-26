@@ -102,8 +102,8 @@ private func theSidebar(
     in layout: SnapshotLayout
 ) -> some View {
     NavigationStack {
-        WorktreeSidebarScreen(model: model) { worktree in
-            WorktreeDiffScreen(worktreeName: model.displayName(of: worktree), model: diff)
+        WorktreeSidebarScreen(model: model) { _, displayName in
+            WorktreeDiffScreen(worktreeName: displayName, model: diff)
         }
     }
         .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)
