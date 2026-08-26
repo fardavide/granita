@@ -310,7 +310,7 @@ let package = Package(
 
         .target(
             name: "ClientViewerDomain",
-            dependencies: ["CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: ["ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
             path: "Client/Viewer/Domain",
             swiftSettings: [swift6]
         ),
@@ -324,6 +324,7 @@ let package = Package(
             name: "ClientViewerUi",
             dependencies: [
                 "ClientViewerDomain",
+                "ClientConnectionDomain",
                 "CoreDiffDomain",
                 "CoreTreeDomain",
                 // Highlighting turns diff text into attributed strings for rendering, which is
@@ -336,19 +337,34 @@ let package = Package(
         ),
         .target(
             name: "ClientViewerPresentation",
-            dependencies: ["ClientViewerUi", "ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "ClientViewerUi",
+                "ClientViewerDomain",
+                // The repository and its refusals are the connection unit's Domain, and a sibling
+                // Domain is what a Presentation target may see. Reaching for the `Data` target that
+                // implements it is what the graph refuses.
+                "ClientConnectionDomain",
+                "CoreDiffDomain",
+                "CoreTreeDomain"
+            ],
             path: "Client/Viewer/Presentation",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
             name: "ClientViewerDomainTests",
-            dependencies: ["ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: ["ClientViewerDomain", "ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
             path: "Client/Viewer/DomainTests",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ClientViewerPresentationTests",
-            dependencies: ["ClientViewerPresentation", "ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "ClientViewerPresentation",
+                "ClientViewerDomain",
+                "ClientConnectionDomain",
+                "CoreDiffDomain",
+                "CoreTreeDomain"
+            ],
             path: "Client/Viewer/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),

@@ -1,0 +1,134 @@
+import SwiftUI
+
+import ClientConnectionDomain
+import ClientViewerDomain
+import CoreDiffDomain
+
+/// Every changed file in one scroll, which is `SPEC.md` §10's locked decision and the screen this
+/// product exists for.
+///
+/// **One section per file in a lazy stack with pinned headers**, which is design §4's own
+/// implementation note and the shape that keeps the no-reflow rule intact: pinning is a rendering
+/// position rather than a layout change, so nothing above the reader's finger moves when a header
+/// sticks.
+///
+/// **A file that has not arrived reserves its height rather than collapsing.** The change set names
+/// every file before any diff is fetched, so all of them are drawn from the first frame and the
+/// estimate holds the space. Correcting an estimate is invisible below the viewport and is the
+/// defect above it, which is why `ContinuousDiffLoading` never fetches backwards.
+///
+/// Stateless. It renders the state it is handed and reports what the reader reached, so all four
+/// states can be put in front of a camera without a Mac, a network or a paired device.
+public struct ContinuousDiffView: View {
+
+    private let state: ContinuousDiffState
+    private let showsOldNumber: Bool
+    private let onReading: (Int) -> Void
+    private let onRetry: () -> Void
+
+    public init(
+        state: ContinuousDiffState,
+        showsOldNumber: Bool,
+        onReading: @escaping (Int) -> Void,
+        onRetry: @escaping () -> Void
+    ) {
+        self.state = state
+        self.showsOldNumber = showsOldNumber
+        self.onReading = onReading
+        self.onRetry = onRetry
+    }
+
+    public var body: some View {
+        switch state {
+        case .loading:
+            // A progress view promises a finish and this one has it: a request either answers or
+            // fails. The spinner design §1 refuses for a Bonjour browse is the right control here.
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failed(let failure):
+            failed(failure)
+        case .nothingChanged:
+            nothingChanged
+        case .reading(let entries):
+            scroll(of: entries)
+        }
+    }
+
+    private func scroll(of entries: [ContinuousDiffEntry]) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
+                    Section {
+                        content(of: entry)
+                            // **The position is reported on appearance rather than from a scroll
+                            // offset.** `SPEC.md` §10 says to track this with visibility and never
+                            // with `contentOffset`, and the reason is the same one the whole screen
+                            // turns on: an offset is a number about a layout that is allowed to be
+                            // wrong below the fold, and a file appearing is a fact.
+                            .onAppear { onReading(position) }
+                    } header: {
+                        DiffFileHeader(file: entry.file)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func content(of entry: ContinuousDiffEntry) -> some View {
+        switch entry {
+        case .awaiting:
+            // Deliberately empty rather than a spinner. There is no per-file progress worth
+            // reporting — five files are in flight at once and the reader is not waiting on any of
+            // them — and a row of spinners scrolling past would be the app describing its own
+            // plumbing.
+            Color.clear
+                .frame(height: reservedHeight(of: entry))
+        case .ready(let diff):
+            DiffFileContent(hunks: diff.hunks, showsOldNumber: showsOldNumber)
+        }
+    }
+
+    /// Three slots, three jobs — the shape design §1 settled and every empty state in this app has
+    /// used since. The description is ours; the action retries; the machine's own sentence goes to
+    /// the bottom in small print, where it is copyable into a bug report and unmistakably not
+    /// instructions.
+    private func failed(_ failure: ApiFailure) -> some View {
+        ContentUnavailableView {
+            Label("Could not read this worktree", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(
+                """
+                Something stopped Granita from reading what changed here. Trying again usually \
+                works; if it does not, check that Granita is still running on your Mac.
+                """
+            )
+        } actions: {
+            Button("Try Again", action: onRetry)
+                .buttonStyle(.borderedProminent)
+            if let diagnostic = failure.diagnostic {
+                Text(diagnostic)
+                    .font(.caption2)
+                    .monospaced()
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
+                    .padding(.top)
+            }
+        }
+    }
+
+    /// **No action, and that is the design rather than an omission.** A reader reaches this by
+    /// choosing *Show them anyway* in the sidebar and then opening a worktree they were told was
+    /// clean, so the screen owes them a confirmation rather than something to press.
+    private var nothingChanged: some View {
+        ContentUnavailableView {
+            Label("Nothing to review", systemImage: "checkmark.circle")
+        } description: {
+            Text("This worktree has no uncommitted changes.")
+        }
+    }
+
+    private func reservedHeight(of entry: ContinuousDiffEntry) -> CGFloat {
+        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: DiffFileLines.codePointSize)
+    }
+}

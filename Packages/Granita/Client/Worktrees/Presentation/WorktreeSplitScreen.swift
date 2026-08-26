@@ -19,27 +19,23 @@ import CoreDiffDomain
 /// content, and this screen is inside one because §5 requires that back returns to the Mac list. So
 /// the phone gets the sidebar directly, which is what the collapse was supposed to produce, and
 /// both halves are photographed.
-public struct WorktreeSplitScreen: View {
-
-    /// §2's measure for the sidebar, and it is *narrower* than the phone's 390: "the iPad is the
-    /// harder layout for this row, not the easier one, and the drop order above is what saves it."
-    ///
-    /// Pinned rather than inherited from whatever the system hands a sidebar, so the arithmetic §2
-    /// works the row's drop order out against is the arithmetic the baselines assert.
-    ///
-    /// Public because the row's own suites record against it: they photograph the list rather than
-    /// the screen around it, and until this number reached them they photographed it across the
-    /// whole 1,194pt — a width the row has on no device, and the one where §2's drop order never
-    /// has to do anything.
-    public static let sidebarWidth: CGFloat = 320
+public struct WorktreeSplitScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
+
+    /// What a chosen row opens. Handed in because the diff screen is another feature's
+    /// `Presentation` and this target may not see one — see `WorktreeSidebarScreen`, which carries
+    /// the whole argument.
+    private let opening: (WorktreeID, String) -> Opened
 
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
-    public init(model: ClientWorktreesModel) {
+    public init(
+        model: ClientWorktreesModel,
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String) -> Opened
+    ) {
         // **Pinned in `@State`, and here that is a fix rather than a precaution.** The composition
         // root presents this screen from inside a `navigationDestination` closure, so every
         // re-evaluation of that closure builds a **brand new model that has read nothing** — while
@@ -50,6 +46,7 @@ public struct WorktreeSplitScreen: View {
         // model. The sidebar and the discovery screen pin for the milder version of the same
         // reason.
         _model = State(initialValue: model)
+        self.opening = opening
     }
 
     public var body: some View {
@@ -62,7 +59,7 @@ public struct WorktreeSplitScreen: View {
         // Compact is the phone, and it is also an iPad in a narrow multitasking width — which is why
         // the question asked is the width and not the device.
         if horizontalSizeClass == .compact {
-            WorktreeSidebarScreen(model: model)
+            WorktreeSidebarScreen(model: model, opening: opening)
         } else {
             twoColumns
         }
@@ -71,8 +68,8 @@ public struct WorktreeSplitScreen: View {
 
     private var twoColumns: some View {
         NavigationSplitView {
-            WorktreeSidebarScreen(model: model)
-                .navigationSplitViewColumnWidth(Self.sidebarWidth)
+            WorktreeSidebarScreen(model: model, opening: opening)
+                .navigationSplitViewColumnWidth(WorktreeSidebarView.widthInASplitView)
         } detail: {
             // **A stack, not the empty state on its own, because the column a chosen row lands in
             // has to be able to hold it.** A split view claims the destinations declared inside its
@@ -82,7 +79,7 @@ public struct WorktreeSplitScreen: View {
             // value is meant to arrive.
             NavigationStack {
                 NoWorktreeChosenView()
-                    .openingTheChosenWorktree(of: model)
+                    .openingTheChosenWorktree(of: model, with: opening)
             }
         }
         // **And again on the stack around the split view, which is not superstition.** Two
@@ -94,7 +91,7 @@ public struct WorktreeSplitScreen: View {
         // that cannot happen is the row going quiet, which is the defect this app shipped for eight
         // releases. It collapses to one declaration the day §3's file selector gives the detail
         // column something of its own to show.
-        .openingTheChosenWorktree(of: model)
+        .openingTheChosenWorktree(of: model, with: opening)
     }
 }
 
@@ -105,9 +102,15 @@ private extension View {
     /// The one screen a chosen row leads to, written once and declared on both containers above so
     /// that they cannot answer the same tap with two different screens — or, as this app has
     /// managed before, with none.
-    func openingTheChosenWorktree(of model: ClientWorktreesModel) -> some View {
+    func openingTheChosenWorktree(
+        of model: ClientWorktreesModel,
+        with opening: @escaping (WorktreeID, String) -> some View
+    ) -> some View {
+        // Resolved against **this** model rather than by the builder, which the composition root
+        // writes and which would otherwise reach a freshly-built instance that has loaded nothing.
+        // See `WorktreeSidebarScreen`, which carries the whole argument.
         navigationDestination(for: WorktreeID.self) { worktree in
-            WorktreeNotReadyView(worktreeName: model.displayName(of: worktree))
+            opening(worktree, model.displayName(of: worktree))
         }
     }
 }

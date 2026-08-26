@@ -8,6 +8,7 @@ import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
 import ClientConnectionUi
+import ClientViewerPresentation
 import ClientWorktreesData
 import ClientWorktreesPresentation
 
@@ -76,7 +77,24 @@ public struct GranitaMobileScene: Scene {
                 // rather than out here, because a title applied to a container does not override
                 // one applied within it. See `.claude/docs/decisions.md`.
                 .navigationDestination(for: PairedMac.self) { mac in
-                    WorktreeSplitScreen(model: Self.worktrees(of: mac))
+                    WorktreeSplitScreen(model: Self.worktrees(of: mac)) { worktree, displayName in
+                        // **The second link in this app whose destination is a module away**, and
+                        // it is here for the same reason the first is: `ClientWorktreesPresentation`
+                        // may see any `Domain` and its own `Ui`, never a sibling `Presentation`. The
+                        // sidebar declares the destination — it has to, because a split view keeps
+                        // what its own columns declare — and this supplies what it builds. The
+                        // parameter is required, so the row cannot go quiet the way it did for eight
+                        // releases; what it opens is the only part that could ever be wrong.
+                        // **The name arrives with the identifier rather than being resolved here**,
+                        // and that is 0.1.0's iPad defect not happening twice: this closure runs on
+                        // every evaluation and each one builds a worktrees model that has read
+                        // nothing, so a name looked up here would be the fallback word on every
+                        // worktree there is. The screen that pins the loaded model resolves it.
+                        WorktreeDiffScreen(
+                            worktreeName: displayName,
+                            model: ClientViewerModel(worktree: worktree, repository: Self.repository(of: mac))
+                        )
+                    }
                 }
             }
             // The measure goes around the stack rather than around the screen, because iOS draws a
@@ -145,12 +163,16 @@ public struct GranitaMobileScene: Scene {
     private static func worktrees(of mac: PairedMac) -> ClientWorktreesModel {
         ClientWorktreesModel(
             macName: mac.name,
-            repository: HttpGranitaRepository(
-                mac: mac,
-                transport: UrlSessionHttpTransport(pinnedTo: mac.fingerprint)
-            ),
+            repository: repository(of: mac),
             preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
             now: Date.init
         )
+    }
+
+    /// A session that can reach exactly one Mac, which is what makes the pin worth having: the
+    /// token, the address and the fingerprint all came from the same pairing, so a request cannot
+    /// leave for a machine nobody vouched for.
+    private static func repository(of mac: PairedMac) -> HttpGranitaRepository {
+        HttpGranitaRepository(mac: mac, transport: UrlSessionHttpTransport(pinnedTo: mac.fingerprint))
     }
 }

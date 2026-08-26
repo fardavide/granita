@@ -3481,6 +3481,40 @@ the QR is the credential that already knows where it is going. What this costs i
 screen whose content is correct, in a sequence the reader had to leave halfway through to produce. The
 mismatch is older than this entry — every pairing screen has been titled that way since 0.1.0 — and
 what changed is that it now survives past the pairing.
+
+## §4's wrap-off scroll splits the row in two, and a photograph is what said so
+
+The first attempt at design §4's diff line was one view holding both halves — the number column and
+the code — with the code at `fixedSize(horizontal: true)` so that it runs past the trailing edge
+rather than truncating at it, which is what wrap-off means. It compiled, it read correctly, and the
+baseline came back with **the gutter off the leading edge of the screen**: a row wider than its
+container is centred in it, so forcing the code's width pushes the numbers out of the frame in the
+one direction nothing can scroll back to.
+
+The deeper version of the same thing is the reason it cannot be repaired by an alignment. `SPEC.md`
+§10 says long lines "scroll horizontally within the file **with the gutter pinned**", and a gutter
+inside the row is inside whatever scrolls the row. So the two halves cannot be one view:
+
+- the number column is a fixed-width stack outside the horizontal scroll;
+- the code is a stack inside it;
+- and the two are separate view trees that must agree on every row's height, which means the height
+  is stated once rather than left to two text engines to arrive at.
+
+That is a bigger change than a layout fix and it decides what the file section, the sticky header and
+the estimated heights are all built on, so it is recorded rather than rushed. **The row and its five
+baselines were taken back out** — a view that lays out wrongly is worse committed than absent, and
+the measurement is the part worth keeping.
+
+What the photograph did confirm, and what the rewrite has to preserve: the tints and the word
+segments are right. A deletion at 10% red under an addition at 10% green, the changed run at full
+strength and the unchanged runs at `.secondary`, and the eye goes to the text rather than to the box
+— which is §4's call, and the frames use it in all three palettes rather than only in dark.
+
+`MonospacedGrid` stays, because it is right either way: `displayColumns` travels on every line with
+tabs already expanded to a stop of four, and a view that handed the raw string to a text engine would
+get that engine's tab stops instead — a tab-indented file drawn at one width and measured at another.
+The constant now lives in one place and `DisplayWidth` reads it from there.
+
 ## `onChange` dies at `onDisappear`, and 0.1.0 shipped its pairing success on one that had
 
 **Pairing hung forever on the in-flight frame, on both credentials, on a real iPhone.** The Mac's
@@ -3606,3 +3640,57 @@ and reads as the first field being missing; a proxy answering 502 with HTML, whe
 only true thing left to say; and the two guards `GranitaHttpClient` puts on the way out — neither
 reachable through a route, because every route is a literal path and every body is a type this app
 wrote, and a guard nothing can provoke is one nothing holds to its sentence.
+
+## The diff screen is reached through a builder the compiler makes mandatory
+
+Design §4's continuous scroll is another feature's `Presentation` — `ClientViewerPresentation` — and
+the rows that open it live in `ClientWorktreesPresentation`. A `Presentation` target may see its own
+feature's `Ui` and any `Domain`; a sibling `Presentation` is exactly the edge the graph refuses, and
+the rule for that case is written down: the design is wrong, not the rule.
+
+The obvious escape is to declare the destination in the composition root, which is what the
+`PairedMac` link already does. **It does not work here**, and the reason is recorded two entries up:
+a split view claims the destinations declared *inside its own columns*, so a `navigationDestination`
+that lives only in the root is one a sidebar row inside the split view never reaches. That is the
+defect this app shipped for eight releases, arriving through the door built to stop it.
+
+So the declaration stays inside the worktrees module and only *what it builds* comes from the root:
+`WorktreeSidebarScreen` and `WorktreeSplitScreen` are generic over the view a row opens, and the
+builder is a **required initialiser parameter**. A row that leads nowhere now fails to compile, which
+is a stronger guarantee than the comment this project relied on while it was shipping one — and the
+snapshot suites pass the *real* diff screen rather than a stand-in, because a picture of a stub
+asserts that a stub leads somewhere.
+
+The cost is two generic view types. `WorktreeSplitScreen.sidebarWidth` had to move with it — a
+generic type may hold no static stored property — and it went to `WorktreeSidebarView`, which is
+where a fact about that row's width belongs anyway.
+
+### And the first baseline of the pushed screen photographed a spinner
+
+`WorktreeDiffScreen` loads from its own `.task`, so the suite that pushes it was racing its own
+shutter: the recording came back as a progress view on an empty screen, which is both
+non-deterministic and an assertion that a row leads to a spinner. The viewer model is loaded
+*before* the render now, by a helper the two screen suites await, and what those baselines hold is
+the diff. The sidebar suite was already `.serialized` for the same class of reason; the split suite
+now is too.
+
+### The name travels with the identifier, because the same defect tried to come back
+
+An adversarial read of the wiring, before it merged, found 0.1.0's iPad defect reappearing through
+the mechanism built to prevent a *different* one.
+
+The builder is written in the composition root, inside a `navigationDestination` closure that is
+re-evaluated and **builds a new `ClientWorktreesModel` every time** — while the screen below pins the
+first one and is the only thing that loads it. The first version of the builder resolved the title
+itself, from the local the root had just constructed. That model has read nothing, so
+`displayName(of:)` falls through to its fallback and **every worktree would have opened titled *This
+worktree*** — which is word for word the entry three above this one, in a new place.
+
+So the closure takes `(WorktreeID, displayName)` and the screen that holds the loaded model resolves
+the name. The root is handed the answer rather than the means to compute it wrongly.
+
+**No test kind here would have caught it.** A snapshot constructs one view value with one model that
+was loaded before the render; the defect needs a *second* evaluation with a fresh instance, which is
+the same thing the entry above says about pinning. It was found by reading the wiring end to end,
+which is the one review this repository has now recorded twice as the only thing that finds this
+class — and 0.1.0's lesson was to budget for exactly that pass and not let it grade work it did.

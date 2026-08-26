@@ -25,7 +25,7 @@ says so and shows the measurement.
 | §1 | Server discovery | built | **applied** — the code matches this document |
 | §2 | The worktree sidebar | M4 | built |
 | §3 | The file selector | M5 | drawn, not built |
-| §4 | The continuous diff | M5 | drawn, not built |
+| §4 | The continuous diff | M5 | **the scroll is built** — the header, the bars and expansion are not |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
@@ -453,9 +453,26 @@ The states:
 
 *Should feel like* the Xcode navigator, minus the parts of the Xcode navigator nobody uses on a phone.
 
-## §4 — The continuous diff *(M5, drawn)*
+## §4 — The continuous diff *(M5 — the wrap-off scroll is built; the rest is drawn)*
+
+**What 0.2.0 builds, and what it deliberately does not.** The one continuous scroll, the gutter, the
+line tints and the word segments, the hunk bands and a sticky file header are on the phone. The
+collapsed bars, hunk expansion, the viewed toggle, syntax highlighting and the wrap-on mode are not,
+and each is absent rather than disabled — nothing on that screen is a control that does not work.
+Two calls below were changed by building them, and both say so where they are made: the row splits
+into two view trees, and the file header ships in one form. Both are in
+[`decisions.md`](decisions.md).
 
 ### The file header sticks, and costs 28pt — but only if the toolbar goes
+
+> **Built in one form, not two** *(26 August 2026)*. A pinned section header keeps its slot in the
+> lazy stack while a copy floats at the top, so a header that is *shorter* when pinned changes the
+> height of a slot above the viewport — and everything below it, the reader's own content included,
+> moves. That is the reflow SPEC §10 forbids, so what ships is the pinned form always: status letter,
+> head-truncated path, stats, and CONFLICTED where it applies. What that costs is the second line,
+> which this section itself calls orientation for arriving rather than for staying, and arriving is
+> what §3's selector is for. Provisional pending a device. Rejected: two forms with a constant slot
+> height, which SwiftUI gives no way to express, since the floating copy *is* the slot's view.
 
 It has to stick. It is the only thing that answers "where am I" after thirty seconds of scrolling,
 and reading the path off the nearest hunk heading is not an answer because hunk headings are function

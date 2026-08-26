@@ -2,19 +2,40 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.1.1, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
+**Version 0.2.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
 TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
 put on a phone rather than what is on one now.
 
-**The worktree list is titled after the Mac, which is the last clause of design §5 and the one 0.1.0
-did not build.** `PairedMac` carries the name now, and it is passed into the pairing rather than
-derived from anything the credential holds: a scanned link carries a host and six words carry
-neither, so the only string a reader would recognise is the one they tapped in the Mac list. The
-title is set inside the sidebar because a `.navigationTitle` on the container outside it does not
-override one applied within — which is what deferred this in the first place, and is now
-demonstrated rather than argued, since the outer one had been sitting in the composition root's
-comment for a release. **Sixty-eight baselines**, four of them a state nobody had photographed: a
-Mac whose name is longer than the iPad's 320pt sidebar.
+**The diffs are on the phone, which is the thing this product is for.** Tapping a worktree opened a
+screen saying the file list was not built; it opens design §4's one continuous scroll now — every
+changed file in one lazy stack with pinned headers, wrap off, the line numbers pinned while the code
+runs off the trailing edge. `WorktreeNotReadyView` is gone, the way `PairingNotReadyView` went in
+0.1.0.
+
+**§4's wrap-off row is two view trees, and a photograph is what said so.** The first build put the
+numbers and the code in one view with the code at `fixedSize`, and the baseline came back with the
+gutter pushed off the leading edge: a row wider than its container is centred in it. SPEC §10 pins
+the gutter *while the code scrolls*, so the numbers are a fixed column outside the scroll and the
+code a stack inside it — which means two stacks have to agree on every row's height, so the height is
+taken from the font and stated once rather than left to two text engines. The row and its five
+baselines came back out and were rebuilt in the right shape. In `decisions.md`.
+
+**The file header ships in one form where §4 draws two**, and that is the no-reflow rule again: a
+pinned section header keeps its slot while a copy floats, so a header that is shorter when pinned
+changes the height of a slot *above* the viewport and moves everything under it. It ships as the
+pinned form, losing the second line, which §4 itself calls orientation for arriving rather than for
+staying. **Provisional** — whether a two-form header can hold one slot height is a question for a
+real scroll under a real thumb.
+
+**The forward-only rule is a pure function with its own suite.** `ContinuousDiffLoading` never
+fetches a file the reader has scrolled past: filling a gap above the viewport turns a placeholder
+into real content and moves the screen they are reading, which is the defect SPEC §10 exists to
+prevent. Files load five ahead, in one `/diffs` request, and a refused batch leaves placeholders
+rather than replacing a screen the reader was already using.
+
+**What no test kind here can answer is whether it feels right.** A two-axis scroll inside a vertical
+one that must never reflow is the hardest gesture in this product, and design §4 says to build it
+first for exactly that reason. It is built; it needs a thumb.
 
 **The pairing design came back on 25 August 2026 and is now built.** Four
 screens, twelve states, and a finding no frame could carry: **the six words carry no key.** The QR
@@ -339,7 +360,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
-| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | |
+| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** |
 | M6 | Live updates, accessibility, ship | |
 
 ## What exists
@@ -386,7 +407,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   row with its arrow on the trailing edge and middle truncation, searching pulses and stopping is
   still, nothing-found and failure both offer a real retry, the failure's advice is ours with the
   system's diagnostic demoted to small print, and every state sits in a 420pt centred measure on
-  iPad. §2–§4 are drawn and waiting for M4 and M5.
+  iPad. §3 is drawn and waiting for M5; §4's wrap-off scroll is built and the rest of it is drawn.
 - **The Mac's General tab, and the kind of test that can see it.** The address this Mac serves on
   with a button that copies it, who chose the port and why it moves, when the server last bound and
   a Restart for the failure that has no notification behind it — a laptop that changed network keeps
@@ -506,7 +527,14 @@ Still unverified, because each needs code that does not exist yet:
 - Highlightr's throughput on a 200-line Swift block, measured on device (M5).
 - Login-item registration (M3). The `MenuBarExtra` plus `Settings` pattern under `LSUIElement` is
   now implemented and verified on macOS 26.
-- Character-wrapping height arithmetic against measured heights (M5).
+- Character-wrapping height arithmetic against measured heights (M5). Wrap-on is not built; the
+  wrap-off scroll that would be its alternative is, and which of the two ships as the default is a
+  question only a thumb answers.
+- **Whether §4's scroll feels right on a phone**, which design §4 names as the reason to build the
+  wrap-off mode first. A two-axis scroll inside a vertical one that must never reflow is the hardest
+  gesture in this product; it is built and wired, so it can be opened and tried. If it does not
+  survive, character wrapping becomes the default and half of §4's gutter arithmetic stops
+  mattering.
 - **Pinned trust evaluation against App Transport Security on a real iPhone (M4).** Both halves now
   exist — the Mac's identity and the phone's `URLSessionDelegate` — and what a device has not yet
   said is whether a delegate that compares the fingerprint instead of evaluating satisfies ATS.
@@ -538,11 +566,18 @@ sets up delivery.
 
 ## What to pick up next
 
+**M5's next pieces, in the order §4 puts them.** The scroll is built and wired; what is drawn and not
+built is the file header's second form, the collapsed bars and their reasons, hunk expansion, the
+viewed toggle, syntax highlighting, wrap-on, and §3's file selector — which is what deletes the
+detail column's *Choose a worktree* the way §4 deleted `WorktreeNotReadyView`. Every one of those is
+**absent** on screen today rather than disabled, so nothing there is a control that does not work.
+
 **M4's remaining half was pairing and it is built**, and the adversarial pass over it is landed too,
 so what is left of that slice is what a machine cannot answer, two calls that are Davide's, and a
 version that has not moved.
 
-- **Press it on a phone.** The camera, the Keychain, the local-network prompt and a QR held across a
+- **Press it on a phone**, and there is more to press now: tapping a worktree opens the diff. The
+  camera, the Keychain, the local-network prompt and a QR held across a
   room are four things this Mac cannot produce, and the viewfinder's preview is the one piece of the
   slice no test kind that runs here executes a line of. **Three of the six defects the adversarial
   pass found were about what a screen is showing rather than what a model holds** — a title, a
