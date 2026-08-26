@@ -1,3 +1,4 @@
+import ClientViewerDomain
 import CoreDiffDomain
 import Foundation
 
@@ -194,3 +195,87 @@ nonisolated let aFileWhoseHunksDisagreeOnWidth: [Hunk] = [
         lines: aLineThatRunsOffTheEdge
     )
 ]
+
+// MARK: - The change set, as the continuous scroll sees it
+
+/// Three files: one fetched, one still on its way, one fetched and conflicted.
+///
+/// **The middle one is the case worth photographing.** Every file is drawn from the first frame,
+/// whether or not its diff has arrived, and the one that has not reserves its height from the
+/// server's estimate — which is what stops the content below it moving when the diff lands.
+nonisolated let aChangeSetPartlyArrived: [ContinuousDiffEntry] = [
+    .ready(
+        FileDiff(
+            file: aChangedFile(
+                path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
+                status: .modified,
+                insertions: 12,
+                deletions: 4,
+                estimatedLineCount: 16
+            ),
+            hunks: aFileWithTwoHunks,
+            oldLineCount: 1_204,
+            newLineCount: 1_205,
+            isTruncated: false,
+            truncationReason: nil
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Client/Viewer/Ui/ContinuousDiffView.swift",
+            status: .added,
+            insertions: 68,
+            deletions: 0,
+            estimatedLineCount: 20
+        )
+    ),
+    .ready(
+        FileDiff(
+            file: aChangedFile(
+                path: "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
+                status: .conflicted,
+                insertions: 3,
+                deletions: 2,
+                estimatedLineCount: 6
+            ),
+            hunks: [aConflictedFileHunk],
+            oldLineCount: 66,
+            newLineCount: 66,
+            isTruncated: false,
+            truncationReason: nil
+        )
+    )
+]
+
+private nonisolated let aConflictedFileHunk = Hunk(
+    index: 0,
+    oldStart: 61,
+    oldCount: 5,
+    newStart: 61,
+    newCount: 5,
+    sectionHeading: "func merged() -> [WordSegment]",
+    lines: aConflictedHunk
+)
+
+private func aChangedFile(
+    path: String,
+    status: FileStatus,
+    insertions: Int,
+    deletions: Int,
+    estimatedLineCount: Int
+) -> FileChange {
+    FileChange(
+        id: FileID(repositoryRelativePath: path),
+        path: path,
+        oldPath: nil,
+        status: status,
+        isBinary: false,
+        isSubmodule: false,
+        stats: ChangeStats(filesChanged: 1, insertions: insertions, deletions: deletions),
+        contentHash: String(repeating: "a", count: 64),
+        estimatedLineCount: estimatedLineCount,
+        isViewed: false,
+        isTruncated: false,
+        language: "swift"
+    )
+}
