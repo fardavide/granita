@@ -1,6 +1,10 @@
+import ClientConnectionDomain
 import ClientViewerDomain
+import ClientViewerPresentation
+import ClientWorktreesPresentation
 import CoreDiffDomain
 import Foundation
+import SwiftUI
 
 /// Diff lines a real repository would produce, for the screens design §4 draws.
 ///
@@ -278,4 +282,89 @@ private func aChangedFile(
         isTruncated: false,
         language: "swift"
     )
+}
+
+// MARK: - A Mac for the screens that build a whole viewer
+
+/// Answers the two read routes the diff screen uses, from the change set above.
+///
+/// It exists so the split screen's own baselines photograph **the real destination** rather than a
+/// stand-in: what those pictures are for is that a chosen row leads somewhere, and a stub behind the
+/// row would assert that a stub leads somewhere.
+struct FakeDiffRepository: GranitaRepository {
+
+    let files: [FileChange]
+    let diffs: [FileID: FileDiff]
+
+    init(entries: [ContinuousDiffEntry]) {
+        files = entries.map(\.file)
+        diffs = Dictionary(
+            uniqueKeysWithValues: entries.compactMap { entry in
+                guard case .ready(let diff) = entry else { return nil }
+                return (entry.id, diff)
+            }
+        )
+    }
+
+    func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
+        WorktreeChanges(
+            revision: "9d41e0c7",
+            stats: ChangeStats(filesChanged: files.count, insertions: 83, deletions: 6),
+            files: files,
+            isTruncated: false
+        )
+    }
+
+    func diffs(
+        of files: [FileID],
+        in worktree: WorktreeID,
+        contextLines: Int
+    ) async throws(ApiFailure) -> [FileDiff] {
+        files.compactMap { diffs[$0] }
+    }
+
+    func projects() async throws(ApiFailure) -> [Project] { [] }
+
+    func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] { [] }
+
+    func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
+        throw .worktreeGone
+    }
+
+    func lines(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide,
+        start: Int,
+        count: Int
+    ) async throws(ApiFailure) -> FileLines {
+        throw .fileGone
+    }
+
+    func markViewed(
+        _ viewed: Bool,
+        file: FileID,
+        contentHash: String,
+        in worktree: WorktreeID
+    ) async throws(ApiFailure) {
+        throw .fileGone
+    }
+}
+
+/// A viewer model that has already read its change set and fetched the first window.
+///
+/// **Loaded before the render rather than during it**, which is the difference between a baseline
+/// and a race: the diff screen loads from its own `.task`, so a screen handed a fresh model
+/// photographs whichever of the spinner and the content won — and the first recording of it caught
+/// the spinner. Awaiting here settles the raster, and it is why the two suites that use this are
+/// `async`.
+@MainActor
+func aLoadedViewerModel() async -> ClientViewerModel {
+    let model = ClientViewerModel(
+        worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
+        repository: FakeDiffRepository(entries: aChangeSetPartlyArrived)
+    )
+    await model.load()
+    await model.reading(0)
+    return model
 }

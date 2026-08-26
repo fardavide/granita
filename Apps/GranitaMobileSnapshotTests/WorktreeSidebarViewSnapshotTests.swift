@@ -52,7 +52,7 @@ struct WorktreeSidebarViewSnapshotTests {
                     onRetry: {}
                 )
             }
-            .frame(maxWidth: layout.isRegularWidth ? WorktreeSplitScreen.sidebarWidth : nil)
+            .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)
             // Leading rather than centred, because that is the edge the column is against. What is
             // beside it on a real iPad is the detail column, which is the split screen's own suite.
             .frame(maxWidth: .infinity, alignment: .leading),

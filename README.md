@@ -71,6 +71,22 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.2.0 — 2026-08-26
+- **You can read the diffs.** Tapping a worktree used to open a screen that said the file list was
+  not built yet. It now opens every changed file in one continuous scroll — the code, the line
+  numbers, what was added and what was removed.
+- **Long lines run off the edge and you scroll them sideways**, and the line numbers stay where they
+  are while you do. Code is not reflowed to fit a phone, because a wrapped diff is a different shape
+  from the file you are reading.
+- **What actually changed on a line is carried by the text**, not by a second highlight: the words
+  that changed stay at full strength and the rest of the line steps back, which works in the dark as
+  well as in the light.
+- **A conflicted file says so in its header** before you scroll into it, and the markers themselves
+  get their own colour.
+- Files load five ahead of where you are reading, so a worktree with forty changed files opens at
+  once instead of after forty round trips — and nothing you have already scrolled past is ever
+  fetched behind you, so the page never jumps under your thumb.
+
 ### 0.1.2 — 2026-08-26
 - **Pairing no longer hangs.** It worked — the Mac issued a token every time — and the phone
   simply never left the spinner, so the only way out was to force-quit and try again with a code

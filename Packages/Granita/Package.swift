@@ -310,7 +310,7 @@ let package = Package(
 
         .target(
             name: "ClientViewerDomain",
-            dependencies: ["CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: ["ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
             path: "Client/Viewer/Domain",
             swiftSettings: [swift6]
         ),
@@ -324,6 +324,7 @@ let package = Package(
             name: "ClientViewerUi",
             dependencies: [
                 "ClientViewerDomain",
+                "ClientConnectionDomain",
                 "CoreDiffDomain",
                 "CoreTreeDomain",
                 // Highlighting turns diff text into attributed strings for rendering, which is
@@ -351,7 +352,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClientViewerDomainTests",
-            dependencies: ["ClientViewerDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: ["ClientViewerDomain", "ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
             path: "Client/Viewer/DomainTests",
             swiftSettings: [swift6]
         ),

@@ -1,4 +1,5 @@
 import ClientWorktreesDomain
+import ClientViewerPresentation
 import ClientWorktreesPresentation
 import CoreDiffDomain
 import Foundation
@@ -34,10 +35,15 @@ struct WorktreeSplitScreenSnapshotTests {
         // screen's own `.task` and the shutter.
         let model = aLoadableModel()
         await model.load()
+        let diff = await aLoadedViewerModel()
 
         // when - then
         assertScreenSnapshot(
-            NavigationStack { WorktreeSplitScreen(model: model) },
+            NavigationStack {
+                WorktreeSplitScreen(model: model) { worktree in
+                    WorktreeDiffScreen(worktreeName: model.displayName(of: worktree), model: diff)
+                }
+            },
             layout: layout,
             named: "split"
         )
@@ -66,12 +72,15 @@ struct WorktreeSplitScreenSnapshotTests {
         // given
         let model = aLoadableModel()
         await model.load()
+        let diff = await aLoadedViewerModel()
         let chosen = try #require(aBusyMac.first).id
 
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([chosen]))) {
-                WorktreeSplitScreen(model: model)
+                WorktreeSplitScreen(model: model) { worktree in
+                    WorktreeDiffScreen(worktreeName: model.displayName(of: worktree), model: diff)
+                }
             },
             layout: layout,
             named: "split-with-a-worktree-chosen"
@@ -97,12 +106,15 @@ struct WorktreeSplitScreenSnapshotTests {
         // given — a row read, tapped, and gone from the Mac by the time the push happened.
         let model = aLoadableModel()
         await model.load()
+        let diff = await aLoadedViewerModel()
         let removed = WorktreeID(rawValue: "w-an-agent-deleted-this-one")
 
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([removed]))) {
-                WorktreeSplitScreen(model: model)
+                WorktreeSplitScreen(model: model) { worktree in
+                    WorktreeDiffScreen(worktreeName: model.displayName(of: worktree), model: diff)
+                }
             },
             layout: layout,
             named: "split-with-a-worktree-that-is-gone"

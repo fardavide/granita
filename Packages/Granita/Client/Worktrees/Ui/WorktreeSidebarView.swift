@@ -12,6 +12,15 @@ import CoreDiffDomain
 /// a Mac, a network or a paired device.
 public struct WorktreeSidebarView: View {
 
+    /// §2's measure for the sidebar, and it is *narrower* than the phone's 390: "the iPad is the
+    /// harder layout for this row, not the easier one, and the drop order above is what saves it."
+    ///
+    /// Pinned rather than inherited from whatever the system hands a sidebar, so the arithmetic §2
+    /// works the row's drop order out against is the arithmetic the baselines assert. It lives on
+    /// the view rather than on the split screen that applies it because a generic type may hold no
+    /// static stored property — and because it is a fact about this row either way.
+    public static let widthInASplitView: CGFloat = 320
+
     private let macName: String
     private let state: WorktreeSidebarState
     private let mode: WorktreeListMode

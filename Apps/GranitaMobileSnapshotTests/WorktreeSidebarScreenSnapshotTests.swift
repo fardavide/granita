@@ -1,6 +1,8 @@
 import ClientConnectionDomain
+import ClientViewerPresentation
 import ClientWorktreesDomain
 import ClientWorktreesPresentation
+import ClientWorktreesUi
 import Foundation
 import SwiftUI
 import Testing
@@ -35,10 +37,11 @@ struct WorktreeSidebarScreenSnapshotTests {
         // photographed is settled rather than merely likely.
         let model = aModel()
         await model.load()
+        let diff = await aLoadedViewerModel()
 
         // when - then
         assertScreenSnapshot(
-            theSidebar(of: model, in: layout),
+            theSidebar(of: model, opening: diff, in: layout),
             layout: layout,
             named: "screen"
         )
@@ -53,10 +56,11 @@ struct WorktreeSidebarScreenSnapshotTests {
         await model.load()
         let subject = try #require(model.state.firstRow?.rename)
         model.beginRenaming(subject)
+        let diff = await aLoadedViewerModel()
 
         // when - then
         assertScreenSnapshot(
-            theSidebar(of: model, in: layout),
+            theSidebar(of: model, opening: diff, in: layout),
             layout: layout,
             named: "screen-beneath-the-rename-sheet"
         )
@@ -71,10 +75,11 @@ struct WorktreeSidebarScreenSnapshotTests {
         await model.load()
         let row = try #require(model.state.firstRow)
         await model.setPinned(row.isPinned == false, on: row.id)
+        let diff = await aLoadedViewerModel()
 
         // when - then
         assertScreenSnapshot(
-            theSidebar(of: model, in: layout),
+            theSidebar(of: model, opening: diff, in: layout),
             layout: layout,
             named: "screen-beneath-the-refusal"
         )
@@ -91,9 +96,17 @@ struct WorktreeSidebarScreenSnapshotTests {
 /// Leading rather than centred, because that is the edge the column is against — what sits beside it
 /// on a real iPad is the detail column, and that is the split screen's own suite.
 @MainActor
-private func theSidebar(of model: ClientWorktreesModel, in layout: SnapshotLayout) -> some View {
-    NavigationStack { WorktreeSidebarScreen(model: model) }
-        .frame(maxWidth: layout.isRegularWidth ? WorktreeSplitScreen.sidebarWidth : nil)
+private func theSidebar(
+    of model: ClientWorktreesModel,
+    opening diff: ClientViewerModel,
+    in layout: SnapshotLayout
+) -> some View {
+    NavigationStack {
+        WorktreeSidebarScreen(model: model) { worktree in
+            WorktreeDiffScreen(worktreeName: model.displayName(of: worktree), model: diff)
+        }
+    }
+        .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)
         .frame(maxWidth: .infinity, alignment: .leading)
 }
 

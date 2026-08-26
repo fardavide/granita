@@ -90,20 +90,6 @@ public final class ClientViewerModel {
 /// calls with the other value is a region no test enters.
 private let surroundingContext = 3
 
-/// What the diff screen shows.
-public enum ContinuousDiffState: Hashable, Sendable {
-
-    case loading
-
-    case failed(ApiFailure)
-
-    /// The worktree is clean. Reachable from the sidebar's own "show them anyway", which is exactly
-    /// how a reader gets to a quiet worktree on purpose.
-    case nothingChanged
-
-    case reading([ContinuousDiffEntry])
-}
-
 private extension ContinuousDiffEntry {
 
     var isReady: Bool {

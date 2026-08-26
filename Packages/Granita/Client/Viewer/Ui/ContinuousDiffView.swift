@@ -1,5 +1,6 @@
 import SwiftUI
 
+import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
 
@@ -15,23 +16,45 @@ import CoreDiffDomain
 /// every file before any diff is fetched, so all of them are drawn from the first frame and the
 /// estimate holds the space. Correcting an estimate is invisible below the viewport and is the
 /// defect above it, which is why `ContinuousDiffLoading` never fetches backwards.
+///
+/// Stateless. It renders the state it is handed and reports what the reader reached, so all four
+/// states can be put in front of a camera without a Mac, a network or a paired device.
 public struct ContinuousDiffView: View {
 
-    private let entries: [ContinuousDiffEntry]
+    private let state: ContinuousDiffState
     private let showsOldNumber: Bool
     private let onReading: (Int) -> Void
+    private let onRetry: () -> Void
 
     public init(
-        entries: [ContinuousDiffEntry],
+        state: ContinuousDiffState,
         showsOldNumber: Bool,
-        onReading: @escaping (Int) -> Void
+        onReading: @escaping (Int) -> Void,
+        onRetry: @escaping () -> Void
     ) {
-        self.entries = entries
+        self.state = state
         self.showsOldNumber = showsOldNumber
         self.onReading = onReading
+        self.onRetry = onRetry
     }
 
     public var body: some View {
+        switch state {
+        case .loading:
+            // A progress view promises a finish and this one has it: a request either answers or
+            // fails. The spinner design §1 refuses for a Bonjour browse is the right control here.
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failed(let failure):
+            failed(failure)
+        case .nothingChanged:
+            nothingChanged
+        case .reading(let entries):
+            scroll(of: entries)
+        }
+    }
+
+    private func scroll(of entries: [ContinuousDiffEntry]) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
@@ -62,6 +85,46 @@ public struct ContinuousDiffView: View {
                 .frame(height: reservedHeight(of: entry))
         case .ready(let diff):
             DiffFileContent(hunks: diff.hunks, showsOldNumber: showsOldNumber)
+        }
+    }
+
+    /// Three slots, three jobs — the shape design §1 settled and every empty state in this app has
+    /// used since. The description is ours; the action retries; the machine's own sentence goes to
+    /// the bottom in small print, where it is copyable into a bug report and unmistakably not
+    /// instructions.
+    private func failed(_ failure: ApiFailure) -> some View {
+        ContentUnavailableView {
+            Label("Could not read this worktree", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(
+                """
+                Something stopped Granita from reading what changed here. Trying again usually \
+                works; if it does not, check that Granita is still running on your Mac.
+                """
+            )
+        } actions: {
+            Button("Try Again", action: onRetry)
+                .buttonStyle(.borderedProminent)
+            if let diagnostic = failure.diagnostic {
+                Text(diagnostic)
+                    .font(.caption2)
+                    .monospaced()
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
+                    .padding(.top)
+            }
+        }
+    }
+
+    /// **No action, and that is the design rather than an omission.** A reader reaches this by
+    /// choosing *Show them anyway* in the sidebar and then opening a worktree they were told was
+    /// clean, so the screen owes them a confirmation rather than something to press.
+    private var nothingChanged: some View {
+        ContentUnavailableView {
+            Label("Nothing to review", systemImage: "checkmark.circle")
+        } description: {
+            Text("This worktree has no uncommitted changes.")
         }
     }
 
