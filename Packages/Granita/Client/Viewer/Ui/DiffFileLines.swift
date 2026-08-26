@@ -30,12 +30,24 @@ public struct DiffFileLines: View {
 
     private let lines: [DiffLine]
     private let showsOldNumber: Bool
+    private let highestOldNumber: Int
+    private let highestNewNumber: Int
 
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(lines: [DiffLine], showsOldNumber: Bool) {
+    /// The two highest numbers are handed in rather than taken from these lines, because a hunk is
+    /// not a file: sized per hunk, the column would step in and out as the reader scrolled, which
+    /// is a gutter that changes width mid-file. Design §4 sizes it from the file's own maximum.
+    public init(
+        lines: [DiffLine],
+        showsOldNumber: Bool,
+        highestOldNumber: Int,
+        highestNewNumber: Int
+    ) {
         self.lines = lines
         self.showsOldNumber = showsOldNumber
+        self.highestOldNumber = highestOldNumber
+        self.highestNewNumber = highestNewNumber
     }
 
     public var body: some View {
@@ -161,14 +173,6 @@ public struct DiffFileLines: View {
         // Indexed rather than keyed on the line: two blank context lines in one file are equal, and
         // a `ForEach` over equal identities draws one of them.
         Array(lines.enumerated())
-    }
-
-    private var highestOldNumber: Int {
-        lines.compactMap(\.oldNumber).max() ?? 0
-    }
-
-    private var highestNewNumber: Int {
-        lines.compactMap(\.newNumber).max() ?? 0
     }
 
     /// Stated once because two stacks depend on it.

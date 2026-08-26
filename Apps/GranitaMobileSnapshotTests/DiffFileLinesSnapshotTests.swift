@@ -27,8 +27,13 @@ struct DiffFileLinesSnapshotTests {
     ) {
         // given - when - then
         assertScreenSnapshot(
-            DiffFileLines(lines: subject.lines, showsOldNumber: subject.showsOldNumber)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
+            DiffFileLines(
+                lines: subject.lines,
+                showsOldNumber: subject.showsOldNumber,
+                highestOldNumber: subject.lines.compactMap(\.oldNumber).max() ?? 0,
+                highestNewNumber: subject.lines.compactMap(\.newNumber).max() ?? 0
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
             named: subject.name
         )

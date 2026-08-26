@@ -142,3 +142,55 @@ private enum DisplayColumns {
         text.count
     }
 }
+
+// MARK: - Whole files
+
+/// Two hunks in one file, and the second one has no section heading.
+///
+/// That second case is the ordinary one rather than the odd one: git omits the heading whenever
+/// nothing encloses the change, which is most changes near the top of a file. Design §4 draws only
+/// the case where a heading exists, so the band without one is a state somebody has to have looked
+/// at.
+nonisolated let aFileWithTwoHunks: [Hunk] = [
+    Hunk(
+        index: 0,
+        oldStart: 138,
+        oldCount: 5,
+        newStart: 138,
+        newCount: 6,
+        sectionHeading: "func health() async throws(ApiFailure) -> HealthResponse",
+        lines: aChangedFunction
+    ),
+    Hunk(
+        index: 1,
+        oldStart: 1_203,
+        oldCount: 2,
+        newStart: 1_204,
+        newCount: 3,
+        sectionHeading: nil,
+        lines: aLineThatRunsOffTheEdge
+    )
+]
+
+/// One hunk whose numbers reach four figures, so the gutter is sized from the file rather than from
+/// whichever hunk is on screen — the first hunk's numbers are two figures and get the file's width.
+nonisolated let aFileWhoseHunksDisagreeOnWidth: [Hunk] = [
+    Hunk(
+        index: 0,
+        oldStart: 61,
+        oldCount: 5,
+        newStart: 61,
+        newCount: 5,
+        sectionHeading: "func merged() -> [WordSegment]",
+        lines: aConflictedHunk
+    ),
+    Hunk(
+        index: 1,
+        oldStart: 1_203,
+        oldCount: 2,
+        newStart: 1_204,
+        newCount: 3,
+        sectionHeading: "private let reshapingScriptRanges",
+        lines: aLineThatRunsOffTheEdge
+    )
+]
