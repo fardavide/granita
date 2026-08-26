@@ -15,9 +15,14 @@ final class FakeGranitaRepository: GranitaRepository {
     /// batch that should have been skipped is visible as an extra entry rather than as a count.
     var batchesAskedFor: [[FileID]] { batches.withLock { $0 } }
 
+    /// Every mark written, in order, with the hash it was written against — which is the field the
+    /// Mac refuses on, and therefore the one worth asserting rather than assuming.
+    var viewedWrites: [ViewedWrite] { writes.withLock { $0 } }
+
     private let changeSet: Result<WorktreeChanges, ApiFailure>
     private let hunks: [FileID: [Hunk]]
     private let diffFailure: ApiFailure?
+    private let viewedFailure: ApiFailure?
 
     /// A file the change set never named, answered alongside the ones that were asked for.
     ///
@@ -26,16 +31,19 @@ final class FakeGranitaRepository: GranitaRepository {
     private let stranger: FileChange?
 
     private let batches = Mutex<[[FileID]]>([])
+    private let writes = Mutex<[ViewedWrite]>([])
 
     init(
         changeSet: Result<WorktreeChanges, ApiFailure>,
         hunks: [FileID: [Hunk]] = [:],
         diffFailure: ApiFailure? = nil,
+        viewedFailure: ApiFailure? = nil,
         alsoAnswering stranger: FileChange? = nil
     ) {
         self.changeSet = changeSet
         self.hunks = hunks
         self.diffFailure = diffFailure
+        self.viewedFailure = viewedFailure
         self.stranger = stranger
     }
 
@@ -92,6 +100,17 @@ final class FakeGranitaRepository: GranitaRepository {
         contentHash: String,
         in worktree: WorktreeID
     ) async throws(ApiFailure) {
-        throw .fileGone
+        writes.withLock { $0.append(ViewedWrite(isViewed: viewed, file: file, contentHash: contentHash)) }
+        if let viewedFailure { throw viewedFailure }
     }
+}
+
+// MARK: -
+
+/// One mark, as it left the phone.
+struct ViewedWrite: Hashable, Sendable {
+
+    let isViewed: Bool
+    let file: FileID
+    let contentHash: String
 }

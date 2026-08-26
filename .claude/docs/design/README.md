@@ -14,7 +14,7 @@ a question that now has a real one. When a file's last section ships, the file g
 
 | File | Still to build | Read the calls in |
 |---|---|---|
-| [`granita-design-review.html`](granita-design-review.html) | The file selector and the continuous diff (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
+| [`granita-design-review.html`](granita-design-review.html) | The continuous diff's header, collapsed bars, expansion, highlighting and wrap-on (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
 | [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which needs a Bonjour record change nothing has. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
 
 The pairing return arrived with **twelve** states and left with one, because the pull request that
@@ -31,6 +31,11 @@ worktree sidebar followed in 0.0.19 — and its frames left with **two of their 
 [`../decisions.md`](../decisions.md) rather than built**, because they contradicted a rule stated in
 the prose beside them. That is the case this rule exists for: the drawing was one moment's answer,
 and what survives it is the argument.
+
+The file selector went in 0.3.0, and it left the same way: **two of its calls are recorded rather
+than built**, because one of the numbers its frame prints is not on the wire and the other would have
+meant rebuilding the one navigation path this repository cannot press. Both are in
+[`../decisions.md`](../decisions.md).
 
 **The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
 surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in

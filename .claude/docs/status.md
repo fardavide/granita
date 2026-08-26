@@ -2,9 +2,46 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.2.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
+**Version 0.3.0, not yet merged.** Scaffold complete, CI green, `main` protected, **shipping to
 TestFlight** — and merging is what publishes, so the version in `project.yml` is what this tree will
 put on a phone rather than what is on one now.
+
+**Design §3's file selector is built, and with it the mark that is this product's whole point.**
+Tapping a worktree opened one continuous scroll and no way to move around it; there is a file list
+now — a drawer on the phone at the medium and large detents with the diff still scrolling behind it,
+and on iPad a permanent 320pt column, which is §4's three columns at 320 / 320 / 554. The tree is
+`CoreTreeDomain`'s, unchanged; what is new is the join with each file's own state, the collapse rules,
+the two cases where a tree is ceremony, and the footer. **The viewed toggle landed with it rather than
+after it**, because a column reporting a state nothing in the app can write is a column that is empty
+forever.
+
+**A photograph decided two things again, and one of them was a control that did nothing.** The jump
+was built on a `ScrollViewReader` and `proxy.scrollTo`, which is the obvious thing and does not work:
+the stack is lazy, so when the watch fires the row being scrolled to does not exist yet, and the
+baseline came back with the first file still at the top. It is a `scrollPosition(id:)` over a
+`scrollTargetLayout()` now, which applies during layout. **And the first fixture for it proved
+nothing** — 0.2.0's three-file change set fits on one screen, so a jump that worked and a jump that
+did nothing photographed identically. There is a control render beside it now, and the pair is what
+makes the claim. Both in [`decisions.md`](decisions.md).
+
+**The jump lands about 120pt short of the file's top, and the baseline says so rather than hiding
+it.** Anchoring, an explicit section identity and the scroll target layout were each tried; none
+closes it, so it is `scrollPosition` interacting with pinned section headers. The reader gets the file
+they tapped, near the top of the screen — the last 120pt goes on the device afternoon's list.
+
+**Four points of list margin turned out to be one character of directory.** §3's row is a
+head-truncated path at the edge of what fits, and inside the iPad's split view the list's own
+horizontal margin arrived at two different values for the same layout — a red suite that nothing in
+the diff explains. Pinned now. That is this repository's second measurement-that-moves after the
+locale trap, and it is the same lesson: what a baseline asserts has to be a fact rather than a
+reading.
+
+**Two things the slice was asked for and deliberately did not do**, both recorded and both Davide's
+to settle: `NoWorktreeChosenView` stays, because design §2 requires an unavailable-content view in the
+empty detail column and the composition that shipped still has one; and the split screen's doubled
+`navigationDestination` stays doubled, because which container claims a tap cannot be settled here and
+removing a declaration to find out is how this app shipped a row that did nothing. See "Waiting on
+Davide".
 
 **The diffs are on the phone, which is the thing this product is for.** Tapping a worktree opened a
 screen saying the file list was not built; it opens design §4's one continuous scroll now — every
@@ -360,7 +397,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
-| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** |
+| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff and the viewed state are built; highlighting is not |
 | M6 | Live updates, accessibility, ship | |
 
 ## What exists
@@ -376,6 +413,13 @@ The spec's milestones, each ending in something runnable and a green suite, with
 - **The file selector's tree**: a pure function from a worktree's changed files to the rows the phone
   renders, with single-child directory chains compacted into one row, directories above files, and a
   deterministic order that does not inherit the one the diff arrived in.
+- **Design §3's selector over it**, and the mark it reports. A second pure function joins that tree
+  with each file's status, stats and viewed state and answers with the rows, the arrangement and the
+  footer: a shut directory carries the summed total of everything beneath it and an open one carries
+  none, a tick means every *descendant* is read rather than every child, a crowded directory arrives
+  shut, and over three files — or a change set that is all one directory — the answer is flat with no
+  toggle offered at all. The mark is written from the diff's file header against the file's own
+  content hash, optimistically, and taken back with a sentence when the Mac refuses it.
 - **The git client**: the closed set of questions the product asks git, the argument vector each one
   becomes, and the process that runs it — both streams drained at once, a byte cap that truncates
   rather than refuses, a ten-second budget that tears the process down without ever signalling a
@@ -566,16 +610,29 @@ sets up delivery.
 
 ## What to pick up next
 
-**M5's next pieces, in the order §4 puts them.** The scroll is built and wired; what is drawn and not
-built is the file header's second form, the collapsed bars and their reasons, hunk expansion, the
-viewed toggle, syntax highlighting, wrap-on, and §3's file selector — which is what deletes the
-detail column's *Choose a worktree* the way §4 deleted `WorktreeNotReadyView`. Every one of those is
-**absent** on screen today rather than disabled, so nothing there is a control that does not work.
+**M5's next pieces, in the order §4 puts them.** The scroll, §3's selector and the viewed toggle are
+built and wired; what is drawn and not built is the file header's second form, the collapsed bars and
+their reasons, hunk expansion, syntax highlighting and wrap-on. Every one of those is **absent** on
+screen today rather than disabled, so nothing there is a control that does not work.
+
+**Two of them are worth doing together and one is worth waiting for.** The collapsed bars are what
+`SPEC.md` §10 means by "files marked viewed render collapsed", so they and hunk expansion are one
+slice with the `/lines` route the client already has a method for. The file header's second form is
+**provisional pending a device** — it ships in one form because a pinned header that is shorter when
+pinned reflows a slot above the viewport — and wrap-on is the alternative to a gesture only a thumb
+can judge, so both wait on the afternoon below.
 
 **M4's remaining half was pairing and it is built**, and the adversarial pass over it is landed too,
 so what is left of that slice is what a machine cannot answer, two calls that are Davide's, and a
 version that has not moved.
 
+- **Press it on a phone**, and 0.3.0 adds four controls no test kind here can reach: the *N files*
+  button that opens the drawer, a file row that jumps the scroll, a directory row that opens and
+  shuts, and the circle in the file header that marks a file read. Every one is asserted at the model
+  and photographed at rest; **an action closure in a screen is uncoverable by any test kind that runs
+  here**, and there is still no iOS UI test target. The drawer is the one to watch: design §3's whole
+  argument is that it stays up while the diff scrolls behind it, and whether
+  `presentationBackgroundInteraction` delivers that is a thumb's answer.
 - **Press it on a phone**, and there is more to press now: tapping a worktree opens the diff. The
   camera, the Keychain, the local-network prompt and a QR held across a
   room are four things this Mac cannot produce, and the viewfinder's preview is the one piece of the
@@ -659,6 +716,14 @@ Smaller things still open in these modules:
   on the one tab where doing nothing means a phone can still read this Mac.
 
 ## Waiting on Davide
+
+- **Whether §3 should have deleted *Choose a worktree*, and whether the split screen's doubled
+  destination should collapse.** The handover that opened 0.3.0 asked for both; design §2 asks for
+  the opposite of the first in as many words — "the empty detail column is an unavailable-content
+  view" — and the second cannot be answered without a finger, because what it settles is which of two
+  containers claims a tap. Both are in [`decisions.md`](decisions.md) with the reasoning; neither was
+  picked here, because the `design` skill's rule for prose against prose is to ask. **Nothing is
+  blocked on the answer** — the selector ships either way.
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
   last thing between `make ui-tests-mac` and a green run, and it is now blocking **ten** shipped

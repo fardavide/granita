@@ -1,4 +1,5 @@
 import ClientConnectionDomain
+import CoreDiffDomain
 
 /// What the diff screen has to show, which is four things and not one list.
 ///
@@ -17,4 +18,18 @@ public enum ContinuousDiffState: Hashable, Sendable {
     case nothingChanged
 
     case reading([ContinuousDiffEntry])
+
+    /// Where the scroll starts when nobody has asked it to go anywhere.
+    ///
+    /// **Stated rather than left to settle.** The scroll is positioned by file identity, and a
+    /// position binding that begins empty is one the scroll fills in for itself as it lays out —
+    /// which is a value that arrives on its own schedule, and the baseline of a screen with this
+    /// scroll in it moved between two runs of unchanged code because of it. Starting at the first
+    /// file is what the reader gets either way; saying so makes it a fact.
+    public var firstFile: FileID? {
+        switch self {
+        case .reading(let entries): entries.first?.id
+        case .loading, .failed, .nothingChanged: nil
+        }
+    }
 }

@@ -198,6 +198,248 @@ struct ClientViewerModelTests {
         // then
         #expect(await scenario.repository.batchesAskedFor.isEmpty)
     }
+
+    // MARK: - The selector beside it
+
+    @Test
+    func `given a change set when it loads then the selector holds the same files arranged`() async {
+        // given — one model, two views onto it: the selector is not a second list but the change set
+        // the scroll is drawing, put in design §3's order.
+        let scenario = Scenario(files: aChangeSet(of: 8))
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.selector.rows.compactMap(\.file?.id) == scenario.fileIds)
+    }
+
+    @Test
+    func `given a truncated change set when it loads then the selector is the thing that says so`() async {
+        // given — the scroll draws what it was served and cannot say what it was not, so the footer
+        // under the selector is the only place a reader learns the list is incomplete.
+        let scenario = Scenario(files: aChangeSet(of: 6), isTruncated: true)
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.selector.footer == .notAllServed(shown: 6))
+    }
+
+    @Test
+    func `given a listing when the reader chooses an arrangement then the rows are rebuilt in it`() async {
+        // given — eight files across two directories, so a tree is worth offering at all.
+        let scenario = Scenario(files: aChangeSetAcrossTwoDirectories())
+        await scenario.sut.load()
+
+        // when
+        scenario.sut.show(.flat)
+
+        // then
+        #expect(scenario.sut.selector.mode == .flat)
+        #expect(scenario.sut.selector.rows.compactMap(\.directory).isEmpty)
+    }
+
+    @Test
+    func `given an open directory when the reader shuts it then its files leave the list`() async {
+        // given
+        let scenario = Scenario(files: aChangeSetAcrossTwoDirectories())
+        await scenario.sut.load()
+        let directory = "Sources/Client"
+
+        // when
+        scenario.sut.toggle(directory)
+
+        // then
+        #expect(scenario.sut.selector.rows.compactMap(\.file?.path).allSatisfy {
+            $0.hasPrefix("\(directory)/") == false
+        })
+
+        // and when — the same control, pressed again
+        scenario.sut.toggle(directory)
+
+        // then — it comes back, which is the half a control that only shuts would get wrong.
+        #expect(scenario.sut.selector.rows.contains { $0.file?.path.hasPrefix("\(directory)/") == true })
+    }
+
+    @Test
+    func `given the drawer is up when a file is chosen then it stays up`() async {
+        // given — design §3's whole argument for a drawer over a modal is that the reader walks a
+        // change set file by file without a dismiss-present cycle between each one. A `choose` that
+        // also closed it would be the modal this design rejected, wearing a detent.
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+        scenario.sut.showSelector(true)
+
+        // when
+        scenario.sut.choose(scenario.fileIds[5])
+
+        // then
+        #expect(scenario.sut.isShowingSelector)
+
+        // and when — the reader pulls it back down themselves, which is the only thing that shuts it
+        scenario.sut.showSelector(false)
+
+        // then
+        #expect(scenario.sut.isShowingSelector == false)
+    }
+
+    // MARK: - The jump, which is the selector's whole job
+
+    @Test
+    func `given a file when the reader chooses it then the scroll is asked for it and told once`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+
+        // when
+        scenario.sut.choose(scenario.fileIds[5])
+
+        // then
+        #expect(scenario.sut.jumpTarget == scenario.fileIds[5])
+    }
+
+    @Test
+    func `given a jump the scroll has made when the same file is chosen again then it is asked for again`() async {
+        // given — the reader taps a row, scrolls away by hand, and taps the same row. Held as the
+        // value alone that second tap would be a change from a value to itself: no change, no
+        // scroll, and a row that did nothing.
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+        scenario.sut.choose(scenario.fileIds[5])
+
+        // when
+        scenario.sut.didJump()
+
+        // then
+        #expect(scenario.sut.jumpTarget == nil)
+
+        // and when
+        scenario.sut.choose(scenario.fileIds[5])
+
+        // then
+        #expect(scenario.sut.jumpTarget == scenario.fileIds[5])
+    }
+
+    // MARK: - The mark, which is the one thing this app is for
+
+    @Test
+    func `given a file when the reader marks it read then the Mac is told against the content they read`() async {
+        // given — the hash is not decoration: a mark applied to a version nobody saw is the one way
+        // this feature can actively mislead someone, so the Mac refuses it rather than applying it.
+        let scenario = Scenario(files: aChangeSet(of: 4))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[2])
+
+        // then
+        #expect(await scenario.repository.viewedWrites == [
+            ViewedWrite(
+                isViewed: true,
+                file: scenario.fileIds[2],
+                contentHash: String(repeating: "2", count: 64)
+            )
+        ])
+    }
+
+    @Test
+    func `given a file when the reader marks it read then both the header and the selector say so`() async {
+        // given — the toggle is in the file header and the report is in the selector, and they are
+        // one fact. A mark that moved in one of them would be the app disagreeing with itself about
+        // the only thing it is for.
+        let scenario = Scenario(files: aChangeSet(of: 4))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[2])
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a loaded change set has to read as something to read")
+            return
+        }
+        #expect(entries[2].file.isViewed)
+        #expect(scenario.sut.selector.rows.compactMap(\.file).filter(\.isViewed).map(\.id) == [scenario.fileIds[2]])
+    }
+
+    @Test
+    func `given every file marked read when the last one lands then the selector says the read is done`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 4))
+        await scenario.sut.load()
+
+        // when
+        for file in scenario.fileIds {
+            await scenario.sut.setViewed(true, on: file)
+        }
+
+        // then
+        #expect(scenario.sut.selector.footer == .everythingViewed(count: 4))
+    }
+
+    @Test
+    func `given a Mac that refuses the mark when it is written then it goes back and the reader is told`() async {
+        // given — the row changes under the finger and the Mac is a network away, so the write is
+        // optimistic. What makes taking it back honest rather than baffling is being told.
+        let scenario = Scenario(files: aChangeSet(of: 4), viewedFailure: .fileGone)
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[2])
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a refused mark must not replace the file list")
+            return
+        }
+        #expect(entries[2].file.isViewed == false)
+        #expect(scenario.sut.selector.rows.compactMap(\.file).contains { $0.isViewed } == false)
+        #expect(scenario.sut.viewedFailure == .fileGone)
+
+        // and when — the alert is dismissed
+        scenario.sut.dismissViewedFailure()
+
+        // then
+        #expect(scenario.sut.viewedFailure == nil)
+    }
+
+    @Test
+    func `given a file the change set never had when a mark is written then nothing leaves the phone`() async {
+        // given — the worktree moves while the phone reads it, and a selector row that outlived its
+        // file is a row whose write would name a file this Mac cannot resolve.
+        let scenario = Scenario(files: aChangeSet(of: 4))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: FileID(rawValue: "a-file-that-left"))
+
+        // then
+        #expect(await scenario.repository.viewedWrites.isEmpty)
+        #expect(scenario.sut.viewedFailure == nil)
+    }
+
+    @Test
+    func `given a mark set on a file whose diff then arrives when it lands then the mark survives it`() async {
+        // given — the batch was asked for before the mark was written, so the file that comes back
+        // carries the Mac's answer to a question that predates it. Taking the mark off would be the
+        // network undoing something the reader did.
+        let scenario = Scenario(files: aChangeSet(of: 3), hunksFor: 1)
+        await scenario.sut.load()
+        await scenario.sut.setViewed(true, on: scenario.fileIds[1])
+
+        // when
+        await scenario.sut.reading(0)
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a fetched change set has to read as something to read")
+            return
+        }
+        #expect(entries[1].hunkCountForTests == 1)
+        #expect(entries[1].file.isViewed)
+    }
 }
 
 // MARK: -
@@ -213,6 +455,8 @@ private struct Scenario {
         changeSetFailure: ApiFailure? = nil,
         hunksFor position: Int? = nil,
         diffFailure: ApiFailure? = nil,
+        viewedFailure: ApiFailure? = nil,
+        isTruncated: Bool = false,
         alsoAnswering stranger: FileChange? = nil
     ) {
         fileIds = files.map(\.id)
@@ -220,12 +464,13 @@ private struct Scenario {
             revision: "9d41e0c7",
             stats: ChangeStats(filesChanged: files.count, insertions: 12, deletions: 4),
             files: files,
-            isTruncated: false
+            isTruncated: isTruncated
         )
         repository = FakeGranitaRepository(
             changeSet: changeSetFailure.map(Result.failure) ?? .success(changes),
             hunks: position.map { [files[$0].id: [aHunk]] } ?? [:],
             diffFailure: diffFailure,
+            viewedFailure: viewedFailure,
             alsoAnswering: stranger
         )
         sut = ClientViewerModel(worktree: aWorktree, repository: repository)
@@ -286,6 +531,29 @@ private let aHunk = Hunk(
         )
     ]
 )
+
+/// Eight files across two directories, which is the shape design §3 draws a tree for: over three
+/// files, and more than one directory, so the arrangement is a question with two answers.
+private func aChangeSetAcrossTwoDirectories() -> [FileChange] {
+    aChangeSet(of: 8).enumerated().map { position, file in
+        FileChange(
+            id: file.id,
+            path: position < 5
+                ? "Sources/Client/File\(position).swift"
+                : "Sources/Server/File\(position).swift",
+            oldPath: nil,
+            status: file.status,
+            isBinary: false,
+            isSubmodule: false,
+            stats: file.stats,
+            contentHash: file.contentHash,
+            estimatedLineCount: file.estimatedLineCount,
+            isViewed: false,
+            isTruncated: false,
+            language: "swift"
+        )
+    }
+}
 
 /// Files named so a wrong one is obvious in a failure rather than being one hash among several.
 private func aChangeSet(of count: Int) -> [FileChange] {

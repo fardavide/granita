@@ -54,6 +54,20 @@ struct ContinuousDiffEntryTests {
     }
 
     @Test
+    func `given a state when the scroll asks where it starts then only a readable one answers`() {
+        // given — the position is stated rather than settled into, so every state has to have an
+        // answer and three of the four have to answer with nothing rather than with a guess.
+        let file = aChangedFile(estimatedLineCount: 9)
+
+        // when - then
+        #expect(ContinuousDiffState.reading([.awaiting(file)]).firstFile == file.id)
+        #expect(ContinuousDiffState.reading([]).firstFile == nil)
+        #expect(ContinuousDiffState.loading.firstFile == nil)
+        #expect(ContinuousDiffState.nothingChanged.firstFile == nil)
+        #expect(ContinuousDiffState.failed(.worktreeGone).firstFile == nil)
+    }
+
+    @Test
     func `given either case when it is identified then the identity is the file's own`() {
         // given — the scroll is a `ForEach` over these, so two entries for one file, or an identity
         // that changes when a diff arrives, is a row SwiftUI rebuilds from scratch under the reader.

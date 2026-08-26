@@ -32,7 +32,10 @@ struct ContinuousDiffViewSnapshotTests {
             ContinuousDiffView(
                 state: subject.state,
                 showsOldNumber: layout.isRegularWidth,
+                jumpTarget: subject.jumpTarget,
                 onReading: { _ in },
+                onJumped: {},
+                onSetViewed: { _, _ in },
                 onRetry: {}
             ),
             layout: layout,
@@ -49,11 +52,54 @@ struct DiffScreenCase: Sendable, CustomTestStringConvertible {
     let name: String
     let state: ContinuousDiffState
 
+    /// A file §3's selector has asked this scroll to go to.
+    ///
+    /// **This is the half of the jump a photograph can hold**, and the reason the scroll watches its
+    /// target with `initial: true`: a baseline can say the third file's header is where the first
+    /// file's was, which is the difference between a row that jumps and a row that does nothing.
+    let jumpTarget: FileID?
+
     var testDescription: String { name }
 
     static let all: [DiffScreenCase] = [
         // The screen doing its job: two files fetched and one still on its way, holding its place.
-        DiffScreenCase(name: "a-change-set-partly-arrived", state: .reading(aChangeSetPartlyArrived)),
+        DiffScreenCase(
+            name: "a-change-set-partly-arrived",
+            state: .reading(aChangeSetPartlyArrived),
+            jumpTarget: nil
+        ),
+
+        // **The selector's whole job, over a change set tall enough for the jump to have somewhere
+        // to go — and to a file with somewhere left to go after it.** Two fixtures were wrong before
+        // this one. The three files of `aChangeSetPartlyArrived` fit on one screen, so a scroll that
+        // worked and a scroll that did nothing photographed identically. Then the target was the
+        // *last* file, which cannot reach the top: the scroll clamps against the end of the content,
+        // so where it stopped depended on how much of the lazy stack had been realised, and the
+        // baseline moved between runs. A file with hundreds of rows under it lands exactly where it
+        // was asked to.
+        DiffScreenCase(
+            name: "jumped-to-a-file",
+            state: .reading(aChangeSetWorthATree.map(ContinuousDiffEntry.awaiting)),
+            jumpTarget: aChangeSetWorthATree.dropFirst(3).first?.id
+        ),
+
+        // The same scroll with nothing asked of it, which is the control this pair needs: without it
+        // the picture above asserts "the last file is at the top" and not "the jump put it there".
+        DiffScreenCase(
+            name: "not-jumped-to-a-file",
+            state: .reading(aChangeSetWorthATree.map(ContinuousDiffEntry.awaiting)),
+            jumpTarget: nil
+        ),
+
+        // A file the reader has marked read. The toggle is the only writer of this mark — design §4
+        // refuses to infer it, because an inferred "viewed" is the app lying about its one job.
+        DiffScreenCase(
+            name: "a-file-marked-viewed",
+            state: .reading(aChangeSetPartlyArrived.enumerated().map { position, entry in
+                position == 0 ? entry.viewed(true) : entry
+            }),
+            jumpTarget: nil
+        ),
 
         // The first frame after the change set lands and before any diff does. Every file is named
         // and none is drawn, which is deliberately **not** a column of spinners: five are in flight
@@ -61,24 +107,29 @@ struct DiffScreenCase: Sendable, CustomTestStringConvertible {
         // app describing its own plumbing.
         DiffScreenCase(
             name: "nothing-arrived-yet",
-            state: .reading(aChangeSetPartlyArrived.map { ContinuousDiffEntry.awaiting($0.file) })
+            state: .reading(aChangeSetPartlyArrived.map { ContinuousDiffEntry.awaiting($0.file) }),
+            jumpTarget: nil
         ),
 
         // A request that has neither answered nor failed. Unlike a Bonjour browse this one finishes,
         // so a progress view is not a promise the screen cannot keep.
-        DiffScreenCase(name: "loading", state: .loading),
+        DiffScreenCase(name: "loading", state: .loading, jumpTarget: nil),
 
         // The machine's own words in small print under our sentence, which is where a diagnostic
         // goes on every screen in this app.
-        DiffScreenCase(name: "failed", state: .failed(.gitFailure(message: "fatal: unable to read index.lock"))),
+        DiffScreenCase(
+            name: "failed",
+            state: .failed(.gitFailure(message: "fatal: unable to read index.lock")),
+            jumpTarget: nil
+        ),
 
         // A refusal the Mac spells deliberately, which carries no small print at all — the state
         // that would otherwise leave an empty caption slot nobody had photographed.
-        DiffScreenCase(name: "failed-plainly", state: .failed(.worktreeGone)),
+        DiffScreenCase(name: "failed-plainly", state: .failed(.worktreeGone), jumpTarget: nil),
 
         // Reached on purpose rather than by accident: the sidebar's *Show them anyway* is how a
         // reader opens a worktree they were told was clean, so this owes them a confirmation rather
         // than something to press.
-        DiffScreenCase(name: "nothing-changed", state: .nothingChanged)
+        DiffScreenCase(name: "nothing-changed", state: .nothingChanged, jumpTarget: nil)
     ]
 }

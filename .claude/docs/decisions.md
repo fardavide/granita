@@ -3694,3 +3694,154 @@ was loaded before the render; the defect needs a *second* evaluation with a fres
 the same thing the entry above says about pinning. It was found by reading the wiring end to end,
 which is the one review this repository has now recorded twice as the only thing that finds this
 class — and 0.1.0's lesson was to budget for exactly that pass and not let it grade work it did.
+
+## §3's selector belongs to the viewer, and on iPad it is a column inside the diff rather than a third column of the split view
+
+Design §4's iPad is "three columns at 320 / 320 / 554", and the obvious build of that sentence is a
+three-column `NavigationSplitView`: worktrees, then files, then code. It is not what shipped, and the
+reason is the layer graph plus the one thing this repository cannot check.
+
+**The selector is the viewer's**, not the worktree list's. It navigates the diff, it reads the same
+change set the scroll is drawing, and `ClientViewerModel`'s doc comment has said since 0.2.0 that the
+scroll, the file header and §3's selector are three views onto one question. A third split-view column
+would have to be composed where both features are visible, which is `ClientAppMain` — and a `Main`
+module holds wiring and nothing else, which is the argument that made `WorktreeSplitScreen` a screen
+rather than four lines in the root.
+
+**And a real third column means selection-driven navigation**, because a `navigationDestination`
+produces one view and not two columns. That would turn the sidebar's rows from value-based links into
+a `List(selection:)`, on the one navigation path this app has proven — the path that broke twice in
+0.1.0 in ways only a photograph could show, and that carried a row leading nowhere for eight
+releases. **There is no iOS UI test target**, so the only check on it is a thumb, and a thumb is what
+this machine does not have.
+
+So `WorktreeDiffScreen` composes it: a drawer on the phone, and in a regular width an `HStack` of the
+selector at 320pt, a divider, and the code. Inside the existing split view's detail column that is
+320 + 320 + 554 at iPad Pro 11" landscape — §4's measure exactly, photographed rather than argued.
+
+> Rejected: the three-column split view, above. Rejected: putting the selector in
+> `ClientWorktreesPresentation` so the split view could own it — that target may not see a sibling
+> `Presentation`, which is the same edge that made the diff screen's builder a required parameter.
+
+### Two things the handover asked for that did not happen, and both are Davide's to settle
+
+**`NoWorktreeChosenView` stays.** The note that opened this slice said §3 "deletes the detail column's
+*Choose a worktree* the way §4 deleted the not-ready screen". Design §2 says the opposite in as many
+words — "the empty detail column is an unavailable-content view, the same control as every other empty
+state in the app" — and it gives the reason: a blank column reads as a screen that failed to load.
+Under the composition above the detail column is still empty until a worktree is chosen, so deleting
+that view would leave exactly the blank §2 forbids. **The `design` skill's rule for prose against
+prose is to ask rather than pick**, so this is asked rather than picked.
+
+**The doubled `navigationDestination` stays doubled.** Its comment predicted it would collapse "the
+day §3's file selector gives the detail column something of its own to show", and that day has not
+arrived: the detail column shows the selector *for a chosen worktree*, so the tap that chooses one is
+still claimed by one of two containers and which one cannot be settled on a machine with no finger.
+Removing a declaration to find out is how this app shipped a row that did nothing.
+
+## The mark is written optimistically, and §3's report and §4's toggle are one fact
+
+Design §3's row carries a viewed mark and says plainly that it is **not** a control there: a 32pt row
+inside a sheet cannot hold two tap targets without generating mis-taps. Design §4 puts the toggle in
+the file header, "where the reader is when they finish a file". Built separately those are two
+features; built together they are one, and that is why the toggle lands in the same slice as the
+selector — a column that reports a state nothing in the app can write is a column that is empty
+forever.
+
+`markViewed` is written **against the file's own content hash**, which the Mac refuses on. That is the
+one guard that matters: a mark applied to a version nobody saw is the only way this product can
+actively mislead someone.
+
+The write is optimistic and taken back on a refusal, with an alert saying so — the same shape the
+sidebar's rename and pin already use, and for the same reason: the row has to change under the finger,
+and a mark that silently reverted would be the app disagreeing with the reader about the one thing it
+is for. A diff arriving from a batch asked for *before* a mark was set keeps the mark rather than the
+Mac's older answer, which is asserted.
+
+**Collapsing a viewed file is not built.** `SPEC.md` §10 says a file marked viewed renders collapsed;
+design §4's collapsed bars are the piece still drawn and not built, and this slice does not add them.
+What the toggle does today is perceivable in three places — the circle fills, the selector's row dims
+and takes a check, and the footer counts — so it is a control that works rather than one that waits.
+
+## A jump is a scroll position by identity, and a `ScrollViewReader` could not do it
+
+Tapping a file in §3's selector has to move §4's scroll, and the first build did the obvious thing: a
+`ScrollViewReader` and `proxy.scrollTo(id, anchor: .top)` from a watch on the chosen file. **The
+baseline came back with the first file still at the top.** The stack is lazy, so at the moment that
+watch fires the row being scrolled to has not been created, and there is nothing to scroll to.
+
+`scrollPosition(id:anchor:)` over a `scrollTargetLayout()` applies during layout instead, which is the
+one place the answer exists. It is still identity rather than an offset, which is `SPEC.md` §10's rule
+and not a detail.
+
+**Two things the photograph decided that reading did not.** The first fixture for it was 0.2.0's
+three-file change set, and the recorded baseline was byte-identical to the one beside it — that change
+set fits on one screen, so a jump that worked and a jump that did nothing photograph the same. The
+subject is a seven-file set now, with a control render beside it that asked for no jump, and the pair
+is what makes the claim. And the assignment is skipped when the scroll is already where it is going:
+animating it anyway re-ran the transition from where it had landed, and the shutter caught a different
+offset on each run.
+
+The model says *go here*, once, and the view holds *here is where we are*. They are separate because
+feeding a scroll position back into the model makes every frame of an ordinary scroll a write — and
+the target is cleared by the view once it has moved, so tapping the same row twice is a change again
+rather than a value set to itself.
+
+## Four points of list margin is one character of directory, and it was not stable
+
+§3's row is a head-truncated path at the edge of what fits, which is what the frames measure it as:
+about 284pt for 33 characters. Inside the iPad's split view the same layout rendered twice with the
+list's own horizontal margin at two different values, and the four points moved the truncation by one
+character — a red suite that nothing in the diff explains, which is this repository's second locale
+trap in shape if not in cause.
+
+The row inset is stated once and the list's own content margin is pinned to zero underneath it. What
+that buys is a column whose available width is a fact rather than a measurement, which a row this
+tight has to have.
+
+## The truncation footer says what was served, because what exists is not on the wire
+
+Design §3's frame prints "Showing the first 1,000 of 1,314 changed files." **The second number does
+not exist on this client.** `WorktreeChanges` carries `isTruncated` and a file list, and its stats are
+summed over the files that were *kept* — the server truncates before it counts — so a total would have
+to be invented.
+
+So the footer says how many are shown and that the Mac does not serve more at once. It keeps the half
+of the frame that matters, which is §3's own instruction: say "not served" rather than "load more",
+because the Mac's limits will not serve them and a button that cannot succeed is worse than a
+sentence. Adding the total to the wire is a contract change on both ends for one line of copy, and it
+is not one this slice asked for.
+
+## The drawer's presented state is the model's, and a scroll that has not been told where it starts settles there on its own
+
+Two measurements from the same slice, both about state nobody had named.
+
+**The drawer.** `isShowingSelector` began as `@State` on the screen, which is the ordinary SwiftUI
+spelling and is wrong here for the reason this repository already wrote down when the Mac's menu had
+to open Settings on Devices: *a control whose only effect is a `@State` two layers up is a control
+nothing can be asked about.* On the phone the drawer is the only way to the file list, so a presented
+state no test can set is a screen that can only ever be photographed with its main affordance shut.
+It is on the model, it is asserted — including that **choosing a file leaves it up**, which is the
+whole of design §3's argument for a drawer over a modal — and the screen can now be rendered with it
+open.
+
+> What that render does **not** show is the drawer, and that is this repository's settled answer
+> rather than a surprise: a hosted view presents a sheet into a window of its own and the raster does
+> not include it. What the baseline holds is the diff *behind* it, undimmed, which is the visible half
+> of the same argument. The suite says so where a reader of it will look.
+
+**The scroll.** `scrollPosition(id:)` is a two-way binding: it is how a jump is asked for, and it is
+also where the scroll **writes back** what it settled on. Started empty, that write-back is a value
+arriving on its own schedule — and the iPad's split-screen baseline moved between two runs of
+unchanged code because the shutter caught it on either side. The position is now seeded from the
+state: the jump when there is one, the first file otherwise. The reader gets the same screen; the
+difference is that it is a value this view stated rather than one it settled into.
+
+**And a fixture can hide a working control as easily as a broken one.** The jump's first subject
+targeted the *last* file, which cannot reach the top of a scroll — it clamps against the end of the
+content, so where it stopped depended on how much of the lazy stack had been realised. The target is
+a file with hundreds of rows under it now. **It lands about 120pt short of that file's top**, which
+the baseline records rather than hides: anchoring, an explicit section identity and the target layout
+were each tried and none of them closes it, so it is `scrollPosition` interacting with pinned section
+headers. The reader gets the file they tapped, near the top of the screen; the last 120pt is a
+question for a thumb.

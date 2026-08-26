@@ -261,6 +261,101 @@ private nonisolated let aConflictedFileHunk = Hunk(
     lines: aConflictedHunk
 )
 
+// MARK: - The change set, as design §3's selector sees it
+
+/// A change set with structure worth a tree: two roots, a compacted chain deep enough to reach the
+/// indent clamp, one directory shut, one file already read, and every colour treatment §3 defines.
+///
+/// **Every path here is one of this repository's own**, which is what makes the truncation states
+/// real rather than contrived: the 77-character compacted path §3 measures its 33-character clamp
+/// against is in this list, and so is the depth that clamp exists for.
+nonisolated let aChangeSetWorthATree: [FileChange] = [
+    aChangedFile(
+        path: "Packages/Granita/Client/Connection/Domain/DiscoveryState.swift",
+        status: .modified,
+        insertions: 12,
+        deletions: 3,
+        estimatedLineCount: 15,
+        isViewed: true
+    ),
+    aChangedFile(
+        path: "Packages/Granita/Client/Connection/Domain/PinnedCertificate.swift",
+        status: .added,
+        insertions: 84,
+        deletions: 0,
+        estimatedLineCount: 84,
+        isViewed: false
+    ),
+    aChangedFile(
+        path: "Packages/Granita/Client/Connection/Ui/ServerDiscoveryView.swift",
+        status: .renamed,
+        insertions: 31,
+        deletions: 18,
+        estimatedLineCount: 49,
+        isViewed: false
+    ),
+    aChangedFile(
+        path: "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
+        status: .conflicted,
+        insertions: 184,
+        deletions: 7,
+        estimatedLineCount: 191,
+        isViewed: false
+    ),
+    aChangedFile(
+        path: "Packages/Granita/Core/Diff/Domain/DiffModels.swift",
+        status: .deleted,
+        insertions: 0,
+        deletions: 26,
+        estimatedLineCount: 26,
+        isViewed: false
+    ),
+    aChangedFile(
+        path: "Apps/GranitaMobileSnapshotTests/__Snapshots__/ServerDiscoveryViewSnapshotTests/a-mac-found.png",
+        status: .untracked,
+        insertions: 1,
+        deletions: 0,
+        estimatedLineCount: 1,
+        isViewed: false
+    ),
+    aChangedFile(
+        path: "project.yml",
+        status: .typeChanged,
+        insertions: 3,
+        deletions: 1,
+        estimatedLineCount: 4,
+        isViewed: false
+    )
+]
+
+/// The one directory a reader would shut first — the deepest, and the one whose name has to survive
+/// head truncation at the clamp.
+nonisolated let aShutDirectory = "Apps/GranitaMobileSnapshotTests/__Snapshots__/ServerDiscoveryViewSnapshotTests"
+
+private func aChangedFile(
+    path: String,
+    status: FileStatus,
+    insertions: Int,
+    deletions: Int,
+    estimatedLineCount: Int,
+    isViewed: Bool
+) -> FileChange {
+    FileChange(
+        id: FileID(repositoryRelativePath: path),
+        path: path,
+        oldPath: nil,
+        status: status,
+        isBinary: false,
+        isSubmodule: false,
+        stats: ChangeStats(filesChanged: 1, insertions: insertions, deletions: deletions),
+        contentHash: String(repeating: "b", count: 64),
+        estimatedLineCount: estimatedLineCount,
+        isViewed: isViewed,
+        isTruncated: false,
+        language: "swift"
+    )
+}
+
 private func aChangedFile(
     path: String,
     status: FileStatus,
@@ -360,11 +455,22 @@ struct FakeDiffRepository: GranitaRepository {
 /// `async`.
 @MainActor
 func aLoadedViewerModel() async -> ClientViewerModel {
+    await aLoadedViewerModel(of: aChangeSetPartlyArrived)
+}
+
+@MainActor
+func aLoadedViewerModel(of entries: [ContinuousDiffEntry]) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
-        repository: FakeDiffRepository(entries: aChangeSetPartlyArrived)
+        repository: FakeDiffRepository(entries: entries)
     )
     await model.load()
     await model.reading(0)
     return model
 }
+
+/// The change set above with every file still on its way, which is what the selector reads from —
+/// the file list arrives whole and the diffs follow.
+nonisolated let aChangeSetToSelectFrom: [ContinuousDiffEntry] = aChangeSetWorthATree.map(
+    ContinuousDiffEntry.awaiting
+)
