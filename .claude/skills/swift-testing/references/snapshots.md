@@ -87,3 +87,22 @@ Scripts/adopt-mac-baselines.py <dir>
   self-contained HTML page, uploaded as `snapshot-diffs`. Read the diff; do not guess.
 - Reference PNGs are **16-bit Display P3**. `sips` and other 8-bit tooling truncate them silently and
   will report two different images as identical.
+
+## Never run two `make snapshots-ios` at once, and what it looks like when you do
+
+Two `xcodebuild test` invocations against one derived-data path race each other. Observed on
+25 August 2026: the second run reported `** TEST FAILED **` naming a single parameterisation of
+`ServerDiscoveryViewSnapshotTests`, **wrote no failure artifact at all**, and the same suite passed
+on a quiet re-run of the same commit and the same baselines.
+
+**The tell is the missing artifact.** A real mismatch always leaves a PNG under
+`__SnapshotFailures__/`; a run that names a failing test and writes nothing did not get as far as
+comparing anything. Read the directory before reading the test name.
+
+The suspect for *why that particular test* is `ServerDiscoveryView`'s searching state, which is the
+only subject in the phone's suite carrying a running animation — `.symbolEffect(.variableColor
+.iterative)` — so which frame the rasteriser catches is a function of when it is caught. **That is a
+suspicion and not a measurement**: it was not reproduced under load deliberately, and the only thing
+established is that a quiet machine renders it identically every time. If this recurs on an
+uncontended run, that symbol is where to look first, and pinning the effect off for the baseline is
+the fix that does not weaken the assertion.
