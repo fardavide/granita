@@ -17,24 +17,52 @@ import CoreDiffDomain
 /// estimate holds the space. Correcting an estimate is invisible below the viewport and is the
 /// defect above it, which is why `ContinuousDiffLoading` never fetches backwards.
 ///
-/// Stateless. It renders the state it is handed and reports what the reader reached, so all four
-/// states can be put in front of a camera without a Mac, a network or a paired device.
+/// It renders the state it is handed and reports what the reader reached, so every state can be put
+/// in front of a camera without a Mac, a network or a paired device. **The one thing it keeps for
+/// itself is where the scroll is**, which is not the model's business: a position is what this view
+/// is, and a model that held it would be written to on every frame of an ordinary scroll.
 public struct ContinuousDiffView: View {
+
+    /// Where the scroll is, as the scroll's own state rather than the model's.
+    ///
+    /// This and the model's `jumpTarget` answer different questions: the model says *go here*, once,
+    /// and this says *here is where we are* for as long as the reader keeps scrolling. Feeding the
+    /// second back into the model would make every frame of an ordinary scroll a write.
+    ///
+    /// Seeded from the target so the **first** layout is already in the right place. A view built
+    /// holding a jump has nothing to animate towards, and in the app that seed is always absent
+    /// because a screen is opened before a file is chosen in it.
+    @State private var scrolledTo: FileID?
 
     private let state: ContinuousDiffState
     private let showsOldNumber: Bool
+
+    /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
+    private let jumpTarget: FileID?
+
     private let onReading: (Int) -> Void
+    private let onJumped: () -> Void
+    private let onSetViewed: (Bool, FileID) -> Void
     private let onRetry: () -> Void
 
     public init(
         state: ContinuousDiffState,
         showsOldNumber: Bool,
+        jumpTarget: FileID?,
         onReading: @escaping (Int) -> Void,
+        onJumped: @escaping () -> Void,
+        onSetViewed: @escaping (Bool, FileID) -> Void,
         onRetry: @escaping () -> Void
     ) {
         self.state = state
         self.showsOldNumber = showsOldNumber
+        self.jumpTarget = jumpTarget
+        // Seeded with the jump when there is one and with the first file otherwise, so the position
+        // is a value this view stated rather than one the scroll settled on by itself.
+        _scrolledTo = State(initialValue: jumpTarget ?? state.firstFile)
         self.onReading = onReading
+        self.onJumped = onJumped
+        self.onSetViewed = onSetViewed
         self.onRetry = onRetry
     }
 
@@ -67,10 +95,48 @@ public struct ContinuousDiffView: View {
                             // wrong below the fold, and a file appearing is a fact.
                             .onAppear { onReading(position) }
                     } header: {
-                        DiffFileHeader(file: entry.file)
+                        DiffFileHeader(file: entry.file) { onSetViewed($0, entry.id) }
                     }
                 }
             }
+            .scrollTargetLayout()
+        }
+        // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
+        // build called `proxy.scrollTo` from a watch on the target, and the baseline came back with
+        // the *first* file still at the top: the stack is lazy, so at the moment that watch fires
+        // the row being scrolled to has not been created and there is nothing to scroll to. A
+        // position applies during layout instead, which is the one place the answer exists.
+        //
+        // Still identity rather than an offset, which is `SPEC.md` §10's rule and not a detail: an
+        // offset is a number about a layout that is allowed to be wrong below the fold.
+        //
+        // **It lands about 120pt short of the file's top, measured rather than assumed**, and the
+        // baseline is what says so: the chosen file's header sits near the top of the screen with
+        // the tail of the file above it still showing, rather than pinned at the top. Anchoring, the
+        // explicit section identity and the target layout were each tried and none of them moves it,
+        // so it is `scrollPosition` and pinned section headers interacting — the reader gets the file
+        // they tapped either way, and closing the last 120pt is a question for a real scroll under a
+        // real thumb. See `.claude/docs/status.md`.
+        .scrollPosition(id: $scrolledTo, anchor: .top)
+        // **`initial: true`, and that is what makes the jump photographable.** A jump target handed
+        // to a freshly-built view is a value that has already stopped changing, so a watch that only
+        // fires on a *change* would never run — which is true of a snapshot and would be true of any
+        // caller that restores a reading position. It costs nothing in the app, where the target
+        // starts absent.
+        .onChange(of: jumpTarget, initial: true) { _, target in
+            guard let target else { return }
+            // **Nothing to animate when the scroll is already there**, which is the seeded first
+            // layout and is also a reader tapping the file they are looking at. Animating it anyway
+            // re-ran the transition from where it had already landed, and the baseline caught the
+            // scroll mid-flight at a different offset on each run.
+            if scrolledTo != target {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    scrolledTo = target
+                }
+            }
+            // Reported back so the same row can be tapped twice: held as the value alone, a second
+            // tap would be a change from a value to itself, and the row would go quiet.
+            onJumped()
         }
     }
 

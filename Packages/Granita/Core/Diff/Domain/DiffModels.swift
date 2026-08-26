@@ -218,6 +218,30 @@ public struct FileChange: Hashable, Codable, Sendable {
         self.isTruncated = isTruncated
         self.language = language
     }
+
+    /// The same file with the reader's own mark moved.
+    ///
+    /// **A copy rather than a `var`, and it exists for the optimistic write.** Everything else on
+    /// this type is the Mac's account of the file; `isViewed` is the one field the phone writes, and
+    /// the row has to change under the finger while the Mac's answer is still in flight. A `var`
+    /// would let any of the other twelve fields be edited on a wire model, which is how a client
+    /// starts disagreeing with the server about facts that were never its to hold.
+    public func viewed(_ isViewed: Bool) -> FileChange {
+        FileChange(
+            id: id,
+            path: path,
+            oldPath: oldPath,
+            status: status,
+            isBinary: isBinary,
+            isSubmodule: isSubmodule,
+            stats: stats,
+            contentHash: contentHash,
+            estimatedLineCount: estimatedLineCount,
+            isViewed: isViewed,
+            isTruncated: isTruncated,
+            language: language
+        )
+    }
 }
 
 /// One file's diff, and enough about the file's size for the client to know whether more exists.

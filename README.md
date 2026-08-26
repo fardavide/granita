@@ -71,6 +71,25 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.3.0 — 2026-08-26
+- **There is a file list, and tapping a file jumps the diff to it.** Pull it up from the *N files*
+  button in the toolbar and it stays up while you read: the diff keeps scrolling behind it, so you
+  can walk a change set file by file without dismissing anything between them.
+- **The list is a tree, folded the way a project view folds it.** A directory chain with one thing
+  in it is one row rather than five, a closed directory carries the totals of everything inside it,
+  and a crowded one arrives closed. Over three files, or when everything is in one directory, there
+  is no tree at all — just the files, because a tree over four rows is ceremony.
+- **You can switch it to full paths**, and it is the same list in the same order with a different
+  label, so the toggle never loses your place.
+- **You can mark a file as read**, from the circle at the end of its header in the diff. Nothing
+  infers it: this app's one job is telling you whether you have read something, so it will only ever
+  say so because you said so. The file list shows what is done, a folder gets a tick when everything
+  under it is read, and a line at the bottom tells you when there is nothing left.
+- **On iPad the file list is a column of its own**, permanently beside the code, which is where this
+  reads like a review tool rather than a phone app.
+- **When your Mac declines to serve a whole change set, the list says so** rather than offering a
+  *Load more* that could not have worked.
+
 ### 0.2.0 — 2026-08-26
 - **You can read the diffs.** Tapping a worktree used to open a screen that said the file list was
   not built yet. It now opens every changed file in one continuous scroll — the code, the line

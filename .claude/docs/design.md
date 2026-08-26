@@ -24,8 +24,8 @@ says so and shows the measurement.
 |---|---|---|---|
 | §1 | Server discovery | built | **applied** — the code matches this document |
 | §2 | The worktree sidebar | M4 | built |
-| §3 | The file selector | M5 | drawn, not built |
-| §4 | The continuous diff | M5 | **the scroll is built** — the header, the bars and expansion are not |
+| §3 | The file selector | M5 | built |
+| §4 | The continuous diff | M5 | **the scroll and the viewed toggle are built** — the header's second form, the bars and expansion are not |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
@@ -377,7 +377,19 @@ the same control as every other empty state in the app.
 *Should feel like* Mail with the mailbox list open. The sidebar is a place you look, not a place you
 work.
 
-## §3 — The file selector *(M5, drawn)*
+## §3 — The file selector *(M5, built in 0.3.0)*
+
+**What building it changed, and what it did not.** Every call below survived except two, and both are
+recorded where they are made: the truncation footer says what was *served* rather than what exists,
+because the total is not on the wire; and on iPad the permanently-visible column is a column of the
+diff screen rather than a third column of the split view, because a real third column means
+selection-driven navigation on the one path this app has proven and cannot press. Both are in
+[`decisions.md`](decisions.md), with the iPad measure — 320 / 320 / 554 — photographed rather than
+argued.
+
+**The viewed mark ships with §4's toggle behind it**, which is a scheduling call this section forces:
+a mark that reports a state nothing in the app can write is a column that is empty forever. See §4's
+*Viewed is tapped, never inferred*, which is where the writer lives.
 
 ### Keep the sheet. Make it a drawer, not a modal.
 
@@ -552,6 +564,15 @@ tint, the marker text at semibold, and a CONFLICTED badge in the file header so 
 before they scroll. This is the one status worth a badge.
 
 ### Viewed is tapped, never inferred
+
+> **Built in 0.3.0, in the file header and nowhere else** *(26 August 2026)*. The circle at the end of
+> the header is the only writer there is, and §3's row beside it reports rather than acts — which is
+> that section's call about a 32pt row and two tap targets. What is **not** built is the file
+> collapsing once it is marked, which `SPEC.md` §10 asks for: that is the collapsed bar, and it is
+> still drawn rather than built. What the toggle does today is perceivable in three places — the
+> circle fills, the selector's row dims and takes a check, and the footer counts — so it is a control
+> that works rather than one that waits. *"Mark everything above as viewed"* is not built either; it
+> belongs to the header's menu, which arrives with collapse.
 
 The tap is the only writer. This app has exactly one job — telling you whether you have read the code
 — and an inferred "viewed" that fires on a fast flick is the app lying about the only thing it is

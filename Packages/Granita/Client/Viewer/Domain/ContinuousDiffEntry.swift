@@ -38,4 +38,29 @@ public enum ContinuousDiffEntry: Hashable, Sendable, Identifiable {
         case .ready(let diff): diff.hunks.reduce(0) { $0 + $1.lines.count }
         }
     }
+
+    /// The same entry with the reader's mark moved, whichever case it is in.
+    ///
+    /// The mark is written from the file header, which a reader reaches on a file whose diff has
+    /// arrived — but the selector beside it marks a subtree done from the same state, and a file
+    /// still on its way is one of the files that subtree contains. Both cases have to answer, or the
+    /// mark is a control that works on some rows and not others.
+    ///
+    /// **The height does not move**, which is what makes this safe under the no-reflow rule: neither
+    /// case changes what `reservedRows` answers.
+    public func viewed(_ isViewed: Bool) -> ContinuousDiffEntry {
+        switch self {
+        case .awaiting(let file):
+            .awaiting(file.viewed(isViewed))
+        case .ready(let diff):
+            .ready(FileDiff(
+                file: diff.file.viewed(isViewed),
+                hunks: diff.hunks,
+                oldLineCount: diff.oldLineCount,
+                newLineCount: diff.newLineCount,
+                isTruncated: diff.isTruncated,
+                truncationReason: diff.truncationReason
+            ))
+        }
+    }
 }
