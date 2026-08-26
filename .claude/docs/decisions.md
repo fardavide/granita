@@ -3481,3 +3481,128 @@ the QR is the credential that already knows where it is going. What this costs i
 screen whose content is correct, in a sequence the reader had to leave halfway through to produce. The
 mismatch is older than this entry — every pairing screen has been titled that way since 0.1.0 — and
 what changed is that it now survives past the pairing.
+## `onChange` dies at `onDisappear`, and 0.1.0 shipped its pairing success on one that had
+
+**Pairing hung forever on the in-flight frame, on both credentials, on a real iPhone.** The Mac's
+document gained two device records ninety seconds apart and its log then refused a third attempt as
+`pairingExpired` — so `POST /v1/pair` answered 200 twice, the phone kept the token, and the reader
+sat under *Pairing with MacBook Pro / Checking the Mac, then spending the code.* with nothing to
+press. 786 tests, 208 baselines and an adversarial audit were all green.
+
+The watch for the one ending with no screen of its own lived on `PairingEntryScreen`, on the
+reasoning written into its own doc comment: that screen sits under all three of the others, so it is
+the one place that sees every path. **Being underneath is exactly what stopped it working.**
+`onChange` is scoped to a view's *appearance*, not its lifetime, and a `NavigationStack` calls
+`onDisappear` on a screen the moment something is pushed over it. By the time a pairing can succeed
+there is always something over the Mac's screen — the viewfinder, or the six-word screen and the
+outcome screen above it.
+
+Measured rather than reasoned, in the simulator, with the entry screen logging its own body,
+appearance and change: `onAppear` at push, `onDisappear` when the six-word screen arrived, then the
+body evaluated three more times — including once with `pairing = finished(.paired(…))` — and
+`onChange` never fired once. Three seconds later the stack was still three deep. **The body goes on
+being evaluated, so in a debugger the observation looks alive**, which is why this survived review.
+
+Success now hands over from the two screens that can be frontmost when a credential is spent — the
+viewfinder and the outcome screen — through one modifier, `PairedMacHandover`, and nothing beneath
+them watches for anything. It carries `initial: true` because the scanned path replaces the
+viewfinder with the outcome screen the instant a spend finishes, so what the next screen arrives
+holding is a state that has already stopped changing.
+
+**What is asserted, and what is not.** `PairingState.pairedMac` is the handover as a value, and it is
+covered against every state including the two other endings that carry a `PairedMac` — handing one of
+those to the worktree list would open it against a token this phone never stored. **The
+appearance-scoping itself is reachable by no test kind this project runs**: a unit test has no view
+hierarchy, and a snapshot photographs one view value that was never pushed over. It took a simulator,
+a seeded navigation path and a log. That is the second defect in this repository whose only witness
+was running the app and pressing the thing.
+
+## Every step of the pairing sequence is bounded, so no step can end in a spinner
+
+Davide's call on the night the above was found, and it outranks the bug: *something stuck without an
+outcome is unacceptable — if there is an error, we must show it.* Fixing the navigation removes
+tonight's instance; a bound removes the shape.
+
+`MacPairing` now gives every awaited step a patience and answers `neverAnswered` when one runs out,
+so the sequence is incapable of not producing a `PairingOutcome`. **Seventy-five seconds, and the
+number is a backstop rather than a policy.** Every network step already has the transport's own
+sixty-second request timeout, and a shorter bound here would replace `URLSession`'s diagnostic with a
+worse one on an ordinary bad network. What it is actually for is the step with no deadline at all:
+the Keychain is a synchronous call into another process and nothing above it can call it off.
+
+**Not a task group**, which is the one implementation detail worth recording. A group awaits every
+child before it returns, so a step that ignores cancellation would hold the group open for exactly as
+long as it would have held the caller — the bound would be decorative, and the step this exists for
+is precisely the uncancellable kind. What races instead is a one-shot actor that takes the first of
+two answers and lets the loser finish or not finish on its own.
+
+`PairingStall` splits the ending three ways and the split is **whether the code left the phone**,
+because that is the only fact the reader can act on. Before it goes, another tap costs nothing and
+the screen says so in the sentence this app already uses twice. After it, the Mac may hold a device
+record and the screen has to be as careful as the Keychain one is: it names the trip to Settings ▸
+Devices and offers no retry, because a button that spends a credential that may already be gone is
+worse than no button. A write that never answered keeps the retry, for the reason a refused write
+does — the token survives in the outcome, and the code that bought it is spent either way.
+
+**The Keychain was the prime suspect and it is not the cause.** Run inside the simulator against the
+real `KeychainPairingTokenStore` — never executed anywhere before, since a SwiftPM test binary is
+unsigned and has no keychain — every call returned in about five milliseconds with
+`errSecMissingEntitlement`, which is a `tokenNotStored` and therefore a screen. Recorded because the
+next person to read that type's doc comment will suspect it too.
+
+## The handover modifier is a view, so it moves to `Ui` rather than joining the exempt list
+
+The bound above cost the Unit row four tenths of a point, and reading the per-file export rather than
+estimating found that almost none of it was the bound. **`PairedMacHandover.swift` was twenty-two
+mapped lines, none of them covered, and nineteen of those are a SwiftUI body** — `body(content:)`,
+the `onChange` closure inside it, and the haptic that closure calls. A host test has no renderer, so
+it can reach exactly one of the file's seven regions: the `View` extension that builds the modifier.
+
+Filed under `Presentation`, it sat in the one place where both scopes get it wrong, and the exports
+say so rather than the argument doing. The Unit scope excludes a view body **wherever it lives**, but
+it spells that as `…Screen.swift` — so this file was judged by the row that cannot execute a line of
+it. The Snapshot scope selects a `Ui` module plus the screens composed from one, and this is neither
+— so **the snapshot pass covered seventeen of its twenty-two lines and the Snapshot row counted none
+of them.** Charged in full to the row that cannot see it, invisible to the row that does.
+
+**So the file moves to `Client/Connection/Ui`, and no predicate changes.** That is the whole of the
+fix, and it is the architecture's own answer: a `Ui` module is a vocabulary of stateless views, each
+taking what it renders and reporting what happened, and this takes a `PairingState` and reports a
+`PairedMac`. It never referred to a model or a `Data` target, so nothing about the move was
+constrained — `Presentation` depends on `Ui`, so the two screens that apply it are unaffected beyond
+the modifier becoming `public`.
+
+> Rejected: adding it to `UNREACHABLE_FILES`. That set is for code unrunnable by construction for a
+> reason that is *not* a layer — a keychain a test binary does not have, a camera, `NSApp` — and a
+> view body already has a category of its own. Rejected: widening `is_screen_path` to catch a
+> `ViewModifier`. It would be the right change if the file were in the right place, and it is not;
+> it also renames both scopes and leaves the Unit, All **and** Snapshot rows unjudged for a run,
+> which is the pull request that fell under the gate marking its own homework.
+
+It does raise the Unit row, which is the test this file puts every rescoping to, so it is argued
+rather than asserted: what leaves the denominator is nineteen lines no test kind this repository runs
+could ever execute from the host, plus three that now count where they are covered instead of where
+they are not. Nothing that a test could have reached stopped being counted.
+
+### And the rest of the four tenths was real, so it is covered
+
+Five regions of `MacPairing` had no test. `FirstAnswer` is **internal** now for the same reason the
+patience beside it is: both of its guarantees are about the loser of a race — a second answer that is
+dropped, and a first one still readable after it landed — and `answer(from:)` gives a test no say in
+which of its two tasks wins. Through the sequence they are a coin flip; asserted directly they are
+three sentences, one of which is the ending every stall actually produces, where the uncancellable
+step finishes forty seconds after the reader has been told the attempt ended.
+
+The contract read's refusal had none either, on either side of the boundary: `read()`'s `catch` and
+the `case .failure` that turns it into `.refused`. It is the one refusal that costs nothing, which is
+the entire reason that step goes first, and the assertion that says so is that no code was offered.
+
+Five more of the sequence's own steps were covered while the export was open, because the claim above
+is that there is no path out of pairing that is not an outcome and these were five of the paths
+nothing held to it: what the handshake answers when it is asked what it trusted, which is the value
+every later request is pinned to; an address no URL will hold on the spoken path as well as the
+scanned one; a link carrying no query items at all, which is a different absence from an empty field
+and reads as the first field being missing; a proxy answering 502 with HTML, where the status is the
+only true thing left to say; and the two guards `GranitaHttpClient` puts on the way out — neither
+reachable through a route, because every route is a literal path and every body is a type this app
+wrote, and a guard nothing can provoke is one nothing holds to its sentence.

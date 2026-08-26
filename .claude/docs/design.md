@@ -585,7 +585,11 @@ states, and **nothing hand-built**: seven unavailable-content views, one text fi
 view, one capture preview, three pushes. The review's own count, and it is the reason every call
 below is about hierarchy and sequence rather than about a look.
 
-One thing it found that no frame could draw, and it is the section to read first: **the two
+**Twelve was the review's count and there are thirteen.** §5.7 is the one a real iPhone found four
+hours after the slice shipped, and it is the one state here that no drawing could have anticipated,
+because nothing in the flow could produce it until a bound was put under the sequence.
+
+One thing the review found that no frame could draw, and it is the section to read first: **the two
 credentials are not peers.** [§5.6](#56--the-six-words-carry-no-key-and-the-screen-says-so) is
 where that goes, and it is what orders the two buttons on the first screen.
 
@@ -730,6 +734,7 @@ is precisely what makes the other two believable.**
 | Rate limited | none | Waiting is the whole remedy. No countdown and no diagnostic |
 | Unreachable | *Try Again* | Re-runs the health probe and the spend |
 | Paired, key not saved | *Try Again* | Retries the Keychain write alone — see below |
+| A step never answered | depends on whether the code was spent | The thirteenth state — see below |
 
 **Both contract states say "the code was not used".** The handshake reads `/v1/health` before it
 spends anything, so that sentence is true, and the reader cannot learn it anywhere else — it is the
@@ -756,6 +761,46 @@ against the drawn version.
 > Rejected: alerts for any of these. An alert dismisses to a live viewfinder that immediately
 > re-reads the same dead QR, which is a loop. Rejected: a *Contact support* or bug-report action —
 > the reader is the developer, and the selectable `OSStatus` is the whole bug report.
+
+### §5.7 — The thirteenth state: a step that never answered
+
+**Added after the round, because a real iPhone found the one ending the review could not have
+drawn.** Every state above is something that *happened*; this is the one where nothing did. Until
+0.1.0 the sequence had no bound under it, so a step that took the call and never came back left the
+screen drawing the state before it — which is the in-flight frame — for as long as the reader was
+willing to look at it. Davide's call, 25 August 2026: *something stuck without an outcome is
+unacceptable; if there is an error, we must show it.*
+
+It is not one screen with a variable in it. **It is three, and what separates them is whether the
+code left the phone**, because that is the only fact the reader can act on:
+
+| Where it stopped | Says | Action |
+|---|---|---|
+| Reading the contract | *The code was not used, so trying again costs nothing* | *Try Again* |
+| Spending the code | *Granita cannot tell whether it was used* — then the trip to Settings ▸ Devices | none |
+| Writing the key | *…now lists this iPhone, and the Keychain took the key without ever saying whether it kept it* | *Try Again*, the write alone |
+
+The first borrows the sentence the two contract states already carry, and it is the third and last
+place in the app that says the code was not used. **The middle one is the dangerous one and gets no
+button at all**: the phone cannot learn whether the Mac took the code, so a retry would be offering
+to spend a credential that may already be gone, and the sentence has to be as careful as the
+Keychain one — it sends the reader to remove the device record that may be sitting there. The third
+keeps its retry for the reason a *refused* write does: the token survives in the outcome, and the
+code that bought it is spent either way.
+
+No new visual language: the same unavailable-content view, our sentence in the description, and the
+machine's own words in caption2 monospaced tertiary underneath. The small print names the step and
+says it was given the whole of its patience, which is the only part of a stall anybody can act on.
+
+> Rejected: one sentence covering all three, on the argument that a reader does not care which
+> function stopped. They do not — but they care very much whether they now have to walk to the Mac,
+> and that is the same distinction. Rejected: a countdown while the bound runs, for the reason §5
+> rejects every other countdown on this phone.
+
+**The bound never fires in practice, and that is the point of it.** Seventy-five seconds sits above
+the transport's own sixty-second request timeout, so an ordinary bad network still produces
+*Could not reach your Mac* with `URLSession`'s own words under it rather than this. What it catches
+is the step with no deadline of its own. See [`decisions.md`](decisions.md).
 
 *Should feel like* a receipt. It tells you what happened, whether it cost you anything, and the one
 thing left to do.

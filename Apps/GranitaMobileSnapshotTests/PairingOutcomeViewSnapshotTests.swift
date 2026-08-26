@@ -163,6 +163,34 @@ struct OutcomeCase: Sendable, CustomTestStringConvertible {
 
         // Not this screen's state, and what it draws for one is the spinner **without** a sentence: a
         // claim about an attempt that is not running is the one thing a receipt must never make.
-        OutcomeCase(name: "before-anything-was-spent", state: .notStarted, canOpenTestFlight: false)
+        OutcomeCase(name: "before-anything-was-spent", state: .notStarted, canOpenTestFlight: false),
+
+        // The thirteenth state, in the three appearances that are not one screen with a variable in
+        // it: what separates them is whether the code left the phone, which is the only fact the
+        // reader can act on. Photographed because the sentences are the whole of what they are.
+        //
+        // Nothing was spent, so this is the one of the three that may offer a retry.
+        OutcomeCase(
+            name: "never-answered-reading-the-contract",
+            state: .finished(.neverAnswered(.readingTheContract)),
+            canOpenTestFlight: false
+        ),
+
+        // The code left the phone and no answer came back, so no action: the remedy is on the Mac,
+        // and a button offering to spend a credential that may already be gone would be worse than
+        // none. The longest description on this screen, and the one most likely to crowd 390pt.
+        OutcomeCase(
+            name: "never-answered-spending-the-code",
+            state: .finished(.neverAnswered(.spendingTheCode)),
+            canOpenTestFlight: false
+        ),
+
+        // Paired for certain, with the write unanswered. It earns the retry that the state above
+        // cannot have, because the token survives in the outcome.
+        OutcomeCase(
+            name: "never-answered-writing-the-key",
+            state: .finished(.neverAnswered(.writingTheKey(aPairedMac))),
+            canOpenTestFlight: false
+        )
     ]
 }

@@ -22,19 +22,32 @@ actor FakeServerPairing: ServerPairing {
     /// out by asking.
     private let presented: SpkiFingerprint?
 
+    /// Which call, if any, this Mac answers by never answering.
+    ///
+    /// **It never returns and it ignores cancellation**, which is deliberate: that is what a wedged
+    /// `SecItemAdd` does, and a fake that merely slept would prove only that the bound outruns a
+    /// sleep it is allowed to cancel.
+    private let silentOn: SilentStep?
+
     init(
         answeringHealth: Result<HealthResponse, ApiFailure>,
         answeringPairing: Result<PairedDevice, ApiFailure>,
-        presenting presented: SpkiFingerprint?
+        presenting presented: SpkiFingerprint?,
+        silentOn: SilentStep?
     ) {
         self.answeringHealth = answeringHealth
         self.answeringPairing = answeringPairing
         self.presented = presented
+        self.silentOn = silentOn
     }
 
-    func trustedFingerprint() async -> SpkiFingerprint? { presented }
+    func trustedFingerprint() async -> SpkiFingerprint? {
+        if silentOn == .readingTheKey { await neverAnswer() }
+        return presented
+    }
 
     func health() async throws(ApiFailure) -> HealthResponse {
+        if silentOn == .readingTheContract { await neverAnswer() }
         switch answeringHealth {
         case .success(let response): return response
         case .failure(let failure): throw failure
@@ -43,9 +56,20 @@ actor FakeServerPairing: ServerPairing {
 
     func pair(with code: String, as device: PairingDevice) async throws(ApiFailure) -> PairedDevice {
         codesOffered.append(code)
+        if silentOn == .spendingTheCode { await neverAnswer() }
         switch answeringPairing {
         case .success(let paired): return paired
         case .failure(let failure): throw failure
         }
+    }
+
+    private func neverAnswer() async {
+        await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
+    }
+
+    enum SilentStep: Sendable {
+        case readingTheContract
+        case spendingTheCode
+        case readingTheKey
     }
 }
