@@ -260,8 +260,21 @@ public final class ClientConnectionModel {
     ///
     /// The pairing comes out of the state rather than from the caller, so there is one place that
     /// could be wrong about which Mac is being written down instead of two.
+    ///
+    /// **Both endings a write has reach it**, refused and never answered: the phone is in the same
+    /// place after either — paired, holding a token, with the code that bought it spent — so a retry
+    /// that reached only one of them would be a lit button that did nothing on the other.
     public func saveTokenAgain() async {
-        guard case .finished(.tokenNotStored(let mac, _)) = pairing else { return }
+        let mac: PairedMac
+        switch pairing {
+        case .finished(.tokenNotStored(let paired, _)), .finished(.neverAnswered(.writingTheKey(let paired))):
+            mac = paired
+        case .finished(.paired), .finished(.wrongContract), .finished(.refused),
+             .finished(.neverAnswered(.readingTheContract)), .finished(.neverAnswered(.spendingTheCode)),
+             .notStarted, .waitingForCameraAccess, .cameraRefused, .cameraRestricted, .looking,
+             .sawSomethingElse, .spending, .savingToken, .notReached:
+            return
+        }
         pairing = .savingToken
         pairing = .finished(await joining.saveToken(of: mac))
     }

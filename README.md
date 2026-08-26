@@ -71,6 +71,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.1.1 — 2026-08-26
+- **Pairing no longer hangs.** It worked — the Mac issued a token every time — and the phone
+  simply never left the spinner, so the only way out was to force-quit and try again with a code
+  that had already been spent. Found on a real iPhone within ninety seconds of first use.
+- **Nothing in Granita can spin forever any more.** Every step of pairing is bounded, and a step
+  that stops answering now says so, says whether your code was used, and tells you what to do —
+  which differs depending on whether the Mac is left holding a device record for you.
+
 ### 0.1.0 — 2026-08-25
 - **You can pair your phone with your Mac, and then read what an agent has been doing.** This is the
   first release that does the thing the product is for. Choose *Pair a device* in Granita's menu bar,

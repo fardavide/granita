@@ -452,6 +452,19 @@ while an unauthenticated request got `unauthorized`; a run of guesses was cut of
 `rateLimited`; and the fingerprint was **identical across a restart**, which is the property every
 paired device depends on and the one that was broken twice before it was right.
 
+**The pairing spine's hang was reproduced and its fix confirmed in the simulator**, on 2026-08-25,
+by seeding the navigation path and driving the model with a Mac that agrees — no camera and no
+Accessibility grant needed, which is what made it reachable at all after UI automation was ruled out.
+Before: the model reached `finished(.paired)` and the stack was still three deep three seconds later,
+under §5's in-flight frame. After: the stack replaces itself with the worktree list. The entry
+screen's own log is the evidence — `onDisappear`, then three more body evaluations, then nothing from
+`onChange`. Recorded in [`decisions.md`](decisions.md).
+
+**`KeychainPairingTokenStore` has now been executed**, in the same run and for the first time
+anywhere: every call returned in about five milliseconds with `errSecMissingEntitlement`, an unsigned
+simulator build having no keychain access group. It answers, and it answers fast — so the Keychain is
+not what any spinner in this app has ever been waiting for.
+
 **The lock file and the verbose switch's mechanism are verified by running them**, on 2026-08-24,
 against two `granita-server` processes and a `--store` in a temporary directory — no GUI involved, so
 none of it needed the Accessibility grant.

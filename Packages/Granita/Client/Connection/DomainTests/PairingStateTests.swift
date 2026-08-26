@@ -82,6 +82,54 @@ struct PairingStateTests {
         // on is for, and that includes the two waits: a spinner pushed over a spinner says nothing.
         #expect(state.needsTheOutcomeScreen == false)
     }
+
+    @Test(arguments: [
+        PairingStall.readingTheContract,
+        .spendingTheCode,
+        .writingTheKey(aPairedMac)
+    ])
+    func `given a step that never answered when the state is read then the outcome is what comes next`(
+        stall: PairingStall
+    ) {
+        // given - when
+        let state = PairingState.finished(.neverAnswered(stall))
+
+        // then — all three, because the thing this ending replaces is a spinner: an ending that
+        // reached the vocabulary and not this predicate would leave the reader exactly where the
+        // defect left them. See `.claude/docs/decisions.md`.
+        #expect(state.needsTheOutcomeScreen)
+    }
+
+    // MARK: - The one ending that is a handover rather than a screen
+
+    @Test
+    func `given the pairing worked when the state is read then the Mac is offered to the stack`() {
+        // given — success has no screen, so something has to carry it out of this vocabulary, and
+        // this is it. **Asserted here because the alternative is asserting it nowhere**: the screens
+        // that perform the handover do it from a closure no test kind this project runs can enter.
+        let state = PairingState.finished(.paired(aPairedMac))
+
+        // then
+        #expect(state.pairedMac == aPairedMac)
+    }
+
+    @Test(arguments: [
+        PairingState.notStarted,
+        .spending,
+        .savingToken,
+        .finished(.refused(.pairingExpired)),
+        .finished(.tokenNotStored(aPairedMac, .refused(status: -25308))),
+        .finished(.neverAnswered(.writingTheKey(aPairedMac))),
+        .notReached(.localNetworkDenied)
+    ])
+    func `given anything short of a pairing when the state is read then there is nothing to hand over`(
+        state: PairingState
+    ) {
+        // given - when - then — including the two that carry a `PairedMac` of their own. The Mac is
+        // in the payload either way, and handing it to the worktree list would open a list against a
+        // token this phone is not holding.
+        #expect(state.pairedMac == nil)
+    }
 }
 
 // MARK: -

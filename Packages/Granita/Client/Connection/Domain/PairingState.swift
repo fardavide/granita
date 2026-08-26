@@ -70,7 +70,8 @@ public enum PairingState: Hashable, Sendable {
     /// do not is the sort of thing a screen gets subtly wrong once and nothing catches.
     public var needsTheOutcomeScreen: Bool {
         switch self {
-        case .finished(.wrongContract), .finished(.refused), .finished(.tokenNotStored), .notReached:
+        case .finished(.wrongContract), .finished(.refused), .finished(.tokenNotStored),
+             .finished(.neverAnswered), .notReached:
             true
         // Everything before an ending is what the screen the reader is already on is for: the
         // viewfinder draws its own frozen frame while a code is spent, and the outcome screen draws
@@ -78,6 +79,28 @@ public enum PairingState: Hashable, Sendable {
         case .finished(.paired), .notStarted, .waitingForCameraAccess, .cameraRefused,
              .cameraRestricted, .looking, .sawSomethingElse, .spending, .savingToken:
             false
+        }
+    }
+
+    /// The Mac to hand to the stack, for the one ending that has no screen of its own.
+    ///
+    /// **The other half of `needsTheOutcomeScreen`, and it exists because leaving it implicit is
+    /// what shipped the defect.** Success is the only ending that has to be *carried* somewhere
+    /// rather than drawn, so the question "is there a Mac to hand over" is asked of this vocabulary
+    /// rather than pattern-matched at whichever screen happens to be on top — which is a switch that
+    /// can be forgotten in one place and written in another, and was.
+    ///
+    /// Nothing else answers it, including the two endings that carry a `PairedMac` of their own: the
+    /// Mac is in their payload so that the *write* can be retried, and a worktree list opened against
+    /// a token this phone never stored is a screen where every request is refused.
+    public var pairedMac: PairedMac? {
+        switch self {
+        case .finished(.paired(let mac)):
+            mac
+        case .finished(.wrongContract), .finished(.refused), .finished(.tokenNotStored),
+             .finished(.neverAnswered), .notReached, .notStarted, .waitingForCameraAccess,
+             .cameraRefused, .cameraRestricted, .looking, .sawSomethingElse, .spending, .savingToken:
+            nil
         }
     }
 }

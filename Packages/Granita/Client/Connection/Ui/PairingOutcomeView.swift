@@ -58,6 +58,8 @@ public struct PairingOutcomeView: View {
                 refused(failure)
             case .finished(.tokenNotStored(_, let failure)):
                 keyNotSaved(failure)
+            case .finished(.neverAnswered(let stall)):
+                neverAnswered(stall)
             case .notReached(.unreachable(let diagnostic)):
                 unreachable(diagnostic: diagnostic)
             // Six typed words with nowhere to send them, and *Try Again* would be a dead control in
@@ -235,6 +237,76 @@ public struct PairingOutcomeView: View {
             Button("Try Again", action: onSaveTokenAgain)
                 .buttonStyle(.borderedProminent)
             diagnostic(keychainDiagnostic(failure))
+        }
+    }
+
+    /// A step that took the call and never came back — the thirteenth state, and the one design §5
+    /// did not draw because nothing in the flow could produce it until a bound was put under the
+    /// sequence.
+    ///
+    /// **Three sentences rather than one, and the difference between them is whether the code left
+    /// the phone.** That is the only fact the reader can act on: before it goes, another tap costs
+    /// nothing; after it, the Mac may already list this iPhone and a screen that said "the code was
+    /// not used" would be sending them to try a credential that is gone.
+    @ViewBuilder private func neverAnswered(_ stall: PairingStall) -> some View {
+        switch stall {
+        case .readingTheContract:
+            // Nothing was spent, so this is the one of the three that may offer a retry — the same
+            // sentence and the same button an unreachable Mac gets, because it is the same remedy.
+            ContentUnavailableView {
+                Label("\(macName) stopped answering", systemImage: "clock.badge.exclamationmark")
+            } description: {
+                Text(
+                    """
+                    Granita was checking your Mac and no answer came back. The code was not used, \
+                    so trying again costs nothing.
+                    """
+                )
+            } actions: {
+                Button("Try Again", action: onTryAgain)
+                    .buttonStyle(.borderedProminent)
+                diagnostic("/v1/health · no answer, and the step was given the whole of its patience")
+            }
+
+        case .spendingTheCode:
+            // No action, and the absence is the point: the phone cannot learn whether the Mac took
+            // the code, so *Try Again* would offer to spend a credential that may already be gone.
+            ContentUnavailableView {
+                Label("The code was sent and nothing came back", systemImage: "clock.badge.questionmark")
+            } description: {
+                Text(
+                    """
+                    \(macName) took the code and never answered, so Granita cannot tell whether it \
+                    was used.
+
+                    On the Mac, open Granita ▸ Settings ▸ Devices. If this iPhone is listed, \
+                    remove it — then ask for a new code and pair again.
+                    """
+                )
+            } actions: {
+                diagnostic("/v1/pair · no answer, and the step was given the whole of its patience")
+            }
+
+        case .writingTheKey:
+            // It gets the write on its own for the same reason a refused write does: the token
+            // survives in the outcome, and the code that bought it is spent either way.
+            ContentUnavailableView {
+                Label("Paired, and the key is still not saved", systemImage: "key.slash")
+            } description: {
+                Text(
+                    """
+                    \(macName) now lists this iPhone, and the Keychain took the key without ever \
+                    saying whether it kept it — so every request this iPhone makes may be refused.
+
+                    Try again. If it does not answer this time either, open Granita ▸ Settings ▸ \
+                    Devices on the Mac, remove this iPhone, then pair again.
+                    """
+                )
+            } actions: {
+                Button("Try Again", action: onSaveTokenAgain)
+                    .buttonStyle(.borderedProminent)
+                diagnostic("Keychain · no answer, and the write was given the whole of its patience")
+            }
         }
     }
 
