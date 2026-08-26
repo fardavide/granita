@@ -1,3 +1,4 @@
+import CoreApiDomain
 import CorePairingDomain
 
 /// Joining a Mac, as the layer above it needs to see the capability.
@@ -53,12 +54,33 @@ public struct MacPairing: MacJoining {
     /// and a session built for one Mac must be incapable of reaching another.
     private let handshake: @Sendable (PairingAttempt) -> any ServerPairing
 
+    /// How long any one step has to answer before the attempt ends as a sentence.
+    ///
+    /// **A backstop, never a policy, and the number says so.** Every step below this already has a
+    /// deadline of its own — the transport's request timeout is a minute — so a shorter bound here
+    /// would replace the transport's own diagnostic with a worse one on an ordinary bad network.
+    /// What it is for is the step that has no deadline at all: the Keychain is a synchronous call
+    /// into another process, nothing above it can call it off, and a wedged one used to end as a
+    /// spinner with no screen behind it. See `.claude/docs/decisions.md`.
+    private let patience: Duration
+
     public init(
         tokens: any PairingTokenStore,
         handshake: @escaping @Sendable (PairingAttempt) -> any ServerPairing
     ) {
+        self.init(tokens: tokens, handshake: handshake, patience: .seconds(75))
+    }
+
+    /// The seam, without a default on it, so a test that means "this step never answers" has to say
+    /// how long the sequence waits before it says so.
+    init(
+        tokens: any PairingTokenStore,
+        handshake: @escaping @Sendable (PairingAttempt) -> any ServerPairing,
+        patience: Duration
+    ) {
         self.tokens = tokens
         self.handshake = handshake
+        self.patience = patience
     }
 
     /// Spends a pairing code and keeps the only copy of what it buys.
@@ -67,29 +89,50 @@ public struct MacPairing: MacJoining {
     /// other way round: a code is single use and lasts two minutes, so learning about skew from the
     /// first read route afterwards costs the reader a walk back to the Mac for another one.
     ///
-    /// Returns rather than throws, because three of the four outcomes are not errors in any useful
-    /// sense — they are what the screen shows next, and a caller that had to catch them would be
-    /// deciding which of its `catch` blocks was really a success.
+    /// Returns rather than throws, because most of the outcomes are not errors in any useful sense —
+    /// they are what the screen shows next, and a caller that had to catch them would be deciding
+    /// which of its `catch` blocks was really a success.
+    ///
+    /// **It always returns.** Every awaited step is bounded, so there is no path out of here that is
+    /// not a `PairingOutcome`; a spinner with nothing behind it is not one of the things this can do.
     public func pair(
         with attempt: PairingAttempt,
         on mac: DiscoveredServer,
         as device: PairingDevice
     ) async -> PairingOutcome {
         let server = handshake(attempt)
+
+        // **Every step is bounded, including the ones that look instantaneous**, and the bound is
+        // per step rather than over the whole sequence so that what the reader is told names the
+        // moment it stopped — which is the only thing that decides whether the code was spent.
+        guard let contract = await answer(from: { await server.read() }) else {
+            return .neverAnswered(.readingTheContract)
+        }
+        let health: HealthResponse
+        switch contract {
+        case .success(let response): health = response
+        case .failure(let failure): return .refused(failure)
+        }
+        guard health.compatibility == .sameContract else {
+            return .wrongContract(health.compatibility)
+        }
+
+        guard let spent = await answer(from: { await server.spend(attempt.code, as: device) }) else {
+            // Past this line the code has left the phone, so nothing may say it was not used.
+            return .neverAnswered(.spendingTheCode)
+        }
         let paired: PairedDevice
-        do {
-            let health = try await server.health()
-            guard health.compatibility == .sameContract else {
-                return .wrongContract(health.compatibility)
-            }
-            paired = try await server.pair(with: attempt.code, as: device)
-        } catch {
-            return .refused(error)
+        switch spent {
+        case .success(let device): paired = device
+        case .failure(let failure): return .refused(failure)
         }
 
         // Asked rather than taken from the attempt, because on the spoken path the attempt carried
         // no pin and the answer is whatever first contact found.
-        guard let fingerprint = await server.trustedFingerprint() else {
+        guard let observed = await answer(from: { await server.trustedFingerprint() }) else {
+            return .neverAnswered(.spendingTheCode)
+        }
+        guard let fingerprint = observed else {
             return .refused(.notUnderstood(diagnostic: "the Mac was reached without presenting a key"))
         }
         return await saveToken(
@@ -110,10 +153,15 @@ public struct MacPairing: MacJoining {
     /// — the common cause — is transient, and without this the reader's only remedy is to go to the
     /// other machine and revoke a device record.
     public func saveToken(of pairing: PairedMac) async -> PairingOutcome {
-        do {
-            try await tokens.save(pairing.device.token, issuedBy: pairing.device.serverInstanceId)
-        } catch {
-            return .tokenNotStored(pairing, error)
+        let tokens = tokens
+        let written = await answer {
+            await tokens.write(pairing.device.token, issuedBy: pairing.device.serverInstanceId)
+        }
+        guard let written else {
+            return .neverAnswered(.writingTheKey(pairing))
+        }
+        if let failure = written {
+            return .tokenNotStored(pairing, failure)
         }
         return .paired(pairing)
     }
@@ -122,8 +170,101 @@ public struct MacPairing: MacJoining {
     ///
     /// Silent on failure by design: a Keychain that will not enumerate costs an ordering, and
     /// refusing to list the Macs that are actually on the network because of it is the worse screen.
+    /// Bounded for the same reason — a list that never arrives is a discovery screen that never
+    /// sorts, which is a spinner nobody can leave rather than an ordering nobody notices.
     public func alreadyPaired() async -> Set<ServerInstanceId> {
-        (try? await tokens.pairedServers()) ?? []
+        let tokens = tokens
+        return await answer { try? await tokens.pairedServers() }.flatMap { $0 } ?? []
+    }
+
+    /// Whatever the step answers, or nothing once the patience has run out.
+    ///
+    /// **Deliberately not a task group.** A group awaits every child before it returns, so a step
+    /// that ignores cancellation would hold the group open for exactly as long as it would have held
+    /// the caller — which is to say the bound would be decorative. The step that this exists for is
+    /// precisely the uncancellable kind, so what is raced is a one-shot answer rather than two
+    /// children of a structured parent.
+    private func answer<Value: Sendable>(
+        from step: @escaping @Sendable () async -> Value
+    ) async -> Value? {
+        let first = FirstAnswer<Value>()
+        let running = Task { await first.settle(on: step()) }
+        let givingUp = Task {
+            try await Task.sleep(for: patience)
+            await first.settle(on: nil)
+        }
+        defer {
+            running.cancel()
+            givingUp.cancel()
+        }
+        return await first.answer()
+    }
+}
+
+// MARK: -
+
+/// The first of two answers, and only ever the first.
+///
+/// It exists so that a step which never returns cannot keep the caller: the patience settles this
+/// with nothing, the caller reads it, and the step is left to finish or not finish on its own.
+private actor FirstAnswer<Value: Sendable> {
+
+    private var settled: Value??
+    private var waiting: CheckedContinuation<Value?, Never>?
+
+    func settle(on answer: Value?) {
+        guard settled == nil else { return }
+        settled = .some(answer)
+        waiting?.resume(returning: answer)
+        waiting = nil
+    }
+
+    func answer() async -> Value? {
+        if let settled {
+            return settled
+        }
+        return await withCheckedContinuation { continuation in
+            waiting = continuation
+        }
+    }
+}
+
+// MARK: -
+
+/// The two calls this sequence makes over the wire, as one value each rather than as a typed throw.
+///
+/// `answer(from:)` races a step against a clock, and a racer has to be a value: a typed `throws`
+/// cannot cross that boundary without being caught and rebuilt on the other side, which would put
+/// the mapping from a Mac's refusal to a screen in two places instead of one.
+private extension ServerPairing {
+
+    func read() async -> Result<HealthResponse, ApiFailure> {
+        do {
+            return .success(try await health())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    func spend(_ code: String, as device: PairingDevice) async -> Result<PairedDevice, ApiFailure> {
+        do {
+            return .success(try await pair(with: code, as: device))
+        } catch {
+            return .failure(error)
+        }
+    }
+}
+
+/// The write, as the failure it produced rather than as a typed throw, for the same reason.
+private extension PairingTokenStore {
+
+    func write(_ token: PairingToken, issuedBy server: ServerInstanceId) async -> PairingTokenStoreFailure? {
+        do {
+            try await save(token, issuedBy: server)
+            return nil
+        } catch {
+            return error
+        }
     }
 }
 
@@ -150,4 +291,36 @@ public enum PairingOutcome: Hashable, Sendable {
     /// cost is stated where it belongs, in `decisions.md`: a live token sits in memory for as long as
     /// that screen is up.
     case tokenNotStored(PairedMac, PairingTokenStoreFailure)
+
+    /// A step took the call and never came back.
+    ///
+    /// **The ending the vocabulary could not spell, and its absence is what shipped 0.1.0's worst
+    /// defect.** Every other case here is something that happened; this is the one where nothing
+    /// did, so the screen kept drawing the state before it — which is a spinner — for as long as the
+    /// reader was willing to look at it. See `.claude/docs/decisions.md`.
+    case neverAnswered(PairingStall)
+}
+
+// MARK: -
+
+/// Where the sequence stopped, which is the only thing that decides what the reader has to be told.
+///
+/// **The distinction is whether the code left the phone**, not which function it was. A stall before
+/// it is sent costs nothing and is worth another tap; a stall after it means the Mac may already
+/// hold a device record, and no screen may claim otherwise.
+public enum PairingStall: Hashable, Sendable {
+
+    /// The contract read never came back, so **nothing was spent** — the same sentence, and the same
+    /// truth, that the two contract states carry.
+    case readingTheContract
+
+    /// The code was handed over and no answer arrived. Whether the Mac took it cannot be known from
+    /// here, which is what the screen has to say rather than guess.
+    case spendingTheCode
+
+    /// The Mac answered and the Keychain did not.
+    ///
+    /// It carries the pairing for the same reason a refused write does: the token survives, so the
+    /// screen can offer the write on its own instead of sending the reader to the other machine.
+    case writingTheKey(PairedMac)
 }

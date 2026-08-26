@@ -1,19 +1,20 @@
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#endif
 
 import ClientConnectionDomain
 import ClientConnectionUi
 
 /// The Mac's own screen, and the parent of the three the pairing spine pushes.
 ///
-/// It owns the two things nothing below it can. **The destination for every pairing step**, as one
-/// exhaustive switch: the two credentials are linked from here, the outcome from a screen further
-/// on, and a step that gained no destination would not compile rather than answering a tap with
-/// silence. And **what happens when a pairing works**, which is the one ending with no screen at
-/// all — this screen sits under all three of the others, so it is the one place that can watch for
-/// it however the reader got there.
+/// It owns **the destination for every pairing step**, as one exhaustive switch: the two credentials
+/// are linked from here, the outcome from a screen further on, and a step that gained no destination
+/// would not compile rather than answering a tap with silence.
+///
+/// **It does not own what happens when a pairing works, and that is a correction rather than a
+/// division of labour.** It used to, on the reasoning that this screen sits under all three of the
+/// others and therefore sees every path — and being underneath is precisely what stopped it working,
+/// because `onChange` dies at `onDisappear` while the body goes on being evaluated. What it passes
+/// down instead is the closure, to the two screens that can be on top when a credential is spent.
+/// See `PairedMacHandover` and `.claude/docs/decisions.md`.
 struct PairingEntryScreen: View {
 
     private let model: ClientConnectionModel
@@ -56,20 +57,18 @@ struct PairingEntryScreen: View {
         .navigationDestination(for: PairingStep.self) { step in
             switch step {
             case .scanTheCode:
-                PairingScannerScreen(model: model, server: server, phone: phone, path: $path)
+                PairingScannerScreen(
+                    model: model,
+                    server: server,
+                    phone: phone,
+                    path: $path,
+                    onPaired: onPaired
+                )
             case .typeTheWords:
                 PairingWordsScreen(model: model, server: server, phone: phone, path: $path)
             case .theOutcome:
-                PairingOutcomeScreen(model: model, server: server, phone: phone)
+                PairingOutcomeScreen(model: model, server: server, phone: phone, onPaired: onPaired)
             }
-        }
-        // **Success has no screen.** The stack is replaced by the worktree list rather than pushed
-        // onto, and that replacement is load-bearing: back must return to the Mac list, never to a
-        // viewfinder holding a code that has already been spent.
-        .onChange(of: model.pairing) { _, pairing in
-            guard case .finished(.paired(let mac)) = pairing else { return }
-            announceThePairing()
-            onPaired(mac)
         }
         // **Arriving here is what starts an attempt**, and it is the only place that can say so:
         // the model is one instance for the life of the app, this screen sits under all three of
@@ -85,15 +84,5 @@ struct PairingEntryScreen: View {
             model.beginPairing(with: server)
             address = await model.address(of: server)
         }
-    }
-
-    /// The whole of the celebration, and the only haptic in the app.
-    ///
-    /// Silence reads as nothing having happened, and everything else that marks this moment is the
-    /// destination resembling the origin: a viewfinder becomes a populated list.
-    private func announceThePairing() {
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
     }
 }

@@ -3481,3 +3481,71 @@ the QR is the credential that already knows where it is going. What this costs i
 screen whose content is correct, in a sequence the reader had to leave halfway through to produce. The
 mismatch is older than this entry — every pairing screen has been titled that way since 0.1.0 — and
 what changed is that it now survives past the pairing.
+## `onChange` dies at `onDisappear`, and 0.1.0 shipped its pairing success on one that had
+
+**Pairing hung forever on the in-flight frame, on both credentials, on a real iPhone.** The Mac's
+document gained two device records ninety seconds apart and its log then refused a third attempt as
+`pairingExpired` — so `POST /v1/pair` answered 200 twice, the phone kept the token, and the reader
+sat under *Pairing with MacBook Pro / Checking the Mac, then spending the code.* with nothing to
+press. 786 tests, 208 baselines and an adversarial audit were all green.
+
+The watch for the one ending with no screen of its own lived on `PairingEntryScreen`, on the
+reasoning written into its own doc comment: that screen sits under all three of the others, so it is
+the one place that sees every path. **Being underneath is exactly what stopped it working.**
+`onChange` is scoped to a view's *appearance*, not its lifetime, and a `NavigationStack` calls
+`onDisappear` on a screen the moment something is pushed over it. By the time a pairing can succeed
+there is always something over the Mac's screen — the viewfinder, or the six-word screen and the
+outcome screen above it.
+
+Measured rather than reasoned, in the simulator, with the entry screen logging its own body,
+appearance and change: `onAppear` at push, `onDisappear` when the six-word screen arrived, then the
+body evaluated three more times — including once with `pairing = finished(.paired(…))` — and
+`onChange` never fired once. Three seconds later the stack was still three deep. **The body goes on
+being evaluated, so in a debugger the observation looks alive**, which is why this survived review.
+
+Success now hands over from the two screens that can be frontmost when a credential is spent — the
+viewfinder and the outcome screen — through one modifier, `PairedMacHandover`, and nothing beneath
+them watches for anything. It carries `initial: true` because the scanned path replaces the
+viewfinder with the outcome screen the instant a spend finishes, so what the next screen arrives
+holding is a state that has already stopped changing.
+
+**What is asserted, and what is not.** `PairingState.pairedMac` is the handover as a value, and it is
+covered against every state including the two other endings that carry a `PairedMac` — handing one of
+those to the worktree list would open it against a token this phone never stored. **The
+appearance-scoping itself is reachable by no test kind this project runs**: a unit test has no view
+hierarchy, and a snapshot photographs one view value that was never pushed over. It took a simulator,
+a seeded navigation path and a log. That is the second defect in this repository whose only witness
+was running the app and pressing the thing.
+
+## Every step of the pairing sequence is bounded, so no step can end in a spinner
+
+Davide's call on the night the above was found, and it outranks the bug: *something stuck without an
+outcome is unacceptable — if there is an error, we must show it.* Fixing the navigation removes
+tonight's instance; a bound removes the shape.
+
+`MacPairing` now gives every awaited step a patience and answers `neverAnswered` when one runs out,
+so the sequence is incapable of not producing a `PairingOutcome`. **Seventy-five seconds, and the
+number is a backstop rather than a policy.** Every network step already has the transport's own
+sixty-second request timeout, and a shorter bound here would replace `URLSession`'s diagnostic with a
+worse one on an ordinary bad network. What it is actually for is the step with no deadline at all:
+the Keychain is a synchronous call into another process and nothing above it can call it off.
+
+**Not a task group**, which is the one implementation detail worth recording. A group awaits every
+child before it returns, so a step that ignores cancellation would hold the group open for exactly as
+long as it would have held the caller — the bound would be decorative, and the step this exists for
+is precisely the uncancellable kind. What races instead is a one-shot actor that takes the first of
+two answers and lets the loser finish or not finish on its own.
+
+`PairingStall` splits the ending three ways and the split is **whether the code left the phone**,
+because that is the only fact the reader can act on. Before it goes, another tap costs nothing and
+the screen says so in the sentence this app already uses twice. After it, the Mac may hold a device
+record and the screen has to be as careful as the Keychain one is: it names the trip to Settings ▸
+Devices and offers no retry, because a button that spends a credential that may already be gone is
+worse than no button. A write that never answered keeps the retry, for the reason a refused write
+does — the token survives in the outcome, and the code that bought it is spent either way.
+
+**The Keychain was the prime suspect and it is not the cause.** Run inside the simulator against the
+real `KeychainPairingTokenStore` — never executed anywhere before, since a SwiftPM test binary is
+unsigned and has no keychain — every call returned in about five milliseconds with
+`errSecMissingEntitlement`, which is a `tokenNotStored` and therefore a screen. Recorded because the
+next person to read that type's doc comment will suspect it too.
