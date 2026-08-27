@@ -25,6 +25,11 @@ final class FakeGranitaRepository: GranitaRepository {
     var windowsAskedFor: [LineWindow] { windows.withLock { $0 } }
 
     private let changeSet: Result<WorktreeChanges, ApiFailure>
+
+    /// What the first read answers with, when the point of the test is what the second one does.
+    private let refusesTheFirstRead: ApiFailure?
+
+    private let reads = Mutex<Int>(0)
     private let hunks: [FileID: [Hunk]]
     private let diffFailure: ApiFailure?
     private let viewedFailure: ApiFailure?
@@ -46,6 +51,7 @@ final class FakeGranitaRepository: GranitaRepository {
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
+        refusesTheFirstRead: ApiFailure? = nil,
         alsoAnswering stranger: FileChange? = nil
     ) {
         self.changeSet = changeSet
@@ -53,11 +59,22 @@ final class FakeGranitaRepository: GranitaRepository {
         self.diffFailure = diffFailure
         self.viewedFailure = viewedFailure
         self.linesAnswer = linesAnswer
+        self.refusesTheFirstRead = refusesTheFirstRead
         self.stranger = stranger
     }
 
+    /// **Refuses the first read and answers afterwards when asked to**, which is the only way to put
+    /// one model through a failure and then a retry — and the retry is what a reader presses when a
+    /// screen has gone wrong, so it is the path worth holding to its behaviour.
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
-        try changeSet.get()
+        let isFirst = reads.withLock { count in
+            count += 1
+            return count == 1
+        }
+        if let refusesTheFirstRead, isFirst {
+            throw refusesTheFirstRead
+        }
+        return try changeSet.get()
     }
 
     func diffs(

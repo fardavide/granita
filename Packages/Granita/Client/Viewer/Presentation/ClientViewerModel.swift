@@ -90,7 +90,16 @@ public final class ClientViewerModel {
     /// The diffs follow, five at a time, driven by what the reader is looking at — because a
     /// forty-file worktree fetched in one request is a request that either times out or arrives
     /// long after the reader has read the first file.
+    /// **A cancelled read leaves the screen alone**, for the reason the worktree list does: a
+    /// `.task` is torn down whenever its view goes away, and reporting that as the Mac's failure is
+    /// the app blaming the Mac for something the app did.
     public func load() async {
+        // Only a failure goes back to the spinner — a screen re-runs its `.task` every time it
+        // appears, and blanking a diff that is already drawn would restart it under the reader. See
+        // `ClientWorktreesModel`, which carries the argument and the baselines that settled it.
+        if case .failed = state {
+            state = .loading
+        }
         do {
             let changes = try await repository.changes(in: worktree)
             entries = changes.files.map(ContinuousDiffEntry.awaiting)
@@ -98,6 +107,8 @@ public final class ClientViewerModel {
             collapsed = FileSelector.initiallyCollapsed(in: changes.files)
             state = entries.isEmpty ? .nothingChanged : .reading(entries)
             rearrange()
+        } catch .cancelled {
+            state = entries.isEmpty ? .loading : .reading(entries)
         } catch {
             state = .failed(error)
         }
@@ -175,6 +186,10 @@ public final class ClientViewerModel {
                 contentHash: before.file.contentHash,
                 in: worktree
             )
+        } catch .cancelled {
+            // The reader left; the mark they set stands. Taking it back and telling them the Mac
+            // refused would be the app inventing a refusal nobody made.
+            return
         } catch {
             // Found again rather than reused, because the batch loader may have replaced this entry
             // while the write was in flight — and putting the stale one back would drop a diff.

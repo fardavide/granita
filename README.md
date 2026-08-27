@@ -86,6 +86,21 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
   end for the code above it and the code below it, twenty lines a press, and the control disappears
   when there is nothing left in that direction.
 
+### 0.3.2 — 2026-08-27
+- **One unreadable file no longer hides a whole worktree.** A symlink pointing at a folder is
+  something git refuses to hash, and it was taking the entire change set down with it — two of the
+  worktrees on this Mac had one, so the phone could not list anything at all. Now only that file
+  goes without, and everything around it reads normally.
+- **Granita no longer blames your Mac for something the app did.** Opening a worktree while the list
+  behind it was still loading cancelled that read, and the app reported it as *Could not read your
+  Mac* — so pressing Back showed an error that had never happened. A read you interrupted now leaves
+  the screen you were on.
+- **Try Again looks like it is trying.** Reading a Mac with a lot of repositories takes a while, and
+  the button used to leave the error on screen the whole time, which read as a button that does
+  nothing.
+- When a git command does fail, Granita's log now leads with what git said instead of burying it
+  behind a list of file paths that pushed it off the end of the line.
+
 ### 0.3.1 — 2026-08-26
 - **The six words on your Mac have a Copy button.** They are there for when the camera cannot do it —
   and until now getting them off the screen meant dragging a selection across six words in a 13pt

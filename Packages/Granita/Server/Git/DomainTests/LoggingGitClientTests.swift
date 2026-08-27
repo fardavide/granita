@@ -68,6 +68,51 @@ struct LoggingGitClientTests {
         #expect(scenario.log.notes.first?.contains("No such file or directory") == true)
     }
 
+    /// **Git's own sentence has to survive the unified log, which truncates at about a kilobyte.**
+    ///
+    /// The line used to lead with the command, and a command carrying a batch of paths is longer
+    /// than that on its own — so a failing `hash-object` over eleven files spent the whole budget on
+    /// `RepositoryRelativePath(bytes: 36 bytes)` and cut off before git said why. That is not a
+    /// hypothetical: it is why a symlink pointing at a directory had to be reproduced by hand
+    /// instead of read off the log.
+    ///
+    /// Every case, because each one carries a different half of the answer and a `switch` that grew
+    /// a case would otherwise lose it silently.
+    @Test(arguments: [
+        (
+            GitError.commandFailed(command: .version, exitCode: 128, standardError: "fatal: Unable to hash link"),
+            "fatal: Unable to hash link"
+        ),
+        (
+            GitError.terminatedBySignal(command: .version, signal: 9, standardError: "killed"),
+            "killed"
+        ),
+        (GitError.timedOut(command: .version), "timed out"),
+        (GitError.gitUnavailable(reason: "No such file or directory"), "No such file or directory"),
+        (
+            GitError.workingDirectoryUnreadable(
+                location: RepositoryLocation(path: "/gone"),
+                reason: "the worktree is not there"
+            ),
+            "the worktree is not there"
+        )
+    ])
+    func `given git fails in any way when it is logged then git's own words are in the line`(
+        failure: GitError,
+        words: String
+    ) async {
+        // given
+        let scenario = Scenario(failure: failure)
+
+        // when
+        _ = try? await scenario.sut.run(.version, in: RepositoryLocation(path: "/repo/aura"))
+
+        // then — and near the front of it, which is what surviving truncation means.
+        let note = scenario.log.notes.first ?? ""
+        #expect(note.contains(words))
+        #expect(note.hasPrefix("git failed: "))
+    }
+
     @Test
     func `given git fails when a command is run then the failure still reaches the caller`() async {
         // given — a decorator that swallowed what it logged would turn every git failure into a

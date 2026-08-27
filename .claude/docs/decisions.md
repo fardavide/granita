@@ -3846,6 +3846,77 @@ were each tried and none of them closes it, so it is `scrollPosition` interactin
 headers. The reader gets the file they tapped, near the top of the screen; the last 120pt is a
 question for a thumb.
 
+## A path git will not hash costs its own content hash and nothing else
+
+**Found by running the product, on a real iPhone, against real repositories.** The worktree list
+failed and *Try Again* looked dead; the Mac's log said `hashWorktreeFiles(...) failed` over and over.
+The cause is a **symlink pointing at a directory**: `git ls-files --others` reports it as an ordinary
+untracked path — git treats a symlink as a file, so there is no trailing separator to filter on — and
+`git hash-object --stdin-paths` follows it, finds a directory, and exits 128 for the **whole batch**.
+Two of Davide's `bandlab-android` worktrees carry one, so `/v1/worktrees` could not answer at all.
+
+`WorktreeService`'s own comment predicted the shape and filtered the two cases it knew — a deleted
+file and a submodule. What it could not filter is a path that looks ordinary and is not, and the
+general answer is not a longer filter: tomorrow it is a fifo, a socket, or a file the server cannot
+read.
+
+So the batch is still tried first and is still one process for a whole worktree. **Only when it fails**
+does the service hash the paths one at a time, which costs a process per file exactly once, in a
+worktree that has something wrong with it. Every file git *can* hash keeps a real content hash, which
+is what makes a viewed mark self-correcting when the file changes underneath it.
+
+> Rejected: giving the whole batch the absent id on failure. It is two lines shorter and it makes
+> "viewed" stick to content nobody has seen, for every file in that worktree — a silent weakening of
+> the one thing this product is for.
+>
+> Rejected: locating the bad path from the partial output of the failed batch. Measured first, and
+> git does emit the hashes it managed before dying, so the count would name the culprit exactly —
+> but `GitError.commandFailed` carries git's standard error and **not** its standard output, so
+> those hashes never reach the caller. Widening the error to carry stdout would put a private
+> repository's contents into an error value that gets logged, which is the boundary the git
+> decorator already exists to hold.
+
+## A cancelled request is not a failure, and the app was blaming the Mac for it
+
+`URLSession` reports a torn-down request as `NSURLErrorCancelled`, and the transport folded every
+non-`ApiFailure` error into `unreachable`. A `.task` is cancelled the moment its view goes away —
+which in a navigation stack is *every time the reader opens something* — so an in-flight read of the
+worktree list was routinely cancelled by the app itself and then reported as **Could not read your
+Mac**, with `Code=-999 "cancelled"` in the small print, on the screen the reader reached by pressing
+Back.
+
+`ApiFailure.cancelled` is a case of its own now. The transport maps `URLError.cancelled` and
+`CancellationError` to it, and each model decides: the worktree list keeps the arrangement it had,
+the viewer keeps the change set it had, and a cancelled *write* leaves the reader's mark standing
+rather than taking it back with an alert nobody caused.
+
+**It is a case rather than a silent `nil`** because the transport cannot know what to do about it and
+the screen can. And it is not folded into `unreachable` because the two differ in the only way that
+matters to a reader: one means the Mac is not there, and the other means nothing at all.
+
+## The retry says it is trying, because the endpoint behind it is slow enough to look dead
+
+*Try Again* re-ran the read and left the failure on screen until the answer arrived. `/v1/worktrees`
+builds a change set for every worktree of every enabled project — measured at **122.7 seconds** over
+ten of Davide's repositories, which is the same measurement that killed the menu bar's dirty count —
+so the button was indistinguishable from one with nothing behind it, and was reported as one.
+
+`load()` returns to `loading` first. On the first read that is already the state and costs nothing;
+from a failure it is the only feedback there is. No new control and no new copy — the spinner design
+§1 argued for is already the right one here, because unlike a Bonjour browse this request finishes.
+
+## Git's own sentence leads the failure line, because the unified log truncates
+
+A failed invocation logged `"\(command) failed: \(error)"`, and `GitCommand` carries its paths. Eleven
+of them, rendered as `RepositoryRelativePath(bytes: 36 bytes)` and then repeated inside the error's
+own `commandFailed(command:)`, ran past the unified log's kilobyte limit **before reaching git's
+standard error** — the one part written for a person, and the part `swift-style` says a git failure
+exists to carry.
+
+The line leads with git's sentence and trails the command, and `RepositoryRelativePath` describes
+itself as the path. Measured rather than reasoned: the symlink above had to be reproduced by hand
+because its stderr never reached the log.
+
 ## A shut file is a bar in the header's slot, and its reason is the field the specification forgot
 
 `SPEC.md` §10 says a file marked viewed renders collapsed and that a file over 500 diff lines starts
@@ -3943,6 +4014,13 @@ the next scroll asks about again. An expansion is a control they pressed, and a 
 hunk exactly as it was is a control that did nothing — so it gets an alert of its own, with its own
 sentence, rather than sharing the mark's.
 
+**Two presses inside one round trip would splice one window twice**, and that is recorded rather than
+guarded. Both compute their window before either lands, so both ask for the same lines and both
+splice them. The guard is a branch no test kind here can drive — it needs two calls genuinely
+overlapping, and therefore a fake that holds a request open — and an untested branch is worse than a
+defect whose symptom is twenty context lines appearing twice with the gutter numbers saying so. It is
+on the device afternoon's list, which is where it can be seen.
+
 ## `DisplayWidth` is public now, because the client makes lines the parser never saw
 
 The type's own comment said it is measured on the server "rather than on the client", and the reason
@@ -3987,3 +4065,26 @@ words and the composition that ships still has it. The doubled `navigationDestin
 because what it settles is which of two containers claims a tap, and removing a declaration to find
 out is exactly how this app shipped a row that did nothing. It costs one duplicated line and it is
 correct in both layouts; the finger that settles it is the same one the device afternoon owes §4.
+
+## Seven spellings nobody had photographed, found by a fallen coverage row
+
+The Snapshot regions row fell by 0.3% when this slice put five controls on three views. That is the
+structural gap the `swift-testing` skill records rather than a thing done wrong here: an action
+closure in a view body is uncoverable by every test kind that runs in this repository, and the
+sanctioned remedy is to find genuine unphotographed view fallbacks. There were seven.
+
+Three on the phone: a wholly added file and a wholly deleted file, which are the gutter's own `?? 0`
+fallbacks and had never been drawn over a whole file; and the diff screen over a clean worktree,
+whose *Files* button had been argued absent in a comment and never rendered. Two wrapper closures
+went with them, by letting the header and the bar report **which** file they are about — which they
+already hold, so the caller was re-attaching an identifier for no reason.
+
+Four on the Mac, and every one a singular-or-plural the app would have shipped wrong: Advanced's
+count-spelling table has six arms and three had never been rendered; the connection log had never
+drawn a single served request, so *1 requests* was one release away on the panel a reader opens under
+pressure; and Projects had never drawn a repository with one checkout. That is the same reason the
+phone photographs *1 file* beside *7 files*.
+
+**The row is a ratchet with no slack, and this will recur** on every slice that adds controls. What
+closes it for good is the `ui` kind, which needs the Accessibility grant and an
+`Apps/GranitaMobileUiTests` that has never existed.

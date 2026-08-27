@@ -35,8 +35,31 @@ public struct LoggingGitClient: GitClient {
         } catch {
             // A note rather than detail: a git invocation that failed is why somebody is reading
             // this at all, and it must not be behind a switch they had to think of first.
-            diagnostics.note("\(command) failed: \(error)", about: .git)
+            //
+            // **Git's own words come first, and the command trails.** The unified log truncates at
+            // about a kilobyte, and a command carrying a batch of paths is easily longer than that
+            // — so a line that led with the command spent its whole budget on the paths and cut off
+            // before the one sentence written for a person. Measured rather than reasoned: a
+            // failing `hash-object` had to be reproduced by hand because its stderr never reached
+            // the log.
+            diagnostics.note("git failed: \(sentence(for: error)) — running \(command) in \(location.path)", about: .git)
             throw error
+        }
+    }
+
+    /// What git said, or what stopped it saying anything.
+    private func sentence(for error: GitError) -> String {
+        switch error {
+        case .commandFailed(_, let exitCode, let standardError):
+            "exit \(exitCode): \(standardError)"
+        case .terminatedBySignal(_, let signal, let standardError):
+            "killed by signal \(signal): \(standardError)"
+        case .timedOut:
+            "timed out"
+        case .gitUnavailable(let reason):
+            reason
+        case .workingDirectoryUnreadable(_, let reason):
+            reason
         }
     }
 }

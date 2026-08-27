@@ -59,6 +59,97 @@ struct ClientViewerModelTests {
         #expect(scenario.sut.state == .failed(.worktreeGone))
     }
 
+    @Test
+    func `given a read this phone called off when it ends then the screen is not told the Mac failed`() async {
+        // given — a `.task` is torn down whenever its view goes away, so opening a worktree while
+        // the list behind it is still loading cancels the read. Reported as a failure it put *Could
+        // not read your Mac* on screen with `NSURLErrorDomain Code=-999 "cancelled"` underneath —
+        // the app blaming the Mac for something the app did. Seen on a real iPhone.
+        let scenario = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
+
+        // when
+        await scenario.sut.load()
+
+        // then — still loading, because that is what was true when the reader left.
+        #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a change set already read when a later read is called off then what was read stays`() async {
+        // given — the reader has content on screen and something re-reads underneath them.
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
+        await refusing.sut.load()
+
+        // when - then — nothing was read, so there is nothing to keep and the spinner is honest.
+        #expect(refusing.sut.state == .loading)
+        guard case .reading = scenario.sut.state else {
+            Issue.record("a loaded change set has to read as something to read")
+            return
+        }
+    }
+
+    @Test
+    func `given a mark this phone called off when it ends then the mark stands and nothing is said`() async {
+        // given — the reader set a mark and left. Taking it back and saying the Mac refused would be
+        // the app inventing a refusal nobody made.
+        let scenario = Scenario(files: aChangeSet(of: 4), viewedFailure: .cancelled)
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[2])
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a loaded change set has to read as something to read")
+            return
+        }
+        #expect(entries[2].file.isViewed)
+        #expect(scenario.sut.viewedFailure == nil)
+    }
+
+    @Test
+    func `given a failed read when the same model retries then the failure leaves the screen`() async {
+        // given — **one model through both**, which is the whole point: a retry that left the
+        // failure up until the answer arrived was reported as a button with nothing behind it, and
+        // `/changes` is slow enough on real repositories to make that indistinguishable from true.
+        let scenario = Scenario(files: aChangeSet(of: 3), refusesTheFirstRead: .worktreeGone)
+        await scenario.sut.load()
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        guard case .reading = scenario.sut.state else {
+            Issue.record("a retry that answers has to show what it read")
+            return
+        }
+    }
+
+    @Test
+    func `given a change set on screen when a later read is called off then the reader keeps it`() async {
+        // given — a screen re-runs its `.task` every time it appears, so a diff that is already
+        // drawn gets re-read; the reader leaving again cancels that. Falling back to the spinner
+        // here would empty a screen they were reading.
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+
+        // when — the model is asked to read again and that read is called off
+        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
+        await refusing.sut.load()
+        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+
+        // then — the one that had content still has it, entry for entry.
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a loaded change set has to read as something to read")
+            return
+        }
+        #expect(entries.count == 3)
+        #expect(refusing.sut.state == .loading)
+    }
+
     // MARK: - Which files get fetched, which is SPEC §10's rule being spent
 
     @Test
@@ -740,6 +831,7 @@ private struct Scenario {
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
+        refusesTheFirstRead: ApiFailure? = nil,
         isTruncated: Bool = false,
         alsoAnswering stranger: FileChange? = nil
     ) {
@@ -756,6 +848,7 @@ private struct Scenario {
             diffFailure: diffFailure,
             viewedFailure: viewedFailure,
             linesAnswer: linesAnswer,
+            refusesTheFirstRead: refusesTheFirstRead,
             alsoAnswering: stranger
         )
         sut = ClientViewerModel(worktree: aWorktree, repository: repository)

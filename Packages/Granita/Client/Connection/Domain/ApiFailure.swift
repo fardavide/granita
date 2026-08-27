@@ -1,3 +1,5 @@
+import Foundation
+
 /// Every way a request to a Mac can fail, in the vocabulary the phone reasons in.
 ///
 /// **No HTTP status code reaches this type, and none reaches anything above it.** SPEC §8 makes the
@@ -59,12 +61,53 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// completed", which is true of every failure there has ever been and actionable in none.
     case unreachable(diagnostic: String)
 
+    /// **This phone called the request off, so nothing failed.**
+    ///
+    /// A `.task` is cancelled the moment its view goes away, which in a navigation stack is every
+    /// time the reader opens something — so an in-flight read is routinely torn down by the app
+    /// itself. Folded into `unreachable` it became *Could not read your Mac*, with `NSURLErrorDomain
+    /// Code=-999 "cancelled"` in the small print: the app blaming the Mac for something the app did,
+    /// on a screen the reader reached by pressing Back. Seen on a real iPhone.
+    ///
+    /// It is a case rather than a `nil` return because the transport cannot decide what to do about
+    /// it and the screen can: a model that was still loading has simply stopped, and the right screen
+    /// is the one that was already there.
+    case cancelled
+
     /// The Mac answered with something this version cannot read — a body that is not the shape the
     /// contract describes, or a refusal code a newer Mac invented.
     ///
     /// One case for both, because the reader can do nothing different about them and the diagnostic
     /// is what tells the developer which it was.
     case notUnderstood(diagnostic: String)
+
+    /// What a failure from the transport means to this app.
+    ///
+    /// **A rule rather than a `catch` block**, and it lives here for the reason every other rule in
+    /// this repository moved out of the thing that spends it: a `URLSession` cannot be built in a
+    /// test binary, so a decision written inside the transport is a decision nothing holds to its
+    /// behaviour — and the decision it was hiding was wrong. `NSURLErrorCancelled` was folded into
+    /// `unreachable`, which put *Could not read your Mac* on the screen a reader reached by pressing
+    /// Back.
+    ///
+    /// The order matters: a failure this layer already understands passes through untouched, a
+    /// cancellation is not a failure at all, and everything else is the Mac being out of reach with
+    /// the system's own words kept as small print.
+    public static func forTransport(_ error: any Error) -> ApiFailure {
+        switch error {
+        case let failure as ApiFailure:
+            failure
+        case is CancellationError:
+            .cancelled
+        case let url as URLError where url.code == .cancelled:
+            .cancelled
+        default:
+            // The diagnostic, not the advice. `URLError` writes "the operation couldn't be
+            // completed", which is true of every failure there has ever been; the screen supplies
+            // the sentence and prints this underneath in small print.
+            .unreachable(diagnostic: "\(error)")
+        }
+    }
 
     /// The machine's own words, where there are any, for the small print under a screen's own
     /// sentence.
@@ -80,6 +123,9 @@ public enum ApiFailure: Error, Hashable, Sendable {
         switch self {
         case .unauthorized, .pairingExpired, .rateLimited, .projectNotVisible: nil
         case .worktreeGone, .fileGone, .staleContentHash, .tooLarge, .unsupportedApiVersion: nil
+        // Nothing to print, because nothing is meant to be on screen: a cancelled read leaves the
+        // screen the reader was already looking at.
+        case .cancelled: nil
         case .gitFailure(let message): message
         case .badRequest(let message): message
         case .requestNotBuildable(let diagnostic): diagnostic
