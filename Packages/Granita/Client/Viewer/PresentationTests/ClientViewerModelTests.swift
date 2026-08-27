@@ -30,7 +30,7 @@ struct ClientViewerModelTests {
             return
         }
         #expect(entries.count == 8)
-        #expect(entries.allSatisfy { if case .awaiting = $0 { true } else { false } })
+        #expect(entries.allSatisfy { $0.isAwaitingForTests })
         #expect(await scenario.repository.batchesAskedFor.isEmpty)
     }
 
@@ -516,9 +516,13 @@ struct ClientViewerModelTests {
         // given — the batch was asked for before the mark was written, so the file that comes back
         // carries the Mac's answer to a question that predates it. Taking the mark off would be the
         // network undoing something the reader did.
+        //
+        // The mark shuts the file, so the reader opens it again — which is the ordinary way back to
+        // a file you have read and want to check.
         let scenario = Scenario(files: aChangeSet(of: 3), hunksFor: 1)
         await scenario.sut.load()
         await scenario.sut.setViewed(true, on: scenario.fileIds[1])
+        await scenario.sut.setOpen(true, on: scenario.fileIds[1])
 
         // when
         await scenario.sut.reading(0)
@@ -530,6 +534,284 @@ struct ClientViewerModelTests {
         }
         #expect(entries[1].hunkCountForTests == 1)
         #expect(entries[1].file.isViewed)
+    }
+
+    // MARK: - What is drawn shut, and what that costs the loader
+
+    @Test
+    func `given a file already marked read when the scroll loads then its diff is never asked for`() async {
+        // given — `SPEC.md` §10 draws a file marked viewed collapsed, and a collapsed file is one
+        // the reader has said they are done with. Spending a batch slot on it is this phone doing
+        // work for a screen it is not going to draw.
+        let scenario = Scenario(files: aChangeSet(of: 3, viewedAt: 1))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.reading(0)
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor == [[scenario.fileIds[0], scenario.fileIds[2]]])
+    }
+
+    @Test
+    func `given a shut file when the reader opens it then its diff is asked for`() async {
+        // given — **this is the half that makes the bar a control.** Without it, pressing one leaves
+        // a header over a blank stretch that nothing ever fills, which is the dead control this
+        // project has shipped once already.
+        let scenario = Scenario(files: aChangeSet(of: 3, viewedAt: 1), hunksFor: 1)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.setOpen(true, on: scenario.fileIds[1])
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.last == [scenario.fileIds[1]])
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a fetched change set has to read as something to read")
+            return
+        }
+        #expect(entries[1].collapse.isCollapsed == false)
+        #expect(entries[1].hunkCountForTests == 1)
+    }
+
+    @Test
+    func `given a file whose diff is in hand when the reader opens it then nothing is asked for again`() async {
+        // given — the ordinary case: the reader marks a file read while looking at it, then changes
+        // their mind. The diff never left.
+        let scenario = Scenario(files: aChangeSet(of: 3), hunksFor: 1)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        await scenario.sut.setViewed(true, on: scenario.fileIds[1])
+        let asked = await scenario.repository.batchesAskedFor.count
+
+        // when
+        await scenario.sut.setOpen(true, on: scenario.fileIds[1])
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.count == asked)
+    }
+
+    @Test
+    func `given an open file when the reader shuts it then it is drawn shut with no reason to print`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setOpen(false, on: scenario.fileIds[0])
+
+        // then — the four sentences design §4 draws are the four the app decided on its own, so a
+        // file the reader shut has nothing to say back to them about it.
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a change set has to read as something to read")
+            return
+        }
+        #expect(entries[0].collapse.isCollapsed)
+        #expect(entries[0].collapse.reason == nil)
+    }
+
+    @Test
+    func `given a binary file when the reader tries to open it then it stays shut`() async {
+        // given — unreachable through the bar, which draws no chevron for it. Asserted because a
+        // guard that depends on a view not offering a control is one refactor from being wrong.
+        let scenario = Scenario(files: [aBinaryFile])
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setOpen(true, on: aBinaryFile.id)
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a change set has to read as something to read")
+            return
+        }
+        #expect(entries[0].collapse.isCollapsed)
+        #expect(await scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given a file the change set never named when it is opened then nothing happens`() async {
+        // given — the same shape as the mark's own miss: a stale row, or a change set replaced under
+        // a press.
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setOpen(true, on: FileID(rawValue: "a-file-that-left"))
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    // MARK: - Expanding a hunk
+
+    @Test
+    func `given a hunk with lines above it when it is expanded then the window asked for is the gap`() async {
+        // given — a hunk covering lines 5 and 6 of a ten-line file, so there are four lines above it
+        // and four below.
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            hunksFor: 0,
+            hunks: [aHunkInTheMiddle],
+            linesAnswer: .success(FileLines(lines: ["    let a = 1", "    let b = 2"], eof: false))
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.above, hunk: 0, in: scenario.fileIds[0])
+
+        // then — the gap, on the new side, stopping where the hunk's own first line begins. A whole
+        // step would have asked for lines before the file starts.
+        #expect(await scenario.repository.windowsAskedFor == [LineWindow(side: .new, start: 1, count: 4)])
+    }
+
+    @Test
+    func `given lines that come back when a hunk is expanded then they are spliced into its own diff`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            hunksFor: 0,
+            hunks: [aHunkInTheMiddle],
+            linesAnswer: .success(FileLines(lines: ["    let a = 1", "    let b = 2"], eof: false))
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.above, hunk: 0, in: scenario.fileIds[0])
+
+        // then — **into the hunk rather than beside it**, which is what makes "is there anything
+        // left above this" answerable from what is drawn.
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let diff) = entries[0].content else {
+            Issue.record("an expanded file has to have a diff to have expanded")
+            return
+        }
+        #expect(diff.hunks[0].lines.count == 4)
+        #expect(diff.hunks[0].lines.first?.text == "    let a = 1")
+        #expect(diff.hunks[0].newStart == 3)
+    }
+
+    @Test
+    func `given a hunk at the top of a file when it is expanded then nothing is asked of the Mac`() async {
+        // given — `aHunk` starts at line 1, so there is no gap above it. The control is absent for
+        // this hunk, so reaching the model at all means the file moved under a press.
+        let scenario = Scenario(files: aChangeSet(of: 1), hunksFor: 0)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.above, hunk: 0, in: scenario.fileIds[0])
+
+        // then
+        #expect(await scenario.repository.windowsAskedFor.isEmpty)
+        #expect(scenario.sut.expansionFailure == nil)
+    }
+
+    @Test
+    func `given a file whose diff has not arrived when a hunk of it is expanded then nothing is asked for`() async {
+        // given — no diff means no hunks, so there is no gap anybody could have pressed.
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0])
+
+        // then
+        #expect(await scenario.repository.windowsAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given a hunk index the file does not have when it is expanded then nothing is asked for`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), hunksFor: 0, hunks: [aHunkInTheMiddle])
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.above, hunk: 7, in: scenario.fileIds[0])
+
+        // then
+        #expect(await scenario.repository.windowsAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given the Mac refuses the lines when a hunk is expanded then the reader is told`() async {
+        // given — **a refusal here is reported where a refused batch is not**, and the difference is
+        // what the reader did: a batch is fetched on their behalf while they scroll, and an
+        // expansion is a control they pressed. A press that leaves the hunk as it was is a control
+        // that did nothing.
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            hunksFor: 0,
+            hunks: [aHunkInTheMiddle],
+            linesAnswer: .failure(.fileGone)
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.above, hunk: 0, in: scenario.fileIds[0])
+
+        // then
+        #expect(scenario.sut.expansionFailure == .fileGone)
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let diff) = entries[0].content else {
+            Issue.record("a fetched file has to have a diff")
+            return
+        }
+        // The hunk is exactly the two lines it arrived with, which is the half that makes this a
+        // control that did nothing without the alert above.
+        #expect(diff.hunks[0].lines.count == 2)
+    }
+
+    @Test
+    func `given a refusal the reader has read when it is dismissed then it is gone`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            hunksFor: 0,
+            hunks: [aHunkInTheMiddle],
+            linesAnswer: .failure(.fileGone)
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        await scenario.sut.expand(.above, hunk: 0, in: scenario.fileIds[0])
+
+        // when
+        scenario.sut.dismissExpansionFailure()
+
+        // then
+        #expect(scenario.sut.expansionFailure == nil)
+    }
+
+    @Test
+    func `given a hunk with lines below it when it is expanded downwards then the window follows it`() async {
+        // given — the hunk covers lines 5 and 6 of a ten-line file.
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            hunksFor: 0,
+            hunks: [aHunkInTheMiddle],
+            linesAnswer: .success(FileLines(lines: ["    let c = 3"], eof: true))
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0])
+
+        // then — the Mac reports a new side ten lines long, so the window runs from just after the
+        // hunk to the end of the file rather than a whole step past it.
+        #expect(await scenario.repository.windowsAskedFor == [LineWindow(side: .new, start: 7, count: 4)])
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let diff) = entries[0].content else {
+            Issue.record("an expanded file has to have a diff to have expanded")
+            return
+        }
+        #expect(diff.hunks[0].lines.last?.text == "    let c = 3")
+        #expect(diff.hunks[0].lines.last?.newNumber == 7)
     }
 }
 
@@ -545,8 +827,10 @@ private struct Scenario {
         files: [FileChange] = [],
         changeSetFailure: ApiFailure? = nil,
         hunksFor position: Int? = nil,
+        hunks: [Hunk]? = nil,
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
+        linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
         refusesTheFirstRead: ApiFailure? = nil,
         isTruncated: Bool = false,
         alsoAnswering stranger: FileChange? = nil
@@ -560,9 +844,10 @@ private struct Scenario {
         )
         repository = FakeGranitaRepository(
             changeSet: changeSetFailure.map(Result.failure) ?? .success(changes),
-            hunks: position.map { [files[$0].id: [aHunk]] } ?? [:],
+            hunks: position.map { [files[$0].id: hunks ?? [aHunk]] } ?? [:],
             diffFailure: diffFailure,
             viewedFailure: viewedFailure,
+            linesAnswer: linesAnswer,
             refusesTheFirstRead: refusesTheFirstRead,
             alsoAnswering: stranger
         )
@@ -576,11 +861,11 @@ private extension ContinuousDiffEntry {
     /// these, and a property no screen has agreed to is one this repository has removed twice
     /// already.
     var isAwaitingForTests: Bool {
-        if case .awaiting = self { true } else { false }
+        if case .awaiting = content { true } else { false }
     }
 
     var hunkCountForTests: Int {
-        switch self {
+        switch content {
         case .awaiting: 0
         case .ready(let diff): diff.hunks.count
         }
@@ -625,6 +910,37 @@ private let aHunk = Hunk(
     ]
 )
 
+/// A hunk with room on both sides of it: lines 5 and 6 of a file the change set says is ten long,
+/// so there are four lines above and four below and neither reaches a whole step.
+private let aHunkInTheMiddle = Hunk(
+    index: 0,
+    oldStart: 5,
+    oldCount: 2,
+    newStart: 5,
+    newCount: 2,
+    sectionHeading: "func answer() -> Int",
+    lines: [
+        DiffLine(kind: .context, oldNumber: 5, newNumber: 5, text: "func answer() -> Int {", displayColumns: 22, segments: nil),
+        DiffLine(kind: .addition, oldNumber: nil, newNumber: 6, text: "    42", displayColumns: 6, segments: nil)
+    ]
+)
+
+/// Nothing behind it, ever, which is one of the two files design §4 gives no chevron.
+private let aBinaryFile = FileChange(
+    id: FileID(rawValue: "a-drawing"),
+    path: "Art/icon/granita-tinted.svg",
+    oldPath: nil,
+    status: .added,
+    isBinary: true,
+    isSubmodule: false,
+    stats: ChangeStats(filesChanged: 1, insertions: 0, deletions: 0),
+    contentHash: String(repeating: "e", count: 64),
+    estimatedLineCount: 0,
+    isViewed: false,
+    isTruncated: false,
+    language: nil
+)
+
 /// Eight files across two directories, which is the shape design §3 draws a tree for: over three
 /// files, and more than one directory, so the arrangement is a question with two answers.
 private func aChangeSetAcrossTwoDirectories() -> [FileChange] {
@@ -649,7 +965,7 @@ private func aChangeSetAcrossTwoDirectories() -> [FileChange] {
 }
 
 /// Files named so a wrong one is obvious in a failure rather than being one hash among several.
-private func aChangeSet(of count: Int) -> [FileChange] {
+private func aChangeSet(of count: Int, viewedAt read: Int? = nil) -> [FileChange] {
     (0..<count).map { position in
         FileChange(
             id: FileID(rawValue: "file-\(position)"),
@@ -661,7 +977,7 @@ private func aChangeSet(of count: Int) -> [FileChange] {
             stats: ChangeStats(filesChanged: 1, insertions: position, deletions: 1),
             contentHash: String(repeating: "\(position % 10)", count: 64),
             estimatedLineCount: 10 + position,
-            isViewed: false,
+            isViewed: position == read,
             isTruncated: false,
             language: "swift"
         )

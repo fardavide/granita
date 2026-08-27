@@ -200,6 +200,127 @@ nonisolated let aFileWhoseHunksDisagreeOnWidth: [Hunk] = [
     )
 ]
 
+/// A file whose one hunk runs from its first line to its last, so neither expand control has a gap
+/// to open and neither is drawn.
+///
+/// **The control render for the two above**, which each photograph a band carrying both chevrons: a
+/// picture of a chevron says nothing about whether it appears only where it should.
+nonisolated let aWholeFileInOneHunk = FileDiff(
+    file: aChangedFile(
+        path: "Packages/Granita/Core/Branding/Domain/Branding.swift",
+        status: .modified,
+        insertions: 2,
+        deletions: 1,
+        estimatedLineCount: 4
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 1,
+            oldCount: 3,
+            newStart: 1,
+            newCount: 4,
+            sectionHeading: "enum Branding",
+            lines: [
+                context(old: 1, new: 1, "enum Branding {"),
+                deletion(old: 2, "    static let name = \"Granita\""),
+                addition(new: 2, "    static let name = \"Granita\"  // the product"),
+                addition(new: 3, "    static let scheme = \"granita\""),
+                context(old: 3, new: 4, "}")
+            ]
+        )
+    ],
+    oldLineCount: 3,
+    newLineCount: 4,
+    isTruncated: false,
+    truncationReason: nil
+)
+
+/// A file with no old side at all, which is an agent writing a new file — the ordinary case, and one
+/// no baseline has ever held.
+///
+/// **It is the gutter's own fallback.** The old column is sized from the file's highest old line
+/// number and there is not one, so the width falls back to nothing; every row's old figure is blank
+/// on the iPad, where both columns are drawn.
+nonisolated let aFileThatIsAllAdditions = FileDiff(
+    file: aChangedFile(
+        path: "Packages/Granita/Client/Viewer/Ui/DiffCollapsedFileBar.swift",
+        status: .added,
+        insertions: 4,
+        deletions: 0,
+        estimatedLineCount: 4
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 0,
+            oldCount: 0,
+            newStart: 1,
+            newCount: 4,
+            sectionHeading: nil,
+            lines: [
+                addition(new: 1, "public struct DiffCollapsedFileBar: View {"),
+                addition(new: 2, "    public static let height: CGFloat = 44"),
+                addition(new: 3, "    private let file: FileChange"),
+                addition(new: 4, "}")
+            ]
+        )
+    ],
+    oldLineCount: 0,
+    newLineCount: 4,
+    isTruncated: false,
+    truncationReason: nil
+)
+
+/// The mirror: a file an agent removed, which has no new side and therefore no new number on any
+/// row. Design §4 says the column is blank on a deletion row; this is the whole file of them.
+nonisolated let aFileThatIsAllDeletions = FileDiff(
+    file: aChangedFile(
+        path: "Packages/Granita/Client/Viewer/Ui/WorktreeNotReadyView.swift",
+        status: .deleted,
+        insertions: 0,
+        deletions: 3,
+        estimatedLineCount: 3
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 1,
+            oldCount: 3,
+            newStart: 0,
+            newCount: 0,
+            sectionHeading: nil,
+            lines: [
+                deletion(old: 1, "struct WorktreeNotReadyView: View {"),
+                deletion(old: 2, "    var body: some View { Text(\"Not built yet\") }"),
+                deletion(old: 3, "}")
+            ]
+        )
+    ],
+    oldLineCount: 3,
+    newLineCount: 0,
+    isTruncated: false,
+    truncationReason: nil
+)
+
+/// A file long enough that both of its hunks have somewhere left to expand into.
+nonisolated func aFileOf(_ hunks: [Hunk], newLineCount: Int) -> FileDiff {
+    FileDiff(
+        file: aChangedFile(
+            path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
+            status: .modified,
+            insertions: 12,
+            deletions: 4,
+            estimatedLineCount: hunks.reduce(0) { $0 + $1.lines.count }
+        ),
+        hunks: hunks,
+        oldLineCount: newLineCount,
+        newLineCount: newLineCount,
+        isTruncated: false,
+        truncationReason: nil
+    )
+}
+
 // MARK: - The change set, as the continuous scroll sees it
 
 /// Three files: one fetched, one still on its way, one fetched and conflicted.
@@ -260,6 +381,73 @@ private nonisolated let aConflictedFileHunk = Hunk(
     sectionHeading: "func merged() -> [WordSegment]",
     lines: aConflictedHunk
 )
+
+/// The four reasons design §4 draws a bar for, in one scroll, and one file left open under them.
+///
+/// **Every one of these is a different sentence and two of them are a different row**, which is the
+/// whole of what the section argues: a binary file and a rename that changed nothing get no chevron,
+/// because there is nothing behind them and a disclosure control that discloses nothing is the
+/// smallest possible lie. The fifth file is what a bar is measured against.
+nonisolated let aChangeSetOfShutFiles: [ContinuousDiffEntry] = [
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Server/Api/Presentation/GranitaRouter.swift",
+            status: .modified,
+            insertions: 412,
+            deletions: 96,
+            estimatedLineCount: 508,
+            isViewed: true
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Core/Diff/Domain/UnifiedDiffParser.swift",
+            status: .modified,
+            insertions: 1_240,
+            deletions: 318,
+            estimatedLineCount: 1_558,
+            isViewed: false
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Art/icon/granita-tinted.svg",
+            status: .added,
+            insertions: 0,
+            deletions: 0,
+            estimatedLineCount: 0,
+            isViewed: false,
+            isBinary: true
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Server/Sessions/Data/SessionIndex.swift",
+            status: .renamed,
+            insertions: 0,
+            deletions: 0,
+            estimatedLineCount: 0,
+            isViewed: false,
+            oldPath: "Packages/Granita/Server/Sessions/Data/SessionStore.swift"
+        )
+    ),
+    .ready(
+        FileDiff(
+            file: aChangedFile(
+                path: "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
+                status: .conflicted,
+                insertions: 3,
+                deletions: 2,
+                estimatedLineCount: 6
+            ),
+            hunks: [aConflictedFileHunk],
+            oldLineCount: 66,
+            newLineCount: 66,
+            isTruncated: false,
+            truncationReason: nil
+        )
+    )
+]
 
 // MARK: - The change set, as design §3's selector sees it
 
@@ -332,50 +520,31 @@ nonisolated let aChangeSetWorthATree: [FileChange] = [
 /// head truncation at the clamp.
 nonisolated let aShutDirectory = "Apps/GranitaMobileSnapshotTests/__Snapshots__/ServerDiscoveryViewSnapshotTests"
 
+/// One changed file, as the change set reports it. A factory rather than a memberwise call, which is
+/// where this repository allows defaults to live.
 private func aChangedFile(
     path: String,
     status: FileStatus,
     insertions: Int,
     deletions: Int,
     estimatedLineCount: Int,
-    isViewed: Bool
+    isViewed: Bool = false,
+    isBinary: Bool = false,
+    oldPath: String? = nil
 ) -> FileChange {
     FileChange(
         id: FileID(repositoryRelativePath: path),
         path: path,
-        oldPath: nil,
+        oldPath: oldPath,
         status: status,
-        isBinary: false,
+        isBinary: isBinary,
         isSubmodule: false,
         stats: ChangeStats(filesChanged: 1, insertions: insertions, deletions: deletions),
         contentHash: String(repeating: "b", count: 64),
         estimatedLineCount: estimatedLineCount,
         isViewed: isViewed,
         isTruncated: false,
-        language: "swift"
-    )
-}
-
-private func aChangedFile(
-    path: String,
-    status: FileStatus,
-    insertions: Int,
-    deletions: Int,
-    estimatedLineCount: Int
-) -> FileChange {
-    FileChange(
-        id: FileID(repositoryRelativePath: path),
-        path: path,
-        oldPath: nil,
-        status: status,
-        isBinary: false,
-        isSubmodule: false,
-        stats: ChangeStats(filesChanged: 1, insertions: insertions, deletions: deletions),
-        contentHash: String(repeating: "a", count: 64),
-        estimatedLineCount: estimatedLineCount,
-        isViewed: false,
-        isTruncated: false,
-        language: "swift"
+        language: isBinary ? nil : "swift"
     )
 }
 
@@ -395,7 +564,7 @@ struct FakeDiffRepository: GranitaRepository {
         files = entries.map(\.file)
         diffs = Dictionary(
             uniqueKeysWithValues: entries.compactMap { entry in
-                guard case .ready(let diff) = entry else { return nil }
+                guard case .ready(let diff) = entry.content else { return nil }
                 return (entry.id, diff)
             }
         )

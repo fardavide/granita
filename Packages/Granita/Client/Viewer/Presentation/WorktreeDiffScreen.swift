@@ -75,6 +75,20 @@ public struct WorktreeDiffScreen: View {
                 // appears to have done nothing — twice, since it moved and then moved back.
                 Text("The file is still marked as it was. Trying again usually works.")
             }
+            // A second refusal with a sentence of its own rather than one alert covering both. They
+            // are different promises: a mark that moved and came back needs the reader told it came
+            // back, and an expansion that was refused left the hunk exactly as it was.
+            .alert(
+                "Your Mac would not send those lines",
+                isPresented: Binding(
+                    get: { model.expansionFailure != nil },
+                    set: { if $0 == false { model.dismissExpansionFailure() } }
+                )
+            ) {
+                Button("OK") { model.dismissExpansionFailure() }
+            } message: {
+                Text("Nothing was added to the diff. Trying again usually works.")
+            }
             .task { await model.load() }
     }
 
@@ -99,6 +113,8 @@ public struct WorktreeDiffScreen: View {
             onReading: { position in Task { await model.reading(position) } },
             onJumped: model.didJump,
             onSetViewed: { isViewed, file in Task { await model.setViewed(isViewed, on: file) } },
+            onSetOpen: { isOpen, file in Task { await model.setOpen(isOpen, on: file) } },
+            onExpand: { way, hunk, file in Task { await model.expand(way, hunk: hunk, in: file) } },
             onRetry: { Task { await model.load() } }
         )
     }

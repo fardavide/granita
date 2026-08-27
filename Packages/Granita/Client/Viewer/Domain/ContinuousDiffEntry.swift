@@ -1,13 +1,13 @@
 import CoreDiffDomain
 
-/// One file's place in the continuous scroll, and whether its diff has arrived yet.
+/// Whether a file's diff has arrived yet.
 ///
 /// **Both cases are on screen at once, always.** The change set names every changed file before a
 /// single diff is fetched, so the scroll draws all of them from the first frame and fills them in
 /// five ahead of the reader. A file waiting for its diff is not a loading state the reader is
 /// blocked by — it is a stretch of scroll with a reserved height, and reserving that height
 /// correctly enough is the whole of what keeps the content below it from jumping.
-public enum ContinuousDiffEntry: Hashable, Sendable, Identifiable {
+public enum ContinuousDiffContent: Hashable, Sendable {
 
     /// Named, measured and not yet fetched. Carries the estimate the scroll reserves space from.
     case awaiting(FileChange)
@@ -22,8 +22,54 @@ public enum ContinuousDiffEntry: Hashable, Sendable, Identifiable {
         case .ready(let diff): diff.file
         }
     }
+}
+
+/// One file's place in the continuous scroll: what there is of it, and whether it is drawn.
+///
+/// **The collapse is computed rather than stored**, which is what keeps it from disagreeing with the
+/// file it describes. A mark arriving, a diff arriving and the reader pressing a chevron all change
+/// the answer, and three writers of one stored `Bool` is how a file ends up drawn shut while its
+/// header says it is open.
+public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
+
+    public let content: ContinuousDiffContent
+
+    /// The reader's own answer about whether this file is open, where they have given one.
+    ///
+    /// `nil` is not "shut" — it is *nobody has said*, and the difference is what lets marking a file
+    /// read shut it again after the reader had opened it by hand.
+    public let openedByTheReader: Bool?
+
+    public init(content: ContinuousDiffContent, openedByTheReader: Bool?) {
+        self.content = content
+        self.openedByTheReader = openedByTheReader
+    }
+
+    /// Named, measured and not yet fetched.
+    public static func awaiting(_ file: FileChange) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(content: .awaiting(file), openedByTheReader: nil)
+    }
+
+    /// Fetched, and sticky from here.
+    public static func ready(_ diff: FileDiff) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(content: .ready(diff), openedByTheReader: nil)
+    }
+
+    public var file: FileChange { content.file }
 
     public var id: FileID { file.id }
+
+    /// Whether the diff is in hand, which is what the loader asks before spending a batch slot.
+    public var isReady: Bool {
+        switch content {
+        case .awaiting: false
+        case .ready: true
+        }
+    }
+
+    public var collapse: FileCollapse {
+        FileCollapsing.state(of: file, openedByTheReader: openedByTheReader)
+    }
 
     /// How many rows to reserve for a file nobody has seen yet.
     ///
@@ -33,7 +79,7 @@ public enum ContinuousDiffEntry: Hashable, Sendable, Identifiable {
     /// looking at moves when it is corrected — which is why loading runs strictly forward and why
     /// the estimate needs to be reasonable rather than exact.
     public var reservedRows: Int {
-        switch self {
+        switch content {
         case .awaiting(let file): max(1, file.estimatedLineCount)
         case .ready(let diff): diff.hunks.reduce(0) { $0 + $1.lines.count }
         }
@@ -46,9 +92,36 @@ public enum ContinuousDiffEntry: Hashable, Sendable, Identifiable {
     /// still on its way is one of the files that subtree contains. Both cases have to answer, or the
     /// mark is a control that works on some rows and not others.
     ///
-    /// **The height does not move**, which is what makes this safe under the no-reflow rule: neither
-    /// case changes what `reservedRows` answers.
+    /// **The reader's chevron is forgotten here, deliberately.** `SPEC.md` §10 says a file marked
+    /// viewed renders collapsed, and the frame says the same in one sentence — tapping the circle
+    /// marks the file and shuts it. A mark that left an earlier *open* standing would be the one
+    /// gesture in this app that does half of what it says.
     public func viewed(_ isViewed: Bool) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(content: content.viewed(isViewed), openedByTheReader: nil)
+    }
+
+    /// The same entry with the reader's chevron pressed.
+    public func opened(_ isOpen: Bool) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(content: content, openedByTheReader: isOpen)
+    }
+
+    /// The same entry with its diff arrived, keeping what the reader has said about it.
+    ///
+    /// A diff is the Mac answering a question asked before the reader touched anything, so a batch
+    /// landing must not take back a mark they set or a file they opened while it was in flight.
+    public func arrived(_ diff: FileDiff) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(
+            content: ContinuousDiffContent.ready(diff).viewed(file.isViewed),
+            openedByTheReader: openedByTheReader
+        )
+    }
+}
+
+// MARK: -
+
+private extension ContinuousDiffContent {
+
+    func viewed(_ isViewed: Bool) -> ContinuousDiffContent {
         switch self {
         case .awaiting(let file):
             .awaiting(file.viewed(isViewed))

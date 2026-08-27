@@ -20,11 +20,11 @@ import CoreDiffDomain
 /// question about a real scroll under a real thumb, and it goes with the rest of §4's device
 /// questions. See `.claude/docs/decisions.md`.
 ///
-/// **The viewed toggle is here and the collapse chevron is not.** Design §4 puts both on this line;
-/// the mark now has a writer and collapse does not, so the one that works ships and the one that
-/// would do nothing is absent rather than drawn greyed. §4 is explicit that tapping a header *with a
-/// chevron on it* must collapse the file, so a chevron that only decorates would be worse here than
-/// anywhere.
+/// **Both controls design §4 puts on this line are here now.** The chevron shuts the file, which is
+/// what `SPEC.md` §10 means by a file marked viewed rendering collapsed, and the circle writes the
+/// mark. §4 is explicit that tapping a header *with a chevron on it* must collapse the file, so the
+/// glyph is the control rather than a decoration beside one — pressing the header anywhere along its
+/// leading run shuts the file.
 ///
 /// **The toggle is the only writer of the mark, which is the product's one job.** §4 refuses to
 /// infer it: an inferred "viewed" that fires on a fast flick is the app lying about the only thing
@@ -32,17 +32,25 @@ import CoreDiffDomain
 public struct DiffFileHeader: View {
 
     private let file: FileChange
-    private let onSetViewed: (Bool) -> Void
+    private let onSetOpen: (Bool, FileID) -> Void
+    private let onSetViewed: (Bool, FileID) -> Void
 
-    public init(file: FileChange, onSetViewed: @escaping (Bool) -> Void) {
+    /// **Both report which file they are about**, rather than being handed closures that already
+    /// know. The header has the file; a caller re-attaching its identifier is a wrapper per header
+    /// per frame, and one more place for the wrong identifier to be attached.
+    public init(
+        file: FileChange,
+        onSetOpen: @escaping (Bool, FileID) -> Void,
+        onSetViewed: @escaping (Bool, FileID) -> Void
+    ) {
         self.file = file
+        self.onSetOpen = onSetOpen
         self.onSetViewed = onSetViewed
     }
 
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            FileStatusLetter(status: file.status)
-            path
+            shutControl
             Spacer(minLength: 8)
             if file.status == .conflicted {
                 badge
@@ -61,12 +69,28 @@ public struct DiffFileHeader: View {
         .overlay(alignment: .bottom) { Divider() }
     }
 
-    /// Head-truncated, which is §3's rule derived from what the string is: a path's tail is the
-    /// filename, and the filename is what identifies it.
-    private var path: some View {
-        Text(verbatim: file.path)
-            .lineLimit(1)
-            .truncationMode(.head)
+    /// The chevron, the status letter and the path in one control, because §4 requires that tapping
+    /// a header carrying a chevron shuts the file — a glyph the size of a chevron in a 28pt strip is
+    /// not a tap target a thumb finds, and one that misses is a control that did nothing.
+    ///
+    /// The path is head-truncated, which is §3's rule derived from what the string is: a path's tail
+    /// is the filename, and the filename is what identifies it.
+    private var shutControl: some View {
+        Button { onSetOpen(false, file.id) } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                FileStatusLetter(status: file.status)
+                Text(verbatim: file.path)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(verbatim: file.path))
+        .accessibilityHint("Collapses this file")
     }
 
     /// The one status worth a badge, so the reader knows before they scroll into it.
@@ -88,7 +112,7 @@ public struct DiffFileHeader: View {
     /// reader can see rather than an empty slot — the selector's row uses the bare check because
     /// there it reports rather than acts.
     private var viewedToggle: some View {
-        Button { onSetViewed(file.isViewed == false) } label: {
+        Button { onSetViewed(file.isViewed == false, file.id) } label: {
             Image(systemName: file.isViewed ? "checkmark.circle.fill" : "circle")
                 .font(.footnote)
                 .foregroundStyle(file.isViewed ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))

@@ -71,6 +71,21 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.4.0 — 2026-08-27
+- **A file you have marked as read now shuts itself.** It becomes a single bar with its name, its
+  numbers and the reason it is shut, and the diff you have already been through stops taking up the
+  scroll. Tap the bar to open it again; tap the chevron in a file's header to shut one by hand.
+- **Every shut file says why it is shut**, which is the point of the bar: *viewed*, *binary · no diff
+  to show*, *renamed from … · no content change*, or how many lines it has with *Load diff* beside
+  them. A binary file and a rename that changed nothing have no chevron at all — there is nothing
+  behind them to open.
+- **A very large file is no longer fetched until you ask for it.** Over 500 lines of diff it arrives
+  shut, so opening a forty-file worktree no longer spends its first seconds on the one file you were
+  never going to read on a phone. Files you read in an earlier sitting are skipped the same way.
+- **You can see the lines a diff left out.** Every hunk band now carries a control at its right-hand
+  end for the code above it and the code below it, twenty lines a press, and the control disappears
+  when there is nothing left in that direction.
+
 ### 0.3.2 — 2026-08-27
 - **One unreadable file no longer hides a whole worktree.** A symlink pointing at a folder is
   something git refuses to hash, and it was taking the entire change set down with it — two of the

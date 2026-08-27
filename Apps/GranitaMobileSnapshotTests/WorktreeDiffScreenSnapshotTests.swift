@@ -69,6 +69,24 @@ struct WorktreeDiffScreenSnapshotTests {
         assertScreenSnapshot(screen(of: model), layout: layout, named: "one-changed-file")
     }
 
+    /// **The toolbar button is absent here, and until now that was a claim in a comment.**
+    ///
+    /// A worktree with nothing in it has no file list, so a *Files* button would open an empty drawer
+    /// and say nothing about why. The screen has never been rendered in any state but `reading`, so
+    /// the branch that leaves it out had never been drawn — which is exactly the shape of the thing
+    /// this project keeps finding: an argument nobody photographed.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a clean worktree when the screen is rendered then it offers no way to a file list`(
+        layout: SnapshotLayout
+    ) async {
+        // given — reached on purpose: the sidebar's *Show them anyway* is how a reader opens a
+        // worktree they were told was clean.
+        let model = await aLoadedViewerModel(of: [])
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-clean-worktree")
+    }
+
     /// The mark is written optimistically, so a refusal has to take it back **and say so** — a mark
     /// that moved and then silently moved back is the app disagreeing with the reader about the one
     /// thing it is for.

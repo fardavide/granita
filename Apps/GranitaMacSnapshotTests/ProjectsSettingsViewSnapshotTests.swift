@@ -41,7 +41,13 @@ struct ProjectsSettingsViewSnapshotTests {
                     project(name: "oltre", path: "/Developer/oltre", isVisible: false,
                             contents: .worktrees(count: 2), changes: .counting),
                     project(name: "aura", path: "/Developer/aura", isVisible: true,
-                            contents: .folderNotFound, changes: .counting)
+                            contents: .folderNotFound, changes: .counting),
+                    // **A repository with exactly one checkout**, which is every repository before
+                    // an agent has been let near it and the one spelling of this line that had never
+                    // been drawn. Left unphotographed it ships as *1 worktrees*, seen first by
+                    // whoever adds their first project.
+                    project(name: "kickstart", path: "/Developer/kickstart", isVisible: true,
+                            contents: .worktrees(count: 1), changes: .counted(0))
                 ],
                 failure: nil,
                 selected: nil

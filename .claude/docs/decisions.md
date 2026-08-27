@@ -3916,3 +3916,175 @@ exists to carry.
 The line leads with git's sentence and trails the command, and `RepositoryRelativePath` describes
 itself as the path. Measured rather than reasoned: the symlink above had to be reproduced by hand
 because its stderr never reached the log.
+
+## A shut file is a bar in the header's slot, and its reason is the field the specification forgot
+
+`SPEC.md` §10 says a file marked viewed renders collapsed and that a file over 500 diff lines starts
+collapsed with a *Load diff* affordance. 0.3.0 built the mark and left the diff open under it, which
+made the toggle a control that moved a circle. This is the other half.
+
+**The bar goes where the header goes**, in the section header's slot, with nothing under it. The
+alternative — a header over an empty section — keeps two rows where the design draws one and leaves
+the reason with nowhere to live. A shut file is therefore 44pt and not one row more, which is what
+makes collapsing worth doing at all.
+
+**Four reasons, and the reason is the whole point.** Design §4 added it to the specification and
+argued it: without it the reader opens a file to learn there was nothing in it, which is the exact
+cost collapsing was supposed to save. A binary file and a rename with no content change get **no
+chevron at all** and the row stops being a button with it — there is nothing behind them, and a
+disclosure control that discloses nothing is the smallest possible lie. The frame draws those two
+chevrons faded; a faded chevron is still a chevron.
+
+**"viewed", not "viewed 4 minutes ago".** The Mac stores a mark as the content hash it was set
+against and keeps no time beside it, so the elapsed reading is a number this phone would have to
+invent. Same shape as §3's truncation footer above, and the same answer: a sentence that is true
+beats a sentence that matches a drawing. Putting a timestamp in the store is a change to `SPEC.md`
+§5.5's viewed map on both ends for one adverb, and it is not one this slice asked for.
+
+**An unread bar carries no empty circle**, which the frame draws on three of its four rows. The
+circle in the file header is a *control* — it is the only writer of the mark there is — and the same
+glyph on a row whose whole tap target opens the file would read as a second control inside the first,
+which is §3's two-tap-targets problem in a 44pt row. So the mark appears on a bar only when it is
+set, as a bare check, exactly as §3's selector row does it.
+
+**A fifth case the design does not draw: the reader shuts a file by hand.** It has no reason line, so
+the bar is one line rather than two. Telling someone they shut a file they have just shut is a line
+that says nothing. It is photographed, because a state argued for in a comment and never rendered is
+a state nothing holds anybody to.
+
+**The reader's chevron is forgotten when the mark moves.** `viewed(_:)` clears the override rather
+than preserving it, so marking a file read always shuts it — which is what §10 asks for and what the
+frame says in one sentence. A mark that left an earlier *open* standing would be the one gesture in
+this app that does half of what it says.
+
+> Rejected: a `Bool` for the reader's answer defaulting to the automatic one. The difference between
+> *the reader wants this open* and *nobody has said* is what lets a mark shut a file the reader had
+> opened by hand, and one `Bool` cannot hold both.
+
+## A file drawn shut is not fetched, which is what makes *Load diff* true
+
+`ContinuousDiffLoading` gained a third set beside `held` and `inFlight`, and **unlike `held` it
+shrinks**: a reader opening a bar takes a file out of it.
+
+Without it the affordance is a label. `SPEC.md` §10 puts *Load diff* on a file over 500 diff lines by
+name, and a phone that had already spent a batch slot on 1,558 lines nobody asked to see would be
+offering to do what it had done. It also pays for itself on the ordinary screen: in a change set the
+reader has been through once, every file they read is shut, and those are exactly the diffs not worth
+twenty seconds of somebody's network.
+
+The other half is that opening one **fetches it**, in the model, as a batch of one. Without that,
+pressing a bar leaves a header over a blank stretch that nothing ever fills — the dead control this
+project shipped for eight releases, arriving through the door built to stop it.
+
+> A mark set while the file is on screen costs nothing, because its diff is already in hand. What the
+> rule defers is the files that were read in an earlier sitting, which is the case it is for.
+
+## Expansion is spliced into the diff rather than kept beside it
+
+`SPEC.md` §8 makes `/lines` stateless on purpose: one parameter cannot express "hunk 2 expanded up
+and hunk 5 expanded down", so the Mac hands over raw lines and holds no position. The obvious
+reading of "the client owns expansion state" is a structure beside the diff saying how far each hunk
+has grown. **This does not do that.** Splicing produces a wider `Hunk` — new bounds, new counts, the
+context lines in file order — so "is there anything left above this one" is answered by the hunk
+itself and cannot drift from what is drawn. The control disappears the moment the gap it opens is
+closed, without anything having to keep the two in step.
+
+Three things fell out of building it, and each is asserted:
+
+- **A zero count is not an empty range at the line it names.** git writes `+c,0` for a hunk that adds
+  nothing, where `c` is the last line *before* the change on the new side rather than the first line
+  of it. Measuring either window from `c` hands back a line the hunk is already drawing. The same
+  rule makes a wholly deleted file answer "nothing to expand" on both sides, which is correct — the
+  hunk already holds every line there is.
+- **The offset between the two sides is not one number.** Above a hunk it is the distance between the
+  two ranges' first lines; below it, between their last. A hunk that adds three lines leaves the
+  sides three further apart on the way out than on the way in, and using one offset for both would
+  produce a gutter that is plausible and wrong.
+- **Every window is read from the new side.** A context line is by definition the same on both, the
+  reader is reading the working copy, and the one case with no new side has no gap to ask about.
+
+**Twenty lines a press, stated rather than settled.** At §4's 11pt that is about a third of a phone
+screen — enough to see what encloses a change, little enough that the line the reader was on is still
+on screen afterwards. A press that scrolls past a full screen of new context loses their place, which
+is the thing expansion exists to protect.
+
+**A refused expansion is reported where a refused batch is not**, and the difference is what the
+reader did. A batch is fetched on their behalf while they scroll, so losing one leaves placeholders
+the next scroll asks about again. An expansion is a control they pressed, and a press that leaves the
+hunk exactly as it was is a control that did nothing — so it gets an alert of its own, with its own
+sentence, rather than sharing the mark's.
+
+**Two presses inside one round trip would splice one window twice**, and that is recorded rather than
+guarded. Both compute their window before either lands, so both ask for the same lines and both
+splice them. The guard is a branch no test kind here can drive — it needs two calls genuinely
+overlapping, and therefore a fake that holds a request open — and an untested branch is worse than a
+defect whose symptom is twenty context lines appearing twice with the gutter numbers saying so. It is
+on the device afternoon's list, which is where it can be seen.
+
+## `DisplayWidth` is public now, because the client makes lines the parser never saw
+
+The type's own comment said it is measured on the server "rather than on the client", and the reason
+is the one that matters: two implementations of one Unicode judgement is a disagreement waiting to
+become a row-count error in a scroll that must never reflow. Context expansion turns raw text from
+`/lines` into diff lines **on the phone**, which need that number like any other.
+
+So the answer is not a second implementation on the client — it is the same one, exported. What the
+comment protects is one measurement, not one side.
+
+## The hunk band grows to 44pt only where it carries a control
+
+Design §4 puts the expand control on the band's trailing edge in a 44pt hit area, and not the leading
+edge, which is the gutter's column — a glyph there reads as a line number. Taken literally that makes
+the band nearly four times its previous height, which is real screen on a phone; taken loosely it
+makes a tap target a thumb misses, and a control that misses is a control that did nothing.
+
+It is taken literally, and bounded: a hunk with no gap above or below it draws no control and keeps
+the thin band it always had, so the cost is paid only where there is something to press. Whether four
+of these in one file is too much is a question for the same thumb that owes §4 its other answers.
+
+> Rejected: a hit area larger than the row it is drawn in. It overlaps the code above and below, and
+> a tap that lands on a diff line and expands a hunk is worse than one that misses.
+
+## The bar's rule is a rectangle, because `Divider` picked its own axis
+
+`Divider` takes its orientation from the layout it is in. Inside a `Button`'s label it read the bar's
+own `HStack` and drew itself **vertically** — a stray line down the middle of the two bars that are
+buttons, and no rule under them, while the two that are not buttons got the horizontal one. The first
+baseline is what said so; nothing in the code reads as if it could happen.
+
+It is an explicit rectangle at a stated height now. That is this repository's third measurement that
+settled itself differently in two places, after the list margin and the scroll position, and the
+answer is the same one: state the value rather than loosen what checks it.
+
+## `NoWorktreeChosenView` stays, and the split screen's destination stays doubled
+
+Both were left open by 0.3.0 for Davide, and both are settled as they stood.
+
+The empty detail column keeps its unavailable-content view, because design §2 asks for one in as many
+words and the composition that ships still has it. The doubled `navigationDestination` stays doubled,
+because what it settles is which of two containers claims a tap, and removing a declaration to find
+out is exactly how this app shipped a row that did nothing. It costs one duplicated line and it is
+correct in both layouts; the finger that settles it is the same one the device afternoon owes §4.
+
+## Seven spellings nobody had photographed, found by a fallen coverage row
+
+The Snapshot regions row fell by 0.3% when this slice put five controls on three views. That is the
+structural gap the `swift-testing` skill records rather than a thing done wrong here: an action
+closure in a view body is uncoverable by every test kind that runs in this repository, and the
+sanctioned remedy is to find genuine unphotographed view fallbacks. There were seven.
+
+Three on the phone: a wholly added file and a wholly deleted file, which are the gutter's own `?? 0`
+fallbacks and had never been drawn over a whole file; and the diff screen over a clean worktree,
+whose *Files* button had been argued absent in a comment and never rendered. Two wrapper closures
+went with them, by letting the header and the bar report **which** file they are about — which they
+already hold, so the caller was re-attaching an identifier for no reason.
+
+Four on the Mac, and every one a singular-or-plural the app would have shipped wrong: Advanced's
+count-spelling table has six arms and three had never been rendered; the connection log had never
+drawn a single served request, so *1 requests* was one release away on the panel a reader opens under
+pressure; and Projects had never drawn a repository with one checkout. That is the same reason the
+phone photographs *1 file* beside *7 files*.
+
+**The row is a ratchet with no slack, and this will recur** on every slice that adds controls. What
+closes it for good is the `ui` kind, which needs the Accessibility grant and an
+`Apps/GranitaMobileUiTests` that has never existed.

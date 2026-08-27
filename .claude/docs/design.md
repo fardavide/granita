@@ -465,15 +465,18 @@ The states:
 
 *Should feel like* the Xcode navigator, minus the parts of the Xcode navigator nobody uses on a phone.
 
-## §4 — The continuous diff *(M5 — the wrap-off scroll is built; the rest is drawn)*
+## §4 — The continuous diff *(M5 — everything but highlighting, wrap-on and the header's second form)*
 
-**What 0.2.0 builds, and what it deliberately does not.** The one continuous scroll, the gutter, the
-line tints and the word segments, the hunk bands and a sticky file header are on the phone. The
-collapsed bars, hunk expansion, the viewed toggle, syntax highlighting and the wrap-on mode are not,
-and each is absent rather than disabled — nothing on that screen is a control that does not work.
-Two calls below were changed by building them, and both say so where they are made: the row splits
-into two view trees, and the file header ships in one form. Both are in
-[`decisions.md`](decisions.md).
+**What is built, and what deliberately is not.** The one continuous scroll, the gutter, the line
+tints and the word segments, the hunk bands and a sticky file header landed in 0.2.0; the viewed
+toggle in 0.3.0; **the collapsed bars and hunk expansion in 0.4.0**. What is left is syntax
+highlighting, the wrap-on mode and the header's second form, and each is absent rather than disabled
+— nothing on that screen is a control that does not work.
+
+Five calls below were changed by building them, and each says so where it is made: the row splits
+into two view trees, the file header ships in one form, a shut file's bar replaces its header rather
+than sitting under one, the bar for a *viewed* file says "viewed" and cannot say how long ago, and
+the band grows to 44pt only where it carries a control. All are in [`decisions.md`](decisions.md).
 
 ### The file header sticks, and costs 28pt — but only if the toolbar goes
 
@@ -543,6 +546,20 @@ already low-contrast.
 
 ### A collapsed bar must say why it is shut
 
+> **Built in 0.4.0, and it goes where the header goes** *(26 August 2026)*. A shut file is the bar
+> in the section header's slot with nothing under it, rather than a header over an empty section —
+> which keeps two rows where this section draws one and leaves the reason nowhere to live. A shut
+> file is 44pt and not one row more, which is what makes collapsing worth doing.
+>
+> **The viewed bar says "viewed" and cannot say how long ago.** The Mac stores a mark as the content
+> hash it was set against and keeps no time beside it, so the elapsed reading is a number the phone
+> would have to invent — the same call as §3's truncation footer, and the same reason.
+>
+> **A fifth case this section does not draw: the reader shuts a file by hand.** No reason line, so
+> the bar is one line rather than two. Telling someone they shut a file they have just shut is a line
+> that says nothing. And the two chevron-less rows are drawn **without** the faded chevron the frame
+> shows, because a faded chevron is still a chevron.
+
 44pt, and four things: status letter, head-truncated path, stats, and — the one the specification does
 not name — **the reason**. "viewed 4 minutes ago", "1,558 lines · Load diff", "binary · no diff to
 show", "renamed from … · no content change". Without the reason the reader has to open a file to
@@ -551,7 +568,23 @@ learn there was nothing in it, which is the exact cost collapsing was supposed t
 A binary file and a rename with no content change get **no chevron at all**. There is nothing behind
 them, and a disclosure control that discloses nothing is the smallest possible lie.
 
+**The bar is also the fetch.** `SPEC.md` §10's *Load diff* is only true if the diff was not fetched,
+so the scroll steps over every file it is drawing shut and opening one asks for it. That is why the
+affordance is the whole row rather than a word.
+
 ### Expansion lives on the trailing edge of the hunk header
+
+> **Built in 0.4.0, twenty lines a press, and the band grows only where it can be pressed**
+> *(26 August 2026)*. The 44pt hit area is taken literally, which makes a band carrying a control
+> nearly four times the height of one that does not — so a hunk with no gap above or below it keeps
+> the thin band it always had, and the cost is paid only where there is something to press. Twenty
+> lines is about a third of a phone screen at 11pt: enough to see what encloses a change, little
+> enough that the line the reader was on is still on screen afterwards.
+>
+> **"Expand all" is not built**, and neither is the menu it lives in. That menu is also where *Mark
+> everything above as viewed* and *Open on its own* belong, so it arrives whole or not at all; it is
+> absent rather than drawn, and one visible control per hunk is what this section already calls
+> enough.
 
 The hunk header is already a full-width band carrying git's section heading — the most useful free
 string in the whole diff, and the reason the header does not read as content. Put the expand control
