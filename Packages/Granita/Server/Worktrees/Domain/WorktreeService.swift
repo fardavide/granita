@@ -83,7 +83,7 @@ public struct WorktreeService: Sendable {
         let entries = tracked(changes, statsBy: numbers, conflicted: conflicted)
             + untracked.filter { $0.text.hasSuffix("/") == false }.map(Entry.untracked)
         let kept = Array(entries.prefix(limits.maximumChangedFiles))
-        let worktreeObjectIds = try await worktreeObjectIds(for: kept, in: worktree)
+        let worktreeObjectIds = await worktreeObjectIds(for: kept, in: worktree)
 
         var files: [FileChange] = []
         var paths: [FileID: RepositoryRelativePath] = [:]
@@ -236,28 +236,72 @@ public struct WorktreeService: Sendable {
         }
     }
 
+    /// Never throws, which is the change: a worktree the reader cannot open at all is a worse answer
+    /// than a worktree where one file's mark stops self-correcting.
     private func worktreeObjectIds(
         for entries: [Entry],
         in worktree: RepositoryLocation
-    ) async throws(GitError) -> [String] {
+    ) async -> [String] {
         // Two kinds of entry have no working-tree blob: a file that is gone, and a submodule,
         // which is a directory as far as this Mac is concerned. Either one fails the **whole**
         // batch rather than its own line, so both are left out and take the absent id.
         let present = entries.filter { $0.hasWorktreeBlob }
         guard present.isEmpty == false else { return entries.map { _ in ContentHash.absentObjectId } }
 
-        let output = try await git.run(
-            .hashWorktreeFiles(paths: present.map(\.path)),
-            in: worktree
-        ).standardOutput
-        var hashed = String(decoding: output, as: UTF8.self)
+        // **A path git will not hash costs its own content hash and nothing else.** The comment two
+        // functions up called this out for deleted files and submodules and filtered those; what it
+        // could not filter is a path that looks ordinary and is not. A **symlink pointing at a
+        // directory** is reported by `ls-files --others` as a plain untracked file — git treats a
+        // symlink as a file, so there is no trailing separator to filter on — and `hash-object`
+        // follows it, finds a directory, and exits 128 for the **whole batch**. Two of Davide's
+        // `bandlab-android` worktrees carry one, and the phone could list no worktree at all.
+        //
+        // So the batch is tried first and is still the ordinary path — one process for a whole
+        // worktree. Only when it fails does this hash them one at a time, which costs a process per
+        // file exactly once, in a worktree that has something wrong with it.
+        //
+        // **The partial output of the failed batch is deliberately not used.** `commandFailed`
+        // carries git's standard error and not its standard output, so the hashes it managed to
+        // print never arrive here — and guessing how many it printed is how the object ids shift by
+        // one against the files they belong to, which is a wrong content hash for every file after
+        // the bad one and a mark silently taken off work somebody had read.
+        let hashed: [String]
+        do {
+            hashed = try await objectIds(of: present.map(\.path), in: worktree)
+        } catch {
+            hashed = await withoutTheOneThatRefuses(present.map(\.path), in: worktree)
+        }
+
+        var answers = hashed.makeIterator()
+        return entries.map { entry in
+            entry.hasWorktreeBlob ? (answers.next() ?? ContentHash.absentObjectId) : ContentHash.absentObjectId
+        }
+    }
+
+    private func objectIds(
+        of paths: [RepositoryRelativePath],
+        in worktree: RepositoryLocation
+    ) async throws(GitError) -> [String] {
+        let output = try await git.run(.hashWorktreeFiles(paths: paths), in: worktree).standardOutput
+        return String(decoding: output, as: UTF8.self)
             .split(separator: "\n", omittingEmptySubsequences: true)
             .map(String.init)
-            .makeIterator()
+    }
 
-        return entries.map { entry in
-            entry.hasWorktreeBlob ? (hashed.next() ?? ContentHash.absentObjectId) : ContentHash.absentObjectId
+    /// One path at a time, so the one git refuses is the only one that loses its hash.
+    ///
+    /// Never throws: this is already the failure path, and a worktree the reader cannot open at all
+    /// is a worse answer than a worktree where one file's mark stops self-correcting.
+    private func withoutTheOneThatRefuses(
+        _ paths: [RepositoryRelativePath],
+        in worktree: RepositoryLocation
+    ) async -> [String] {
+        var answers: [String] = []
+        for path in paths {
+            let one = try? await objectIds(of: [path], in: worktree)
+            answers.append(one?.first ?? ContentHash.absentObjectId)
         }
+        return answers
     }
 
     /// Keeps whole hunks up to a line budget, so a truncated diff never ends mid-hunk.

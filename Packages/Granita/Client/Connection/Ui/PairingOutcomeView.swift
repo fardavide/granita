@@ -173,10 +173,15 @@ public struct PairingOutcomeView: View {
 
         case .unauthorized, .projectNotVisible, .worktreeGone, .fileGone, .staleContentHash,
              .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion, .requestNotBuildable,
-             .notUnderstood:
+             .notUnderstood, .cancelled:
             // Everything a Mac can answer that is not one of the three above. They share a remedy
             // and a sentence, and what tells them apart is the small print — which is what the
             // small print is for.
+            //
+            // **`cancelled` is in here rather than given a screen**, and that is deliberate: a
+            // pairing is a sequence the reader is watching, so the only way to cancel one is to
+            // leave — and a screen nobody is on needs no words. What it must not do is claim the
+            // code was spent, so it takes the sentence that offers another attempt.
             couldNotPair(diagnostic: failure.diagnostic)
         }
     }

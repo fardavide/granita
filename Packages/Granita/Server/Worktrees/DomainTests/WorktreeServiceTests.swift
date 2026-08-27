@@ -20,9 +20,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 600d48a 0102a25 R074", "old.txt", "new.txt"],
             numstat: ["1\t1\t", "old.txt", "new.txt"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: ["0102a25aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -44,9 +42,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "tracked.txt"],
             numstat: ["2\t0\ttracked.txt"],
             untracked: ["fresh.txt"],
-            status: [],
-            worktreeObjectIds: ["1111111111111111111111111111111111111111", "2222222222222222222222222222222222222222"]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -68,9 +64,7 @@ struct WorktreeServiceTests {
             raw: [],
             numstat: [],
             untracked: [".claude/worktrees/agent-slice/", "src/real.txt"],
-            status: [],
-            worktreeObjectIds: ["8888888888888888888888888888888888888888"]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -89,9 +83,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "conflict.txt"],
             numstat: ["4\t2\tconflict.txt"],
             untracked: [],
-            status: ["u UU N... 100644 100644 100644 100644 aaa bbb ccc conflict.txt"],
-            worktreeObjectIds: ["3333333333333333333333333333333333333333"]
-        )
+            status: ["u UU N... 100644 100644 100644 100644 aaa bbb ccc conflict.txt"]        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -112,7 +104,6 @@ struct WorktreeServiceTests {
             numstat: ["1\t0\tfirst.txt"],
             untracked: [],
             status: [],
-            worktreeObjectIds: ["4444444444444444444444444444444444444444"],
             revision: .emptyTree
         )
 
@@ -135,9 +126,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "seen.txt"],
             numstat: ["1\t1\tseen.txt"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: ["5555555555555555555555555555555555555555"]
-        )
+            status: []        )
         let unmarked = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
         let file = unmarked.files[0]
 
@@ -159,9 +148,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "seen.txt"],
             numstat: ["1\t1\tseen.txt"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: ["6666666666666666666666666666666666666666"]
-        )
+            status: []        )
         let fileId = FileID(repositoryRelativePath: "seen.txt")
 
         // when — the hash the reader marked belongs to a version the agent has since replaced.
@@ -191,7 +178,6 @@ struct WorktreeServiceTests {
             numstat: numstat,
             untracked: [],
             status: [],
-            worktreeObjectIds: Array(repeating: String(repeating: "7", count: 40), count: 5),
             limits: WorktreeLimits(maximumChangedFiles: 3, maximumDiffLines: 20_000, truncatedDiffLines: 2_000)
         )
 
@@ -215,9 +201,7 @@ struct WorktreeServiceTests {
             raw: [":100644 000000 aaa 0000000 D", "gone.txt", ":100644 100644 bbb 0000000 M", "here.txt"],
             numstat: ["0\t3\tgone.txt", "1\t1\there.txt"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: ["9999999999999999999999999999999999999999"]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -238,8 +222,7 @@ struct WorktreeServiceTests {
             raw: [":160000 160000 aaa bbb M", "vendor/sub"],
             numstat: ["1\t1\tvendor/sub"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: []
+            status: []
         )
 
         // when
@@ -258,9 +241,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "photo.png"],
             numstat: ["-\t-\tphoto.png"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: [String(repeating: "a", count: 40)]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -278,9 +259,7 @@ struct WorktreeServiceTests {
             raw: [":100644 100644 aaa 0000000 M", "Sources/Thing.swift"],
             numstat: ["2\t1\tSources/Thing.swift"],
             untracked: [],
-            status: [],
-            worktreeObjectIds: [String(repeating: "b", count: 40)]
-        )
+            status: []        )
 
         // when
         let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
@@ -315,7 +294,6 @@ struct WorktreeServiceTests {
             numstat: ["2\t2\tbig.txt"],
             untracked: [],
             status: [],
-            worktreeObjectIds: [String(repeating: "c", count: 40)],
             fileDiff: diff,
             limits: WorktreeLimits(maximumChangedFiles: 1_000, maximumDiffLines: 3, truncatedDiffLines: 3)
         )
@@ -346,9 +324,7 @@ struct WorktreeServiceTests {
             raw: [],
             numstat: [],
             untracked: ["fresh.txt"],
-            status: [],
-            worktreeObjectIds: [String(repeating: "d", count: 40)]
-        )
+            status: []        )
         let file = try #require(
             try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first
         )
@@ -374,7 +350,6 @@ struct WorktreeServiceTests {
             numstat: [],
             untracked: [],
             status: [],
-            worktreeObjectIds: [],
             failure: .commandFailed(
                 command: .worktreeStatus,
                 exitCode: 128,
@@ -409,8 +384,7 @@ struct WorktreeServiceTests {
             raw: [],
             numstat: [],
             untracked: [],
-            status: ["1 .M N... 100644 100644 100644 aaa bbb src/edited.swift"],
-            worktreeObjectIds: []
+            status: ["1 .M N... 100644 100644 100644 aaa bbb src/edited.swift"]
         )
 
         // when
@@ -423,7 +397,7 @@ struct WorktreeServiceTests {
     @Test
     func `given a clean worktree when asked whether it changed then it has not`() async throws {
         // given
-        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [], worktreeObjectIds: [])
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
 
         // when
         let changed = try await scenario.sut.hasChanges(in: scenario.location)
@@ -439,8 +413,7 @@ struct WorktreeServiceTests {
             raw: [],
             numstat: [],
             untracked: [],
-            status: ["? new.swift"],
-            worktreeObjectIds: []
+            status: ["? new.swift"]
         )
 
         // when
@@ -450,6 +423,58 @@ struct WorktreeServiceTests {
         // set to evaluate one boolean is what costs 122.7 seconds across ten real repositories, and
         // this is the panel that draws a row per project.
         #expect(await scenario.git.received == [.worktreeStatus])
+    }
+
+    @Test
+    func `given a path git cannot hash when the change set is built then only that file loses its hash`(
+    ) async throws {
+        // given — a symlink pointing at a directory, which `ls-files --others` reports as an
+        // ordinary untracked path because git treats a symlink as a file. `hash-object` follows it,
+        // finds a directory, and **fails the whole batch with exit 128** — which until this test
+        // took the entire worktree down with it. Found on a real Mac: two of Davide's
+        // `bandlab-android` worktrees carry one, and the phone could not list any worktree at all.
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: ["kept.txt", "linked-directory", "also-kept.txt"],
+            status: [],
+            unhashablePaths: ["linked-directory"]
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then — the change set survives, and every file is in it.
+        #expect(changeSet.files.map(\.path) == ["kept.txt", "linked-directory", "also-kept.txt"])
+
+        // and the two git *could* hash keep hashes of their own, which is what makes a mark
+        // self-correcting when the file changes underneath it. Losing those to one bad neighbour
+        // would make "viewed" stick to content nobody has seen.
+        let kept = try #require(changeSet.files.first { $0.path == "kept.txt" })
+        let alsoKept = try #require(changeSet.files.first { $0.path == "also-kept.txt" })
+        let refused = try #require(changeSet.files.first { $0.path == "linked-directory" })
+        #expect(kept.contentHash != alsoKept.contentHash)
+        #expect(refused.contentHash != kept.contentHash)
+    }
+
+    @Test
+    func `given a path git cannot hash when the change set is built then the batch is tried before the fallback`(
+    ) async throws {
+        // given — the fallback costs one process per file, so it must never be the ordinary path:
+        // a worktree with nothing wrong in it hashes in a single call.
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: ["one.txt", "two.txt"],
+            status: []
+        )
+
+        // when
+        _ = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        let hashes = await scenario.git.received.filter { if case .hashWorktreeFiles = $0 { true } else { false } }
+        #expect(hashes.count == 1)
     }
 
     // MARK: - Scenario
@@ -466,7 +491,7 @@ struct WorktreeServiceTests {
             numstat: [String],
             untracked: [String],
             status: [String],
-            worktreeObjectIds: [String],
+            unhashablePaths: Set<String> = [],
             revision: GitRevision = .head,
             fileDiff: String = "",
             failure: GitError? = nil,
@@ -481,7 +506,7 @@ struct WorktreeServiceTests {
                     .worktreeStatus: nulSeparated(status)
                 ],
                 failures: failure.map { [.worktreeStatus: $0] } ?? [:],
-                hashedObjectIds: worktreeObjectIds,
+                unhashablePaths: unhashablePaths,
                 anyFileDiff: Data(fileDiff.utf8)
             )
             sut = WorktreeService(git: git, limits: limits)

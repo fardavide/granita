@@ -27,3 +27,15 @@ public struct RepositoryRelativePath: Hashable, Sendable {
         String(decoding: bytes, as: UTF8.self)
     }
 }
+
+extension RepositoryRelativePath: CustomStringConvertible {
+
+    /// The path, because a log line naming eleven of these is written for somebody trying to find
+    /// out which one went wrong.
+    ///
+    /// The synthesised description is `RepositoryRelativePath(bytes: 36 bytes)`, which says the one
+    /// thing nobody needs and pushes what they do need past the unified log's 1 KB truncation. That
+    /// is not hypothetical: it is why a failing `hash-object` had to be reproduced by hand rather
+    /// than read.
+    public var description: String { text }
+}

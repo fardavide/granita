@@ -61,9 +61,30 @@ public final class ClientWorktreesModel {
     /// One request rather than one per project: the grouping is this side's arrangement of a single
     /// answer, and asking per project would make the order the list is drawn in depend on which
     /// request finished first.
+    /// Reads the Mac's worktrees, and says it is doing so.
+    ///
+    /// **The spinner is the retry's only feedback.** `/v1/worktrees` builds a change set for every
+    /// worktree of every enabled project, which on ten real repositories has been measured at over
+    /// two minutes — so a *Try Again* that left the failure on screen was indistinguishable from a
+    /// button with nothing behind it, and was reported as one. Going back to `loading` costs nothing
+    /// on the first read, where that is already the state.
+    ///
+    /// **A cancelled read is not a failure.** A `.task` is torn down whenever its view goes away, so
+    /// opening a worktree while this is still loading cancels it — and reporting that as *Could not
+    /// read your Mac* is the app blaming the Mac for something the app did.
     public func load() async {
+        // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
+        // that: blanking on every read photographed a spinner on screens that had already loaded,
+        // because a screen re-runs its `.task` every time it appears — so coming back to the
+        // worktree list would have emptied it and started again under the reader. Content on screen
+        // stays on screen while it is re-read; a failure has nothing to keep.
+        if case .failed = state {
+            state = .loading
+        }
         do {
             worktrees = try await repository.worktrees(inProject: nil)
+            state = arrangement
+        } catch .cancelled {
             state = arrangement
         } catch {
             state = .failed(error)
