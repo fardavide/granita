@@ -2,6 +2,7 @@ import Foundation
 import Synchronization
 
 import ClientConnectionDomain
+import ClientViewerDomain
 import CoreDiffDomain
 
 /// A Mac that answers the two read routes the diff screen uses, and records what it was asked for.
@@ -19,10 +20,15 @@ final class FakeGranitaRepository: GranitaRepository {
     /// Mac refuses on, and therefore the one worth asserting rather than assuming.
     var viewedWrites: [ViewedWrite] { writes.withLock { $0 } }
 
+    /// Every window of raw lines asked for, in order. The window is the whole of what the client
+    /// decides about expansion, so it is the thing worth recording rather than the text.
+    var windowsAskedFor: [LineWindow] { windows.withLock { $0 } }
+
     private let changeSet: Result<WorktreeChanges, ApiFailure>
     private let hunks: [FileID: [Hunk]]
     private let diffFailure: ApiFailure?
     private let viewedFailure: ApiFailure?
+    private let linesAnswer: Result<FileLines, ApiFailure>
 
     /// A file the change set never named, answered alongside the ones that were asked for.
     ///
@@ -32,18 +38,21 @@ final class FakeGranitaRepository: GranitaRepository {
 
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
+    private let windows = Mutex<[LineWindow]>([])
 
     init(
         changeSet: Result<WorktreeChanges, ApiFailure>,
         hunks: [FileID: [Hunk]] = [:],
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
+        linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
         alsoAnswering stranger: FileChange? = nil
     ) {
         self.changeSet = changeSet
         self.hunks = hunks
         self.diffFailure = diffFailure
         self.viewedFailure = viewedFailure
+        self.linesAnswer = linesAnswer
         self.stranger = stranger
     }
 
@@ -74,6 +83,17 @@ final class FakeGranitaRepository: GranitaRepository {
         }
     }
 
+    func lines(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide,
+        start: Int,
+        count: Int
+    ) async throws(ApiFailure) -> FileLines {
+        windows.withLock { $0.append(LineWindow(side: side, start: start, count: count)) }
+        return try linesAnswer.get()
+    }
+
     // MARK: - Not reached from the diff screen
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
@@ -82,16 +102,6 @@ final class FakeGranitaRepository: GranitaRepository {
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
         throw .worktreeGone
-    }
-
-    func lines(
-        of file: FileID,
-        in worktree: WorktreeID,
-        side: DiffSide,
-        start: Int,
-        count: Int
-    ) async throws(ApiFailure) -> FileLines {
-        throw .fileGone
     }
 
     func markViewed(

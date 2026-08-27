@@ -38,6 +38,14 @@ public final class ClientViewerModel {
     /// The refusal the Mac gave the last time a mark was written, if it gave one.
     public private(set) var viewedFailure: ApiFailure?
 
+    /// The refusal the Mac gave the last time a hunk was expanded, if it gave one.
+    ///
+    /// **Reported rather than swallowed, unlike a refused batch of diffs**, and the difference is
+    /// what the reader did: a batch is fetched on their behalf while they scroll, and losing one
+    /// leaves placeholders the next scroll asks about again. An expansion is a control they pressed,
+    /// and a press that leaves the hunk exactly as it was is a control that did nothing.
+    public private(set) var expansionFailure: ApiFailure?
+
     /// Whether §3's drawer is up.
     ///
     /// **It is the model's rather than the screen's**, which is a rule this repository wrote down
@@ -105,28 +113,13 @@ public final class ClientViewerModel {
             from: position,
             of: entries.map(\.id),
             held: Set(entries.filter(\.isReady).map(\.id)),
-            inFlight: inFlight
+            inFlight: inFlight,
+            // **A file drawn shut is not fetched.** `SPEC.md` §10 puts a *Load diff* affordance on
+            // the big ones, and a phone that had already spent a batch slot on 1,558 lines nobody
+            // asked to see would be offering to do what it had done.
+            deferred: Set(entries.filter { $0.collapse.isCollapsed }.map(\.id))
         )
-        guard wanted.isEmpty == false else { return }
-        inFlight.formUnion(wanted)
-        defer { inFlight.subtract(wanted) }
-
-        // A refusal here is deliberately not the screen's failure. The change set arrived, so the
-        // reader has a list of files and their sizes; losing one batch of hunks leaves placeholders
-        // where content would be, and the next thing they scroll to asks again. Replacing the whole
-        // screen with an error because the fourth batch of twenty failed would throw away
-        // everything they had already read.
-        guard let diffs = try? await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext) else {
-            return
-        }
-        for diff in diffs {
-            guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
-            // The mark is the phone's, and a diff arriving is the Mac answering a question that was
-            // asked before it was written. Keeping what is on screen stops a mark the reader has
-            // just set being taken back off by a batch that was already in flight.
-            entries[position] = .ready(diff).viewed(entries[position].file.isViewed)
-        }
-        state = .reading(entries)
+        await fetch(wanted)
     }
 
     public func showSelector(_ isShowing: Bool) {
@@ -198,6 +191,107 @@ public final class ClientViewerModel {
         viewedFailure = nil
     }
 
+    /// Opens a file the scroll is drawing shut, or shuts one it is drawing.
+    ///
+    /// **Opening one that never arrived fetches it**, which is what makes the bar's *Load diff* a
+    /// control rather than a label: the loader steps over shut files, so without this a reader would
+    /// press a bar and get a header over a blank stretch that nothing ever fills.
+    public func setOpen(_ isOpen: Bool, on file: FileID) async {
+        guard let position = entries.firstIndex(where: { $0.id == file }) else { return }
+        guard entries[position].collapse.isCollapsible else { return }
+        entries[position] = entries[position].opened(isOpen)
+        state = .reading(entries)
+        guard isOpen, entries[position].isReady == false else { return }
+        await fetch([file])
+    }
+
+    /// Shows the lines a hunk skipped, on the side the reader pressed.
+    ///
+    /// **The lines go into the diff rather than beside it**, so a hunk that has grown carries its
+    /// own new bounds and the control disappears the moment the gap it opens is closed. Expansion
+    /// state kept in a second structure is a second answer to a question the hunk can already give.
+    public func expand(_ direction: ContextDirection, hunk index: Int, in file: FileID) async {
+        guard let position = entries.firstIndex(where: { $0.id == file }),
+              case .ready(let diff) = entries[position].content,
+              let hunkPosition = diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+        let hunk = diff.hunks[hunkPosition]
+        let window = switch direction {
+        case .above:
+            ContextExpansion.above(hunk, after: hunkPosition > 0 ? diff.hunks[hunkPosition - 1] : nil)
+        case .below:
+            ContextExpansion.below(
+                hunk,
+                before: hunkPosition + 1 < diff.hunks.count ? diff.hunks[hunkPosition + 1] : nil,
+                endingAt: diff.newLineCount
+            )
+        }
+        // The control is absent when there is no window, so reaching this means the file changed
+        // under a press. Nothing to fetch and nothing to report — the next batch redraws it.
+        guard let window else { return }
+
+        do {
+            let read = try await repository.lines(
+                of: file,
+                in: worktree,
+                side: window.side,
+                start: window.start,
+                count: window.count
+            )
+            // Found again rather than reused: a batch may have replaced this file while the lines
+            // were in flight, and splicing into the copy taken before the request would drop it.
+            guard let now = entries.firstIndex(where: { $0.id == file }),
+                  case .ready(let diff) = entries[now].content,
+                  let hunkPosition = diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+            var hunks = diff.hunks
+            hunks[hunkPosition] = switch direction {
+            case .above: ContextExpansion.expanded(hunks[hunkPosition], above: read.lines)
+            case .below: ContextExpansion.expanded(hunks[hunkPosition], below: read.lines)
+            }
+            entries[now] = entries[now].arrived(
+                FileDiff(
+                    file: diff.file,
+                    hunks: hunks,
+                    oldLineCount: diff.oldLineCount,
+                    newLineCount: diff.newLineCount,
+                    isTruncated: diff.isTruncated,
+                    truncationReason: diff.truncationReason
+                )
+            )
+            state = .reading(entries)
+        } catch {
+            expansionFailure = error
+        }
+    }
+
+    public func dismissExpansionFailure() {
+        expansionFailure = nil
+    }
+
+    /// One batch, with the answers spliced back into the files that asked for them.
+    ///
+    /// A refusal here is deliberately not the screen's failure. The change set arrived, so the
+    /// reader has a list of files and their sizes; losing one batch of hunks leaves placeholders
+    /// where content would be, and the next thing they scroll to asks again. Replacing the whole
+    /// screen with an error because the fourth batch of twenty failed would throw away everything
+    /// they had already read.
+    private func fetch(_ wanted: [FileID]) async {
+        guard wanted.isEmpty == false else { return }
+        inFlight.formUnion(wanted)
+        defer { inFlight.subtract(wanted) }
+
+        guard let diffs = try? await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext) else {
+            return
+        }
+        for diff in diffs {
+            guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
+            // The mark and the chevron are the phone's, and a diff arriving is the Mac answering a
+            // question that was asked before either was touched. Keeping what is on screen stops a
+            // mark the reader has just set being taken back off by a batch already in flight.
+            entries[position] = entries[position].arrived(diff)
+        }
+        state = .reading(entries)
+    }
+
     private func rearrange() {
         selector = FileSelector.listing(
             of: entries.map(\.file),
@@ -217,13 +311,3 @@ public final class ClientViewerModel {
 /// the reader — which in this repository is also an untested branch, because the initialiser nobody
 /// calls with the other value is a region no test enters.
 private let surroundingContext = 3
-
-private extension ContinuousDiffEntry {
-
-    var isReady: Bool {
-        switch self {
-        case .awaiting: false
-        case .ready: true
-        }
-    }
-}

@@ -32,15 +32,25 @@ public enum ContinuousDiffLoading {
     ///     never shrinks and a file is never fetched twice.
     ///   - inFlight: What has been asked for and not answered. Scrolling produces a position update
     ///     per frame, and without this every frame would re-ask for the same file.
+    ///   - deferred: Files the scroll is drawing shut. **Unlike `held`, this shrinks**: a reader
+    ///     opening a bar takes a file out of it, which is what makes the bar's own *Load diff* true
+    ///     rather than a label on something that was fetched anyway. `SPEC.md` §10 asks for that
+    ///     affordance by name on a file over 500 diff lines, and a phone that had already spent a
+    ///     batch slot on 1,558 lines nobody asked to see would be offering to do what it had done.
     public static func next(
         from visible: Int,
         of files: [FileID],
         held: Set<FileID>,
-        inFlight: Set<FileID>
+        inFlight: Set<FileID>,
+        deferred: Set<FileID>
     ) -> [FileID] {
         guard files.isEmpty == false, visible < files.count else { return [] }
         return files[max(0, visible)...]
-            .filter { held.contains($0) == false && inFlight.contains($0) == false }
+            .filter { file in
+                held.contains(file) == false
+                    && inFlight.contains(file) == false
+                    && deferred.contains(file) == false
+            }
             .prefix(filesAhead)
             .map { $0 }
     }

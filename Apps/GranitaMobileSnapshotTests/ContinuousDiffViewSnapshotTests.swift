@@ -36,6 +36,8 @@ struct ContinuousDiffViewSnapshotTests {
                 onReading: { _ in },
                 onJumped: {},
                 onSetViewed: { _, _ in },
+                onSetOpen: { _, _ in },
+                onExpand: { _, _, _ in },
                 onRetry: {}
             ),
             layout: layout,
@@ -91,12 +93,36 @@ struct DiffScreenCase: Sendable, CustomTestStringConvertible {
             jumpTarget: nil
         ),
 
-        // A file the reader has marked read. The toggle is the only writer of this mark — design §4
+        // A file the reader has marked read, which is now **a bar rather than a diff**: `SPEC.md`
+        // §10 says a file marked viewed renders collapsed, and 0.3.0's toggle moved a circle and
+        // left the diff open under it. The toggle is still the only writer of the mark — design §4
         // refuses to infer it, because an inferred "viewed" is the app lying about its one job.
         DiffScreenCase(
             name: "a-file-marked-viewed",
             state: .reading(aChangeSetPartlyArrived.enumerated().map { position, entry in
                 position == 0 ? entry.viewed(true) : entry
+            }),
+            jumpTarget: nil
+        ),
+
+        // **A run of bars, which is what design §4 draws collapsing for**: four files shut for four
+        // different reasons, and the sentence on each is what stops the reader opening a file to
+        // learn there was nothing in it. Two of them carry no chevron, because there is nothing
+        // behind a binary file or a rename that changed nothing.
+        DiffScreenCase(name: "every-reason-a-file-is-shut", state: .reading(aChangeSetOfShutFiles), jumpTarget: nil),
+
+        // The same scroll with the reader having opened one of them, which is the control the
+        // picture above needs: without it a bar that opens and a bar that does nothing photograph
+        // identically.
+        //
+        // **The blank below the second header is the point rather than a fault.** That file's diff
+        // was deliberately not fetched — it is the *Load diff* case — so opening it turns the bar
+        // into a header over 1,558 rows of reserved height, which is the same idiom every file that
+        // has not arrived uses and is what stops the content below it moving when it does.
+        DiffScreenCase(
+            name: "a-shut-file-the-reader-opened",
+            state: .reading(aChangeSetOfShutFiles.enumerated().map { position, entry in
+                position == 1 ? entry.opened(true) : entry
             }),
             jumpTarget: nil
         ),

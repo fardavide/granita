@@ -43,6 +43,8 @@ public struct ContinuousDiffView: View {
     private let onReading: (Int) -> Void
     private let onJumped: () -> Void
     private let onSetViewed: (Bool, FileID) -> Void
+    private let onSetOpen: (Bool, FileID) -> Void
+    private let onExpand: (ContextDirection, Int, FileID) -> Void
     private let onRetry: () -> Void
 
     public init(
@@ -52,6 +54,8 @@ public struct ContinuousDiffView: View {
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void,
+        onSetOpen: @escaping (Bool, FileID) -> Void,
+        onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onRetry: @escaping () -> Void
     ) {
         self.state = state
@@ -63,6 +67,8 @@ public struct ContinuousDiffView: View {
         self.onReading = onReading
         self.onJumped = onJumped
         self.onSetViewed = onSetViewed
+        self.onSetOpen = onSetOpen
+        self.onExpand = onExpand
         self.onRetry = onRetry
     }
 
@@ -95,7 +101,7 @@ public struct ContinuousDiffView: View {
                             // wrong below the fold, and a file appearing is a fact.
                             .onAppear { onReading(position) }
                     } header: {
-                        DiffFileHeader(file: entry.file) { onSetViewed($0, entry.id) }
+                        header(of: entry)
                     }
                 }
             }
@@ -140,17 +146,38 @@ public struct ContinuousDiffView: View {
         }
     }
 
+    /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
+    /// over an empty section. The bar is what design §4 draws, it is what carries the reason, and
+    /// putting it where the header goes is what makes shutting a file a change the reader can see
+    /// happen in one place.
+    /// **The three callbacks go straight through** rather than through a closure that re-attaches
+    /// the file's identifier: each of those views holds the file already, so a wrapper here would be
+    /// one per row per frame and one more place for the wrong identifier to be attached.
+    @ViewBuilder private func header(of entry: ContinuousDiffEntry) -> some View {
+        if entry.collapse.isCollapsed {
+            DiffCollapsedFileBar(file: entry.file, collapse: entry.collapse, onSetOpen: onSetOpen)
+        } else {
+            DiffFileHeader(file: entry.file, onSetOpen: onSetOpen, onSetViewed: onSetViewed)
+        }
+    }
+
     @ViewBuilder private func content(of entry: ContinuousDiffEntry) -> some View {
-        switch entry {
-        case .awaiting:
-            // Deliberately empty rather than a spinner. There is no per-file progress worth
-            // reporting — five files are in flight at once and the reader is not waiting on any of
-            // them — and a row of spinners scrolling past would be the app describing its own
-            // plumbing.
-            Color.clear
-                .frame(height: reservedHeight(of: entry))
-        case .ready(let diff):
-            DiffFileContent(hunks: diff.hunks, showsOldNumber: showsOldNumber)
+        if entry.collapse.isCollapsed {
+            // Nothing at all, which is the whole point of a bar: the height a shut file takes is
+            // the 44pt its bar takes and not one row more.
+            EmptyView()
+        } else {
+            switch entry.content {
+            case .awaiting:
+                // Deliberately empty rather than a spinner. There is no per-file progress worth
+                // reporting — five files are in flight at once and the reader is not waiting on any
+                // of them — and a row of spinners scrolling past would be the app describing its own
+                // plumbing.
+                Color.clear
+                    .frame(height: reservedHeight(of: entry))
+            case .ready(let diff):
+                DiffFileContent(diff: diff, showsOldNumber: showsOldNumber, onExpand: onExpand)
+            }
         }
     }
 

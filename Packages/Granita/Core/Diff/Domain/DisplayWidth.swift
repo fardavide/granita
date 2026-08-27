@@ -3,17 +3,22 @@ import Foundation
 /// How many columns a line occupies in the viewer's monospaced grid, and whether that number can be
 /// trusted.
 ///
-/// Measured here, once, rather than on the client: the viewer reserves scroll space per line before
-/// laying anything out, and the two sides re-deriving the same Unicode judgement independently is a
-/// disagreement waiting to become a row-count error in a scroll that must never reflow.
-struct DisplayWidth: Hashable {
+/// Measured here, once, rather than once per side: the viewer reserves scroll space per line before
+/// laying anything out, and two implementations of the same Unicode judgement is a disagreement
+/// waiting to become a row-count error in a scroll that must never reflow.
+///
+/// **Public because the client splices lines the parser never saw.** Expanding a hunk's context
+/// fetches raw text from `/lines` and turns it into diff lines on the phone, which need this number
+/// like any other — so the phone reaches for this rather than growing a second answer to the
+/// question this type exists to have one answer to.
+public struct DisplayWidth: Hashable, Sendable {
 
-    let columns: Int
+    public let columns: Int
 
     /// Whether `columns` is a best effort the client should replace by measuring the line for real.
-    let needsMeasurement: Bool
+    public let needsMeasurement: Bool
 
-    init(of text: String) {
+    public init(of text: String) {
         var columns = 0
         var needsMeasurement = false
         for scalar in text.unicodeScalars {

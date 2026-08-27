@@ -2,6 +2,48 @@
 
 Where the project is. Update this when a slice lands.
 
+**A file you have read shuts itself, which is what `SPEC.md` §10 has asked for since the mark
+existed.** 0.3.0's toggle moved a circle and left the diff open under it; the bar is what makes the
+sentence true. It goes **in the header's slot** rather than under a header — 44pt, status letter,
+head-truncated path, stats and the reason — and the reason is the field design §4 added to the
+specification, because without it a reader opens a file to learn there was nothing in it. Four
+sentences, and a binary file or a rename that changed nothing gets **no chevron at all**, the whole
+row stopping being a button with it.
+
+**The bar for a viewed file says "viewed" and cannot say how long ago**, which is the wire rather
+than a shortened sentence: the Mac stores a mark as the content hash it was set against and keeps no
+time beside it. Same call as §3's truncation footer, in [`decisions.md`](decisions.md).
+
+**A file drawn shut is not fetched, and that is what makes *Load diff* true.** The scroll steps over
+every collapsed file, and opening one fetches it as a batch of one — without that half, pressing a
+bar leaves a header over a blank stretch nothing ever fills, which is this project's own dead
+control arriving through the door built to stop it. It also pays for itself on the ordinary screen:
+in a change set you have been through once, every file you read is shut.
+
+**Hunk expansion is spliced into the diff rather than kept beside it.** `/lines` finally has a
+caller. A press produces a *wider* `Hunk` — new bounds, new counts, the context in file order — so
+"is there anything left above this one" is answered by what is drawn and the control disappears the
+moment the gap closes. Three things fell out of building it and each is asserted: git's `+c,0` names
+the line *before* a pure deletion rather than the first line of it, the offset between the two sides
+is not the same number above a hunk as below it, and every window is read from the new side.
+`DisplayWidth` is public now, because the phone makes lines the parser never saw and two
+implementations of one Unicode judgement is a row-count error waiting for a wrap mode.
+
+**A baseline caught a `Divider` drawing itself sideways.** Inside a `Button`'s label it read the
+bar's own `HStack` and drew vertically — a stray line down two of the four bars and no rule under
+them. That is this repository's third measurement that settled itself differently in two places,
+after the list margin and the scroll position, and the answer is the same: state the value.
+
+**Both of 0.3.0's open calls are Davide's answers now, and both stand as they were.**
+`NoWorktreeChosenView` stays, because design §2 asks for an unavailable-content view in the empty
+detail column in as many words; `WorktreeSplitScreen`'s doubled `navigationDestination` stays
+doubled, because what it settles is which container claims a tap and removing a declaration to find
+out is how this app shipped a row that did nothing.
+
+**Version 0.4.0.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight** — and
+merging is what publishes, so the version in `project.yml` is what this tree will put on a phone
+rather than what is on one now.
+
 **The six words have a Copy button, which finishes a sentence design §5 started.** The separator
 under the QR was chosen so a reader who *selects the line and pastes it* is not refused for the
 tab's own punctuation — and the tab then left them to drag a selection across six words in a 13pt
@@ -11,10 +53,6 @@ and `SpokenWords` now owns both the separator and the drawn spelling so the tab'
 phone's tolerance are one fact with a round-trip assertion behind it. **It does not solve the
 same-device case** — a reader on Screens is looking at this Mac from the phone being paired, and the
 two have different clipboards. That is still the Allow path.
-
-**Version 0.3.1, not yet merged; 0.3.0 is published.** Scaffold complete, CI green, `main` protected,
-**shipping to TestFlight** — and merging is what publishes, so the version in `project.yml` is what
-this tree will put on a phone rather than what is on one now.
 
 **Design §3's file selector is built, and with it the mark that is this product's whole point.**
 Tapping a worktree opened one continuous scroll and no way to move around it; there is a file list
@@ -407,7 +445,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
-| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff and the viewed state are built; highlighting is not |
+| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff, the viewed state, the collapsed bars and hunk expansion are built; **highlighting is not**, and neither is wrap-on |
 | M6 | Live updates, accessibility, ship | |
 
 ## What exists
@@ -430,6 +468,15 @@ The spec's milestones, each ending in something runnable and a green suite, with
   shut, and over three files — or a change set that is all one directory — the answer is flat with no
   toggle offered at all. The mark is written from the diff's file header against the file's own
   content hash, optimistically, and taken back with a sentence when the Mac refuses it.
+- **The collapsed bar and hunk expansion, which finish everything of §4 a machine can judge.** A file
+  the reader has read, a file too long to fetch unasked, a binary file and a rename that changed
+  nothing each render as one 44pt row carrying the reason it is shut — and the two with nothing
+  behind them carry no chevron, the row not even being a button. The scroll steps over every
+  collapsed file, so *Load diff* is a fetch rather than a label, and opening one asks for it. Every
+  hunk band carries a control for the lines above it and the lines below it, twenty a press, spliced
+  **into** the diff so the control goes when the gap does; the windows are computed from git's own
+  hunk arithmetic, including the `+c,0` case that names the line before a deletion rather than the
+  first line of it.
 - **The git client**: the closed set of questions the product asks git, the argument vector each one
   becomes, and the process that runs it — both streams drained at once, a byte cap that truncates
   rather than refuses, a ten-second budget that tears the process down without ever signalling a
@@ -440,7 +487,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
   per-file diffs with the size guards, §5.5 content hashing, the JSON store, the Claude Code session
   index, and every §8 route behind bearer auth. `granita-server --add-project <path>` enables a
   repository and `--insecure-http` serves it.
-- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 786 package tests in 77 suites, plus
+- Six gating CI jobs on a pinned Xcode 26.6 / macOS 26 runner. 930 package tests in 87 suites, plus
   the snapshot suite on a simulator and the Mac's on the machine itself. **The coverage pass runs
   serially**, because measured in parallel it reported a different percentage for identical code —
   five runs of one commit spread across 96.037% and 96.121%, which a ratchet with no slack reads as a
@@ -620,29 +667,44 @@ sets up delivery.
 
 ## What to pick up next
 
-**M5's next pieces, in the order §4 puts them.** The scroll, §3's selector and the viewed toggle are
-built and wired; what is drawn and not built is the file header's second form, the collapsed bars and
-their reasons, hunk expansion, syntax highlighting and wrap-on. Every one of those is **absent** on
-screen today rather than disabled, so nothing there is a control that does not work.
+**Syntax highlighting is what is left of M5 that a machine can build.** Highlightr is declared on
+`ClientViewerUi` and nothing imports it. `SPEC.md` §10 is prescriptive about it — per file per side,
+never per hunk, the six-part cache key, skip over 100 KB or 4,000 lines or a nil language, visible
+file first, render unhighlighted and upgrade in place — and its throughput on a 200-line Swift block
+is an unverified item that needs a device.
 
-**Two of them are worth doing together and one is worth waiting for.** The collapsed bars are what
-`SPEC.md` §10 means by "files marked viewed render collapsed", so they and hunk expansion are one
-slice with the `/lines` route the client already has a method for. The file header's second form is
-**provisional pending a device** — it ships in one form because a pinned header that is shorter when
-pinned reflows a slot above the viewport — and wrap-on is the alternative to a gesture only a thumb
-can judge, so both wait on the afternoon below.
+**The other two are a thumb's to settle.** The file header's second form is **provisional pending a
+device** — it ships in one form because a pinned header that is shorter when pinned reflows a slot
+above the viewport — and wrap-on is the alternative to a gesture only a thumb can judge.
+
+**And the coverage gate has a structural debt this slice made visible.** Five controls landed on
+three views, and an action closure in a view body is uncoverable by every test kind that runs here.
+The Snapshot row is short by 4 regions and 3 lines against `main` even after three genuine
+unphotographed fallbacks were found and covered — a wholly added file, a wholly deleted file and the
+diff screen over a clean worktree. What closes it for good is the `ui` target, which needs the
+Accessibility grant on the Mac and an `Apps/GranitaMobileUiTests` that does not exist. See "Waiting
+on Davide".
 
 **M4's remaining half was pairing and it is built**, and the adversarial pass over it is landed too,
 so what is left of that slice is what a machine cannot answer, two calls that are Davide's, and a
 version that has not moved.
 
-- **Press it on a phone**, and 0.3.0 adds four controls no test kind here can reach: the *N files*
-  button that opens the drawer, a file row that jumps the scroll, a directory row that opens and
-  shuts, and the circle in the file header that marks a file read. Every one is asserted at the model
-  and photographed at rest; **an action closure in a screen is uncoverable by any test kind that runs
-  here**, and there is still no iOS UI test target. The drawer is the one to watch: design §3's whole
-  argument is that it stays up while the diff scrolls behind it, and whether
-  `presentationBackgroundInteraction` delivers that is a thumb's answer.
+- **Press it on a phone**, and 0.3.0 and 0.4.0 add nine controls no test kind here can reach: the
+  *N files* button that opens the drawer, a file row that jumps the scroll, a directory row that
+  opens and shuts, the circle in the file header that marks a file read, **the collapsed bar that
+  opens a file, the chevron in the header that shuts one, and the two on each hunk band that show the
+  lines above and below it**. Every one is asserted at the model and photographed at rest; **an
+  action closure in a screen is uncoverable by any test kind that runs here**, and there is still no
+  iOS UI test target. Two to watch above the others: the drawer, because design §3's whole argument
+  is that it stays up while the diff scrolls behind it and whether
+  `presentationBackgroundInteraction` delivers that is a thumb's answer; and **the bar for a file
+  over 500 lines, because it is the one control here that is also a fetch** — pressing it must turn
+  the bar into a header and then fill it, and nothing that runs on this machine can watch that happen.
+- **And a measurement while the phone is in hand: whether a 44pt hunk band is too much.** Design §4
+  asks for that hit area in as many words and it is four times the height of the band before it, so a
+  file with five hunks spends 220pt on controls. A hunk with nothing to expand keeps the thin band,
+  which bounds it; whether the ones that do not are worth their room is a question a drawing could
+  not answer.
 - **Press it on a phone**, and there is more to press now: tapping a worktree opens the diff. The
   camera, the Keychain, the local-network prompt and a QR held across a
   room are four things this Mac cannot produce, and the viewfinder's preview is the one piece of the
@@ -727,13 +789,20 @@ Smaller things still open in these modules:
 
 ## Waiting on Davide
 
-- **Whether §3 should have deleted *Choose a worktree*, and whether the split screen's doubled
-  destination should collapse.** The handover that opened 0.3.0 asked for both; design §2 asks for
-  the opposite of the first in as many words — "the empty detail column is an unavailable-content
-  view" — and the second cannot be answered without a finger, because what it settles is which of two
-  containers claims a tap. Both are in [`decisions.md`](decisions.md) with the reasoning; neither was
-  picked here, because the `design` skill's rule for prose against prose is to ask. **Nothing is
-  blocked on the answer** — the selector ships either way.
+- ~~**Whether §3 should have deleted *Choose a worktree*, and whether the split screen's doubled
+  destination should collapse.**~~ Answered on 27 August 2026, and both stand as they were:
+  `NoWorktreeChosenView` stays because design §2 asks for an unavailable-content view in the empty
+  detail column in as many words, and the doubled `navigationDestination` stays doubled because
+  removing a declaration to find out which container claims a tap is how this app shipped a row that
+  did nothing. In [`decisions.md`](decisions.md).
+
+- **The coverage gate's structural debt, which is now costing pull requests.** An action closure in a
+  view body is uncoverable by every test kind that runs here, so a slice that adds controls lowers
+  the Snapshot row whatever else it does — 0.3.1 lost one region to a Copy button and 0.4.0 is short
+  by 4 regions and 3 lines after five. The genuine fallbacks nearby have been found and covered;
+  what is left is either the `ui` target — which needs the Accessibility grant **and** an
+  `Apps/GranitaMobileUiTests` that has never existed — or Davide deciding the row may hold rather
+  than climb. Neither is a call to make from inside a pull request.
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
   last thing between `make ui-tests-mac` and a green run, and it is now blocking **eleven** shipped
