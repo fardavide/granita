@@ -60,21 +60,12 @@ public final class UrlSessionHttpTransport: HttpTransport {
                 throw ApiFailure.notUnderstood(diagnostic: "the reply was not an HTTP response")
             }
             return HttpResponse(statusCode: http.statusCode, body: body)
-        } catch let failure as ApiFailure {
-            throw failure
-        } catch is CancellationError {
-            throw ApiFailure.cancelled
-        } catch let url as URLError where url.code == .cancelled {
-            // **Not a failure, and this is where it stopped being one.** `URLSession` reports a
-            // torn-down request as `NSURLErrorCancelled`, and folding that into `unreachable` put
-            // *Could not read your Mac* on screen every time a reader opened a worktree while the
-            // list behind them was still loading — which a `.task` cancels by design.
-            throw ApiFailure.cancelled
         } catch {
-            // The diagnostic, not the advice. `URLError` writes "the operation couldn't be
-            // completed", which is true of every failure there has ever been; the screen supplies
-            // the sentence and prints this underneath in small print.
-            throw ApiFailure.unreachable(diagnostic: "\(error)")
+            // **What the failure means is `ApiFailure`'s to say, not this file's.** Nothing can
+            // build a `URLSession` in a test binary, so a decision written here is one nothing holds
+            // to its behaviour — and the decision that used to live here was wrong: a cancelled
+            // request was reported as the Mac being unreachable.
+            throw ApiFailure.forTransport(error)
         }
     }
 }

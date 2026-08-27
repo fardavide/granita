@@ -64,20 +64,23 @@ struct ClientWorktreesModelTests {
     }
 
     @Test
-    func `given a failed read when the reader retries then the screen stops showing the failure`() async {
-        // given — `/v1/worktrees` builds a change set for every worktree of every enabled project,
-        // measured at over two minutes across ten real repositories. A retry that left the failure
-        // on screen for that long was reported as a button with nothing behind it.
-        let scenario = Scenario(worktrees: [], readFailure: .unreachable(diagnostic: "NWError -65563"))
+    func `given a failed read when the same model retries then the failure leaves the screen`() async {
+        // given — **one model through both**, which is the point: `/v1/worktrees` builds a change
+        // set for every worktree of every enabled project, measured at over two minutes across ten
+        // real repositories, and a retry that left the failure up for that long was reported as a
+        // button with nothing behind it.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            refusesTheFirstRead: .unreachable(diagnostic: "NWError -65563")
+        )
         await scenario.sut.load()
         #expect(scenario.sut.state == .failed(.unreachable(diagnostic: "NWError -65563")))
 
-        // when — the reader presses Try Again against a Mac that now answers
-        let answering = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
-        await answering.sut.load()
+        // when — the reader presses Try Again
+        await scenario.sut.load()
 
         // then
-        #expect(answering.sut.state != .failed(.unreachable(diagnostic: "NWError -65563")))
+        #expect(scenario.sut.state != .failed(.unreachable(diagnostic: "NWError -65563")))
     }
 
     @Test
@@ -436,13 +439,15 @@ struct ClientWorktreesModelTests {
         init(
             worktrees: [Worktree],
             readFailure: ApiFailure? = nil,
+            refusesTheFirstRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
         ) {
             repository = FakeGranitaRepository(
                 worktrees: worktrees,
                 readFailure: readFailure,
-                writeFailure: writeFailure
+                writeFailure: writeFailure,
+                refusesTheFirstRead: refusesTheFirstRead
             )
             self.preferences = preferences
             sut = ClientWorktreesModel(

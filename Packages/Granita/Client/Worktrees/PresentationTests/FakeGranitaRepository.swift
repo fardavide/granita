@@ -17,10 +17,22 @@ actor FakeGranitaRepository: GranitaRepository {
     private let readFailure: ApiFailure?
     private let writeFailure: ApiFailure?
 
-    init(worktrees: [Worktree], readFailure: ApiFailure? = nil, writeFailure: ApiFailure? = nil) {
+    /// What the first read answers with, when the point of the test is what the **second** one does.
+    /// A retry is what a reader presses when a screen has gone wrong, so it is worth holding to its
+    /// behaviour on the same model rather than on a second one that was never in the failed state.
+    private let refusesTheFirstRead: ApiFailure?
+    private var reads = 0
+
+    init(
+        worktrees: [Worktree],
+        readFailure: ApiFailure? = nil,
+        writeFailure: ApiFailure? = nil,
+        refusesTheFirstRead: ApiFailure? = nil
+    ) {
         self.worktrees = worktrees
         self.readFailure = readFailure
         self.writeFailure = writeFailure
+        self.refusesTheFirstRead = refusesTheFirstRead
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
@@ -28,7 +40,9 @@ actor FakeGranitaRepository: GranitaRepository {
     }
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        reads += 1
         if let readFailure { throw readFailure }
+        if let refusesTheFirstRead, reads == 1 { throw refusesTheFirstRead }
         return worktrees
     }
 

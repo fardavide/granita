@@ -1,3 +1,5 @@
+import Foundation
+
 /// Every way a request to a Mac can fail, in the vocabulary the phone reasons in.
 ///
 /// **No HTTP status code reaches this type, and none reaches anything above it.** SPEC §8 makes the
@@ -78,6 +80,34 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// One case for both, because the reader can do nothing different about them and the diagnostic
     /// is what tells the developer which it was.
     case notUnderstood(diagnostic: String)
+
+    /// What a failure from the transport means to this app.
+    ///
+    /// **A rule rather than a `catch` block**, and it lives here for the reason every other rule in
+    /// this repository moved out of the thing that spends it: a `URLSession` cannot be built in a
+    /// test binary, so a decision written inside the transport is a decision nothing holds to its
+    /// behaviour — and the decision it was hiding was wrong. `NSURLErrorCancelled` was folded into
+    /// `unreachable`, which put *Could not read your Mac* on the screen a reader reached by pressing
+    /// Back.
+    ///
+    /// The order matters: a failure this layer already understands passes through untouched, a
+    /// cancellation is not a failure at all, and everything else is the Mac being out of reach with
+    /// the system's own words kept as small print.
+    public static func forTransport(_ error: any Error) -> ApiFailure {
+        switch error {
+        case let failure as ApiFailure:
+            failure
+        case is CancellationError:
+            .cancelled
+        case let url as URLError where url.code == .cancelled:
+            .cancelled
+        default:
+            // The diagnostic, not the advice. `URLError` writes "the operation couldn't be
+            // completed", which is true of every failure there has ever been; the screen supplies
+            // the sentence and prints this underneath in small print.
+            .unreachable(diagnostic: "\(error)")
+        }
+    }
 
     /// The machine's own words, where there are any, for the small print under a screen's own
     /// sentence.
