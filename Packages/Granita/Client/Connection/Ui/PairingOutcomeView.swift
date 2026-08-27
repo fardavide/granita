@@ -226,7 +226,7 @@ public struct PairingOutcomeView: View {
     /// code that bought this token is spent, so re-running the handshake would ask a Mac to honour a
     /// credential that no longer exists, and `errSecInteractionNotAllowed` is transient far more
     /// often than not. No *Pair Again*, which would leave a second device record beside the orphan.
-    private func keyNotSaved(_ failure: PairingTokenStoreFailure) -> some View {
+    private func keyNotSaved(_ failure: RememberedMacStoreFailure) -> some View {
         ContentUnavailableView {
             Label("Paired, but the key was not saved", systemImage: "key.slash")
         } description: {
@@ -358,7 +358,7 @@ public struct PairingOutcomeView: View {
     }
 
     /// The status code is the whole bug report, and the reader of this app is the developer.
-    private func keychainDiagnostic(_ failure: PairingTokenStoreFailure) -> String {
+    private func keychainDiagnostic(_ failure: RememberedMacStoreFailure) -> String {
         switch failure {
         case .refused(let status): "Keychain OSStatus \(status)"
         case .unreadable: "Keychain: what is stored for this Mac is not a token"

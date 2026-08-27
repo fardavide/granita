@@ -78,6 +78,12 @@ public enum PairingAttempt: Hashable, Sendable {
 /// list already answered.
 public struct PairedMac: Hashable, Sendable {
 
+    /// Which Mac this is, on this network, and **what the pairing is filed under so that the next
+    /// tap does not have to ask for a code again.** It is carried rather than derived from the name
+    /// beside it: the two are the same string in every browse result today, and a display name that
+    /// stopped being an identity would quietly re-file every remembered Mac.
+    public let instance: BonjourInstanceName
+
     /// What the reader calls this Mac, which is the string they tapped in the Mac list and saw at
     /// the top of every pairing screen after it. The Bonjour instance's own display name.
     public let name: String
@@ -93,11 +99,13 @@ public struct PairedMac: Hashable, Sendable {
     public let fingerprint: SpkiFingerprint
 
     public init(
+        instance: BonjourInstanceName,
         name: String,
         device: PairedDevice,
         address: ServerAddress,
         fingerprint: SpkiFingerprint
     ) {
+        self.instance = instance
         self.name = name
         self.device = device
         self.address = address

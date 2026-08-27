@@ -210,7 +210,10 @@ struct BonjourServiceConnectionTests {
     func `given a real connection when it is cancelled then its stream ends without inventing an address`() async {
         // given — the one thing this drives for real. Nothing advertises the service on a build
         // machine, so what is asserted is the teardown, which does not depend on anything answering.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let sut = BonjourServiceConnection(to: mac)
 
         // when

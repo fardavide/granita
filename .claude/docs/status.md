@@ -191,10 +191,13 @@ so back returns to the Mac list and never to a viewfinder holding a spent code. 
 `.success` haptic and that replacement, which is the whole of it. `PairingNotReadyView`, which said
 for one release that pairing had no screen, is gone.
 
-**One thing the return assumed that this repository still does not have.** Nothing joins a
-discovered Mac to a stored token — the identifier that would is the TXT record SPEC §8 asks for and
-the Mac does not publish — so §5's already-paired state is unreachable and its frames are the only
-ones still in `.claude/docs/design/`.
+**One thing the return assumed that this repository did not have, and 0.4.1 supplied differently.**
+Nothing joined a discovered Mac to a stored token, which was read as waiting on the TXT record SPEC
+§8 asks for. It was waiting on the **key** instead: a pairing is now filed under the Bonjour instance
+name, which a browse result carries, so a Mac paired with before opens its worktrees on the first tap
+and the pairing screens are reached only by a Mac this phone does not know. §5's already-paired
+*screen* stays unbuilt on purpose — its frames remain in `.claude/docs/design/` for the one reader
+who reaches it, whose token the Mac revoked. See [`decisions.md`](decisions.md).
 
 **None of the pairing screens or the sidebar's controls has been pressed on a device.** Every one is
 asserted at the model, but a camera, a Keychain and a QR held across a room are three things this
@@ -582,11 +585,10 @@ The spec's milestones, each ending in something runnable and a green suite, with
   client is named `…ViewModel` any more. Joining a Mac is a **use case** in `Domain` rather than a
   method on the model, and the model carries the browse and one attempt at a time: opening a Mac's
   own screen clears what the last attempt left behind, and the retry is handed the Mac it is titled
-  after rather than reading whatever the model still happens to hold. `MacPairing.alreadyPaired()`
-  is what the discovery list's *Recent* and *Other Macs* sections will be ordered by, once the Mac's
-  Bonjour TXT record carries the instance identifier that joins a discovered Mac to a stored token —
-  and the copy of that history the model briefly held is gone for the **second** time, because a
-  property no screen has agreed to is a property nothing can be measured against.
+  after rather than reading whatever the model still happens to hold. `MacPairing.rememberedMacs()`
+  — `alreadyPaired()` until 0.4.1 — is what decides where a row goes, and the model holds a copy of
+  it again for the first time with a screen that reads it: the third time that property has existed,
+  and the one where something renders it.
 - **The four pairing screens and the iPad's split view, with their baselines.** The entry screen,
   the viewfinder against a drawn still, the six-word field in five states and the outcome's five
   appearances; plus a suite that photographs the four *pushes* rather than the four screens, which
@@ -684,20 +686,21 @@ sets up delivery.
 
 ## What to pick up next
 
-**The connection does not persist, and it is two defects rather than one.** Both confirmed by
-reading the code after Davide hit them on 26 August; neither is fixed.
+~~**The connection does not persist, and it is two defects rather than one.**~~ Both confirmed by
+reading the code after Davide hit them on 26 August; **both fixed in 0.4.1**, after he hit the first
+one again — *every single time I tap on my Mac, it asks me to do QR code or six words*.
 
-- **Nothing joins a discovered Mac to a stored token.** `MacPairing.alreadyPaired()` exists, is
-  tested, and has **no production caller** — because the Keychain keys tokens by `ServerInstanceId`
-  and a discovered Mac is only a Bonjour instance name. `SPEC.md` §8 asks for the identifier in the
-  TXT record, which the Mac does not publish; but `/v1/health` is already fetched the moment a Mac
-  is selected, so carrying it there closes the join with no Bonjour change at all. **What that alone
-  does not solve**: the Keychain stores the token and nothing else, so a reconnect has no
-  fingerprint to pin with — the pairing's identity would have to be persisted beside the token, and
-  trusting first contact again instead would throw away the pin, which is the security boundary.
-- **Nothing re-resolves via Bonjour before using a stored address**, which `SPEC.md` §10 requires in
-  as many words. The port moves on every launch, so restarting the Mac app strands a paired phone
-  permanently, with no recovery but re-pairing.
+- ~~**Nothing joins a discovered Mac to a stored token.**~~ The join is the **Bonjour instance name**,
+  not the identifier the Mac issues: a browse result carries it, and `/v1/pair`'s `serverInstanceId`
+  arrives only after the question has been asked. So no TXT record and no `/v1/health` field — the
+  proposal recorded here would have worked and cost a round trip before the phone knew what to pin.
+  What that reading got right is the part it called unsolved: the Keychain now stores the whole
+  pairing, **fingerprint included**, so a reconnection pins the key that pairing bought rather than
+  trusting first contact a second time.
+- ~~**Nothing re-resolves via Bonjour before using a stored address.**~~ No address is stored at all
+  now, which is `SPEC.md` §10 satisfied by construction rather than by remembering to re-resolve: the
+  lookup happens on the first request to a remembered Mac, and an unreachable read throws the answer
+  away so the next one asks again.
 
 **Syntax highlighting is what is left of M5 that a machine can build.** Highlightr is declared on
 `ClientViewerUi` and nothing imports it. `SPEC.md` §10 is prescriptive about it — per file per side,
@@ -813,14 +816,20 @@ Smaller things still open in these modules:
   the icon alone and the count is not built. It becomes affordable only when something asks git the
   cheap question — `projects()` builds a whole change set per worktree, every path and stat and
   revision, to evaluate one boolean.
-- **The Bonjour TXT record**, which now blocks something concrete. SPEC §8 wants `apiVersion` and a
-  stable `serverInstanceID` in it so a phone can tell its paired Mac from another one.
-  `NWEndpoint.service` carries no TXT record, so this needs a way in through the same bind rather
-  than a second `NWListener` — which is the trap §8 exists to warn about. The instance identifier is
-  already in the `/v1/pair` response, and the phone now holds a token against it: what is missing is
-  the **join**, because a discovered Mac is only a Bonjour instance name. Until the record carries
-  it, design §1's *Recent* and *Other Macs* sections cannot be built and the list ships as the single
-  unlabelled section that section says it degrades to.
+- **The Bonjour TXT record**, which stopped blocking anything in 0.4.1 and is now only a spec item.
+  SPEC §8 wants `apiVersion` and a stable `serverInstanceID` in it, and `NWEndpoint.service` carries
+  no TXT record — so it still needs a way in through the same bind rather than a second `NWListener`,
+  which is the trap §8 exists to warn about. What it was believed to be blocking, the join between a
+  discovered Mac and a stored pairing, is done without it: the pairing is filed under the Bonjour
+  instance name a browse result already carries, and the SPKI pin rather than any identifier is what
+  proves the machine. Design §1's *Recent* and *Other Macs* sections are therefore buildable now, and
+  the list still ships as the single unlabelled section — not for want of the history, but because
+  two sections are a change to a drawn screen and this slice changed no pixels.
+- **`Pairing.instanceId` is a `UUID()` per process**, so it has never been stable across a restart of
+  the Mac, and `ServerInstanceId`'s own documentation said the opposite for four releases. Nothing
+  depends on it any more — the phone stopped keying pairings on it in 0.4.1 — so this is a wrong
+  comment beside a value the wire still carries rather than a defect anyone can hit. It becomes real
+  the day something wants to tell two Macs apart by anything other than their key.
 - ~~**Revoking a device** has a store method and no route.~~ Built with the Devices tab in 0.0.15,
   and its refusal is drawn: a Revoke that leaves the row where it was is a control that did nothing,
   on the one tab where doing nothing means a phone can still read this Mac.

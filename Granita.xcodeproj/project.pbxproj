@@ -572,7 +572,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -601,7 +601,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -715,7 +715,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -741,7 +741,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.4.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;

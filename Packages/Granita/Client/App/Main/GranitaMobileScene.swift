@@ -51,7 +51,7 @@ public struct GranitaMobileScene: Scene {
                 ServerDiscoveryScreen(
                     model: ClientConnectionModel(
                         browsing: BonjourServerDiscovery(),
-                        joining: MacPairing(tokens: KeychainPairingTokenStore(), handshake: Self.handshake),
+                        joining: MacPairing(macs: Self.rememberedMacStore, handshake: Self.handshake),
                         camera: CaptureDeviceCameraAuthorization(),
                         scanner: Self.scanner,
                         addresses: BonjourServerAddressResolver()
@@ -69,6 +69,17 @@ public struct GranitaMobileScene: Scene {
                     onPaired: { mac in
                         isReadingAPairedMac = true
                         path = NavigationPath([mac])
+                    },
+                    // A Mac this phone has paired with before opens its worktrees, and nothing in
+                    // between: the Keychain read, the Bonjour lookup and the pinned session all
+                    // happen behind the list's own loading state. **Not `onAppear`, not a screen
+                    // that resolves an address** — either would put the pairing screen back in front
+                    // of a reader who has already paired, which is the entire complaint.
+                    readingARememberedMac: { server in
+                        Self.worktrees(
+                            of: server.name,
+                            over: RememberedMacRepository(reading: server, through: Self.rememberedMacs)
+                        )
                     }
                 )
                 // The list this product exists for, in design §2's own container: one sidebar and
@@ -77,24 +88,7 @@ public struct GranitaMobileScene: Scene {
                 // rather than out here, because a title applied to a container does not override
                 // one applied within it. See `.claude/docs/decisions.md`.
                 .navigationDestination(for: PairedMac.self) { mac in
-                    WorktreeSplitScreen(model: Self.worktrees(of: mac)) { worktree, displayName in
-                        // **The second link in this app whose destination is a module away**, and
-                        // it is here for the same reason the first is: `ClientWorktreesPresentation`
-                        // may see any `Domain` and its own `Ui`, never a sibling `Presentation`. The
-                        // sidebar declares the destination — it has to, because a split view keeps
-                        // what its own columns declare — and this supplies what it builds. The
-                        // parameter is required, so the row cannot go quiet the way it did for eight
-                        // releases; what it opens is the only part that could ever be wrong.
-                        // **The name arrives with the identifier rather than being resolved here**,
-                        // and that is 0.1.0's iPad defect not happening twice: this closure runs on
-                        // every evaluation and each one builds a worktrees model that has read
-                        // nothing, so a name looked up here would be the fallback word on every
-                        // worktree there is. The screen that pins the loaded model resolves it.
-                        WorktreeDiffScreen(
-                            worktreeName: displayName,
-                            model: ClientViewerModel(worktree: worktree, repository: Self.repository(of: mac))
-                        )
-                    }
+                    Self.worktrees(of: mac.name, over: Self.repository(of: mac))
                 }
             }
             // The measure goes around the stack rather than around the screen, because iOS draws a
@@ -157,16 +151,58 @@ public struct GranitaMobileScene: Scene {
         #endif
     }
 
-    /// The list this product exists for, over a session pinned to the Mac that was just paired
-    /// with — which is what makes the pin worth having: the token, the address and the fingerprint
-    /// come from the same pairing, so a request cannot leave for a machine nobody vouched for.
-    private static func worktrees(of mac: PairedMac) -> ClientWorktreesModel {
-        ClientWorktreesModel(
-            macName: mac.name,
-            repository: repository(of: mac),
-            preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
-            now: Date.init
-        )
+    /// The Keychain, made once, because two of its readers exist: the pairing sequence writes to it
+    /// and the reconnection below reads from it, and a store is a fact about this device rather than
+    /// about either of them.
+    private static let rememberedMacStore = KeychainRememberedMacStore()
+
+    /// **Every Mac this phone can open without pairing, and the one live connection to each** — made
+    /// once for the life of the app rather than per screen, which is the whole of what it buys. A
+    /// `navigationDestination` closure is re-evaluated on every pass, so a reconnection built inside
+    /// one would re-read the Keychain, re-resolve the Bonjour name and open a second `URLSession`
+    /// each time; held here, the sidebar and an open diff share one.
+    private static let rememberedMacs = RememberedMacs(
+        store: rememberedMacStore,
+        addresses: BonjourServerAddressResolver(),
+        connect: { repository(of: $0) }
+    )
+
+    /// The list this product exists for, over a repository that can reach exactly one Mac.
+    ///
+    /// **Two destinations arrive here and they differ only in that repository**: a Mac just paired
+    /// with brings its address and its key in hand, and a remembered one looks both up on its first
+    /// request. Everything after that is the same screen, which is why it is written once — the
+    /// alternative is two copies of a split view, and the one thing this app has proved it can do is
+    /// let two declarations of the same destination drift apart.
+    ///
+    /// The repository is built by the caller and shared by both screens, so the diff a reader opens
+    /// speaks over the session the list was read through rather than opening a second one.
+    @ViewBuilder
+    private static func worktrees(of macName: String, over repository: any GranitaRepository) -> some View {
+        WorktreeSplitScreen(
+            model: ClientWorktreesModel(
+                macName: macName,
+                repository: repository,
+                preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
+                now: Date.init
+            )
+        ) { worktree, displayName in
+            // **The second link in this app whose destination is a module away**, and it is here for
+            // the same reason the first is: `ClientWorktreesPresentation` may see any `Domain` and
+            // its own `Ui`, never a sibling `Presentation`. The sidebar declares the destination — it
+            // has to, because a split view keeps what its own columns declare — and this supplies
+            // what it builds. The parameter is required, so the row cannot go quiet the way it did
+            // for eight releases; what it opens is the only part that could ever be wrong.
+            // **The name arrives with the identifier rather than being resolved here**, and that is
+            // 0.1.0's iPad defect not happening twice: this closure runs on every evaluation and
+            // each one builds a worktrees model that has read nothing, so a name looked up here
+            // would be the fallback word on every worktree there is. The screen that pins the loaded
+            // model resolves it.
+            WorktreeDiffScreen(
+                worktreeName: displayName,
+                model: ClientViewerModel(worktree: worktree, repository: repository)
+            )
+        }
     }
 
     /// A session that can reach exactly one Mac, which is what makes the pin worth having: the

@@ -28,7 +28,7 @@ final class BonjourServiceConnection: ServiceConnecting {
     init(to server: DiscoveredServer) {
         connection = NWConnection(
             to: .service(
-                name: server.id,
+                name: server.id.rawValue,
                 type: Branding.bonjourServiceType,
                 domain: "local.",
                 interface: nil

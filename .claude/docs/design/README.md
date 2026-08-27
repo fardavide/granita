@@ -15,7 +15,7 @@ a question that now has a real one. When a file's last section ships, the file g
 | File | Still to build | Read the calls in |
 |---|---|---|
 | [`granita-design-review.html`](granita-design-review.html) | The continuous diff's second header form, syntax highlighting and wrap-on (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
-| [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which needs a Bonjour record change nothing has. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
+| [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which 0.4.1 made reachable and deliberately did not build: a Mac paired with before goes straight to its worktrees, so the only reader who lands here is one whose token the Mac revoked. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
 
 The pairing return arrived with **twelve** states and left with one, because the pull request that
 recorded it also built the other eleven. What it carried that no frame could — that the six words

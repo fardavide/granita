@@ -38,6 +38,10 @@ struct FakeMacJoining: MacJoining {
 
     let answering: PairingOutcome
 
+    /// Which Macs the phone can open without pairing, defaulted to none because that is what every
+    /// pairing baseline is about: a Mac already paired with never reaches these screens.
+    var remembering: Set<BonjourInstanceName> = []
+
     func pair(
         with attempt: PairingAttempt,
         on mac: DiscoveredServer,
@@ -48,7 +52,7 @@ struct FakeMacJoining: MacJoining {
 
     func saveToken(of pairing: PairedMac) async -> PairingOutcome { answering }
 
-    func alreadyPaired() async -> Set<ServerInstanceId> { [] }
+    func rememberedMacs() async -> Set<BonjourInstanceName> { remembering }
 }
 
 // MARK: -
@@ -144,7 +148,10 @@ struct CameraStill: View {
 /// rather than being long.
 nonisolated let aMacName = "Mac Studio"
 
-nonisolated let aDiscoveredMac = DiscoveredServer(id: aMacName, name: aMacName)
+nonisolated let aDiscoveredMac = DiscoveredServer(
+    id: BonjourInstanceName(rawValue: aMacName),
+    name: aMacName
+)
 
 /// A name and a port that could only have come from Bonjour: the system chose the port, so it is a
 /// five-figure number nobody would have picked, which is what makes it worth photographing.
@@ -153,6 +160,7 @@ nonisolated let aMacAddress = ServerAddress(host: "Mac-Studio.local", port: 54_3
 /// A pairing that bought a token, for the one screen that is drawn after one was bought and could
 /// not be written down. Nothing on that screen renders any of these fields.
 nonisolated let aPairedMac = PairedMac(
+    instance: aDiscoveredMac.id,
     name: aMacName,
     device: PairedDevice(
         token: PairingToken(rawValue: "not-a-token-any-Mac-ever-issued"),

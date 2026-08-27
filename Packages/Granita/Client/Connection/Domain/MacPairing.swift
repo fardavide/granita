@@ -25,11 +25,15 @@ public protocol MacJoining: Sendable {
         as device: PairingDevice
     ) async -> PairingOutcome
 
-    /// Writes down a token for a pairing that already happened, and nothing else.
+    /// Writes down a pairing that already happened, and nothing else.
+    ///
+    /// Named for the token because the token is the part a reader is told about when it fails, and
+    /// design §5's sentence for that failure is about a key. What is written is the whole pairing —
+    /// the key alone would be a Mac this phone could authenticate to and could not pin.
     func saveToken(of pairing: PairedMac) async -> PairingOutcome
 
-    /// Every Mac this phone holds a token for.
-    func alreadyPaired() async -> Set<ServerInstanceId>
+    /// Every Mac this phone can open without pairing again.
+    func rememberedMacs() async -> Set<BonjourInstanceName>
 }
 
 // MARK: -
@@ -47,7 +51,7 @@ public protocol MacJoining: Sendable {
 /// two.
 public struct MacPairing: MacJoining {
 
-    private let tokens: any PairingTokenStore
+    private let macs: any RememberedMacStore
 
     /// Builds the client for one attempt. A closure rather than a stored client, because a session
     /// is per Mac: the pin — or the decision to trust the first answer — arrives with the attempt,
@@ -65,20 +69,20 @@ public struct MacPairing: MacJoining {
     private let patience: Duration
 
     public init(
-        tokens: any PairingTokenStore,
+        macs: any RememberedMacStore,
         handshake: @escaping @Sendable (PairingAttempt) -> any ServerPairing
     ) {
-        self.init(tokens: tokens, handshake: handshake, patience: .seconds(75))
+        self.init(macs: macs, handshake: handshake, patience: .seconds(75))
     }
 
     /// The seam, without a default on it, so a test that means "this step never answers" has to say
     /// how long the sequence waits before it says so.
     init(
-        tokens: any PairingTokenStore,
+        macs: any RememberedMacStore,
         handshake: @escaping @Sendable (PairingAttempt) -> any ServerPairing,
         patience: Duration
     ) {
-        self.tokens = tokens
+        self.macs = macs
         self.handshake = handshake
         self.patience = patience
     }
@@ -137,6 +141,7 @@ public struct MacPairing: MacJoining {
         }
         return await saveToken(
             of: PairedMac(
+                instance: mac.id,
                 name: mac.name,
                 device: paired,
                 address: attempt.address,
@@ -153,10 +158,8 @@ public struct MacPairing: MacJoining {
     /// — the common cause — is transient, and without this the reader's only remedy is to go to the
     /// other machine and revoke a device record.
     public func saveToken(of pairing: PairedMac) async -> PairingOutcome {
-        let tokens = tokens
-        let written = await answer {
-            await tokens.write(pairing.device.token, issuedBy: pairing.device.serverInstanceId)
-        }
+        let macs = macs
+        let written = await answer { await macs.write(pairing) }
         guard let written else {
             return .neverAnswered(.writingTheKey(pairing))
         }
@@ -166,15 +169,15 @@ public struct MacPairing: MacJoining {
         return .paired(pairing)
     }
 
-    /// Every Mac this phone holds a token for.
+    /// Every Mac this phone can open without pairing again.
     ///
-    /// Silent on failure by design: a Keychain that will not enumerate costs an ordering, and
-    /// refusing to list the Macs that are actually on the network because of it is the worse screen.
-    /// Bounded for the same reason — a list that never arrives is a discovery screen that never
-    /// sorts, which is a spinner nobody can leave rather than an ordering nobody notices.
-    public func alreadyPaired() async -> Set<ServerInstanceId> {
-        let tokens = tokens
-        return await answer { try? await tokens.pairedServers() }.flatMap { $0 } ?? []
+    /// Silent on failure by design, and the cost of that silence is one pairing rather than a screen
+    /// nobody can leave: a Keychain that will not enumerate sends the reader through the pairing
+    /// spine for a Mac they have already paired with, where refusing to list the Macs on the network
+    /// at all would leave them with nothing to tap. Bounded for the same reason.
+    public func rememberedMacs() async -> Set<BonjourInstanceName> {
+        let macs = macs
+        return await answer { try? await macs.rememberedMacs() }.flatMap { $0 } ?? []
     }
 
     /// Whatever the step answers, or nothing once the patience has run out.
@@ -262,11 +265,11 @@ private extension ServerPairing {
 }
 
 /// The write, as the failure it produced rather than as a typed throw, for the same reason.
-private extension PairingTokenStore {
+private extension RememberedMacStore {
 
-    func write(_ token: PairingToken, issuedBy server: ServerInstanceId) async -> PairingTokenStoreFailure? {
+    func write(_ pairing: PairedMac) async -> RememberedMacStoreFailure? {
         do {
-            try await save(token, issuedBy: server)
+            try await remember(pairing)
             return nil
         } catch {
             return error
@@ -296,7 +299,7 @@ public enum PairingOutcome: Hashable, Sendable {
     /// a retry of the write alone instead of sending the reader to the Mac to revoke a device. The
     /// cost is stated where it belongs, in `decisions.md`: a live token sits in memory for as long as
     /// that screen is up.
-    case tokenNotStored(PairedMac, PairingTokenStoreFailure)
+    case tokenNotStored(PairedMac, RememberedMacStoreFailure)
 
     /// A step took the call and never came back.
     ///

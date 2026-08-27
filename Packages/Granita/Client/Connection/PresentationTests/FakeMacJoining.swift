@@ -24,18 +24,21 @@ final class FakeMacJoining: MacJoining {
     private let answeringPairAfter: Duration
     private let answeringWrite: PairingOutcome
     private let answeringWriteAfter: Duration
+    private let remembering: Set<BonjourInstanceName>
     private let attempts = Mutex<[PairingAttempt]>([])
 
     init(
         answeringPair: PairingOutcome,
         answeringPairAfter: Duration,
         answeringWrite: PairingOutcome,
-        answeringWriteAfter: Duration
+        answeringWriteAfter: Duration,
+        remembering: Set<BonjourInstanceName> = []
     ) {
         self.answeringPair = answeringPair
         self.answeringPairAfter = answeringPairAfter
         self.answeringWrite = answeringWrite
         self.answeringWriteAfter = answeringWriteAfter
+        self.remembering = remembering
     }
 
     func pair(
@@ -56,10 +59,10 @@ final class FakeMacJoining: MacJoining {
         return answeringWrite
     }
 
-    /// Nothing, and nothing configures it. The history behind this call is what design §1's *Recent*
-    /// section will be ordered by, and no screen reads it yet — the model that briefly held a copy
-    /// was removed a second time for that reason. See `.claude/docs/decisions.md`.
-    func alreadyPaired() async -> Set<ServerInstanceId> {
-        []
+    /// Which Macs the phone can open without pairing, which is what the discovery screen routes a
+    /// tap with. Configured, because a row going to the wrong one of two destinations is now the
+    /// thing worth asserting.
+    func rememberedMacs() async -> Set<BonjourInstanceName> {
+        remembering
     }
 }
