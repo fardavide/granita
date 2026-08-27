@@ -210,6 +210,13 @@ public final class ClientViewerModel {
     /// **The lines go into the diff rather than beside it**, so a hunk that has grown carries its
     /// own new bounds and the control disappears the moment the gap it opens is closed. Expansion
     /// state kept in a second structure is a second answer to a question the hunk can already give.
+    ///
+    /// **Two presses inside one round trip would splice one window twice**, because both compute
+    /// their window before either lands. Not guarded here, deliberately: the guard is a branch no
+    /// test kind in this repository can drive — it needs two calls genuinely overlapping, which
+    /// needs a fake that holds a request open — and an untested branch is worse than a defect whose
+    /// symptom is twenty context lines appearing twice with the gutter numbers saying so. It is on
+    /// the device afternoon's list, which is where it can be seen.
     public func expand(_ direction: ContextDirection, hunk index: Int, in file: FileID) async {
         guard let position = entries.firstIndex(where: { $0.id == file }),
               case .ready(let diff) = entries[position].content,

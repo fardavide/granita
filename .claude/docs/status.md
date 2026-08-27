@@ -700,6 +700,12 @@ version that has not moved.
   `presentationBackgroundInteraction` delivers that is a thumb's answer; and **the bar for a file
   over 500 lines, because it is the one control here that is also a fetch** — pressing it must turn
   the bar into a header and then fill it, and nothing that runs on this machine can watch that happen.
+- **Press an expand control twice inside one round trip.** Both presses compute their window before
+  either lands, so both ask for the same lines and both splice them — twenty lines of context
+  appearing twice, with the gutter numbers saying so. It is **not guarded**, deliberately: the guard
+  is a branch no test kind here can drive, since it needs two calls genuinely overlapping and
+  therefore a fake that holds a request open, and an untested branch is worse than a defect a device
+  can show. Whether it happens at LAN speed is what a thumb answers.
 - **And a measurement while the phone is in hand: whether a 44pt hunk band is too much.** Design §4
   asks for that hit area in as many words and it is four times the height of the band before it, so a
   file with five hunks spends 220pt on controls. A hunk with nothing to expand keeps the thin band,

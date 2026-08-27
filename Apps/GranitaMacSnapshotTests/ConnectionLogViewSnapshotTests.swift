@@ -53,6 +53,16 @@ struct ConnectionLogViewSnapshotTests {
                 outcome: .paired(device: "Davide's iPhone", id: "device-iphone"),
                 occurrences: 1
             ),
+            // **A single served request, which is the noun's other spelling and had never been
+            // drawn.** Every accepted row in this suite had been coalesced into a plural, so
+            // *1 requests* was one release away from shipping — the same defect the phone's
+            // *1 file* subject exists to stop, on the panel a reader opens under pressure.
+            attempt(
+                seconds: 620,
+                source: "192.168.1.88",
+                outcome: .accepted(device: "Davide's iPad", id: "device-ipad"),
+                occurrences: 1
+            ),
             attempt(
                 seconds: 720,
                 source: "192.168.1.19",

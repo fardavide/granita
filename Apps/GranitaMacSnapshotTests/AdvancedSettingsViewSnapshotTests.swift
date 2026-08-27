@@ -48,6 +48,31 @@ struct AdvancedSettingsViewSnapshotTests {
                 storeLockHolder: nil,
                 isBlockedByAnotherProcess: false
             ),
+            // **The spelling table has six arms and three had never been drawn.** The row beside
+            // `Reset All Data` says what is stored in words below five, and a Mac holding three
+            // projects and four paired devices is the ordinary case rather than a contrived one —
+            // this is the same reason the phone photographs *1 file* beside *7 files*.
+            Subject(
+                name: "three-projects-and-four-devices",
+                git: .available(version: "2.52.0", path: "/opt/homebrew/bin/git"),
+                projectCount: 3,
+                deviceCount: 4,
+                isVerboseLogging: false,
+                storeLockHolder: nil,
+                isBlockedByAnotherProcess: false
+            ),
+            // The last of the three, and the one that is not a plural: a Mac with projects on it and
+            // nothing yet paired, which is every Mac between adding a folder and reaching for a
+            // phone. "no paired devices" rather than "0 paired devices".
+            Subject(
+                name: "projects-but-nothing-paired",
+                git: .available(version: "2.52.0", path: "/opt/homebrew/bin/git"),
+                projectCount: 2,
+                deviceCount: 0,
+                isVerboseLogging: true,
+                storeLockHolder: nil,
+                isBlockedByAnotherProcess: false
+            ),
             // A first run, and the state the tab spends most of its life in. `Reset All Data` is
             // still offered rather than disabled: the sentence beside it already says there is
             // nothing to destroy, and a control that greys out is a question a reader then has to

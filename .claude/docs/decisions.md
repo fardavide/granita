@@ -3870,6 +3870,12 @@ invent. Same shape as §3's truncation footer above, and the same answer: a sent
 beats a sentence that matches a drawing. Putting a timestamp in the store is a change to `SPEC.md`
 §5.5's viewed map on both ends for one adverb, and it is not one this slice asked for.
 
+**An unread bar carries no empty circle**, which the frame draws on three of its four rows. The
+circle in the file header is a *control* — it is the only writer of the mark there is — and the same
+glyph on a row whose whole tap target opens the file would read as a second control inside the first,
+which is §3's two-tap-targets problem in a 44pt row. So the mark appears on a bar only when it is
+set, as a bare check, exactly as §3's selector row does it.
+
 **A fifth case the design does not draw: the reader shuts a file by hand.** It has no reason line, so
 the bar is one line rather than two. Telling someone they shut a file they have just shut is a line
 that says nothing. It is photographed, because a state argued for in a comment and never rendered is
