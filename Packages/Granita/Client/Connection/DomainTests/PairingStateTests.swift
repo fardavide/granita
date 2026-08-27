@@ -135,6 +135,7 @@ struct PairingStateTests {
 // MARK: -
 
 private let aPairedMac = PairedMac(
+    instance: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
     name: "Davide's MacBook Pro",
     device: PairedDevice(
         token: PairingToken(rawValue: "1f0e4d7c6b5a49382736251403f2e1d0"),

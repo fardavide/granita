@@ -109,6 +109,34 @@ struct PairingSpineSnapshotTests {
             named: "the-receipt"
         )
     }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given a Mac paired with before when the spine is rendered then the pairing screens are skipped`(
+        layout: SnapshotLayout
+    ) async {
+        // given — the same push as `the-mac`, onto a Mac this phone already holds a pairing for. The
+        // two baselines are the whole assertion and they have to be read together: identical value on
+        // the path, identical model, and one of them must not be the entry screen.
+        //
+        // **Only a rendered push can say this.** Which of two destinations a value reaches is decided
+        // in a `navigationDestination` closure, and a view test hands a screen its state directly — so
+        // it can photograph both screens beautifully and nothing at all about which one a tap lands
+        // on. That is the defect this suite exists for, and it is the defect this release fixes.
+        let model = aModel(
+            camera: .granted,
+            joining: .refused(.pairingExpired),
+            resolving: .failure(.localNetworkDenied),
+            remembering: [aDiscoveredMac.id]
+        )
+        await model.start()
+
+        // when - then
+        assertScreenSnapshot(
+            theSpine(model, showing: [], on: aPhone()),
+            layout: layout,
+            named: "a-mac-already-paired-with"
+        )
+    }
 }
 
 // MARK: -
@@ -130,7 +158,29 @@ private func theSpine(
         path.append(step)
     }
     return NavigationStack(path: .constant(path)) {
-        ServerDiscoveryScreen(model: model, phone: phone, path: .constant(path), onPaired: { _ in })
+        ServerDiscoveryScreen(
+            model: model,
+            phone: phone,
+            path: .constant(path),
+            onPaired: { _ in }
+        ) { mac in
+            // **Where a Mac already paired with goes, standing in for the worktree list.**
+            //
+            // The composition root puts the real one here, over a session pinned to that Mac. This
+            // suite deliberately does not: what it asserts is *which destination a push reaches*, and
+            // building a worktree list to find that out would make each baseline a second, worse copy
+            // of a screen that has four suites of its own — and would put a repository behind a test
+            // about navigation.
+            //
+            // So the destination names itself, the way `PairingStep` is public so a step can be put
+            // on the path. It appears in exactly one baseline. In the other four the Mac is not
+            // remembered, and this sentence turning up in any of them is the picture saying so.
+            Text("The worktrees on \(mac.name), reached without pairing.")
+                .font(.title3)
+                .multilineTextAlignment(.center)
+                .padding()
+                .navigationTitle(mac.name)
+        }
     }
     .frame(maxWidth: ServerDiscoveryView.contentWidth)
     .frame(maxWidth: .infinity)
@@ -142,11 +192,12 @@ private func theSpine(
 private func aModel(
     camera: CameraAccess,
     joining: PairingOutcome,
-    resolving: Result<ServerAddress, ServerAddressResolutionFailure>
+    resolving: Result<ServerAddress, ServerAddressResolutionFailure>,
+    remembering: Set<BonjourInstanceName> = []
 ) -> ClientConnectionModel {
     ClientConnectionModel(
         browsing: FakeServerDiscovery(states: [.found([aDiscoveredMac])]),
-        joining: FakeMacJoining(answering: joining),
+        joining: FakeMacJoining(answering: joining, remembering: remembering),
         camera: FakeCameraAuthorization(current: camera),
         scanner: FakeCodeScanner(),
         addresses: FakeServerAddressResolver(answering: resolving)

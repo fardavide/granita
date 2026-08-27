@@ -62,7 +62,12 @@ struct BonjourBrowserTests {
         let server = BonjourBrowser.server(from: endpoint)
 
         // then
-        #expect(server == DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro"))
+        #expect(
+            server == DiscoveredServer(
+                id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+                name: "Davide's MacBook Pro"
+            )
+        )
     }
 
     @Test

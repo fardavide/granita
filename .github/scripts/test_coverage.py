@@ -120,7 +120,12 @@ class TestPathClassification:
         # A test binary is unsigned and has no keychain of its own, so the only way to run either of
         # these is to write into a real one. Both halves of the product have one now.
         assert not coverage.is_reachable_path("Server/Identity/Data/KeychainServerIdentityStore.swift")
-        assert not coverage.is_reachable_path("Client/Connection/Data/KeychainPairingTokenStore.swift")
+        assert not coverage.is_reachable_path("Client/Connection/Data/KeychainRememberedMacStore.swift")
+        # The phone's store is named for what it holds — a whole pairing, not a bare token — and the
+        # name it held until 0.4.1 buys no exemption. A stale entry here would exempt a file that no
+        # longer exists while measuring the one that replaced it, which is the failure this asserts
+        # against rather than the rename itself.
+        assert coverage.is_reachable_path("Client/Connection/Data/KeychainPairingTokenStore.swift")
 
     def test_given_a_model_or_a_parser_when_classifying_then_a_host_test_reaches_it(self):
         assert coverage.is_reachable_path("Server/Mac/Presentation/ServerMacModel.swift")

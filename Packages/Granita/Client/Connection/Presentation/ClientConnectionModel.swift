@@ -27,6 +27,14 @@ public final class ClientConnectionModel {
 
     public private(set) var pairing: PairingState = .notStarted
 
+    /// Which of the Macs on this network this phone can open without pairing again.
+    ///
+    /// **This one is read by a screen, which is what the two properties removed twice from here were
+    /// not.** It decides where a row goes: a Mac already paired with belongs in its worktrees, and
+    /// asking for a code again is the defect this exists to end. Names rather than credentials —
+    /// nothing that routes a tap should be holding a token.
+    private var remembered: Set<BonjourInstanceName> = []
+
     /// What is in the six-word field, exactly as it was typed.
     ///
     /// **Never corrected.** The server lowercases and accepts spaces, hyphens, middle dots and the
@@ -120,11 +128,27 @@ public final class ClientConnectionModel {
         self.hintReturnsAfter = hintReturnsAfter
     }
 
+    /// Whether tapping that Mac should open its worktrees rather than ask for a code.
+    ///
+    /// **Answered from what was read before the browse began**, so it is settled by the time a row
+    /// exists to tap: a Keychain read started here would leave the first tap racing it, and losing
+    /// that race means the pairing screens for a Mac that is already paired with — which is the whole
+    /// of the defect.
+    public func isRemembered(_ server: DiscoveredServer) -> Bool {
+        remembered.contains(server.id)
+    }
+
     /// Consumes discovery updates until the stream ends or the surrounding task is cancelled.
     ///
     /// Servers appear and disappear while the screen is open — a Mac waking from sleep is the common
     /// case — so this follows the stream rather than taking one reading.
+    ///
+    /// **The Macs this phone remembers are read first, and every time.** First, because no row may
+    /// be tappable before the answer that decides where it goes; every time, because this screen
+    /// re-runs its task whenever it comes back — which is exactly when the set can have changed, a
+    /// Mac having just revoked the pairing the reader went in with.
     public func start() async {
+        remembered = await joining.rememberedMacs()
         for await update in browsing.discover() {
             discovery = update
         }
@@ -258,7 +282,7 @@ public final class ClientConnectionModel {
     func join(_ attempt: PairingAttempt, on server: DiscoveredServer, as device: PairingDevice) async {
         pairing = .spending
         spentCredential = attempt
-        pairing = .finished(await joining.pair(with: attempt, on: server, as: device))
+        finish(with: await joining.pair(with: attempt, on: server, as: device))
     }
 
     /// Retries the Keychain write, and nothing else.
@@ -285,7 +309,21 @@ public final class ClientConnectionModel {
             return
         }
         pairing = .savingToken
-        pairing = .finished(await joining.saveToken(of: mac))
+        finish(with: await joining.saveToken(of: mac))
+    }
+
+    /// Puts an ending where the screen reads it, and adds the Mac to the ones this phone remembers
+    /// when there is one to add.
+    ///
+    /// **Both endings that store a pairing come through here**, which is what stops the two from
+    /// disagreeing. The set is also re-read whenever the Mac list comes back, so this is not the only
+    /// thing keeping it true — it is what keeps it true *immediately*, and immediately is when the
+    /// reader taps back into the Mac they have just paired with.
+    private func finish(with outcome: PairingOutcome) {
+        pairing = .finished(outcome)
+        if let mac = pairing.pairedMac {
+            remembered.insert(mac.instance)
+        }
     }
 
     /// Runs the camera until a code is found or the reader leaves.

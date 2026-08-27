@@ -132,7 +132,7 @@ COMPOSITION_ROOT_LAYER = "Main"
 # directories would stop measuring them.
 UNREACHABLE_FILES = {
     "Server/Identity/Data/KeychainServerIdentityStore.swift",
-    "Client/Connection/Data/KeychainPairingTokenStore.swift",
+    "Client/Connection/Data/KeychainRememberedMacStore.swift",
     "Server/Mac/Data/ServiceLoginItemRegistry.swift",
     # Every line is a call on the *running application* — `NSApp`, `NSPasteboard`, `NSWorkspace`, and
     # a modal panel whose `runModal()` would not return in a test process at all. Stronger than the

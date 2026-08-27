@@ -11,7 +11,10 @@ struct BonjourServerAddressResolverTests {
     @Test
     func `given the Mac answered when its address is asked for then that is where it is`() async throws {
         // given — a browse result and nothing more, which is the whole reason this type exists.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(
             answering: .says(.reached(ServerAddress(host: "192.168.1.24", port: 51_763))),
             patience: .seconds(60)
@@ -27,7 +30,10 @@ struct BonjourServerAddressResolverTests {
     @Test
     func `given the Mac answered when its address is asked for then nothing is left connected`() async throws {
         // given
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(
             answering: .says(.reached(ServerAddress(host: "192.168.1.24", port: 51_763))),
             patience: .seconds(60)
@@ -46,7 +52,10 @@ struct BonjourServerAddressResolverTests {
     func `given nothing answers for that Mac when its address is asked for then the reason is passed through`() async {
         // given — whatever the connection concluded, verbatim: this layer adds no reading of its own
         // to a diagnosis the state handler already made.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(
             answering: .says(.lost(.unreachable(diagnostic: "No such record\nNWError -72004"))),
             patience: .seconds(60)
@@ -62,7 +71,10 @@ struct BonjourServerAddressResolverTests {
     func `given the Mac may not be reached at all when its address is asked for then that is not a fault`() async {
         // given — the refusal survives the trip rather than being flattened into "could not reach
         // it", because the two do not share a remedy.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(answering: .says(.lost(.localNetworkDenied)), patience: .seconds(60))
 
         // when - then
@@ -76,7 +88,10 @@ struct BonjourServerAddressResolverTests {
         // given — a connection that says nothing and never stops, which is what a Mac that has left
         // the network looks like to a connection still hoping. Without a limit this is the state the
         // screen sits in for ever.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(answering: .saysNothingEver, patience: .zero)
 
         // when - then

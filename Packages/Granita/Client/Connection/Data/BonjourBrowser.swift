@@ -75,7 +75,7 @@ final class BonjourBrowser: ServiceBrowsing {
     /// ever made by the framework and a test cannot hand one over.
     static func server(from endpoint: NWEndpoint) -> DiscoveredServer? {
         guard case .service(let name, _, _, _) = endpoint else { return nil }
-        return DiscoveredServer(id: name, name: name)
+        return DiscoveredServer(id: BonjourInstanceName(rawValue: name), name: name)
     }
 }
 

@@ -70,18 +70,13 @@ struct Case: Sendable, CustomTestStringConvertible {
         // nothing there, which needs different words from "still looking".
         Case(name: "nothing-found", state: .found([])),
 
-        Case(name: "one-mac", state: .found([
-            DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
-        ])),
+        Case(name: "one-mac", state: .found([aMac(called: "Davide's MacBook Pro")])),
 
         // More than one, and one with a name long enough to find a truncation bug.
         Case(name: "several-macs", state: .found([
-            DiscoveredServer(id: "MacBook Pro", name: "MacBook Pro"),
-            DiscoveredServer(id: "Mac Studio", name: "Mac Studio"),
-            DiscoveredServer(
-                id: "Davide's 16-inch MacBook Pro (work)",
-                name: "Davide's 16-inch MacBook Pro (work)"
-            )
+            aMac(called: "MacBook Pro"),
+            aMac(called: "Mac Studio"),
+            aMac(called: "Davide's 16-inch MacBook Pro (work)")
         ])),
 
         // The one the reader can act on, and the one that shipped broken: iOS reports a refusal one
@@ -93,4 +88,11 @@ struct Case: Sendable, CustomTestStringConvertible {
         // act on. A one-line payload would stop covering the layout the reader actually gets.
         Case(name: "failed", state: .failed(diagnostic: "The operation couldn’t be completed.\nNWError -65563"))
     ]
+
+    /// A browse result under the one name a Mac has on this network, which is both its identity and
+    /// the string the row draws. The two are the same value and this list is where that shows: a
+    /// Bonjour instance name is unique within a local domain, so nothing here has to disambiguate.
+    private static func aMac(called name: String) -> DiscoveredServer {
+        DiscoveredServer(id: BonjourInstanceName(rawValue: name), name: name)
+    }
 }

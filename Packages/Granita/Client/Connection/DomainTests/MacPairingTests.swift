@@ -22,7 +22,14 @@ struct MacPairingTests {
         // then — the Mac keeps a hash and this is the only copy of the token there is, so an
         // outcome that reported success without writing it down would lock the phone out silently.
         #expect(outcome == .paired(aPairedMac))
-        #expect(await scenario.tokens.saved == [aPairedDevice.serverInstanceId: aPairedDevice.token])
+        // Filed under the Bonjour instance name, which is the only name for this Mac the phone will
+        // have next time it sees one in a browse — and it is the whole pairing rather than the token
+        // alone, because a token without the key beside it could not pin the session that spends it.
+        #expect(
+            await scenario.macs.saved == [
+                theMacTheReaderOpened.id: RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint)
+            ]
+        )
     }
 
     @Test
@@ -37,7 +44,7 @@ struct MacPairingTests {
         // then
         #expect(outcome == .wrongContract(.macIsBehind(serving: Branding.apiVersion - 1)))
         #expect(await scenario.server.codesOffered.isEmpty)
-        #expect(await scenario.tokens.saved.isEmpty)
+        #expect(await scenario.macs.saved.isEmpty)
     }
 
     @Test
@@ -54,7 +61,7 @@ struct MacPairingTests {
         // the outcome screen prints in small print under one.
         #expect(outcome == .refused(.unreachable(diagnostic: "Could not connect to the server.")))
         #expect(await scenario.server.codesOffered.isEmpty)
-        #expect(await scenario.tokens.saved.isEmpty)
+        #expect(await scenario.macs.saved.isEmpty)
     }
 
     @Test
@@ -128,6 +135,7 @@ struct MacPairingTests {
         #expect(
             outcome == .paired(
                 PairedMac(
+                    instance: theMacTheReaderOpened.id,
                     name: theMacTheReaderOpened.name,
                     device: aPairedDevice,
                     address: anAddress,
@@ -190,14 +198,18 @@ struct MacPairingTests {
             Issue.record("a refused Keychain has to hand the pairing back, or there is nothing to retry")
             return
         }
-        await scenario.tokens.recover()
+        await scenario.macs.recover()
 
         // when
         let outcome = await scenario.sut.saveToken(of: pairing)
 
         // then — and no second code is spent, because the one that bought this token is gone.
         #expect(outcome == .paired(aPairedMac))
-        #expect(await scenario.tokens.saved == [aPairedDevice.serverInstanceId: aPairedDevice.token])
+        #expect(
+            await scenario.macs.saved == [
+                theMacTheReaderOpened.id: RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint)
+            ]
+        )
         #expect(await scenario.server.codesOffered == [aLink.code])
     }
 
@@ -286,45 +298,47 @@ struct MacPairingTests {
 
     @Test
     func `given a Keychain that never enumerates when the history is read then nothing is claimed`() async {
-        // given — the same reasoning as a Keychain that refuses, and the same answer: an ordering is
-        // not worth a screen that never arrives.
+        // given — the same reasoning as a Keychain that refuses, and the same answer: one more
+        // pairing is not worth a Mac list that never arrives.
         let scenario = Scenario(keychainNeverAnswering: true)
 
         // when
-        let known = await scenario.sut.alreadyPaired()
+        let known = await scenario.sut.rememberedMacs()
 
         // then
         #expect(known.isEmpty)
     }
 
     @Test
-    func `given tokens for two Macs when the history is read then both are known`() async {
-        // given
-        let scenario = Scenario(holdingTokens: [
-            ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22"):
-                PairingToken(rawValue: "1f0e4d7c6b5a4938"),
-            ServerInstanceId(rawValue: "77DDEE00-2222-4B3F-91A0-C4D5E6F70088"):
-                PairingToken(rawValue: "2a3b4c5d6e7f8091")
+    func `given pairings with two Macs when the history is read then both are known`() async {
+        // given — by the name a browse result carries, because that is the only thing a row can be
+        // matched against: the identifier the Mac issues arrives inside a pairing response, which is
+        // to say after the question has already been asked.
+        let scenario = Scenario(remembering: [
+            BonjourInstanceName(rawValue: "Davide's MacBook Pro"):
+                RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint),
+            BonjourInstanceName(rawValue: "Mac Studio"):
+                RememberedMac(device: aPairedDevice, fingerprint: anObservedKey)
         ])
 
         // when
-        let known = await scenario.sut.alreadyPaired()
+        let known = await scenario.sut.rememberedMacs()
 
         // then
         #expect(known == [
-            ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22"),
-            ServerInstanceId(rawValue: "77DDEE00-2222-4B3F-91A0-C4D5E6F70088")
+            BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            BonjourInstanceName(rawValue: "Mac Studio")
         ])
     }
 
     @Test
     func `given a Keychain that will not enumerate when the history is read then nothing is claimed`() async {
-        // given — the history only orders a list. Refusing to show the Macs that are actually on the
-        // network because a sort key is unavailable is the worse screen.
+        // given — the history only decides where a tap goes. Refusing to show the Macs that are
+        // actually on the network because of it costs one pairing; the alternative costs the app.
         let scenario = Scenario(keychainRefusing: .unreadable)
 
         // when
-        let known = await scenario.sut.alreadyPaired()
+        let known = await scenario.sut.rememberedMacs()
 
         // then
         #expect(known.isEmpty)
@@ -388,7 +402,7 @@ struct FirstAnswerTests {
 private struct Scenario {
 
     let sut: MacPairing
-    let tokens: FakePairingTokenStore
+    let macs: FakeRememberedMacStore
     let server: FakeServerPairing
 
     init(
@@ -396,15 +410,15 @@ private struct Scenario {
         refusingHealth healthRefusal: ApiFailure? = nil,
         pairing: Result<PairedDevice, ApiFailure> = .success(aPairedDevice),
         presenting key: SpkiFingerprint? = aLink.fingerprint,
-        holdingTokens held: [ServerInstanceId: PairingToken] = [:],
-        keychainRefusing refusal: PairingTokenStoreFailure? = nil,
+        remembering held: [BonjourInstanceName: RememberedMac] = [:],
+        keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         keychainNeverAnswering isKeychainSilent: Bool = false,
         silentOn: FakeServerPairing.SilentStep? = nil
     ) {
         if isKeychainSilent {
-            tokens = FakePairingTokenStore(neverAnswering: ())
+            macs = FakeRememberedMacStore(neverAnswering: ())
         } else {
-            tokens = refusal.map(FakePairingTokenStore.init(refusing:)) ?? FakePairingTokenStore(holding: held)
+            macs = refusal.map(FakeRememberedMacStore.init(refusing:)) ?? FakeRememberedMacStore(holding: held)
         }
         let health: Result<HealthResponse, ApiFailure> = if let healthRefusal {
             .failure(healthRefusal)
@@ -425,9 +439,9 @@ private struct Scenario {
         if isKeychainSilent || silentOn != nil {
             // Milliseconds, because what is under test here is that a step which never answers still
             // ends in an outcome — not how long the reader waits for it.
-            sut = MacPairing(tokens: tokens, handshake: { _ in mac }, patience: .milliseconds(50))
+            sut = MacPairing(macs: macs, handshake: { _ in mac }, patience: .milliseconds(50))
         } else {
-            sut = MacPairing(tokens: tokens, handshake: { _ in mac })
+            sut = MacPairing(macs: macs, handshake: { _ in mac })
         }
     }
 }
@@ -452,12 +466,13 @@ private let anAddress = ServerAddress(host: "davides-macbook-pro.local", port: 5
 /// The row in the Mac list that was tapped. Its name is deliberately not the link's host: those are
 /// two different strings for one machine, and only one of them is what a reader recognises.
 private let theMacTheReaderOpened = DiscoveredServer(
-    id: "Davide's MacBook Pro._granita._tcp.local.",
+    id: BonjourInstanceName(rawValue: "Davide's MacBook Pro._granita._tcp.local."),
     name: "Davide's MacBook Pro"
 )
 
 /// What the scanned path ends up holding: the pin arrived with the link.
 private let aPairedMac = PairedMac(
+    instance: theMacTheReaderOpened.id,
     name: theMacTheReaderOpened.name,
     device: aPairedDevice,
     address: anAddress,

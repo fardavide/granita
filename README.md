@@ -71,6 +71,19 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.4.1 — 2026-08-27
+- **Your Mac is remembered, so you pair with it once and never again.** Tapping a Mac you have
+  already paired with opens its worktrees straight away — no QR code, no six words. Until now the
+  pairing was written down and never read back, so every single time you opened the app it asked for
+  a code for a Mac it had been paired with all along.
+- **Nothing is stored that would go stale.** Where the Mac is gets looked up fresh every time you
+  come back to it, because macOS picks a new port each time Granita starts there. What is kept is the
+  token and your Mac's key, so the connection is pinned to that machine and refuses to reach any
+  other — exactly as it was the moment you paired.
+- **A Mac that revokes this phone stops pretending.** Press Revoke in your Mac's Devices tab and the
+  phone forgets the pairing on its next read, so the Mac's row offers you the QR and the six words
+  again instead of a list that can only fail.
+
 ### 0.4.0 — 2026-08-27
 - **A file you have marked as read now shuts itself.** It becomes a single bar with its name, its
   numbers and the reason it is shut, and the diff you have already been through stops taking up the

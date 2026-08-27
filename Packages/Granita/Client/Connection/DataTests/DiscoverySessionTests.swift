@@ -14,7 +14,10 @@ struct DiscoverySessionTests {
     func `given the browser died while suspended when the app comes back then a replacement finds the Mac`() async {
         // given — one dead browser and then a working one: what returning from the background looks
         // like on a device where the permission is granted.
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(browsers: [
             [.failed(.dns(-65569))],
             [.ready, .found([mac])]

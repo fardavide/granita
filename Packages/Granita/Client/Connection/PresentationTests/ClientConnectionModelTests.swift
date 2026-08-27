@@ -26,7 +26,10 @@ struct ClientConnectionModelTests {
     @Test
     func `given a server is nearby when searching then it is offered`() async {
         // given
-        let mac = DiscoveredServer(id: "Davide's MacBook Pro", name: "Davide's MacBook Pro")
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
+            name: "Davide's MacBook Pro"
+        )
         let scenario = Scenario(discovering: [.searching, .found([mac])])
 
         // when
@@ -34,6 +37,80 @@ struct ClientConnectionModelTests {
 
         // then
         #expect(scenario.sut.discovery == .found([mac]))
+    }
+
+    // MARK: - Where a row goes
+
+    @Test
+    func `given a Mac paired with before when the browse finds it then its row opens the worktrees`() async {
+        // given — the defect this answers: until 0.4.1 the pairing was written down and never read
+        // again, so every open of the app asked for a QR or six words for a Mac already paired with.
+        let scenario = Scenario(
+            discovering: [.found([aMacTheBrowseFound])],
+            remembering: [aMacTheBrowseFound.id]
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(scenario.sut.isRemembered(aMacTheBrowseFound))
+    }
+
+    @Test
+    func `given a Mac never paired with when the browse finds it then its row offers the credentials`() async {
+        // given
+        let scenario = Scenario(
+            discovering: [.found([aMacTheBrowseFound, theOtherMacTheBrowseFound])],
+            remembering: [aMacTheBrowseFound.id]
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then — by name rather than by "any Mac is remembered", which is the mistake that would
+        // send a reader straight into a worktree list for a machine they have never paired with.
+        #expect(!scenario.sut.isRemembered(theOtherMacTheBrowseFound))
+    }
+
+    @Test
+    func `given the browse has not been read when a Mac is asked about then nothing is claimed`() async {
+        // given — a Keychain read is fast and the browse is not, so this never happens on a real
+        // network. Answering `true` before the read would be the pairing screens skipped for a Mac
+        // with no pairing, which is a worktree list where every request is refused.
+        let scenario = Scenario(discovering: [], remembering: [aMacTheBrowseFound.id])
+
+        // when - then
+        #expect(!scenario.sut.isRemembered(aMacTheBrowseFound))
+    }
+
+    @Test
+    func `given a Mac just paired with when the reader comes back to the list then it is remembered`() async {
+        // given — the Keychain is re-read whenever the Mac list reappears, but the rows are tappable
+        // while that read is in flight. Without this, backing out of a Mac and tapping it again would
+        // ask for a second code for the pairing that was made ten seconds ago.
+        let scenario = Scenario(remembering: [])
+        #expect(!scenario.sut.isRemembered(aMacTheBrowseFound))
+
+        // when
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
+
+        // then
+        #expect(scenario.sut.isRemembered(aMacTheBrowseFound))
+    }
+
+    @Test
+    func `given a pairing the Keychain refused when it is asked about then it is not remembered`() async {
+        // given — the Mac holds a device record and this phone holds nothing, which is the worst
+        // outcome the flow has. Claiming it as remembered would send the next tap into a worktree
+        // list with no credential, past the one screen that explains what happened.
+        let scenario = Scenario(answeringPair: .tokenNotStored(aPairedMac, .refused(status: -25308)))
+
+        // when
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
+
+        // then
+        #expect(!scenario.sut.isRemembered(aMacTheBrowseFound))
     }
 
     @Test
@@ -80,7 +157,7 @@ struct ClientConnectionModelTests {
     @Test
     func `given a server disappears when searching then the list empties without erroring`() async {
         // given — a Mac going to sleep is the common case, not an error.
-        let mac = DiscoveredServer(id: "MacBook", name: "MacBook")
+        let mac = DiscoveredServer(id: BonjourInstanceName(rawValue: "MacBook"), name: "MacBook")
         let scenario = Scenario(discovering: [.found([mac]), .found([])])
 
         // when
@@ -860,6 +937,7 @@ private struct Scenario {
         answeringWrite writeOutcome: PairingOutcome = .paired(aPairedMac),
         answeringWriteAfter writeDelay: Duration = .zero,
         resolving address: Result<ServerAddress, ServerAddressResolutionFailure> = .success(anAddress),
+        remembering: Set<BonjourInstanceName> = [],
         hintReturnsAfter hint: Duration = .seconds(60)
     ) {
         camera = FakeCameraAuthorization(current, answering: answer, answeredAfter: alertLife)
@@ -867,7 +945,8 @@ private struct Scenario {
             answeringPair: pairOutcome,
             answeringPairAfter: pairDelay,
             answeringWrite: writeOutcome,
-            answeringWriteAfter: writeDelay
+            answeringWriteAfter: writeDelay,
+            remembering: remembering
         )
         scanner = FakeCodeScanner(reading: codes)
         // The real scanner runs until a code is found or the reader walks away, so a test that wants
@@ -909,7 +988,7 @@ private let anIphone = PairingDevice(name: "Davide's iPhone", platform: "iOS")
 private let anAddress = ServerAddress(host: "davides-macbook-pro.local", port: 59_144)
 
 private let aMacTheBrowseFound = DiscoveredServer(
-    id: "Davide's MacBook Pro",
+    id: BonjourInstanceName(rawValue: "Davide's MacBook Pro"),
     name: "Davide's MacBook Pro"
 )
 
@@ -917,7 +996,10 @@ private let aMacTheBrowseFound = DiscoveredServer(
 ///
 /// Named nothing like it, because what those tests are about is a credential turning up under the
 /// wrong name: two Macs called the same thing would let a mix-up read as a match.
-private let theOtherMacTheBrowseFound = DiscoveredServer(id: "Mac Studio", name: "Mac Studio")
+private let theOtherMacTheBrowseFound = DiscoveredServer(
+    id: BonjourInstanceName(rawValue: "Mac Studio"),
+    name: "Mac Studio"
+)
 
 private let aPairedDevice = PairedDevice(
     token: PairingToken(rawValue: "1f0e4d7c6b5a49382736251403f2e1d0"),
@@ -926,6 +1008,7 @@ private let aPairedDevice = PairedDevice(
 )
 
 private let aPairedMac = PairedMac(
+    instance: aMacTheBrowseFound.id,
     name: aMacTheBrowseFound.name,
     device: aPairedDevice,
     address: anAddress,

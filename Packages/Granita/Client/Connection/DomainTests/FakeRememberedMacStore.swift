@@ -3,13 +3,13 @@ import ClientConnectionDomain
 /// The Keychain, in memory.
 ///
 /// An actor because the protocol is asynchronous and the real one is reached from anywhere; the
-/// saved tokens are exposed so a test can assert that the only copy of a credential was in fact
+/// saved pairings are exposed so a test can assert that the only copy of a credential was in fact
 /// written down.
-actor FakePairingTokenStore: PairingTokenStore {
+actor FakeRememberedMacStore: RememberedMacStore {
 
-    private(set) var saved: [ServerInstanceId: PairingToken]
+    private(set) var saved: [BonjourInstanceName: RememberedMac]
 
-    private var refusal: PairingTokenStoreFailure?
+    private var refusal: RememberedMacStoreFailure?
 
     /// Whether every call never answers at all.
     ///
@@ -18,7 +18,7 @@ actor FakePairingTokenStore: PairingTokenStore {
     /// A fake that merely slept would prove only that the bound outruns a sleep it may cancel.
     private let isSilent: Bool
 
-    init(holding saved: [ServerInstanceId: PairingToken] = [:]) {
+    init(holding saved: [BonjourInstanceName: RememberedMac] = [:]) {
         self.saved = saved
         refusal = nil
         isSilent = false
@@ -34,7 +34,7 @@ actor FakePairingTokenStore: PairingTokenStore {
 
     /// A Keychain that will not cooperate, which is the one failure that leaves a phone paired with
     /// a Mac and holding nothing.
-    init(refusing refusal: PairingTokenStoreFailure) {
+    init(refusing refusal: RememberedMacStoreFailure) {
         saved = [:]
         self.refusal = refusal
         isSilent = false
@@ -48,25 +48,27 @@ actor FakePairingTokenStore: PairingTokenStore {
         refusal = nil
     }
 
-    func token(issuedBy server: ServerInstanceId) async throws(PairingTokenStoreFailure) -> PairingToken? {
+    func remembered(
+        _ mac: BonjourInstanceName
+    ) async throws(RememberedMacStoreFailure) -> RememberedMac? {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
-        return saved[server]
+        return saved[mac]
     }
 
-    func save(_ token: PairingToken, issuedBy server: ServerInstanceId) async throws(PairingTokenStoreFailure) {
+    func remember(_ mac: PairedMac) async throws(RememberedMacStoreFailure) {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
-        saved[server] = token
+        saved[mac.instance] = RememberedMac(device: mac.device, fingerprint: mac.fingerprint)
     }
 
-    func remove(issuedBy server: ServerInstanceId) async throws(PairingTokenStoreFailure) {
+    func forget(_ mac: BonjourInstanceName) async throws(RememberedMacStoreFailure) {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
-        saved[server] = nil
+        saved[mac] = nil
     }
 
-    func pairedServers() async throws(PairingTokenStoreFailure) -> Set<ServerInstanceId> {
+    func rememberedMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName> {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
         return Set(saved.keys)
