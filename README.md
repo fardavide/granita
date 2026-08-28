@@ -71,6 +71,20 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.4.2 — 2026-08-28
+- **The words that changed within a line are marked by a highlight behind them, not by dimming
+  everything else.** A line where one word moved used to grey out the rest of it so the changed part
+  stood out; now the whole line reads at full strength and the changed words carry a stronger green
+  or red behind them. It is easier to read, and it leaves the text's own colour free for the syntax
+  highlighting that comes next.
+- **The highlight is the same amount stronger in light and in dark.** Two see-through layers stack
+  rather than add, so a fixed shade lands differently against white and against black. What is fixed
+  now is how much stronger the changed words look than the line they sit on, and the shade follows
+  from it.
+- **A tab in the middle of a changed line no longer pushes the rest of the line out of line.** Where a
+  line was drawn in pieces, a tab in a later piece counted from the start of that piece instead of
+  the start of the line, so the code after it sat at the wrong column against the numbers beside it.
+
 ### 0.4.1 — 2026-08-27
 - **Your Mac is remembered, so you pair with it once and never again.** Tapping a Mac you have
   already paired with opens its worktrees straight away — no QR code, no six words. Until now the

@@ -22,8 +22,22 @@ public enum MonospacedGrid {
     /// every line of nearly every file.
     public static func expandingTabs(in text: String) -> String {
         guard text.contains("\t") else { return text }
+        return expandingTabs(in: text, startingAtColumn: 0).text
+    }
+
+    /// The same expansion, continued from a column the line has already reached.
+    ///
+    /// **A line is drawn in pieces and a tab stop is a property of the line, not of the piece.** The
+    /// word diff splits a line into changed and unchanged runs so each can be drawn differently, and
+    /// a tab in the second run advances from where the first one left off — expanded from zero it
+    /// would reach a whole stop instead and push everything after it out of the grid. So the column
+    /// travels with the expansion, and the pieces joined are exactly what expanding the line whole
+    /// would have produced, which is asserted rather than assumed.
+    ///
+    /// - Returns: the piece as it is drawn, and the column the line stands at after it.
+    public static func expandingTabs(in text: String, startingAtColumn start: Int) -> (text: String, columns: Int) {
         var expanded = ""
-        var columns = 0
+        var columns = start
         for character in text {
             guard character == "\t" else {
                 expanded.append(character)
@@ -34,6 +48,6 @@ public enum MonospacedGrid {
             expanded.append(String(repeating: " ", count: filling))
             columns += filling
         }
-        return expanded
+        return (expanded, columns)
     }
 }

@@ -14,7 +14,7 @@ a question that now has a real one. When a file's last section ships, the file g
 
 | File | Still to build | Read the calls in |
 |---|---|---|
-| [`granita-design-review.html`](granita-design-review.html) | The continuous diff's second header form, syntax highlighting and wrap-on (M5). 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
+| [`granita-design-review.html`](granita-design-review.html) | The continuous diff's second header form and wrap-on (M5). **Not syntax highlighting** — this row claimed it until 0.4.2 and the file has never held a frame of it: §4 has eight subsections and none is highlighting, and the only two mentions in the whole review are a rejection of underlining that names the highlighter in passing. 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
 | [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which 0.4.1 made reachable and deliberately did not build: a Mac paired with before goes straight to its worktrees, so the only reader who lands here is one whose token the Mac revoked. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
 
 The pairing return arrived with **twelve** states and left with one, because the pull request that
