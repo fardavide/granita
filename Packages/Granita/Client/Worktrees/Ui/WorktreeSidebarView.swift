@@ -257,17 +257,20 @@ public struct WorktreeSidebarView: View {
         } else {
             NavigationLink(value: row.id) { rowContent(row, isRemoving: false) }
                 .contextMenu { actions(for: row) }
-                .swipeActions(edge: .trailing) {
-                    Button { onSetPinned(row.isPinned == false, row.id) } label: {
-                        Label(
-                            row.isPinned ? "Unpin" : "Pin",
-                            systemImage: row.isPinned ? "pin.slash" : "pin"
-                        )
-                    }
-                    Button { onRename(row.rename) } label: {
-                        Label("Rename", systemImage: "pencil")
-                    }
-                }
+                .swipeActions(edge: .trailing) { pinAndRename(row) }
+        }
+    }
+
+    /// The two reversible verbs, written once and offered by both gestures.
+    ///
+    /// They were duplicated byte for byte between the swipe and the menu, which is two places for
+    /// one label to drift and two closures where the row has one behaviour.
+    @ViewBuilder private func pinAndRename(_ row: WorktreeListRow) -> some View {
+        Button { onSetPinned(row.isPinned == false, row.id) } label: {
+            Label(row.isPinned ? "Unpin" : "Pin", systemImage: row.isPinned ? "pin.slash" : "pin")
+        }
+        Button { onRename(row.rename) } label: {
+            Label("Rename", systemImage: "pencil")
         }
     }
 
@@ -283,12 +286,7 @@ public struct WorktreeSidebarView: View {
     /// Pin and Rename are repeated here rather than left to the swipe, so a reader who long-presses
     /// finds the two verbs they already know above the one they do not.
     @ViewBuilder private func actions(for row: WorktreeListRow) -> some View {
-        Button { onSetPinned(row.isPinned == false, row.id) } label: {
-            Label(row.isPinned ? "Unpin" : "Pin", systemImage: row.isPinned ? "pin.slash" : "pin")
-        }
-        Button { onRename(row.rename) } label: {
-            Label("Rename…", systemImage: "pencil")
-        }
+        pinAndRename(row)
 
         Divider()
 
@@ -378,41 +376,51 @@ public struct WorktreeSidebarView: View {
     /// Built as one `Text` rather than an `HStack` of them so that it truncates as a sentence, and
     /// so `ViewThatFits` has a single measurable thing to choose between.
     private func secondLine(_ row: WorktreeListRow, includingFileCount: Bool) -> Text {
-        var parts: [Text] = []
+        // **The stats are what the line is built from, and the rest is folded onto the front.**
+        // They are the one field this line never drops — every arm below produces something — so
+        // starting the join here makes it total. Collecting every field into one array and reducing
+        // from its first element instead needed a fallback for an empty array that no row could
+        // produce, which is an unreachable branch sitting in a view body forever.
+        let stats: Text = switch row.stats {
+        case .noCommitsYet:
+            Text("no commits yet")
+        case .noChanges:
+            Text("no changes")
+        case .changed(let filesChanged, let insertions, let deletions):
+            numbers(filesChanged: includingFileCount ? filesChanged : nil, insertions, deletions)
+        }
+
+        var prefix: [Text] = []
         if let projectName = row.projectName {
-            parts.append(Text(projectName))
+            prefix.append(Text(projectName))
         }
         if row.isPrimaryCheckout {
             // The reader's own mental model: this is the one the agent did *not* work in, which is
             // also what explains why the row usually has no changes.
-            parts.append(Text("primary checkout"))
+            prefix.append(Text("primary checkout"))
         }
         if row.showsDetached {
-            parts.append(Text("detached"))
+            prefix.append(Text("detached"))
         }
-        switch row.stats {
-        case .noCommitsYet:
-            parts.append(Text("no commits yet"))
-        case .noChanges:
-            parts.append(Text("no changes"))
-        case .changed(let filesChanged, let insertions, let deletions):
-            if includingFileCount {
-                parts.append(
-                    filesChanged == 1
-                        ? Text("1 file")
-                        : Text("\(filesChanged, format: .number) files")
-                )
-            }
-            let added = Text("+\(insertions, format: .number)").foregroundColor(.green)
-            let removed = Text("−\(deletions, format: .number)").foregroundColor(.red)
-            parts.append(Text("\(added) \(removed)"))
-        }
+
         // Interpolating one `Text` into another rather than concatenating with `+`, which iOS 26
         // deprecated. The per-part colours survive interpolation, which is the whole reason this is
         // one `Text` and not an `HStack`: it truncates as a sentence, and `ViewThatFits` has a
-        // single measurable thing to choose between.
-        return parts.dropFirst().reduce(parts.first ?? Text(verbatim: "")) { line, part in
-            Text("\(line) · \(part)")
+        // single measurable thing to choose between. Reversed, because each step puts its part in
+        // front of everything built so far.
+        return prefix.reversed().reduce(stats) { line, part in
+            Text("\(part) · \(line)")
         }
+    }
+
+    /// `34 files · +1,204 −318`, or the same without the count when the line will not hold it — the
+    /// file count being fourth in design §2's drop order and the only field another column implies.
+    private func numbers(filesChanged: Int?, _ insertions: Int, _ deletions: Int) -> Text {
+        let added = Text("+\(insertions, format: .number)").foregroundColor(.green)
+        let removed = Text("−\(deletions, format: .number)").foregroundColor(.red)
+        let changes = Text("\(added) \(removed)")
+        guard let filesChanged else { return changes }
+        let files = filesChanged == 1 ? Text("1 file") : Text("\(filesChanged, format: .number) files")
+        return Text("\(files) · \(changes)")
     }
 }

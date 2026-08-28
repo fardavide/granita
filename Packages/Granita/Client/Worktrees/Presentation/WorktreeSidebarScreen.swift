@@ -100,9 +100,13 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 Button("Delete Worktree", role: .destructive) {
                     Task { await model.confirmDeletion(of: subject) }
                 }
-                Button("Cancel", role: .cancel) { model.cancelDeleting() }
+                // Both of these put down whatever is up, which is one method rather than a closure
+                // per button — the same shape the arguments above already use for `model.show` and
+                // `model.beginDeleting`. It is also the more correct call than clearing one field by
+                // name: dismissing is dismissing, whichever of the two prompts raised the alert.
+                Button("Cancel", role: .cancel, action: model.dismissPrompt)
             case .refusal:
-                Button("OK") { model.dismissWriteFailure() }
+                Button("OK", action: model.dismissPrompt)
             }
         } message: { prompt in
             Text(prompt.message)
