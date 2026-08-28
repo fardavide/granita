@@ -2,6 +2,26 @@
 
 Where the project is. Update this when a slice lands.
 
+**The changed words carry a background now, and that was the syntax highlighter asking for the text
+colour back.** Design §4 had inverted the word diff into the text — unchanged runs down to secondary,
+the changed run at full strength — because it measured two nested backgrounds and found no headroom
+above a 16% row tint in dark mode. It reads well, and a lexer colours text, so a line already using
+its colour to mean *this part changed* has nothing left to say `keyword` with. Davide settled it back
+to what `SPEC.md` §10 had asked for all along. **The half of §4's argument that survived is the
+ratio**: two translucent layers composite rather than add, so one fixed alpha reads as a different
+multiple of the row in each appearance — which is the drift the review rejected the treatment for. So
+the ratio is stated and the alpha is solved from it, the changed run landing at three times its row's
+tint in both. The dark baseline is what says the treatment survives dark mode after all. In
+[`decisions.md`](decisions.md).
+
+**A tab in the middle of a changed line was drawing at the wrong column, and nothing had hit it.**
+The old treatment built one `Text` per segment and expanded each segment's tabs from column zero of
+that *segment*, so `if\ttrue` split after `if` drew four spaces where the grid says two — every
+column after it wrong against the gutter the scroll is measured from. The expansion carries the
+column between runs now, `MonospacedGrid` owns it in one place, and the property that the runs joined
+equal the whole-line expansion is asserted. Reachable in any tab-indented file with a word-level pair
+on a line with a tab in the middle of it.
+
 **A file you have read shuts itself, which is what `SPEC.md` §10 has asked for since the mark
 existed.** 0.3.0's toggle moved a circle and left the diff open under it; the bar is what makes the
 sentence true. It goes **in the header's slot** rather than under a header — 44pt, status letter,
@@ -40,7 +60,7 @@ detail column in as many words; `WorktreeSplitScreen`'s doubled `navigationDesti
 doubled, because what it settles is which container claims a tap and removing a declaration to find
 out is how this app shipped a row that did nothing.
 
-**Version 0.4.0.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight** — and
+**Version 0.4.2.** Scaffold complete, CI green, `main` protected, **shipping to TestFlight** — and
 merging is what publishes, so the version in `project.yml` is what this tree will put on a phone
 rather than what is on one now.
 
@@ -702,11 +722,22 @@ one again — *every single time I tap on my Mac, it asks me to do QR code or si
   lookup happens on the first request to a remembered Mac, and an unreachable read throws the answer
   away so the next one asks again.
 
-**Syntax highlighting is what is left of M5 that a machine can build.** Highlightr is declared on
-`ClientViewerUi` and nothing imports it. `SPEC.md` §10 is prescriptive about it — per file per side,
-never per hunk, the six-part cache key, skip over 100 KB or 4,000 lines or a nil language, visible
-file first, render unhighlighted and upgrade in place — and its throughput on a 200-line Swift block
-is an unverified item that needs a device.
+**Syntax highlighting is what is left of M5 that a machine can build, and 0.4.2 unblocked it.**
+Highlightr is declared on `ClientViewerUi` and nothing imports it. `SPEC.md` §10 is prescriptive
+about it — per file per side, never per hunk, the six-part cache key, skip over 100 KB or 4,000 lines
+or a nil language, visible file first, render unhighlighted and upgrade in place — and its throughput
+on a 200-line Swift block is an unverified item that needs a device.
+
+**What was blocking it was not the specification but a collision the design never drew.** §4 has no
+highlighting section at all — its eight subsections stop short of it — and the treatment it *did*
+specify for word segments spent the text colour a lexer needs. That is settled as of 0.4.2 and the
+colour is free. Two things `SPEC.md` does not anticipate are worth knowing before the next attempt:
+**a language Highlightr does not recognise silently falls back to auto-detection** rather than
+refusing, which over a hunk union will confidently lex the wrong grammar, so the claimed language has
+to be checked against `supportedLanguages()` first; and **the six-part cache key is one part short**,
+because `contentHash` is a fact about the file while what gets lexed is a subset of it the reader can
+widen — an expansion grows the string and leaves the hash alone, so an entry made before one would be
+indexed against lines that have moved.
 
 **The other two are a thumb's to settle.** The file header's second form is **provisional pending a
 device** — it ships in one form because a pinned header that is shorter when pinned reflows a slot

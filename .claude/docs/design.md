@@ -25,7 +25,7 @@ says so and shows the measurement.
 | §1 | Server discovery | built | **applied** — the code matches this document |
 | §2 | The worktree sidebar | M4 | built |
 | §3 | The file selector | M5 | built |
-| §4 | The continuous diff | M5 | **the scroll and the viewed toggle are built** — the header's second form, the bars and expansion are not |
+| §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. The header's second form and wrap-on are not, and **syntax highlighting was never drawn at all** |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
@@ -528,21 +528,32 @@ own maximum line number, so a 200-line file gets a 3-digit gutter and 8 more cha
 > and is two, so scanning it produces wrong line numbers with total confidence. Rejected: shrinking to
 > 10pt to fit two columns — 57 characters, and code you have to squint at.
 
-### In dark mode the word segment is carried by the text
+### The word segment is a background, and the ratio is what is stated
 
-"Stronger" is a ratio, not a colour. Row tint at 10% of the semantic green or red; segment at 28%.
-Below about 3× the segment stops being a second layer and becomes a slightly damp patch — and in dark
-mode, where the base tint sits at 16% just to be visible against black, there is no headroom above
-it.
+> **Reverted to `SPEC.md` §10, and the ratio is what survived** *(28 August 2026)*. This section
+> originally read *"in dark mode the word segment is carried by the text"* and inverted the emphasis:
+> unchanged runs down to secondary, the changed run at full-strength label. It reads well and it
+> spends the one property the syntax highlighter needs — a lexer colours text, and a line whose text
+> colour already means *this part changed* has nothing left to say `keyword` with. The review saw the
+> edge of this and never drew the two together; §4 has no highlighting section at all. Davide settled
+> it: *"Changed words should have different background color, instead of text color"*, which is what
+> the specification had asked for all along. In [`decisions.md`](decisions.md).
 
-**So invert the emphasis there.** Unchanged runs on a changed line drop to secondary; the changed run
-goes to full-strength label. The eye finds the bright text, not the darker box. It works in light
-too, and it is the only treatment that survives the colourblind palette, where orange on white is
-already low-contrast.
+"Stronger" is a ratio, not a colour, and that is the half of the original argument that was right.
+Row tint at 10% of the semantic green or red in light and 16% in dark; below about 3× the segment
+stops being a second layer and becomes a slightly damp patch.
+
+**So the ratio is written down and the alpha is solved from it.** Two translucent layers do not add,
+they composite — `1 - (1 - t)(1 - s)` — so the fixed 28% the review measured reads as a *different*
+multiple of the row in each appearance, which is the drift it rejected the treatment for. Pinning the
+ratio instead puts the changed run at three times its row's tint in both: about 22% in light and 38%
+in dark. That is what makes the treatment survive the dark mode this section was written to say it
+could not, and the baselines are what say so.
 
 > Rejected: underlining the changed run — it collides with the syntax highlighter and disappears under
 > a descender. Rejected: bold — SF Mono keeps its advance when bold, so it is technically safe, but
-> bold already means "keyword" to anyone who reads code.
+> bold already means "keyword" to anyone who reads code. Rejected: one alpha for both appearances,
+> which is the version of this the review measured and correctly refused.
 
 ### A collapsed bar must say why it is shut
 

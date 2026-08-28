@@ -127,38 +127,70 @@ public struct DiffFileLines: View {
             .padding(.trailing, DiffGutter.trailingSpace)
     }
 
-    /// The changed run at full strength and everything else at `.secondary`, in **both**
-    /// appearances.
+    /// The changed run carried by a **background**, over the row's own tint.
     ///
-    /// Design §4: "stronger" is a ratio rather than a colour, and two nested backgrounds is the
-    /// premise that does not survive dark mode — a 10% row tint under a 28% segment is a layer in
-    /// light, and against black the row already needs 16% to be visible at all, which leaves no
-    /// headroom above it. So the emphasis inverts and the eye finds the bright text rather than the
-    /// darker box. The frames use it in all three palettes, and it is the only treatment that
-    /// survives the colourblind one, where orange on white is already low-contrast.
+    /// **This is `SPEC.md` §10's own treatment, and design §4 had replaced it.** The review found
+    /// that two nested backgrounds do not survive dark mode — the row already needs 16% to be
+    /// visible against black, leaving no headroom above it — and inverted the emphasis into the text
+    /// instead, taking the unchanged runs down to secondary. That reads well and it spends the one
+    /// property the syntax highlighter needs: a lexer colours text, and a line whose text colour
+    /// already means *this part changed* has nothing left to say `keyword` with. Davide settled it
+    /// back to the specification on 28 August 2026. In `.claude/docs/decisions.md`.
+    ///
+    /// **So the alpha is derived rather than drawn.** §4's argument that "stronger" is a ratio still
+    /// holds, and it is the thing that survives: the changed run reads at three times the row's own
+    /// tint in both appearances, and what the segment's own alpha has to be for that is arithmetic
+    /// over what it composites onto rather than a number picked per appearance.
     private func segmented(_ line: DiffLine) -> Text {
-        guard let segments = line.segments, segments.count > 1 else {
+        let drawn = DrawnDiffLine.of(line)
+        guard drawn.changed.isEmpty == false else {
             // A line the parser paired with nothing, or paired as one whole run — either way there
-            // is no *unchanged* part to demote it against, so the whole line stays at full strength.
-            return Text(verbatim: MonospacedGrid.expandingTabs(in: line.text))
+            // is no *unchanged* part to tell it apart from, and a background over the whole line
+            // would be a second, stronger copy of the row tint drawn on top of the row tint.
+            return Text(verbatim: drawn.text)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
         }
-        let runs = segments.map { segment in
-            Text(verbatim: MonospacedGrid.expandingTabs(in: segment.text))
-                .foregroundStyle(segment.isChanged ? HierarchicalShapeStyle.primary : .secondary)
+        var attributed = AttributedString(drawn.text)
+        let characters = attributed.characters
+        for range in drawn.changed {
+            let start = characters.index(characters.startIndex, offsetBy: range.lowerBound)
+            let end = characters.index(characters.startIndex, offsetBy: range.upperBound)
+            attributed[start..<end].backgroundColor = segmentTint(of: line)
         }
-        // Interpolated rather than concatenated with `+`, which iOS 26 deprecated. The per-run
-        // styling survives interpolation and nothing is inserted between the runs, which matters
-        // here more than anywhere else in the app: a separator would be a character of code that is
-        // not in the file.
-        return runs.dropFirst().reduce(runs[0]) { line, run in Text("\(line)\(run)") }
+        return Text(attributed)
+    }
+
+    /// The changed run's own background, chosen so that what lands on screen is three times the row
+    /// tint it sits on.
+    ///
+    /// Two translucent layers do not add, they composite — `1 - (1 - t)(1 - s)` — so a segment drawn
+    /// at a fixed 28% reads as a different multiple of the row in each appearance, which is exactly
+    /// the drift design §4 rejected the treatment for. Solving for the alpha that reaches `3t`
+    /// instead keeps the *ratio* fixed and lets the number move: about 22% in light and 38% in dark.
+    private func segmentTint(of line: DiffLine) -> Color {
+        let tint = tintAlpha
+        let alpha = 1 - (1 - 3 * tint) / (1 - tint)
+        switch line.kind {
+        case .addition: return .green.opacity(alpha)
+        case .deletion: return .red.opacity(alpha)
+        // Neither ever carries segments — the parser pairs additions against deletions and nothing
+        // else — so these are the exhaustive switch rather than a treatment.
+        case .context, .noNewlineMarker, .conflictMarker: return .clear
+        }
     }
 
     /// 10% of the semantic colour in light and 16% in dark, which is design §4's measurement: below
     /// that the tint is invisible against black, and above it there is nothing left for the word
     /// segment to be stronger than.
+    ///
+    /// Stated once because the segment's alpha is solved from it: two numbers that have to hold a
+    /// ratio cannot each be written down separately.
+    private var tintAlpha: Double {
+        colorScheme == .dark ? 0.16 : 0.10
+    }
+
     private func tint(of line: DiffLine) -> Color {
-        let alpha = colorScheme == .dark ? 0.16 : 0.10
+        let alpha = tintAlpha
         switch line.kind {
         case .addition: return .green.opacity(alpha)
         case .deletion: return .red.opacity(alpha)
