@@ -52,6 +52,17 @@ public protocol GranitaRepository: Sendable {
     /// Renames or pins, and answers with the worktree as it now stands.
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree
 
+    /// Asks the Mac to take a checkout off it, with whatever uncommitted work is in it.
+    ///
+    /// **The one call here that destroys something, and the only one with nothing to undo it.** The
+    /// Mac forces the removal, because every worktree this app lists has uncommitted work in it and
+    /// the unforced form would refuse on nearly all of them — so the confirmation in front of this
+    /// is not ceremony, it is the whole safeguard. The branch survives; the directory does not.
+    ///
+    /// It answers with nothing. The row is gone, and what the list holds afterwards is this side's
+    /// business rather than a worktree the Mac would have to invent to return.
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure)
+
     /// The stats and the file list, from one comparison. Never hunks.
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges
 

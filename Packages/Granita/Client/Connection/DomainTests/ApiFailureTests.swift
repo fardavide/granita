@@ -77,7 +77,10 @@ struct ApiFailureTests {
         (.badRequest(message: "contextLines must be between 0 and 20"), "contextLines must be between 0 and 20"),
         (.requestNotBuildable(diagnostic: "could not build a URL"), "could not build a URL"),
         (.unreachable(diagnostic: "NWError -65563"), "NWError -65563"),
-        (.notUnderstood(diagnostic: "expected an object"), "expected an object")
+        (.notUnderstood(diagnostic: "expected an object"), "expected an object"),
+        // The Mac's sentence is what says *which* of the two refusals it was — primary checkout or
+        // locked — and the phone has no second way to find out.
+        (.worktreeNotDeletable(message: "that worktree is locked"), "that worktree is locked")
     ])
     func `given a fault with words of its own when read then they are what is carried`(
         failure: ApiFailure,

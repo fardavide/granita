@@ -251,7 +251,7 @@ struct ClientWorktreesModelTests {
         await scenario.sut.rename(WorktreeID(rawValue: "w-diff scroll"), to: "Scroll rewrite")
 
         // then
-        #expect(scenario.sut.writeFailure == .worktreeGone)
+        #expect(scenario.sut.writeFailure == .edit(.worktreeGone))
         #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
     }
 
@@ -355,7 +355,7 @@ struct ClientWorktreesModelTests {
         await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-diff scroll"))
 
         // then
-        #expect(scenario.sut.writeFailure == .unauthorized)
+        #expect(scenario.sut.writeFailure == .edit(.unauthorized))
     }
 
     @Test
@@ -369,8 +369,262 @@ struct ClientWorktreesModelTests {
         await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-vanished"))
 
         // then
-        #expect(scenario.sut.writeFailure == .worktreeGone)
+        #expect(scenario.sut.writeFailure == .edit(.worktreeGone))
         #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
+    }
+
+    // MARK: - Deleting
+
+    @Test
+    func `given a worktree when deletion is confirmed then the Mac is asked and the row goes`() async throws {
+        // given
+        let scenario = Scenario(worktrees: [
+            aWorktree(named: "diff scroll", project: "granita"),
+            aWorktree(named: "session index", project: "granita", minutesAgo: 1)
+        ])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then
+        #expect(await scenario.repository.deleted == [WorktreeID(rawValue: "w-diff scroll")])
+        #expect(scenario.rows.map(\.displayName) == ["session index"])
+        #expect(scenario.sut.deleting == nil)
+    }
+
+    @Test
+    func `given the confirmation is up when it is cancelled then nothing is deleted`() async throws {
+        // given — the whole point of the dialog. Asserted on what left the phone rather than on what
+        // is left in the list, because not asking and asking-and-being-refused leave the same list.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        scenario.sut.cancelDeleting()
+
+        // then
+        #expect(await scenario.repository.deleted.isEmpty)
+        #expect(scenario.sut.deleting == nil)
+        #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
+    }
+
+    @Test
+    func `given the confirmation was dismissed when it is confirmed then what it named is deleted`(
+    ) async throws {
+        // given — **the regression test for a control that did nothing at all.** The subject used to
+        // be read back off the model, and dismissing an alert writes `false` through its
+        // `isPresented` binding, which clears it synchronously — while the button's own `Task` body
+        // runs a turn later on the main actor. So the guard failed, nothing was deleted, and every
+        // baseline stayed green, because a raster does not include an alert and cannot press a
+        // button. This sequence is that ordering, made deterministic.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        scenario.sut.cancelDeleting()
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then — what was confirmed is what was destroyed, whatever the model happened to hold.
+        #expect(await scenario.repository.deleted == [WorktreeID(rawValue: "w-diff scroll")])
+        #expect(scenario.rows.isEmpty)
+    }
+
+    @Test
+    func `given a deletion in flight when the rows are read then that one says it is going`() async throws {
+        // given — the row is dropped only once the Mac answers, so there is a real window with the
+        // request outstanding and the row still on screen. Without a mark on it, that window is a
+        // confirmation that appears to have done nothing.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+        await scenario.repository.holdTheNextDeletion()
+
+        // when
+        let deletion = Task { await scenario.sut.confirmDeletion(of: subject) }
+        await scenario.repository.waitForADeletionToArrive()
+
+        // then
+        #expect(scenario.sut.removing == [WorktreeID(rawValue: "w-diff scroll")])
+
+        // and then — the mark is cleared when the answer lands, on every path.
+        await scenario.repository.releaseHeldDeletions()
+        await deletion.value
+        #expect(scenario.sut.removing.isEmpty)
+    }
+
+    @Test
+    func `given a deletion in flight when a second is confirmed then both rows say they are going`(
+    ) async throws {
+        // given — this is why it is a set rather than one identifier. Confirm one, swipe another and
+        // confirm that too is reachable at LAN speed, and with an optional the second deletion's
+        // answer would clear the first one's mark and put a row back on screen that is still going.
+        let scenario = Scenario(worktrees: [
+            aWorktree(named: "diff scroll", project: "granita"),
+            aWorktree(named: "session index", project: "granita", minutesAgo: 1)
+        ])
+        await scenario.sut.load()
+        let first = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+        let second = try #require(scenario.deletionSubject(of: "w-session index"))
+        await scenario.repository.holdTheNextDeletion()
+
+        // when
+        let deletions = Task {
+            async let one: Void = scenario.sut.confirmDeletion(of: first)
+            async let two: Void = scenario.sut.confirmDeletion(of: second)
+            _ = await (one, two)
+        }
+        await scenario.repository.waitForADeletionToArrive(count: 2)
+
+        // then
+        #expect(scenario.sut.removing == [
+            WorktreeID(rawValue: "w-diff scroll"),
+            WorktreeID(rawValue: "w-session index")
+        ])
+
+        // and then
+        await scenario.repository.releaseHeldDeletions()
+        await deletions.value
+        #expect(scenario.sut.removing.isEmpty)
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
+    func `given the Mac refused a deletion when the refusal is read then it says it was a deletion`(
+    ) async throws {
+        // given — the routing the refusal type exists for. The same `ApiFailure` leaves a rename
+        // exactly as it was and leaves a deletion in a state this phone cannot describe, so the
+        // screen has to be able to tell which write it was without asking the failure.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .unreachable(diagnostic: "NWError -65563")
+        )
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then
+        #expect(scenario.sut.writeFailure == .deletion(.unreachable(diagnostic: "NWError -65563")))
+    }
+
+    @Test
+    func `given a confirmation on screen when the prompt is put down then nothing is deleted`() async throws {
+        // given — one alert modifier serves the confirmation and the refusal, so dismissing it means
+        // two different things and the wrong one silently arms a deletion.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+        scenario.sut.beginDeleting(subject)
+
+        // when
+        scenario.sut.dismissPrompt()
+
+        // then
+        #expect(scenario.sut.deleting == nil)
+        #expect(await scenario.repository.deleted.isEmpty)
+    }
+
+    @Test
+    func `given a refusal on screen when the prompt is put down then it is the refusal that goes`() async {
+        // given — the other half. Clearing the wrong one leaves a refusal on screen that the reader
+        // cannot close, because the binding says it is no longer presented while the model says it is.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .unauthorized
+        )
+        await scenario.sut.load()
+        await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-diff scroll"))
+
+        // when
+        scenario.sut.dismissPrompt()
+
+        // then
+        #expect(scenario.sut.writeFailure == nil)
+    }
+
+    @Test
+    func `given the Mac refused a pin when the refusal is read then it says it was an edit`() async {
+        // given — the other half of the same routing, so a pin cannot borrow a deletion's sentence.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .unreachable(diagnostic: "NWError -65563")
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then
+        #expect(scenario.sut.writeFailure == .edit(.unreachable(diagnostic: "NWError -65563")))
+    }
+
+    @Test
+    func `given the Mac refused a deletion when it is confirmed then the row stays and the reader is told`(
+    ) async throws {
+        // given — the row is dropped only once the Mac says it is gone. Dropping it optimistically
+        // would show a worktree still on that Mac as deleted, which is the one mistake this feature
+        // can make that a reader cannot see and cannot undo.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .worktreeNotDeletable(message: "that worktree is locked")
+        )
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then
+        #expect(scenario.sut.writeFailure == .deletion(.worktreeNotDeletable(message: "that worktree is locked")))
+        #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
+        #expect(scenario.sut.deleting == nil)
+    }
+
+    @Test
+    func `given a worktree already gone from the Mac when it is deleted then the row goes anyway`() async throws {
+        // given — an agent removes one every day, so a reader can confirm a deletion for a worktree
+        // that stopped existing between the read and the tap.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .worktreeGone
+        )
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then — the reader asked for it gone and it is gone. Reporting a failure would put a
+        // sentence on screen about a difference nobody can see and nobody has to act on.
+        #expect(scenario.sut.writeFailure == nil)
+        #expect(scenario.rows.isEmpty)
+    }
+
+    @Test
+    func `given the last worktree of a project when it is deleted then the list says there is nothing`(
+    ) async throws {
+        // given — deleting the only row empties the list, and an empty listing is a different state
+        // rather than a listing with no sections in it.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+
+        // when
+        scenario.sut.beginDeleting(subject)
+        await scenario.sut.confirmDeletion(of: subject)
+
+        // then
+        #expect(scenario.sut.state == .noProjects)
     }
 
     // MARK: - Naming what was chosen
@@ -434,6 +688,18 @@ struct ClientWorktreesModelTests {
         /// and the sections they arrive under are a separate question with its own tests.
         var rows: [WorktreeListRow] {
             sections.flatMap(\.rows)
+        }
+
+        /// What the row would hand a confirmation, or nothing when that row refuses to offer one.
+        ///
+        /// Taken off the row rather than assembled here, because that is the only way the model is
+        /// driven in the app — and which rows have one at all is `WorktreeListing`'s question.
+        func deletionSubject(of worktree: String) -> WorktreeDeletionSubject? {
+            guard case .deletable(let subject)? = rows
+                .first(where: { $0.id == WorktreeID(rawValue: worktree) })?
+                .deletion
+            else { return nil }
+            return subject
         }
 
         init(

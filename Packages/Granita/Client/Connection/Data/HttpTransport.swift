@@ -10,6 +10,7 @@ public struct HttpRequest: Hashable, Sendable {
         case get = "GET"
         case post = "POST"
         case patch = "PATCH"
+        case delete = "DELETE"
     }
 
     public let method: Method

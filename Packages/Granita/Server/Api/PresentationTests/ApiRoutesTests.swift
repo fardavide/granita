@@ -150,6 +150,169 @@ struct ApiRoutesTests {
         #expect(primary.stats.filesChanged > 0)
     }
 
+    // MARK: - Taking a worktree away
+
+    @Test
+    func `given a worktree with uncommitted work when it is deleted then it goes and its branch stays`(
+    ) async throws {
+        // given — uncommitted work is the only kind of worktree this list ever offers, so the
+        // unforced form of the command would refuse here and this is what `--force` is for.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let doomed = WorktreeID(canonicalPath: repository.worktree.path)
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { response in
+                #expect(response.status == .noContent)
+            }
+        }
+
+        // then — the directory is off the Mac and out of git's own listing, and the branch it was
+        // on is still there. Deleting the branch as well would take unmerged commits with it, which
+        // is a much larger promise than the one the phone's confirmation makes.
+        #expect(FileManager.default.fileExists(atPath: repository.worktree.path) == false)
+        #expect(try repository.worktreePaths() == [repository.location.path])
+        #expect(try repository.hasBranch(repository.branch))
+    }
+
+    @Test
+    func `given a deleted worktree when the worktrees are listed again then it is not among them`(
+    ) async throws {
+        // given — the phone drops the row optimistically, and this is the half that says it was
+        // telling the truth: a second read has to agree with the row that vanished.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let doomed = WorktreeID(canonicalPath: repository.worktree.path)
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { _ in }
+        }
+        let remaining = try await scenario.get([Worktree].self, "/v1/worktrees")
+
+        // then
+        #expect(remaining.map(\.id).contains(doomed) == false)
+        #expect(remaining.map(\.isPrimary) == [true])
+    }
+
+    @Test
+    func `given the project's own checkout when it is deleted then it is refused before git is run`(
+    ) async throws {
+        // given — the primary checkout is in this list and earns a word on its row, so the control
+        // reaches it. Git refuses it too, with `is a main working tree`; this is the sentence and
+        // the code that reach the phone instead.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let primary = WorktreeID(canonicalPath: repository.location.path)
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(primary.rawValue)", method: .delete) { response in
+                #expect(response.status == .conflict)
+                #expect(errorCode(in: response) == "worktreeNotDeletable")
+            }
+        }
+        #expect(FileManager.default.fileExists(atPath: repository.location.path))
+    }
+
+    @Test
+    func `given a locked worktree when it is deleted then it is refused and left where it is`(
+    ) async throws {
+        // given — a lock is a person on this Mac saying do not remove this, and one `--force` does
+        // not override it: git answers `use 'remove -f -f' to override or unlock first`. Sending the
+        // second one would make the lock mean nothing, so this refuses instead.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        try repository.lockTheWorktree()
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let doomed = WorktreeID(canonicalPath: repository.worktree.path)
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { response in
+                #expect(response.status == .conflict)
+                #expect(errorCode(in: response) == "worktreeNotDeletable")
+            }
+        }
+        #expect(FileManager.default.fileExists(atPath: repository.worktree.path))
+    }
+
+    @Test
+    func `given git cannot remove a worktree when it is deleted then its own words reach the phone`(
+    ) async throws {
+        // given — a removal that fails for neither of the two reasons the route predicts. Git's
+        // standard error is the only thing that makes this diagnosable from a phone three rooms
+        // away, and the reader of this app is the person who would act on it.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        try repository.makeTheWorktreeUndeletable()
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let doomed = WorktreeID(canonicalPath: repository.worktree.path)
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { response in
+                #expect(response.status == .internalServerError)
+                #expect(errorCode(in: response) == "gitFailure")
+                #expect(String(buffer: response.body).contains("failed to delete"))
+            }
+        }
+        #expect(FileManager.default.fileExists(atPath: repository.worktree.path))
+    }
+
+    @Test
+    func `given a worktree no enabled project has when it is deleted then it is gone rather than refused`(
+    ) async throws {
+        // given — the identifier is a hash and resolving it is where the API's no-paths rule is
+        // enforced, so an identifier naming nothing this Mac serves must not reach git at all.
+        let scenario = try ApiScenario(repository: .main)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/nothing-of-ours", method: .delete) { response in
+                #expect(response.status == .gone)
+                #expect(errorCode(in: response) == "worktreeGone")
+            }
+        }
+    }
+
+    @Test
+    func `given no token when a worktree is deleted then it is refused before anything is resolved`(
+    ) async throws {
+        // given — this is the one route that destroys something, so the bearer mattering on it is
+        // worth asserting rather than inheriting from the group it was added to.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location, requiresAuthentication: true)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let doomed = WorktreeID(canonicalPath: repository.worktree.path)
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { response in
+                #expect(response.status == .unauthorized)
+            }
+        }
+        #expect(FileManager.default.fileExists(atPath: repository.worktree.path))
+    }
+
     @Test
     func `given a worktree when it is listed then its timestamp is an ISO 8601 string`() async throws {
         // given — the date format is part of the contract and is currently whatever the HTTP

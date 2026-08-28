@@ -14,7 +14,8 @@ extension ApiErrorCode {
         case .rateLimited: .tooManyRequests
         case .projectNotVisible: .forbidden
         case .worktreeGone, .fileGone: .gone
-        case .staleContentHash: .conflict
+        // The request was understood and the worktree is there; its state is what refuses.
+        case .staleContentHash, .worktreeNotDeletable: .conflict
         case .gitFailure: .internalServerError
         case .tooLarge: .contentTooLarge
         case .badRequest: .badRequest

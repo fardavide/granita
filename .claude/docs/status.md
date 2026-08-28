@@ -2,6 +2,64 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.5.0 — a worktree can be deleted from the phone, and the screen shipped ahead of its
+design on purpose.** Davide asked for that on 28 August 2026: he was near his weekly limit, wanted
+the feature usable, and wanted the design round trip to correct it afterwards. So the
+`design-handoff` rule was departed from with his instruction and the cost written down — the prompt
+is [issue #52](https://github.com/fardavide/granita/issues/52), written *before* any of the screen
+was built so the ask cannot be reconstructed from the code that guessed at it, and
+[`design.md`](design.md) §6 lists **thirteen calls made without authority**, each one file or one
+modifier to replace.
+
+**The treatment was chosen by a panel and the panel found a control that did nothing.**
+`confirmDeletion()` read its subject back off the model, and dismissing an alert clears that property
+synchronously while the button's own `Task` body runs a turn later — so Delete destroyed nothing at
+all, with the whole suite green, because a raster does not include an alert and cannot press a
+button. That is this project's oldest defect arriving through a new door, caught before it shipped
+rather than after eight releases. In [`decisions.md`](decisions.md).
+
+**Deletion is deliberately not in the swipe.** A trailing swipe begins the way an imprecise vertical
+scroll does and iOS gives the first trailing action the full swipe, so a destructive third action
+there is one over-committed thumb from destroying work that was never committed. It is a long press;
+the swipe keeps Pin and Rename and its full swipe keeps meaning Pin. That answers §6's open question
+structurally rather than by tuning a flag — and costs discoverability, which is real and recorded.
+
+**`isLocked` has a job for the first time, and §2's reason for it having none has expired.** The
+document says *"v1 cannot prune worktrees, which is the only operation it would block."* v1 can now,
+so the premise is void and the conclusion is unargued — but spending the row's budget is not
+implementation's call, so the reason lives in the menu where it costs nothing. Design is told the
+premise moved.
+
+**Deleting a worktree was built everywhere except the screen first, and that half still holds.**
+Davide asked for it on 28 August 2026, with a confirmation in front of it — which re-opens a line
+`SPEC.md` §11 had drawn, since pruning worktrees is listed there in the v2 backlog and design §2
+leans on that when it decides the locked flag earns no pixels. It is `worktree remove --force`, once:
+the unforced form refuses whenever anything is uncommitted, which is *every* worktree this app lists,
+so the confirmation is not ceremony around a safe operation but the whole safeguard. A second
+`--force` would override a lock and is not sent. The branch survives. Every call in
+[`decisions.md`](decisions.md), with the eight git behaviours each one was measured against.
+
+**`isLocked` has a job for the first time.** Design §2 filed it as plumbing — *"v1 cannot prune
+worktrees, which is the only operation it would block"* — and that is the operation. The row now
+carries a deletability with a **reason** rather than a boolean, because a control that is absent and
+a control that is disabled and says why are different answers and only the design picks between them.
+A screen physically cannot offer the control on a worktree the Mac would refuse.
+
+**What is not built is the swipe action and the dialog**, and that is the `design-handoff` rule
+working rather than a slice left half-done: no pull request touching a screen opens before its frames
+exist. Everything a frame cannot be authoritative about shipped — the git command, the service seam,
+the route with its two predicted refusals, the wire's new `worktreeNotDeletable` code, the phone's
+client, the row's rule and the model's whole confirmation flow, all asserted. The prompt for Design
+is written. **There is no version bump and no changelog entry with it**, because nothing here is
+something a reader can do yet, and merging publishes.
+
+**The removal tests own a repository rather than borrowing the fixtures**, and reading its paths back
+from git rather than computing them cost two red runs. An identifier is a hash of a path *string*,
+and a `URL` for a directory carries a trailing separator git never emits while
+`resolvingSymlinksInPath()` leaves `/var/folders` alone where git says `/private/var/folders` —
+either spelling hashes to something the registry holds nothing under, so every route answers
+`worktreeGone` about a worktree sitting right there.
+
 **The changed words carry a background now, and that was the syntax highlighter asking for the text
 colour back.** Design §4 had inverted the word diff into the text — unchanged runs down to secondary,
 the changed run at full strength — because it measured two nested backgrounds and found no headroom

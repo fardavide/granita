@@ -123,6 +123,70 @@ public struct WorktreeRenameSubject: Identifiable, Hashable, Sendable {
     }
 }
 
+/// Everything the confirmation needs before a checkout is taken off the Mac.
+///
+/// Resolved on the row for the same reason the rename sheet's subject is: the display name is the
+/// Mac's resolution of four fields and the row is where that lands, so a confirmation naming the
+/// worktree a second way is a confirmation that can name a different one.
+public struct WorktreeDeletionSubject: Identifiable, Hashable, Sendable {
+
+    /// The worktree is the identity, so a dialog keyed on this cannot stay up over a different row
+    /// than the one it was opened from.
+    public var id: WorktreeID { worktree }
+
+    public let worktree: WorktreeID
+    public let displayName: String
+
+    /// What is about to be lost, in the row's own words.
+    ///
+    /// **The confirmation is the only place the cost is stated**, because the removal is forced: the
+    /// uncommitted work this whole app exists to show is what goes with the directory. A dialog that
+    /// only named the worktree would be asking the reader to agree to something it had not said.
+    public let stats: WorktreeRowStats
+
+    public init(worktree: WorktreeID, displayName: String, stats: WorktreeRowStats) {
+        self.worktree = worktree
+        self.displayName = displayName
+        self.stats = stats
+    }
+}
+
+/// Whether this worktree can be taken off the Mac, and when it cannot, why.
+///
+/// A reason rather than a boolean, because a control that is **absent** and a control that is
+/// **disabled and says why** are different answers to "why can I not do this here" — and a boolean
+/// has already thrown away the half that lets the screen give either.
+public enum WorktreeDeletability: Hashable, Sendable {
+
+    case deletable(WorktreeDeletionSubject)
+
+    /// The repository itself rather than a checkout of it. Git refuses outright and so does the Mac.
+    case primaryCheckout
+
+    /// Somebody on that Mac marked this one as not to be removed. Overriding it needs `-f -f`, which
+    /// is not what gets sent — a lock that a phone can wave through is not a lock.
+    case locked
+
+    /// Why this worktree cannot be deleted, said to the reader asking, and `nil` where it can be.
+    ///
+    /// **Here rather than in the control that draws it**, and for the reason that decides everything
+    /// else on this row: what a screen puts in front of a reader is asserted without a renderer. A
+    /// context menu is presented by the system into an overlay no snapshot includes, so a sentence
+    /// written inside that closure is a sentence nothing in this repository can hold to its words —
+    /// and these two exist precisely to stop a row that will not delete reading as an app that does
+    /// not work. `WorktreeAge.label` is the precedent for a reader-facing string resolved here.
+    ///
+    /// The sentence and its symbol come back together rather than from two properties, so there is
+    /// no arrangement in which one is present and the other is not.
+    public var refusal: (sentence: String, symbol: String)? {
+        switch self {
+        case .deletable: nil
+        case .primaryCheckout: ("The project’s own checkout can’t be deleted", "house")
+        case .locked: ("Locked on your Mac, so it can’t be deleted", "lock.fill")
+        }
+    }
+}
+
 /// One row of the sidebar, with every drop and flag decision already made.
 ///
 /// Decided here rather than in a view body, which is what lets design §2's ordering and drop rules
@@ -156,9 +220,17 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
     public let isPinned: Bool
     public let rename: WorktreeRenameSubject
 
+    /// Whether this row may offer to destroy what it names, and what the confirmation says if it
+    /// does.
+    ///
+    /// Decided here rather than in a view body for the reason every other rule on this row is: the
+    /// two worktrees that must never be offered are the two a rendered screen would not tell you
+    /// about, and design §2's row draws neither of them differently.
+    public let deletion: WorktreeDeletability
+
     public init(of worktree: Worktree, mode: WorktreeListMode, now: Date) {
-        // `isLocked` is read nowhere and that is deliberate: it is git plumbing with no bearing on
-        // reading a diff, and v1 cannot prune worktrees, which is the only operation it blocks.
+        // `isLocked` was read nowhere for a recorded reason: v1 could not prune worktrees, which was
+        // the only operation the flag blocked. It can now, so the flag has its one job below.
         let isNamed = worktree.alias != nil || worktree.suggestedAlias != nil || worktree.branch != nil
         id = worktree.id
         displayName = worktree.displayName
@@ -197,6 +269,20 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
             derivedName: derived.name,
             derivedNameSource: derived.source
         )
+        // Primary first where both are true: it is a fact about the repository rather than a
+        // setting somebody can undo, so it is the sentence that does not send a reader off to
+        // unlock something that would still refuse afterwards.
+        deletion = if worktree.isPrimary {
+            .primaryCheckout
+        } else if worktree.isLocked {
+            .locked
+        } else {
+            .deletable(WorktreeDeletionSubject(
+                worktree: worktree.id,
+                displayName: worktree.displayName,
+                stats: stats
+            ))
+        }
     }
 }
 

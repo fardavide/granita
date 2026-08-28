@@ -595,6 +595,10 @@ struct FakeDiffRepository: GranitaRepository {
         throw .worktreeGone
     }
 
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        throw .worktreeGone
+    }
+
     func lines(
         of file: FileID,
         in worktree: WorktreeID,

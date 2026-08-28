@@ -66,6 +66,10 @@ public struct HttpGranitaRepository: GranitaRepository {
         )
     }
 
+    public func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        try await client.delete("/v1/worktrees/\(worktree.rawValue)")
+    }
+
     public func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
         try await client.get("/v1/worktrees/\(worktree.rawValue)/changes", returning: WorktreeChanges.self)
     }

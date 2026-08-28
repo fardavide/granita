@@ -18,6 +18,13 @@ public struct WorktreeRegistry: Sendable {
         public let location: RepositoryLocation
         public let project: StoredProject
         public let record: WorktreeRecord
+
+        /// Whether this is the repository itself rather than a checkout of it.
+        ///
+        /// Taken from git's own ordering — `worktree list` puts the main worktree first — rather
+        /// than by comparing the location against the project's folder, because the folder is
+        /// whatever the reader added on the Mac and the ordering is a property of the command.
+        public let isPrimary: Bool
     }
 
     private let store: any Store
@@ -115,7 +122,12 @@ public struct WorktreeRegistry: Sendable {
                 guard FileManager.default.fileExists(atPath: record.location.path) else {
                     throw ApiError(.worktreeGone, message: "that worktree's directory is no longer there")
                 }
-                return Resolved(location: record.location, project: project, record: record)
+                return Resolved(
+                    location: record.location,
+                    project: project,
+                    record: record,
+                    isPrimary: records.first?.location == record.location
+                )
             }
         }
         throw ApiError(.worktreeGone, message: "no enabled project has that worktree")

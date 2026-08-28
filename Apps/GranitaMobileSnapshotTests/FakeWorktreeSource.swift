@@ -29,6 +29,12 @@ actor FakeGranitaRepository: GranitaRepository {
         return found
     }
 
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        if let writeFailure { throw writeFailure }
+        guard worktrees.contains(where: { $0.id == worktree }) else { throw .worktreeGone }
+        worktrees.removeAll { $0.id == worktree }
+    }
+
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges { throw .worktreeGone }
 
     func diffs(

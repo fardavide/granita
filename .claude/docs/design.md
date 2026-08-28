@@ -27,6 +27,7 @@ says so and shows the measurement.
 | §3 | The file selector | M5 | built |
 | §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. The header's second form and wrap-on are not, and **syntax highlighting was never drawn at all** |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
+| §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
 number rather than renumbering four sections that a dozen documents already cite; in the reader's
@@ -969,3 +970,102 @@ quietly:
   only from a browse result, so the host and port are already in hand — and a field that lets a
   reader point this app at an address Bonjour never returned is a hole, not a fallback. §0 lists
   Bonjour-plus-QR as PROPOSED rather than locked, so this is the weakest of the departures here.
+
+## §6 — Deleting a worktree *(asked for 28 August 2026, not drawn)*
+
+Everything behind this screen is built and asserted; **the screen itself is what is waiting**, which
+is the `design-handoff` rule working rather than a slice abandoned. What exists: the git command and
+its eight measured behaviours, the route with its two predicted refusals, a new wire code the phone
+branches on, the row's own rule about which worktrees may offer the control at all, and the model's
+whole confirmation flow. What does not: the affordance on the row, and the confirmation.
+
+**What the deletion is, so the drawing is not about a safer operation than the real one.** It is
+`git worktree remove --force`: the directory goes and the uncommitted work in it goes with it. The
+unforced form refuses whenever anything is uncommitted, and *every worktree this list shows* has
+uncommitted work — the quiet ones are hidden by default and the product exists to show the loud
+ones. So the confirmation is not ceremony around a reversible operation; it is the whole safeguard,
+and there is no undo behind it. The branch survives. Nothing else does.
+
+**Two rows must never offer it, and the row already knows which.** The primary checkout is the
+repository rather than a checkout of it, and a locked worktree is a person at that Mac saying do not
+remove this. `WorktreeListRow` carries a reason rather than a boolean precisely so the drawing can
+choose between **absent** and **disabled and says why** — a boolean would have decided that here, by
+accident, and the wrong way round.
+
+**The open questions this section exists to answer**, and none of them is settled:
+
+- The trailing swipe already holds Pin and Rename. A destructive third at 390pt is the question, and
+  a leading-edge swipe, a context menu and a row in the rename sheet are all alternatives.
+- Whether a full swipe may trigger it at all. iOS gives the first trailing action the full swipe by
+  default, and a full swipe that destroys a worktree is one gesture from a scroll.
+- What the confirmation is: `confirmationDialog`, `alert`, or the sheet idiom §2 already uses for
+  renaming. And what it *says* — the row's stats are handed to it so it can name the cost, and
+  whether it should is a call rather than an obligation.
+- What the list does afterwards. The row is dropped only once the Mac confirms, so there is a moment
+  with a request in flight and the row still on screen.
+- Whether the two refusals get a screen of their own or share §2's existing write-failure treatment.
+
+The prompt is [issue #52](https://github.com/fardavide/granita/issues/52), written on 28 August 2026
+and **not yet sent** — Davide's credits reset first. It goes out against the baselines this
+treatment records rather than against the ones that predate it, because those are now what the app
+looks like.
+
+### The provisional treatment, and every call it made without authority
+
+**Shipped on 28 August 2026 at Davide's instruction, so the feature is usable while the review is
+outstanding.** That is a deliberate departure from the `design-handoff` rule — *no pull request
+touching a screen opens before its frames exist* — taken with the reason recorded rather than by
+forgetting the rule. Each item below is **one file or one modifier to replace**, and a returned
+design overrules any of them without argument.
+
+1. **The affordance is a `.contextMenu`, not a third swipe action.** The swipe is left exactly as
+   shipped and its full swipe still means Pin, which is reversible in one tap. This answers the
+   second open question *structurally* — deletion is not in the swipe, so a full swipe cannot reach
+   it — at the price of a gesture nobody can see. **Discoverability is the whole cost and it is
+   real.**
+2. **The confirmation is an `alert`.** Centred, not dismissible by tapping outside, bold Cancel, and
+   the display name in full and untruncated as the title, because the mistake it defends against is
+   destroying the *wrong* row. The competing argument — that an action sheet puts Cancel in the
+   thumb zone — is genuine and was overruled.
+3. **It names the cost, in three sentences branched on the row's stats.** §6 called that a call
+   rather than an obligation; this makes it an obligation.
+4. **`noCommitsYet` gets no "the branch stays" sentence**, because an unborn head has no commits for
+   a branch to keep.
+5. **The `noChanges` message claims the ignored files go too — reasoned from what
+   `worktree remove --force` does to a directory, not measured.** Nobody ran it against a worktree
+   holding a `.env`.
+6. **The two undeletable rows are "disabled and says why" rather than absent**, and the reason is in
+   the menu, never on the row. A menu is drawn over the window, so the sentence costs none of the
+   320pt §2's drop order has already spent — no new drop rule, no Dynamic Type re-measurement.
+7. **§2's stated reason for `locked` earning nothing has expired, and this deliberately does not act
+   on it.** The document says *"v1 cannot prune worktrees, which is the only operation it would
+   block."* v1 can now, so the premise is void and the conclusion is unargued. Spending the row's
+   budget is not implementation's to do. **Design should be told the premise moved.**
+8. **The Mac's own refusal sentence is dropped on the floor.** An alert has no caption2, monospaced,
+   tertiary slot, and this design's rule is that a machine's words go there — so pasting git's
+   standard error into an alert body on a phone was refused. The cost is that the reader is not told
+   which of the two refusals it was, deliberately: the row said this one was deletable and the Mac
+   disagreed, which means the list is out of date, and certainty would be invented at the worst
+   moment.
+9. **The in-flight row says `Deleting…` and loses its second line for the duration** — which in flat
+   mode is the project name, the one field §2 says the list cannot lose. It lasts about a second and
+   the name directly above it does not move.
+10. **Dimming is used, against §2's rejection of it.** §2 rejected dimming a row that *works*; this
+    row is genuinely `.disabled(true)`, so the dim is true rather than a lie.
+11. **The refusal alert grew from one message to three, and `WorktreeWriteRefusal` was bought to
+    route them.** If Design decides one message is enough, **delete that type** rather than keeping
+    it.
+12. **The cost sentences use plain interpolation, so the alert reads `+1204` where the row reads
+    `+1,204`.** `WorktreeAge.label`'s precedent and its reason: a format style reaches a locale and
+    these strings are asserted by a host test. Visible only above 999.
+13. **The iPad's detail column is left unanswered.** Delete the worktree currently open in it and
+    the pushed diff screen survives, showing a change set for a directory that is gone. Stale
+    content rather than a dead control, and only on iPad, where both columns are visible at once.
+    Closing it means binding the detail column's path in the split screen, which is beyond a
+    provisional treatment — **and it should not ship unanswered past this review.**
+
+**What no baseline can reach, whatever the treatment.** A `.contextMenu`'s content closure is not
+evaluated until it opens, so the delete item and the two disabled explanations have no picture; and
+the snapshot layouts are four device-and-appearance pairs with **no Dynamic Type axis at all**, so
+§2's "Large and xxLarge both" is unassertable in this repository under any design. Both are a device
+afternoon, not a check.

@@ -523,6 +523,134 @@ struct WorktreeListingTests {
         ))
     }
 
+    // MARK: - What the row will let a reader destroy
+
+    @Test
+    func `given an ordinary worktree when its row is built then it offers what the confirmation needs`() {
+        // given — the confirmation has to say what is being lost, and the row is where the display
+        // name is finally resolved. Resolving it again in the sheet is how the two come to disagree.
+        let scenario = Scenario(worktrees: [
+            aWorktree(named: "tls-pinning", project: "granita", pinned: false, minutesAgo: 4)
+        ])
+
+        // when
+        let row = scenario.listing(mode: .mostRecentFirst).sections[0].rows[0]
+
+        // then
+        #expect(row.deletion == .deletable(WorktreeDeletionSubject(
+            worktree: WorktreeID(rawValue: "w-tls-pinning"),
+            displayName: "tls-pinning",
+            stats: .changed(filesChanged: 34, insertions: 1_204, deletions: 318)
+        )))
+    }
+
+    @Test
+    func `given a deletion subject when it is identified then it is identified by its worktree`() {
+        // given — what a presented dialog is keyed on. Anything else and the confirmation can stay
+        // up over a row other than the one it was opened from, which for this control means
+        // confirming the deletion of a worktree nobody looked at.
+        let subject = WorktreeDeletionSubject(
+            worktree: WorktreeID(rawValue: "w-tls-pinning"),
+            displayName: "tls-pinning",
+            stats: .noChanges
+        )
+
+        // given - when - then
+        #expect(subject.id == WorktreeID(rawValue: "w-tls-pinning"))
+    }
+
+    @Test
+    func `given the primary checkout when its row is built then it cannot be deleted`() {
+        // given — the primary checkout is in this list and earns a word of its own on the row, so a
+        // delete control offered to every row reaches it. It is the repository rather than a
+        // checkout of it, and git refuses to remove it at all.
+        let scenario = Scenario(worktrees: [
+            aClean(named: "main", project: "granita", minutesAgo: 90)
+        ])
+
+        // when
+        let row = scenario.listing(mode: .mostRecentFirst, showingQuiet: true).sections[0].rows[0]
+
+        // then
+        #expect(row.deletion == .primaryCheckout)
+    }
+
+    @Test
+    func `given a locked worktree when its row is built then it cannot be deleted`() {
+        // given — until now `isLocked` was read nowhere, on the recorded grounds that v1 could not
+        // prune worktrees. It can, so the flag has the one job it always had: a lock is a person on
+        // that Mac saying do not remove this, and one `--force` does not override it.
+        let scenario = Scenario(worktrees: [locked(named: "held", project: "granita")])
+
+        // when
+        let row = scenario.listing(mode: .mostRecentFirst).sections[0].rows[0]
+
+        // then
+        #expect(row.deletion == .locked)
+    }
+
+    @Test
+    func `given a deletable worktree when its refusal is read then there is none`() {
+        // given - when - then
+        let subject = WorktreeDeletionSubject(
+            worktree: WorktreeID(rawValue: "w-tls-pinning"),
+            displayName: "tls-pinning",
+            stats: .noChanges
+        )
+        #expect(WorktreeDeletability.deletable(subject).refusal == nil)
+    }
+
+    @Test
+    func `given the primary checkout when its refusal is read then it names what the row is`() {
+        // given - when - then — **the sentence is asserted here because nowhere else can.** It is
+        // drawn in a context menu, which the system presents into an overlay no snapshot includes,
+        // and it exists to stop a row that will not delete reading as an app that does not work.
+        let refusal = WorktreeDeletability.primaryCheckout.refusal
+        #expect(refusal?.sentence == "The project’s own checkout can’t be deleted")
+        #expect(refusal?.symbol == "house")
+    }
+
+    @Test
+    func `given a locked worktree when its refusal is read then it says where the lock is`() {
+        // given - when - then — "on your Mac" rather than "locked", because the remedy is on the
+        // other machine and a reader holding a phone can do nothing about it here.
+        let refusal = WorktreeDeletability.locked.refusal
+        #expect(refusal?.sentence == "Locked on your Mac, so it can’t be deleted")
+        #expect(refusal?.symbol == "lock.fill")
+    }
+
+    @Test
+    func `given a worktree that is both primary and locked when its row is built then it says primary`() {
+        // given — two reasons at once, and the row states one. Primary is the one that is true of
+        // the repository rather than of a setting somebody can undo, so it is the more useful
+        // sentence and the one that does not send a reader off to unlock something pointlessly.
+        let scenario = Scenario(worktrees: [primaryAndLocked(named: "main", project: "granita")])
+
+        // when
+        let row = scenario.listing(mode: .mostRecentFirst, showingQuiet: true).sections[0].rows[0]
+
+        // then
+        #expect(row.deletion == .primaryCheckout)
+    }
+
+    @Test
+    func `given a worktree with no commits yet when its row is built then the confirmation says so`() {
+        // given — an unborn head takes the stats slot, so the confirmation cannot promise a number
+        // of files. It carries whatever the row shows, which in this case is that there is nothing
+        // to compare against rather than that nothing changed.
+        let scenario = Scenario(worktrees: [unborn(named: "day-one", project: "granita")])
+
+        // when
+        let row = scenario.listing(mode: .mostRecentFirst, showingQuiet: true).sections[0].rows[0]
+
+        // then
+        #expect(row.deletion == .deletable(WorktreeDeletionSubject(
+            worktree: WorktreeID(rawValue: "w-day-one"),
+            displayName: "day-one",
+            stats: .noCommitsYet
+        )))
+    }
+
     // MARK: - What the toolbar has to offer
 
     @Test(arguments: [
@@ -636,6 +764,51 @@ private func aWorktree(
         lastModified: aMoment.addingTimeInterval(TimeInterval(-minutesAgo * 60)),
         revision: "r1"
     )
+}
+
+private func locked(named name: String, project: String) -> Worktree {
+    aWorktree(named: name, project: project, pinned: false, minutesAgo: 4).with(isLocked: true)
+}
+
+private func primaryAndLocked(named name: String, project: String) -> Worktree {
+    aWorktree(named: name, project: project, pinned: false, minutesAgo: 4)
+        .with(isPrimary: true, isLocked: true)
+}
+
+private func unborn(named name: String, project: String) -> Worktree {
+    aWorktree(named: name, project: project, pinned: false, minutesAgo: 4).with(hasUnbornHead: true)
+}
+
+private extension Worktree {
+
+    /// One field changed and the rest carried, so a test that is about a flag says only that.
+    ///
+    /// A domain struct takes no defaults in its memberwise init — the compiler is meant to catch a
+    /// field nobody handled — so this is where the twenty unchanged ones get written once.
+    func with(
+        isPrimary: Bool? = nil,
+        isLocked: Bool? = nil,
+        hasUnbornHead: Bool? = nil
+    ) -> Worktree {
+        Worktree(
+            id: id,
+            projectId: projectId,
+            projectName: projectName,
+            branch: branch,
+            isPrimary: isPrimary ?? self.isPrimary,
+            isDetached: isDetached,
+            isLocked: isLocked ?? self.isLocked,
+            hasUnbornHead: hasUnbornHead ?? self.hasUnbornHead,
+            alias: alias,
+            suggestedAlias: suggestedAlias,
+            displayName: displayName,
+            directoryName: directoryName,
+            isPinned: isPinned,
+            stats: stats,
+            lastModified: lastModified,
+            revision: revision
+        )
+    }
 }
 
 private func aClean(named name: String, project: String, minutesAgo: Int) -> Worktree {

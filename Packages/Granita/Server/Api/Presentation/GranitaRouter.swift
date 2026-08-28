@@ -157,6 +157,45 @@ public enum GranitaRouter {
             return updated
         }
 
+        // **The only route that destroys anything**, and the only one that writes to a repository
+        // rather than to this Mac's own document. It is `worktree remove --force`, so the
+        // uncommitted work the rest of this API exists to show is what goes with it — the phone's
+        // confirmation is where that is said, and there is nothing further to undo it with here.
+        //
+        // The branch is left alone. What an agent leaves behind is a directory; a branch is cheap
+        // and taking it would take unmerged commits with it.
+        authenticated.delete("/v1/worktrees/:worktreeId") { _, context -> Response in
+            let id = try worktreeId(from: context)
+            let resolved = try await dependencies.registry.resolve(id)
+
+            // Refused here rather than by git, for the two cases this Mac can see coming. Git
+            // refuses both as well — exit 128, `is a main working tree` and `cannot remove a locked
+            // working tree` — so this is a better sentence rather than the only guard, and the
+            // phone gets a code it can branch on instead of a git message it can only print.
+            guard resolved.isPrimary == false else {
+                throw ApiError(
+                    .worktreeNotDeletable,
+                    message: "that is the project's own checkout rather than one of its worktrees"
+                )
+            }
+            guard resolved.record.isLocked == false else {
+                throw ApiError(
+                    .worktreeNotDeletable,
+                    message: "that worktree is locked; unlock it on this Mac first"
+                )
+            }
+
+            do {
+                try await dependencies.service.remove(
+                    resolved.location,
+                    ofProjectAt: RepositoryLocation(path: resolved.project.path)
+                )
+            } catch {
+                throw gitFailure(error)
+            }
+            return Response(status: .noContent)
+        }
+
         authenticated.get("/v1/worktrees/:worktreeId/changes") { request, context -> WorktreeChanges in
             let id = try worktreeId(from: context)
             let resolved = try await dependencies.registry.resolve(id)

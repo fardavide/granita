@@ -121,6 +121,10 @@ final class FakeGranitaRepository: GranitaRepository {
         throw .worktreeGone
     }
 
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        throw .worktreeGone
+    }
+
     func markViewed(
         _ viewed: Bool,
         file: FileID,

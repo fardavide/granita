@@ -47,6 +47,11 @@ struct GranitaHttpClient: Sendable {
         _ = try await perform(.post, path, query: [], body: try encode(body))
     }
 
+    /// A route that answers 204 and carries no body in either direction.
+    func delete(_ path: String) async throws(ApiFailure) {
+        _ = try await perform(.delete, path, query: [], body: nil)
+    }
+
     func patch<Value: Decodable>(
         _ path: String,
         body: some Encodable,
@@ -105,6 +110,7 @@ struct GranitaHttpClient: Sendable {
         case .rateLimited: return .rateLimited
         case .projectNotVisible: return .projectNotVisible
         case .worktreeGone: return .worktreeGone
+        case .worktreeNotDeletable: return .worktreeNotDeletable(message: refused.error.message)
         case .fileGone: return .fileGone
         case .staleContentHash: return .staleContentHash
         case .gitFailure: return .gitFailure(message: refused.error.message)
