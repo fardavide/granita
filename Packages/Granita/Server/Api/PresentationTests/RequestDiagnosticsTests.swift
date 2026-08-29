@@ -114,6 +114,7 @@ struct RequestDiagnosticsTests {
                 connectionLog: InMemoryConnectionLog(now: { Date(timeIntervalSince1970: 0) }),
                 diagnostics: diagnostics,
                 serverVersion: "0.0.17",
+                wakeAddresses: [],
                 // On, because the point of the third test is a route that refuses before it
                 // reaches anything.
                 requiresAuthentication: true

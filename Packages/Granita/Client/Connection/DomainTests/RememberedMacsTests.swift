@@ -44,7 +44,8 @@ struct RememberedMacsTests {
                     name: theMacTheReaderTapped.name,
                     device: aRememberedMac.device,
                     address: whereTheMacIsNow,
-                    fingerprint: aRememberedMac.fingerprint
+                    fingerprint: aRememberedMac.fingerprint,
+                    wakeAddresses: aRememberedMac.wakeAddresses
                 )
             ]
         )
@@ -308,6 +309,65 @@ struct RememberedMacsTests {
     }
 }
 
+// MARK: - Learning how to wake a Mac paired with before this phone could
+
+extension RememberedMacsTests {
+
+    @Test
+    func `given a remembered Mac with no hardware address when it is reached then its address is learned and kept`() async throws {
+        // given — every Mac already in the Keychain when this shipped. Without the backfill the one
+        // release that can wake a Mac cannot wake the Mac its reader already uses.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMacWithNoWakeAddress],
+            servingWakeAddresses: ["3e:2d:c6:c3:4b:fe"]
+        )
+
+        // when
+        _ = try await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        #expect(
+            await scenario.macs.saved[theMacTheReaderTapped.id]?.wakeAddresses.map(\.text)
+                == ["3e:2d:c6:c3:4b:fe"]
+        )
+    }
+
+    @Test
+    func `given a remembered Mac that already knows how to be woken when it is reached then nothing is rewritten`() async throws {
+        // given — the ordinary case after one backfill, and a Keychain write on every reconnection
+        // would be a cost paid forever for a migration that happens once.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            servingWakeAddresses: ["aa:bb:cc:dd:ee:ff"]
+        )
+
+        // when
+        _ = try await scenario.sut.worktrees(inProject: nil)
+
+        // then — what it was paired with, not what health just said.
+        #expect(
+            await scenario.macs.saved[theMacTheReaderTapped.id]?.wakeAddresses
+                == aRememberedMac.wakeAddresses
+        )
+    }
+
+    @Test
+    func `given a Mac too old to report a hardware address when it is reached then it stays remembered and unwakeable`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMacWithNoWakeAddress],
+            servingWakeAddresses: []
+        )
+
+        // when
+        _ = try await scenario.sut.worktrees(inProject: nil)
+
+        // then — the read still worked, which is the part that matters; the Mac is simply not
+        // something this phone can wake.
+        #expect(await scenario.macs.saved[theMacTheReaderTapped.id]?.wakeAddresses.isEmpty == true)
+    }
+}
+
 // MARK: -
 
 private struct Scenario {
@@ -327,7 +387,8 @@ private struct Scenario {
         remembering: [BonjourInstanceName: RememberedMac] = [:],
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
-        refusing readFailure: ApiFailure? = nil
+        refusing readFailure: ApiFailure? = nil,
+        servingWakeAddresses wakeAddresses: [String] = []
     ) {
         macs = refusal.map(FakeRememberedMacStore.init(refusing:))
             ?? FakeRememberedMacStore(holding: remembering)
@@ -347,7 +408,8 @@ private struct Scenario {
                 connect: { pairing in
                     connections.opened(pairing)
                     return mac
-                }
+                },
+                wakeAddressesOf: { _ in HardwareAddress.all(in: wakeAddresses) }
             )
         )
     }
@@ -506,7 +568,16 @@ private let aRememberedMac = RememberedMac(
         deviceId: DeviceId(rawValue: "8C4F2A11-0000-4E5D-9A3B-77F1C0DE0001"),
         serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
     ),
-    fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+    fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007"),
+    wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
+)
+
+/// A pairing written before health carried a hardware address, which is what every Mac already in a
+/// reader's Keychain looks like on the day this ships.
+private let aRememberedMacWithNoWakeAddress = RememberedMac(
+    device: aRememberedMac.device,
+    fingerprint: aRememberedMac.fingerprint,
+    wakeAddresses: []
 )
 
 /// Deliberately not a port anything stored: the system picks one per launch, which is the reason a

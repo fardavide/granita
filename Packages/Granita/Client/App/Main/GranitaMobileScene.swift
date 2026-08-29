@@ -50,11 +50,22 @@ public struct GranitaMobileScene: Scene {
             NavigationStack(path: $path) {
                 ServerDiscoveryScreen(
                     model: ClientConnectionModel(
-                        browsing: BonjourServerDiscovery(),
+                        // **Wrapped so that a browse wakes the Macs it is about to look for.**
+                        // Since macOS 15 a sleeping Mac withdraws its Bonjour advertisement rather
+                        // than leaving it with a sleep proxy, so an undecorated browse searches an
+                        // empty network and reports nothing found. The wake runs beside the stream
+                        // and cannot delay or filter it.
+                        browsing: WakingServerDiscovery(
+                            discovery: BonjourServerDiscovery(),
+                            macs: Self.rememberedMacStore,
+                            waking: Self.waking
+                        ),
                         joining: MacPairing(macs: Self.rememberedMacStore, handshake: Self.handshake),
                         camera: CaptureDeviceCameraAuthorization(),
                         scanner: Self.scanner,
-                        addresses: BonjourServerAddressResolver()
+                        // And wrapped again here, because the browse can be a step ahead of the
+                        // machine: a Mac woken a moment ago resolves to nothing until it is back.
+                        addresses: Self.addresses
                     ),
                     phone: Self.phone,
                     path: $path,
@@ -88,7 +99,20 @@ public struct GranitaMobileScene: Scene {
                 // rather than out here, because a title applied to a container does not override
                 // one applied within it. See `.claude/docs/decisions.md`.
                 .navigationDestination(for: PairedMac.self) { mac in
-                    Self.worktrees(of: mac.name, over: Self.repository(of: mac))
+                    // **Through the reconnection, not straight over the address pairing returned.**
+                    // A just-paired Mac arrives holding a `host:port` that was true at the moment
+                    // the code was spent and is wrong the moment it sleeps or restarts — and a
+                    // repository built directly on it never learns that, so *Try Again* re-dials a
+                    // dead port for as long as the screen is up. Going through `RememberedMacs`
+                    // means an unreachable read drops the address and the next one resolves again,
+                    // which is what makes waking a Mac from this screen work at all.
+                    Self.worktrees(
+                        of: mac.name,
+                        over: RememberedMacRepository(
+                            reading: DiscoveredServer(id: mac.instance, name: mac.name),
+                            through: Self.rememberedMacs
+                        )
+                    )
                 }
             }
             // The measure goes around the stack rather than around the screen, because iOS draws a
@@ -156,6 +180,26 @@ public struct GranitaMobileScene: Scene {
     /// about either of them.
     private static let rememberedMacStore = KeychainRememberedMacStore()
 
+    /// The packet a sleeping Mac's network card is watching for, and the phone that sends it.
+    ///
+    /// Made once because it holds nothing per Mac — the address travels in the call — and because
+    /// two places wake: the browse, and the resolve that stands in front of every read.
+    private static let waking = MagicPacketWake(
+        datagrams: BroadcastDatagrams(destinations: BroadcastDatagrams.everywhereOnThisNetwork),
+        ports: MagicPacketWake.conventionalPorts
+    )
+
+    /// Resolving a browsed Mac, patient enough to outlast one waking up.
+    ///
+    /// Shared with the reconnection below rather than built twice, so a Mac woken by a browse and a
+    /// Mac woken by opening its worktrees wait the same amount of time before giving up.
+    private static let addresses = WakingServerAddresses(
+        addresses: BonjourServerAddressResolver(),
+        macs: rememberedMacStore,
+        waking: waking,
+        patience: WakingServerAddresses.defaultPatience
+    )
+
     /// **Every Mac this phone can open without pairing, and the one live connection to each** — made
     /// once for the life of the app rather than per screen, which is the whole of what it buys. A
     /// `navigationDestination` closure is re-evaluated on every pass, so a reconnection built inside
@@ -163,8 +207,20 @@ public struct GranitaMobileScene: Scene {
     /// each time; held here, the sidebar and an open diff share one.
     private static let rememberedMacs = RememberedMacs(
         store: rememberedMacStore,
-        addresses: BonjourServerAddressResolver(),
-        connect: { repository(of: $0) }
+        addresses: addresses,
+        connect: { repository(of: $0) },
+        // Unpinned, and it does not need to be: health carries no secret, it is the one route that
+        // answers before pairing, and what comes back is used only to aim a broadcast that anyone
+        // on this network could send anyway. Pinning would mean a second session per Mac for a
+        // read whose worst outcome is a packet nothing answers.
+        wakeAddressesOf: { address in
+            let health = try? await HttpServerPairing(
+                macReachableAt: address,
+                transport: UrlSessionHttpTransport(trustingFirstAnswer: ())
+            )
+            .health()
+            return HardwareAddress.all(in: health?.wakeAddresses ?? [])
+        }
     )
 
     /// The list this product exists for, over a repository that can reach exactly one Mac.

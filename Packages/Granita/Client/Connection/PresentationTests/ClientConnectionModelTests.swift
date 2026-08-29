@@ -1012,7 +1012,8 @@ private let aPairedMac = PairedMac(
     name: aMacTheBrowseFound.name,
     device: aPairedDevice,
     address: anAddress,
-    fingerprint: aLink.fingerprint
+    fingerprint: aLink.fingerprint,
+    wakeAddresses: []
 )
 
 private let sixWords = "cabin-cactus-camera-candle-harbour-lantern"

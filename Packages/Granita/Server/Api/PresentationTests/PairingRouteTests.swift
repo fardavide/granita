@@ -222,6 +222,7 @@ struct PairingRouteTests {
                         connectionLog: connectionLog,
                         diagnostics: FakeDiagnostics(),
                         serverVersion: "0.0.6",
+                        wakeAddresses: [],
                         requiresAuthentication: true
                     )
                 )

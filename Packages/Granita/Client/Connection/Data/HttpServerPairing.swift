@@ -16,6 +16,16 @@ public struct HttpServerPairing: ServerPairing {
         client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .unauthenticated)
     }
 
+    /// Built from an address this phone already resolved, for the one read that needs no credential.
+    ///
+    /// **It exists so the composition root never spells the scheme**, which is the same reason the
+    /// two initialisers below it exist: `https` is a fact about how the Mac serves, and this is the
+    /// layer that knows it. What reaches for this is the backfill that learns how to wake a Mac
+    /// paired with before the phone knew to ask.
+    public init(macReachableAt address: ServerAddress, transport: any HttpTransport) {
+        self.init(macAt: address.httpsUrl ?? URL(filePath: "/nowhere"), transport: transport)
+    }
+
     /// Built from whichever credential the reader offered.
     ///
     /// Turning a host and a port into an address is this layer's job rather than the composition

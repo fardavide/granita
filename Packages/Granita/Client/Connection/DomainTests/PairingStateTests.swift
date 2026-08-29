@@ -143,5 +143,6 @@ private let aPairedMac = PairedMac(
         serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
     ),
     address: ServerAddress(host: "davides-macbook-pro.local", port: 59_144),
-    fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007")
+    fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007"),
+    wakeAddresses: []
 )

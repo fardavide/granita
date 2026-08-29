@@ -168,7 +168,8 @@ nonisolated let aPairedMac = PairedMac(
         serverInstanceId: ServerInstanceId(rawValue: "server-1")
     ),
     address: aMacAddress,
-    fingerprint: SpkiFingerprint(rawValue: "9dQ0mHXWiHc4T0uQr4nqe3sBEUqB1qkFqjNwr8SsCkI=")
+    fingerprint: SpkiFingerprint(rawValue: "9dQ0mHXWiHc4T0uQr4nqe3sBEUqB1qkFqjNwr8SsCkI="),
+    wakeAddresses: []
 )
 
 /// Six words a Mac could really have minted, in the order a reader would type them.

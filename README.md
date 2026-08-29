@@ -71,6 +71,28 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.6.0 — 2026-08-29
+- **Your phone wakes your Mac.** A Mac that has gone to sleep used to be a Mac that simply was not
+  there — nothing in the list, nothing to tap, and no way to tell it apart from one that was
+  switched off. Opening Granita now sends the Macs you have paired with the packet their network
+  card listens for while they sleep, and they turn up in the list a few seconds later on their own.
+- **Opening a sleeping Mac waits for it instead of giving up.** Granita used to ask once, wait five
+  seconds and tell you it could not be reached. It now asks again as the Mac comes back, over about
+  fifteen seconds, so the wait you see is the Mac waking rather than an error about a Mac that is
+  fine.
+- **A Mac you have just paired with recovers on its own.** Before, if it slept while that screen was
+  open, *Try Again* went on dialling an address that had stopped existing until you left the screen
+  and came back. It now looks the Mac up again, which is also what lets it be woken from there.
+- **Macs you paired with before this version learn to be woken on their own.** The first time your
+  phone reaches one, it asks how to wake it and remembers the answer, so you never have to pair
+  again just to get this.
+- **One thing you have to switch on yourself, once.** On your Mac, System Settings › Battery ›
+  Options › *Wake for network access* has to be **Always**. On battery it usually ships as *Only on
+  Power Adapter*, and a Mac on battery will not wake for anything Granita sends.
+- **And one thing Apple has to allow.** Sending the wake needs the multicast networking entitlement,
+  which Apple grants on request. Until it is granted on this app, the packet never leaves the phone
+  and waking does nothing — everything else in this release works regardless.
+
 ### 0.5.0 — 2026-08-28
 - **You can delete a worktree from your phone.** Long-press a row in the worktree list and choose
   *Delete Worktree…*. Your Mac removes the checkout and everything uncommitted in it; the branch

@@ -59,7 +59,11 @@ actor FakeRememberedMacStore: RememberedMacStore {
     func remember(_ mac: PairedMac) async throws(RememberedMacStoreFailure) {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
-        saved[mac.instance] = RememberedMac(device: mac.device, fingerprint: mac.fingerprint)
+        saved[mac.instance] = RememberedMac(
+            device: mac.device,
+            fingerprint: mac.fingerprint,
+            wakeAddresses: mac.wakeAddresses
+        )
     }
 
     func forget(_ mac: BonjourInstanceName) async throws(RememberedMacStoreFailure) {
@@ -72,6 +76,14 @@ actor FakeRememberedMacStore: RememberedMacStore {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
         return Set(saved.keys)
+    }
+
+    func wakeAddresses() async throws(RememberedMacStoreFailure) -> [HardwareAddress] {
+        if isSilent { await neverAnswer() }
+        if let refusal { throw refusal }
+        // Sorted by their text so a test can assert on a list rather than on a set — a dictionary's
+        // key order is not stable and would make a two-Mac assertion flap.
+        return saved.values.flatMap(\.wakeAddresses).sorted { $0.text < $1.text }
     }
 
     private func neverAnswer() async {

@@ -92,6 +92,9 @@ final class MacComposition {
             connectionLog: log,
             diagnostics: diagnostics,
             serverVersion: Branding.serverVersion,
+            // What the phone sends a magic packet to when this Mac is asleep. Read once here
+            // because a composition root is where a syscall belongs.
+            wakeAddresses: HardwareAddresses.ofThisMac(),
             // The plaintext escape hatch is a flag on the executable and is never reachable from
             // here. A token over plaintext is a token everyone on the network already has.
             requiresAuthentication: true

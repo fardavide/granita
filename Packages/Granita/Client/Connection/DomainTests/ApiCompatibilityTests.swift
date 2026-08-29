@@ -16,7 +16,8 @@ struct ApiCompatibilityTests {
         let health = HealthResponse(
             name: "Granita",
             apiVersion: Branding.apiVersion,
-            serverVersion: "0.0.9"
+            serverVersion: "0.0.9",
+            wakeAddresses: nil
         )
 
         // when - then
@@ -30,7 +31,8 @@ struct ApiCompatibilityTests {
         let health = HealthResponse(
             name: "Granita",
             apiVersion: Branding.apiVersion - 1,
-            serverVersion: "0.0.1"
+            serverVersion: "0.0.1",
+            wakeAddresses: nil
         )
 
         // when - then
@@ -43,7 +45,8 @@ struct ApiCompatibilityTests {
         let health = HealthResponse(
             name: "Granita",
             apiVersion: Branding.apiVersion + 1,
-            serverVersion: "9.9.9"
+            serverVersion: "9.9.9",
+            wakeAddresses: nil
         )
 
         // when - then — naming which end is behind is not pedantry: one of them is fixed by opening
