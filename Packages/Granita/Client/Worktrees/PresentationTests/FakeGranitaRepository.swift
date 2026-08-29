@@ -13,9 +13,20 @@ actor FakeGranitaRepository: GranitaRepository {
     /// Every patch that reached the Mac, in order, beside the worktree it addressed.
     private(set) var patches: [(worktree: WorktreeID, patch: WorktreePatch)] = []
 
+    /// Every worktree this Mac was asked to destroy, in order.
+    ///
+    /// Tracked rather than inferred from what is left, because *not asking* and *asking and being
+    /// refused* leave the list in the same shape — and a confirmation that cancels must do the first.
+    private(set) var deleted: [WorktreeID] = []
+
     private var worktrees: [Worktree]
     private let readFailure: ApiFailure?
     private let writeFailure: ApiFailure?
+
+    /// Whether a deletion suspends instead of answering, and the ones currently suspended.
+    private var holdsDeletions = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var arrived = 0
 
     /// What the first read answers with, when the point of the test is what the **second** one does.
     /// A retry is what a reader presses when a screen has gone wrong, so it is worth holding to its
@@ -52,6 +63,43 @@ actor FakeGranitaRepository: GranitaRepository {
         guard let index = worktrees.firstIndex(where: { $0.id == worktree }) else { throw .worktreeGone }
         worktrees[index] = worktrees[index].applying(patch)
         return worktrees[index]
+    }
+
+    /// Keeps every deletion suspended until a test lets it go.
+    ///
+    /// **The in-flight state is only observable while a request is outstanding**, and every other
+    /// fake here answers instantly — so without a held request the window the row's `Deleting…`
+    /// exists for cannot be photographed by an assertion at all, only reasoned about.
+    func holdTheNextDeletion() {
+        holdsDeletions = true
+    }
+
+    /// Suspends until `count` deletions have arrived and are being held.
+    func waitForADeletionToArrive(count: Int = 1) async {
+        while arrived < count {
+            await Task.yield()
+        }
+    }
+
+    func releaseHeldDeletions() {
+        holdsDeletions = false
+        for held in waiting {
+            held.resume()
+        }
+        waiting = []
+    }
+
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        deleted.append(worktree)
+        arrived += 1
+        if holdsDeletions {
+            await withCheckedContinuation { continuation in
+                waiting.append(continuation)
+            }
+        }
+        if let writeFailure { throw writeFailure }
+        guard worktrees.contains(where: { $0.id == worktree }) else { throw .worktreeGone }
+        worktrees.removeAll { $0.id == worktree }
     }
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {

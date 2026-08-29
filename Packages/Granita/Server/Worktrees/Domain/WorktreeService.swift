@@ -128,6 +128,23 @@ public struct WorktreeService: Sendable {
         )
     }
 
+    /// Takes a checkout off this Mac, with whatever uncommitted work was in it.
+    ///
+    /// **Run from the project rather than from the worktree**, which is the one place in this type
+    /// where the working directory and the subject are different places. Git accepts being asked
+    /// from inside the directory it is about to delete — measured on 2.52.0 — and there is no reason
+    /// to ask it to.
+    ///
+    /// It refuses on its own for the two cases worth refusing: the primary checkout is the
+    /// repository rather than a checkout of it, and a locked worktree needs `-f -f`, which is not
+    /// what is sent. Both come back carrying git's own sentence.
+    public func remove(
+        _ worktree: RepositoryLocation,
+        ofProjectAt project: RepositoryLocation
+    ) async throws(GitError) {
+        _ = try await git.run(.removeWorktree(at: worktree), in: project)
+    }
+
     /// One file's diff, with the size guards applied.
     ///
     /// An untracked file has no side in the revision, so it is compared against the null device

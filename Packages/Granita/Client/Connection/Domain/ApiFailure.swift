@@ -30,6 +30,14 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// rather than exceptional — an agent removes one every day.
     case worktreeGone
 
+    /// The worktree is there and the Mac will not take it away: it is the project's own checkout,
+    /// or somebody locked it. The Mac's sentence says which.
+    ///
+    /// Not a fault and not something to retry — the reader has to do something on the Mac, or the
+    /// row should never have offered the control. Both are true at once, which is why the phone
+    /// decides deletability from the row it already has and this exists behind it anyway.
+    case worktreeNotDeletable(message: String)
+
     case fileGone
 
     /// The file changed since the reader saw it, so the mark would be over a version nobody read.
@@ -128,6 +136,9 @@ public enum ApiFailure: Error, Hashable, Sendable {
         case .cancelled: nil
         case .gitFailure(let message): message
         case .badRequest(let message): message
+        // The Mac's own sentence names which of the two refusals it was, and the screen has no
+        // second way to find out — so this one is small print with something in it rather than nil.
+        case .worktreeNotDeletable(let message): message
         case .requestNotBuildable(let diagnostic): diagnostic
         case .unreachable(let diagnostic): diagnostic
         case .notUnderstood(let diagnostic): diagnostic

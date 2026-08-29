@@ -71,6 +71,26 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.5.0 — 2026-08-28
+- **You can delete a worktree from your phone.** Long-press a row in the worktree list and choose
+  *Delete Worktree…*. Your Mac removes the checkout and everything uncommitted in it; the branch
+  stays where it is. It is the first thing this app has ever changed on your Mac beyond a name and
+  a pin.
+- **The confirmation says what you are about to lose, not just what it is called.** It names the
+  worktree in full, and then how many files have changes that were never committed and by how much
+  — because there is no undo behind it, and nothing on your Mac keeps a copy.
+- **Deletion is deliberately not on the swipe.** Swiping still pins and renames, and a full swipe
+  still pins. A long press is a gesture you have to mean, which is the point for the one control
+  here that destroys work.
+- **Two rows say why they cannot be deleted rather than staying silent about it.** The project's own
+  checkout, and any worktree locked on your Mac. Both appear in the menu with the reason, so a row
+  that will not delete is never confused for an app that is not working.
+- **A worktree being deleted says so while it happens** — it dims, reads *Deleting…*, and cannot be
+  opened, renamed or pinned until your Mac answers. The row goes only once your Mac confirms it is
+  gone, so nothing ever disappears from the list that is still sitting on the disk.
+- **If your Mac cannot be reached mid-delete, Granita says it does not know** rather than guessing.
+  Deleting again is safe: if it has already gone, the row simply goes.
+
 ### 0.4.2 — 2026-08-28
 - **The words that changed within a line are marked by a highlight behind them, not by dimming
   everything else.** A line where one word moved used to grey out the rest of it so the changed part

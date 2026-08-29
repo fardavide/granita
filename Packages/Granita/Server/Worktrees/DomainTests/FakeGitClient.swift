@@ -21,6 +21,12 @@ actor FakeGitClient: GitClient {
 
     private(set) var received: [GitCommand] = []
 
+    /// Where each command was run, in step with ``received``.
+    ///
+    /// Tracked because removal is the one command whose working directory is a different place from
+    /// its argument, and a test that only reads the command cannot tell the two apart.
+    private(set) var locations: [RepositoryLocation] = []
+
     init(
         outputs: [GitCommand: Data],
         failures: [GitCommand: GitError],
@@ -35,6 +41,7 @@ actor FakeGitClient: GitClient {
 
     func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
         received.append(command)
+        locations.append(location)
         if let failure = failures[command] {
             throw failure
         }

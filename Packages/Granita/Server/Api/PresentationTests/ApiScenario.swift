@@ -30,6 +30,10 @@ struct ApiScenario {
     let location: RepositoryLocation
 
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
+        try self.init(at: try repository.location(), requiresAuthentication: requiresAuthentication)
+    }
+
+    init(at location: RepositoryLocation, requiresAuthentication: Bool = false) throws {
         storeDirectory = URL.temporaryDirectory
             .appending(path: "granita-api-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
@@ -43,7 +47,6 @@ struct ApiScenario {
             timeout: ProcessGitClient.defaultTimeout
         )
         let service = WorktreeService(git: git, limits: .standard)
-        let location = try repository.location()
 
         pairing = Pairing(store: store, now: { Date() })
         connectionLog = InMemoryConnectionLog(now: { Date() })
@@ -121,6 +124,129 @@ struct MissingFixtures: Error, CustomStringConvertible {
     var description: String {
         "the git fixture repositories are absent from this checkout — run `make fixtures`"
     }
+}
+
+/// A repository built for one test and thrown away with it.
+///
+/// **The committed fixtures are shared and one route now deletes a worktree.** Driving that against
+/// them would take a checkout out from under everything else that reads them, and the suite
+/// asserting the main fixture has three worktrees is where it would surface — a run later, in a test
+/// that changed nothing. `make fixtures` would put it back, which means the second run of an
+/// unchanged tree behaves differently from the first, and that is worse than a slow test.
+///
+/// It is the real binary against a real repository like every other test here; only the ownership is
+/// different.
+struct DisposableRepository {
+
+    /// The primary checkout, which is what a project points at.
+    let location: RepositoryLocation
+
+    /// The linked worktree, with uncommitted work in it, which is what a test deletes.
+    let worktree: RepositoryLocation
+
+    let branch = "agent-slice"
+
+    private let root: URL
+
+    init() throws {
+        root = URL.temporaryDirectory
+            .appending(path: "granita-disposable-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let checkout = root.appending(path: "project", directoryHint: .notDirectory)
+        let linked = root.appending(path: "worktree", directoryHint: .notDirectory)
+        try FileManager.default.createDirectory(at: checkout, withIntermediateDirectories: true)
+
+        try Self.git(["init", "--quiet", "--initial-branch=main"], in: checkout)
+        try Self.git(["config", "user.email", "fixture@granita.test"], in: checkout)
+        try Self.git(["config", "user.name", "Granita Fixture"], in: checkout)
+        try Self.git(["commit", "--quiet", "--allow-empty", "-m", "first"], in: checkout)
+        try Self.git(["worktree", "add", "--quiet", "-b", branch, linked.path(percentEncoded: false)], in: checkout)
+
+        // Uncommitted, because that is the only kind of worktree this list ever offers: without it
+        // `worktree remove` would succeed unforced and the test would prove nothing about `--force`.
+        try Data("work in progress\n".utf8).write(
+            to: linked.appending(path: "wip.txt", directoryHint: .notDirectory)
+        )
+
+        // **Read back from git rather than computed here**, because an identifier is a hash of this
+        // exact string and two plausible spellings of one directory hash differently. A `URL` for a
+        // directory carries a trailing separator that git never emits, and `resolvingSymlinksInPath`
+        // leaves `/var/folders` alone on macOS where git reports `/private/var/folders` — either one
+        // produces an identifier matching nothing, and every route then answers `worktreeGone` about
+        // a worktree sitting right there. Git lists the main worktree first.
+        let listed = try Self.worktreePaths(in: checkout)
+        guard listed.count == 2 else { throw FixtureSetupFailed(command: "worktree list", exitCode: 0) }
+        location = RepositoryLocation(path: listed[0])
+        worktree = RepositoryLocation(path: listed[1])
+    }
+
+    /// Marks the worktree as one not to be removed, which is a person on this Mac saying so.
+    func lockTheWorktree() throws {
+        try Self.git(["worktree", "lock", worktree.path], in: URL(filePath: location.path))
+    }
+
+    /// Takes write permission off the directory holding the worktree, so git can see it and cannot
+    /// unlink it.
+    ///
+    /// The one way found to make `worktree remove --force` fail for a reason that is **neither** of
+    /// the two the route predicts — which is the arm that hands git's own sentence to the phone, and
+    /// the only kind of removal failure a reader could be told anything useful about.
+    func makeTheWorktreeUndeletable() throws {
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: root.path())
+    }
+
+    /// Whether the branch the worktree was on is still in the repository.
+    func hasBranch(_ name: String) throws -> Bool {
+        try Self.output(["branch", "--list", "--format=%(refname:short)"], in: URL(filePath: location.path))
+            .split(separator: "\n")
+            .contains(name[...])
+    }
+
+    /// What `git worktree list` says now, one absolute path per checkout, main worktree first.
+    func worktreePaths() throws -> [String] {
+        try Self.worktreePaths(in: URL(filePath: location.path))
+    }
+
+    /// Puts the write permission back before deleting, or the test that took it away leaves the
+    /// directory behind on every run.
+    func cleanUp() {
+        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path())
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    @discardableResult
+    private static func git(_ arguments: [String], in directory: URL) throws -> String {
+        try output(arguments, in: directory)
+    }
+
+    private static func worktreePaths(in directory: URL) throws -> [String] {
+        try output(["worktree", "list", "--porcelain"], in: directory)
+            .split(separator: "\n")
+            .filter { $0.hasPrefix("worktree ") }
+            .map { String($0.dropFirst("worktree ".count)) }
+    }
+
+    private static func output(_ arguments: [String], in directory: URL) throws -> String {
+        let process = Process()
+        process.executableURL = URL(filePath: "/usr/bin/git")
+        process.arguments = arguments
+        process.currentDirectoryURL = directory
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw FixtureSetupFailed(command: arguments.joined(separator: " "), exitCode: process.terminationStatus)
+        }
+        return String(decoding: data, as: UTF8.self)
+    }
+}
+
+struct FixtureSetupFailed: Error, CustomStringConvertible {
+    let command: String
+    let exitCode: Int32
+    var description: String { "git \(command) exited \(exitCode) while building a disposable repository" }
 }
 
 extension ApiScenario {

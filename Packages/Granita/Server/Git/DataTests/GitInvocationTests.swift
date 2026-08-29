@@ -214,6 +214,52 @@ struct GitInvocationTests {
         #expect(vector.last.map { Data($0) } == bytes)
     }
 
+    // MARK: - Removing a worktree
+
+    @Test
+    func `given a worktree when removing it then the path stays on the pathspec side of the separator`() {
+        // given
+        let worktree = RepositoryLocation(path: "/Users/davide/code/.claude/worktrees/fix-the-thing")
+
+        // when
+        let vector = arguments(of: .removeWorktree(at: worktree))
+
+        // then — `worktree remove` rejects the diff-family flags outright rather than ignoring them:
+        // `--no-ext-diff` exits 129 with `error: unknown option`, measured on git 2.52.0. So this
+        // family carries the global prefix and nothing else.
+        #expect(vector.suffix(5) == [
+            "worktree", "remove", "--force", "--",
+            "/Users/davide/code/.claude/worktrees/fix-the-thing"
+        ])
+        #expect(vector.contains("--no-ext-diff") == false)
+    }
+
+    @Test
+    func `when a worktree is removed then it is forced once rather than twice`() {
+        // given - when
+        let vector = arguments(of: .removeWorktree(at: RepositoryLocation(path: "/checkouts/one")))
+
+        // then — the two spellings mean different things and only one of them was asked for. One
+        // `--force` discards uncommitted work, which is the whole point: this list is worktrees that
+        // *have* uncommitted work, so the unforced form would refuse on nearly every row it is
+        // offered on. A second one additionally overrides a lock, and a lock is a person saying do
+        // not remove this — git refuses that case with `use 'remove -f -f' to override or unlock
+        // first`, measured on git 2.52.0, and refusing is the answer we want.
+        #expect(vector.filter { $0 == "--force" }.count == 1)
+    }
+
+    @Test
+    func `given a worktree removal when git exits one then it counts as a refusal rather than an answer`() {
+        // given
+        let command = GitCommand.removeWorktree(at: RepositoryLocation(path: "/checkouts/one"))
+
+        // given - when - then — the diff family answers by exiting 1 and this does not. Every
+        // refusal here is 128, and folding 1 into success would report a worktree still sitting on
+        // disk as deleted.
+        #expect(GitInvocation.accepts(exitCode: 0, from: command))
+        #expect(GitInvocation.accepts(exitCode: 1, from: command) == false)
+    }
+
     // MARK: - Hashing the working tree
 
     @Test

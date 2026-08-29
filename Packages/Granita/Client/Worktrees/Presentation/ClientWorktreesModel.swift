@@ -33,9 +33,28 @@ public final class ClientWorktreesModel {
     /// the sheet and the row it came from cannot spell the same fallback two ways.
     public private(set) var renaming: WorktreeRenameSubject?
 
-    /// A write the Mac refused. Renaming and pinning both leave the row exactly where it was on
-    /// failure, and without this that is a swipe that appears to have done nothing.
-    public private(set) var writeFailure: ApiFailure?
+    /// The worktree a confirmation is currently up for, and `nil` when there is none.
+    ///
+    /// The subject is resolved by the row, the way the rename sheet's is, so the dialog and the row
+    /// it was opened from cannot name the worktree — or what is in it — two different ways.
+    public private(set) var deleting: WorktreeDeletionSubject?
+
+    /// The worktrees this Mac is being asked to destroy right now.
+    ///
+    /// **A set rather than one identifier**, because confirming one, swiping a second and confirming
+    /// that too is reachable at LAN speed: an optional would let the second deletion's completion
+    /// clear the first one's mark and put a row back in the list that is still being removed.
+    ///
+    /// A row in here is dimmed, says so, and is not operable — it cannot be deleted twice, renamed,
+    /// pinned or opened while the directory behind it is going away.
+    public private(set) var removing: Set<WorktreeID> = []
+
+    /// A write the Mac refused, carrying **which** write it was.
+    ///
+    /// Renaming and pinning both leave the row exactly where it was on failure, and without this
+    /// that is a swipe that appears to have done nothing. A refused deletion is a different
+    /// sentence, which is what the operation travels for.
+    public private(set) var writeFailure: WorktreeWriteRefusal?
 
     private var worktrees: [Worktree] = []
     private let repository: any GranitaRepository
@@ -128,8 +147,71 @@ public final class ClientWorktreesModel {
         await write(WorktreePatch(alias: .unchanged, isPinned: pinned), to: worktree)
     }
 
+    public func beginDeleting(_ subject: WorktreeDeletionSubject) {
+        deleting = subject
+    }
+
+    public func cancelDeleting() {
+        deleting = nil
+    }
+
+    /// Asks the Mac to take the confirmed worktree away, and drops the row once it has.
+    ///
+    /// **The subject is a parameter and that is load-bearing rather than tidy.** It used to be read
+    /// back off `deleting`, and that made this a silent no-op: dismissing an alert writes `false`
+    /// through its `isPresented` binding, which clears `deleting` synchronously, while the button's
+    /// own `Task` body does not run until a later turn on the main actor. By then there was nothing
+    /// left to delete and the control did nothing at all — with every baseline still green, because
+    /// a raster does not include an alert and cannot press a button. Passing the value the
+    /// confirmation was presented with also makes the guarantee the stronger one: what is destroyed
+    /// is what was confirmed, never whatever the model happens to hold when the tap lands.
+    ///
+    /// **The row goes only once the Mac says it is gone.** Dropping it optimistically the way a
+    /// rename does is wrong here for a reason renaming does not have — a rename that silently failed
+    /// shows the wrong name until the next read, and a deletion that silently failed shows a
+    /// worktree that still exists as destroyed, which nobody goes looking for.
+    ///
+    /// A worktree the Mac says it no longer has is a success rather than a failure. The reader asked
+    /// for it gone and it is gone; the only difference is who removed it, and there is nothing to do
+    /// about that.
+    public func confirmDeletion(of subject: WorktreeDeletionSubject) async {
+        deleting = nil
+        removing.insert(subject.worktree)
+        // On every path, including the two failures. A `defer` that fired on only one would leave a
+        // row dimmed and inoperable for the rest of the session with nothing to un-dim it.
+        defer { removing.remove(subject.worktree) }
+
+        do {
+            try await repository.delete(subject.worktree)
+        } catch .worktreeGone {
+            // An agent removes one every day, so the read this row came from can be out of date by
+            // the time the reader confirms.
+        } catch {
+            writeFailure = .deletion(error)
+            return
+        }
+        worktrees.removeAll { $0.id == subject.worktree }
+        rearrange()
+    }
+
     public func dismissWriteFailure() {
         writeFailure = nil
+    }
+
+    /// Puts down whatever the one alert was showing.
+    ///
+    /// **A decision rather than a convenience**, which is why it is here and not in the binding that
+    /// calls it: one modifier serves a confirmation and a refusal, so dismissing it means two
+    /// different things, and getting that wrong leaves a refusal on screen that cannot be closed or
+    /// silently arms a deletion. A rule in a view's setter closure is a rule no test here can reach.
+    ///
+    /// The order matches the prompt's: a refusal wins where both are somehow set.
+    public func dismissPrompt() {
+        if writeFailure != nil {
+            dismissWriteFailure()
+        } else {
+            cancelDeleting()
+        }
     }
 
     /// What the row was showing for this worktree, so the screen it opens is titled the thing that
@@ -156,13 +238,13 @@ public final class ClientWorktreesModel {
                 // The row was read, swiped, and answered for after it stopped being in the list —
                 // an agent removes a worktree every day. Appending the answer would put a row on
                 // screen that the last read said is gone.
-                writeFailure = .worktreeGone
+                writeFailure = .edit(.worktreeGone)
                 return
             }
             worktrees[index] = updated
             rearrange()
         } catch {
-            writeFailure = error
+            writeFailure = .edit(error)
         }
     }
 

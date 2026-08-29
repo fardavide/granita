@@ -62,6 +62,7 @@ extension RouterTransport {
         case .get: .get
         case .post: .post
         case .patch: .patch
+        case .delete: .delete
         }
     }
 }

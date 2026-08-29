@@ -83,11 +83,13 @@ struct RememberedMacsTests {
 
     @Test
     func `given a remembered Mac when each route is read then each arrives as it was asked`() async throws {
-        // given — seven methods that each open a connection and pass their arguments on is seven
+        // given — eight methods that each open a connection and pass their arguments on is eight
         // chances to pass the wrong ones, and the compiler catches almost none of it: `start` and
         // `count` are both `Int`, a file and a worktree are both opaque identifiers, and `viewed` is
         // a bare `Bool`. A swap in any of them is a phone marking the wrong file read, or reading a
-        // hundred lines from line twenty when it wanted twenty from line one hundred.
+        // hundred lines from line twenty when it wanted twenty from line one hundred — and one of
+        // them now deletes a checkout, where the wrong identifier is the wrong worktree taken off
+        // the Mac and nothing to put it back.
         let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
         let patch = WorktreePatch(alias: .set("the bridge"), isPinned: true)
 
@@ -95,6 +97,7 @@ struct RememberedMacsTests {
         _ = try await scenario.sut.projects()
         _ = try await scenario.sut.worktrees(inProject: aProject)
         _ = try await scenario.sut.update(aWorktree.id, with: patch)
+        try await scenario.sut.delete(aWorktree.id)
         _ = try await scenario.sut.changes(in: aWorktree.id)
         _ = try await scenario.sut.diffs(of: [aFile], in: aWorktree.id, contextLines: 3)
         _ = try await scenario.sut.lines(of: aFile, in: aWorktree.id, side: .old, start: 100, count: 20)
@@ -106,6 +109,7 @@ struct RememberedMacsTests {
                 .projects,
                 .worktrees(inProject: aProject),
                 .update(aWorktree.id, patch),
+                .delete(aWorktree.id),
                 .changes(aWorktree.id),
                 .diffs([aFile], aWorktree.id, 3),
                 .lines(aFile, aWorktree.id, .old, 100, 20),
@@ -135,7 +139,7 @@ struct RememberedMacsTests {
     func `given a Mac that refuses when any route is read then the refusal is what comes back`(
         route: Route
     ) async {
-        // given — each of the seven wraps its own call, so each has its own `catch` and its own
+        // given — each of the eight wraps its own call, so each has its own `catch` and its own
         // chance to swallow one. A route that returned an empty answer instead of throwing would be
         // a screen reporting no projects, or no changes, on a Mac that refused to say — which reads
         // as *nothing to review* rather than as a fault, and is the quietest way this can go wrong.
@@ -367,8 +371,8 @@ private final class OpenedConnections: Sendable {
 
 /// A Mac behind a pairing, which records what it was asked rather than what it answered.
 ///
-/// **Every route is recorded because every route is hand-forwarded.** Seven methods that each open a
-/// connection and pass their arguments on is seven chances to pass the wrong ones, and the type
+/// **Every route is recorded because every route is hand-forwarded.** Eight methods that each open a
+/// connection and pass their arguments on is eight chances to pass the wrong ones, and the type
 /// checker catches almost none of it: `start` and `count` are both `Int`, a file and a worktree are
 /// both opaque identifiers, and `viewed` is a bare `Bool`. What a test can see is the request that
 /// arrived, so that is what this keeps.
@@ -395,6 +399,10 @@ private actor FakeMacBehindAPairing: GranitaRepository {
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
         try note(.update(worktree, patch))
         return aWorktree
+    }
+
+    func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        try note(.delete(worktree))
     }
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
@@ -439,14 +447,15 @@ private actor FakeMacBehindAPairing: GranitaRepository {
 
 /// Every route, as something a test can call without caring what it answers.
 ///
-/// It exists so the seven are covered by one `@Test(arguments:)` rather than by seven near-identical
-/// bodies — and so that adding an eighth to `GranitaRepository` fails to compile here until it is
-/// listed, rather than shipping the one unwrapped route nobody noticed.
+/// It exists so the eight are covered by one `@Test(arguments:)` rather than by eight near-identical
+/// bodies — and so that adding a ninth to `GranitaRepository` is a line here rather than the one
+/// unwrapped route nobody noticed.
 enum Route: CaseIterable, Sendable {
 
     case projects
     case worktrees
     case update
+    case delete
     case changes
     case lines
     case diffs
@@ -460,6 +469,8 @@ enum Route: CaseIterable, Sendable {
             _ = try await repository.worktrees(inProject: nil)
         case .update:
             _ = try await repository.update(aWorktree.id, with: WorktreePatch(alias: .cleared, isPinned: nil))
+        case .delete:
+            try await repository.delete(aWorktree.id)
         case .changes:
             _ = try await repository.changes(in: aWorktree.id)
         case .lines:
@@ -477,6 +488,7 @@ private enum MacRequest: Hashable, Sendable {
     case projects
     case worktrees(inProject: ProjectID?)
     case update(WorktreeID, WorktreePatch)
+    case delete(WorktreeID)
     case changes(WorktreeID)
     case diffs([FileID], WorktreeID, Int)
     case lines(FileID, WorktreeID, DiffSide, Int, Int)

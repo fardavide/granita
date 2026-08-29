@@ -34,27 +34,36 @@ public struct WorktreeSidebarView: View {
     private let onShowQuietWorktrees: (Bool) -> Void
     private let onRename: (WorktreeRenameSubject) -> Void
     private let onSetPinned: (Bool, WorktreeID) -> Void
+    private let onDelete: (WorktreeDeletionSubject) -> Void
     private let onRetry: () -> Void
+
+    /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
+    /// the answer arrives.
+    private let removing: Set<WorktreeID>
 
     public init(
         macName: String,
         state: WorktreeSidebarState,
         mode: WorktreeListMode,
         showsQuietWorktrees: Bool,
+        removing: Set<WorktreeID>,
         onChooseMode: @escaping (WorktreeListMode) -> Void,
         onShowQuietWorktrees: @escaping (Bool) -> Void,
         onRename: @escaping (WorktreeRenameSubject) -> Void,
         onSetPinned: @escaping (Bool, WorktreeID) -> Void,
+        onDelete: @escaping (WorktreeDeletionSubject) -> Void,
         onRetry: @escaping () -> Void
     ) {
         self.macName = macName
         self.state = state
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
+        self.removing = removing
         self.onChooseMode = onChooseMode
         self.onShowQuietWorktrees = onShowQuietWorktrees
         self.onRename = onRename
         self.onSetPinned = onSetPinned
+        self.onDelete = onDelete
         self.onRetry = onRetry
     }
 
@@ -237,56 +246,129 @@ public struct WorktreeSidebarView: View {
     /// indicator on the phone, and in a split-view sidebar it draws no chevron at all and gives the
     /// selected row a tinted selection instead — which is what the iPad wants and what a hand-rolled
     /// button would have to reproduce twice.
-    private func row(_ row: WorktreeListRow) -> some View {
-        NavigationLink(value: row.id) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        if row.showsPinIndicator {
-                            Image(systemName: "pin.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(row.displayName)
-                            .font(.headline)
-                            // Two lines is the ceiling: three makes a 90pt row, and five of those
-                            // is a wall of prose rather than a list.
-                            .lineLimit(2)
-                            // Tail, which is the opposite of design §1's Macs and for the opposite
-                            // reason — a generated directory name is a mnemonic prefix followed by
-                            // a ULID, so the front is the only part carrying meaning.
-                            .truncationMode(.tail)
-                            .monospaced(row.nameTier == .machineGenerated)
-                    }
+    ///
+    /// **A row being removed carries neither gesture**, which is why this branches rather than
+    /// applying the modifiers conditionally: while a directory is going away the row must not also
+    /// be deletable a second time, renameable, pinnable or openable.
+    @ViewBuilder private func row(_ row: WorktreeListRow) -> some View {
+        if removing.contains(row.id) {
+            NavigationLink(value: row.id) { rowContent(row, isRemoving: true) }
+                .disabled(true)
+        } else {
+            NavigationLink(value: row.id) { rowContent(row, isRemoving: false) }
+                .contextMenu { actions(for: row) }
+                .swipeActions(edge: .trailing) { pinAndRename(row) }
+        }
+    }
 
-                    // The file count is what goes when the line will not fit — it is fourth in the
-                    // drop order and the only field here that another column already implies.
-                    ViewThatFits(in: .horizontal) {
-                        secondLine(row, includingFileCount: true)
-                        secondLine(row, includingFileCount: false)
+    /// The two reversible verbs, written once and offered by both gestures.
+    ///
+    /// They were duplicated byte for byte between the swipe and the menu, which is two places for
+    /// one label to drift and two closures where the row has one behaviour.
+    @ViewBuilder private func pinAndRename(_ row: WorktreeListRow) -> some View {
+        Button { onSetPinned(row.isPinned == false, row.id) } label: {
+            Label(row.isPinned ? "Unpin" : "Pin", systemImage: row.isPinned ? "pin.slash" : "pin")
+        }
+        Button { onRename(row.rename) } label: {
+            Label("Rename", systemImage: "pencil")
+        }
+    }
+
+    /// Every verb a row has, in a long press.
+    ///
+    /// **Deletion is here and deliberately not in the swipe.** A trailing swipe begins the way an
+    /// imprecise vertical scroll does, and iOS gives the *first* trailing action the full swipe — so
+    /// a destructive third action there is one over-committed thumb away from destroying work that
+    /// was never committed and cannot be recovered. A long press requires the finger to stay still,
+    /// which is the one thing scrolling never does. Leaving the swipe alone also keeps its full
+    /// swipe meaning Pin, which is reversible in one tap.
+    ///
+    /// Pin and Rename are repeated here rather than left to the swipe, so a reader who long-presses
+    /// finds the two verbs they already know above the one they do not.
+    @ViewBuilder private func actions(for row: WorktreeListRow) -> some View {
+        pinAndRename(row)
+
+        Divider()
+
+        if case .deletable(let subject) = row.deletion {
+            // The ellipsis is the promise that a confirmation follows, which is what makes this item
+            // safe to press while finding out what a long press does.
+            Button(role: .destructive) { onDelete(subject) } label: {
+                Label("Delete Worktree…", systemImage: "trash")
+            }
+        } else if let refusal = row.deletion.refusal {
+            // **A disabled control whose whole job is the sentence it carries**, which is why the
+            // action is empty and why that is not an oversight: it exists to answer *why is there no
+            // Delete here?* at the moment the question is asked. Omitting it would make a row that
+            // cannot be deleted indistinguishable from an app that is broken — and the primary
+            // checkout is the row design §2 already calls the most confusing in the list.
+            //
+            // The reason goes in the menu and never on the row: a menu is drawn over the window, so
+            // it spends none of the 320pt the sidebar's drop order has already allocated. The whole
+            // sentence is the title rather than a subtitle under a dimmed *Delete*, because a menu
+            // item's second line is not a rendering worth assuming and a title wraps.
+            Button(action: {}) {
+                Label(refusal.sentence, systemImage: refusal.symbol)
+            }
+            .disabled(true)
+        }
+    }
+
+    /// The row itself, which is the same two lines and a trailing time whether or not it is going
+    /// away.
+    ///
+    /// **Line one never changes.** The name is what identifies which row this is, and a row that
+    /// renamed itself the moment it started being deleted would be the one moment a reader most
+    /// needs to be sure what they are looking at.
+    private func rowContent(_ row: WorktreeListRow, isRemoving: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    if row.showsPinIndicator {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    Text(row.displayName)
+                        .font(.headline)
+                        // Two lines is the ceiling: three makes a 90pt row, and five of those
+                        // is a wall of prose rather than a list.
+                        .lineLimit(2)
+                        // Tail, which is the opposite of design §1's Macs and for the opposite
+                        // reason — a generated directory name is a mnemonic prefix followed by
+                        // a ULID, so the front is the only part carrying meaning.
+                        .truncationMode(.tail)
+                        .monospaced(row.nameTier == .machineGenerated)
                 }
 
-                Spacer(minLength: 8)
+                Group {
+                    if isRemoving {
+                        // The verb the reader pressed, rather than git's `remove`.
+                        Text("Deleting…")
+                    } else {
+                        // The file count is what goes when the line will not fit — it is fourth in
+                        // the drop order and the only field here that another column already implies.
+                        ViewThatFits(in: .horizontal) {
+                            secondLine(row, includingFileCount: true)
+                            secondLine(row, includingFileCount: false)
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
 
+            Spacer(minLength: 8)
+
+            if isRemoving {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
                 Text(row.age.label)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
-            }
-        }
-        .swipeActions(edge: .trailing) {
-            Button { onSetPinned(row.isPinned == false, row.id) } label: {
-                Label(
-                    row.isPinned ? "Unpin" : "Pin",
-                    systemImage: row.isPinned ? "pin.slash" : "pin"
-                )
-            }
-            Button { onRename(row.rename) } label: {
-                Label("Rename", systemImage: "pencil")
             }
         }
     }
@@ -294,41 +376,51 @@ public struct WorktreeSidebarView: View {
     /// Built as one `Text` rather than an `HStack` of them so that it truncates as a sentence, and
     /// so `ViewThatFits` has a single measurable thing to choose between.
     private func secondLine(_ row: WorktreeListRow, includingFileCount: Bool) -> Text {
-        var parts: [Text] = []
+        // **The stats are what the line is built from, and the rest is folded onto the front.**
+        // They are the one field this line never drops — every arm below produces something — so
+        // starting the join here makes it total. Collecting every field into one array and reducing
+        // from its first element instead needed a fallback for an empty array that no row could
+        // produce, which is an unreachable branch sitting in a view body forever.
+        let stats: Text = switch row.stats {
+        case .noCommitsYet:
+            Text("no commits yet")
+        case .noChanges:
+            Text("no changes")
+        case .changed(let filesChanged, let insertions, let deletions):
+            numbers(filesChanged: includingFileCount ? filesChanged : nil, insertions, deletions)
+        }
+
+        var prefix: [Text] = []
         if let projectName = row.projectName {
-            parts.append(Text(projectName))
+            prefix.append(Text(projectName))
         }
         if row.isPrimaryCheckout {
             // The reader's own mental model: this is the one the agent did *not* work in, which is
             // also what explains why the row usually has no changes.
-            parts.append(Text("primary checkout"))
+            prefix.append(Text("primary checkout"))
         }
         if row.showsDetached {
-            parts.append(Text("detached"))
+            prefix.append(Text("detached"))
         }
-        switch row.stats {
-        case .noCommitsYet:
-            parts.append(Text("no commits yet"))
-        case .noChanges:
-            parts.append(Text("no changes"))
-        case .changed(let filesChanged, let insertions, let deletions):
-            if includingFileCount {
-                parts.append(
-                    filesChanged == 1
-                        ? Text("1 file")
-                        : Text("\(filesChanged, format: .number) files")
-                )
-            }
-            let added = Text("+\(insertions, format: .number)").foregroundColor(.green)
-            let removed = Text("−\(deletions, format: .number)").foregroundColor(.red)
-            parts.append(Text("\(added) \(removed)"))
-        }
+
         // Interpolating one `Text` into another rather than concatenating with `+`, which iOS 26
         // deprecated. The per-part colours survive interpolation, which is the whole reason this is
         // one `Text` and not an `HStack`: it truncates as a sentence, and `ViewThatFits` has a
-        // single measurable thing to choose between.
-        return parts.dropFirst().reduce(parts.first ?? Text(verbatim: "")) { line, part in
-            Text("\(line) · \(part)")
+        // single measurable thing to choose between. Reversed, because each step puts its part in
+        // front of everything built so far.
+        return prefix.reversed().reduce(stats) { line, part in
+            Text("\(part) · \(line)")
         }
+    }
+
+    /// `34 files · +1,204 −318`, or the same without the count when the line will not hold it — the
+    /// file count being fourth in design §2's drop order and the only field another column implies.
+    private func numbers(filesChanged: Int?, _ insertions: Int, _ deletions: Int) -> Text {
+        let added = Text("+\(insertions, format: .number)").foregroundColor(.green)
+        let removed = Text("−\(deletions, format: .number)").foregroundColor(.red)
+        let changes = Text("\(added) \(removed)")
+        guard let filesChanged else { return changes }
+        let files = filesChanged == 1 ? Text("1 file") : Text("\(filesChanged, format: .number) files")
+        return Text("\(files) · \(changes)")
     }
 }

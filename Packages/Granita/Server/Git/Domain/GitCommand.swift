@@ -63,6 +63,17 @@ public enum GitCommand: Hashable, Sendable {
     /// A file's content as of a revision, which is the side of it the working tree replaced.
     case fileContent(path: RepositoryRelativePath, at: GitRevision)
 
+    /// Takes a checkout off this Mac, discarding whatever uncommitted work is in it.
+    ///
+    /// **The only case here that writes**, which is why it names the worktree rather than assuming
+    /// the one the command runs in: it is run from the project's primary checkout, so nothing is
+    /// asking git to operate on the directory the process is standing in.
+    ///
+    /// It leaves the branch alone. What an agent leaves behind is a directory and some uncommitted
+    /// work; the branch is cheap, is not in the way, and deleting it would take unmerged commits
+    /// with it — a different and much larger promise than the one the confirmation makes.
+    case removeWorktree(at: RepositoryLocation)
+
     /// The object id each path's working-tree content would have, for the whole change set at once.
     ///
     /// One invocation rather than one per file, and git rather than us: a thousand-file worktree

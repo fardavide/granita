@@ -171,9 +171,9 @@ public struct PairingOutcomeView: View {
         case .unreachable(let diagnostic):
             unreachable(diagnostic: diagnostic)
 
-        case .unauthorized, .projectNotVisible, .worktreeGone, .fileGone, .staleContentHash,
-             .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion, .requestNotBuildable,
-             .notUnderstood, .cancelled:
+        case .unauthorized, .projectNotVisible, .worktreeGone, .worktreeNotDeletable, .fileGone,
+             .staleContentHash, .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion,
+             .requestNotBuildable, .notUnderstood, .cancelled:
             // Everything a Mac can answer that is not one of the three above. They share a remedy
             // and a sentence, and what tells them apart is the small print — which is what the
             // small print is for.

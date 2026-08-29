@@ -212,6 +212,22 @@ struct HttpGranitaRepositoryTests {
     }
 
     @Test
+    func `given a worktree when it is deleted then it is a DELETE at the worktree's own address`() async throws {
+        // given — 204 and no body in either direction, which is a shape no other route here has.
+        let scenario = Scenario(status: 204, json: "")
+
+        // when
+        try await scenario.sut.delete(WorktreeID(rawValue: "aaaa1111bbbb2222cccc3333dddd4444"))
+
+        // then — no trailing verb on the path and no body, because the address *is* the worktree and
+        // there is nothing to say about destroying it beyond which one.
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.method == .delete)
+        #expect(request.url.path() == "/v1/worktrees/aaaa1111bbbb2222cccc3333dddd4444")
+        #expect(request.body == nil)
+    }
+
+    @Test
     func `given several files when their diffs are prefetched then they are asked for in one request`() async throws {
         // given — opening a forty-file worktree must not be forty-one round trips.
         let scenario = Scenario(status: 200, json: "[]")
@@ -289,7 +305,10 @@ struct HttpGranitaRepositoryTests {
         (.fileGone, .fileGone),
         (.staleContentHash, .staleContentHash),
         (.tooLarge, .tooLarge),
-        (.unsupportedApiVersion, .unsupportedApiVersion)
+        (.unsupportedApiVersion, .unsupportedApiVersion),
+        // The only one here that carries the Mac's sentence: it is what says which of the two
+        // refusals it was, and the phone has no other way to find out.
+        (.worktreeNotDeletable, .worktreeNotDeletable(message: "no"))
     ])
     func `given a refusal the contract names when reading then it arrives as its own failure`(
         code: ApiErrorCode,

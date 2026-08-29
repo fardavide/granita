@@ -171,6 +171,14 @@ public struct RememberedMacRepository: GranitaRepository {
         }
     }
 
+    public func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
+        do {
+            try await macs.connection(to: server).delete(worktree)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
     public func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
         do {
             return try await macs.connection(to: server).changes(in: worktree)
@@ -241,9 +249,9 @@ public struct RememberedMacRepository: GranitaRepository {
             await macs.lostContact(with: server.id)
         // Answers rather than faults, and a cancellation is not even that: none of them says
         // anything about where the Mac is or whether this phone may still talk to it.
-        case .pairingExpired, .rateLimited, .projectNotVisible, .worktreeGone, .fileGone,
-             .staleContentHash, .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion,
-             .requestNotBuildable, .cancelled, .notUnderstood:
+        case .pairingExpired, .rateLimited, .projectNotVisible, .worktreeGone, .worktreeNotDeletable,
+             .fileGone, .staleContentHash, .gitFailure, .tooLarge, .badRequest,
+             .unsupportedApiVersion, .requestNotBuildable, .cancelled, .notUnderstood:
             break
         }
         return failure

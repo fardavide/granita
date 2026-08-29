@@ -57,12 +57,14 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             state: model.state,
             mode: model.mode,
             showsQuietWorktrees: model.showsQuietWorktrees,
+            removing: model.removing,
             onChooseMode: model.show,
             onShowQuietWorktrees: model.showQuietWorktrees,
             onRename: model.beginRenaming,
             onSetPinned: { pinned, worktree in
                 Task { await model.setPinned(pinned, on: worktree) }
             },
+            onDelete: model.beginDeleting,
             onRetry: { Task { await model.load() } }
         )
         // **Declared beside the rows that link to it**, which is the placement that stops a link and
@@ -78,19 +80,53 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 onCancel: model.cancelRenaming
             )
         }
+        // **One alert driven by a two-case prompt, rather than one modifier each.** Two `.alert`
+        // modifiers on a single view is the shape where only one ever presents, and the one that
+        // would lose is the confirmation in front of the only control here that destroys anything.
         .alert(
-            "Your Mac would not make that change",
+            prompt.title,
             isPresented: Binding(
-                get: { model.writeFailure != nil },
-                set: { if $0 == false { model.dismissWriteFailure() } }
-            )
-        ) {
-            Button("OK") { model.dismissWriteFailure() }
-        } message: {
-            // Renaming and pinning both leave the row exactly where it was when they fail, so
-            // without this the swipe is a control that appears to have done nothing.
-            Text("The row is still as it was. Trying again usually works.")
+                get: { prompt != nil },
+                set: { if $0 == false { model.dismissPrompt() } }
+            ),
+            presenting: prompt
+        ) { prompt in
+            switch prompt {
+            case .confirmDeletion(let subject):
+                // The subject travels with the button rather than being read back off the model.
+                // The line above clears `model.deleting` synchronously as this alert dismisses,
+                // while this `Task` body runs a turn later — so a version that looked the subject up
+                // would find nothing and destroy nothing, silently.
+                Button("Delete Worktree", role: .destructive) {
+                    Task { await model.confirmDeletion(of: subject) }
+                }
+                // Both of these put down whatever is up, which is one method rather than a closure
+                // per button — the same shape the arguments above already use for `model.show` and
+                // `model.beginDeleting`. It is also the more correct call than clearing one field by
+                // name: dismissing is dismissing, whichever of the two prompts raised the alert.
+                Button("Cancel", role: .cancel, action: model.dismissPrompt)
+            case .refusal:
+                Button("OK", action: model.dismissPrompt)
+            }
+        } message: { prompt in
+            Text(prompt.message)
         }
         .task { await model.load() }
+    }
+
+    /// What the alert is currently for, or nothing.
+    ///
+    /// A refusal wins where both are set, because it is the later event and it is about something
+    /// that has already happened. In practice they cannot coexist — `confirmDeletion(of:)` clears
+    /// the subject before it awaits — and stating the order is cheaper than relying on that.
+    ///
+    /// **What it says lives beside it rather than in this body**, in `WorktreeDeletionCopy`: an
+    /// alert is presented into a window of its own and no raster here includes it, so a sentence
+    /// written in a screen is a sentence nothing in this repository can hold to its words. These are
+    /// the words a reader gets at the worst moment this app has.
+    private var prompt: WorktreeAlertPrompt? {
+        if let refusal = model.writeFailure { return .refusal(refusal) }
+        if let subject = model.deleting { return .confirmDeletion(subject) }
+        return nil
     }
 }

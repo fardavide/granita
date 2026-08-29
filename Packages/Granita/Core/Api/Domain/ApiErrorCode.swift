@@ -25,6 +25,14 @@ public enum ApiErrorCode: String, Codable, Hashable, Sendable, CaseIterable {
     /// being read, which is ordinary rather than exceptional.
     case worktreeGone
 
+    /// The worktree is there and this Mac will not take it away — it is the project's primary
+    /// checkout, or somebody locked it.
+    ///
+    /// Distinct from ``worktreeGone`` because the reader can do nothing about that one and something
+    /// about this one, and distinct from ``gitFailure`` because these two refusals are predictable
+    /// from what the Mac already knows rather than discovered by running git and reading its words.
+    case worktreeNotDeletable
+
     case fileGone
 
     /// The file changed since the reader marked it viewed, so the mark would be over a version

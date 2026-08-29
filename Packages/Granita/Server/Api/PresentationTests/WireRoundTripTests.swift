@@ -203,6 +203,71 @@ struct WireRoundTripTests {
         #expect(read.lines.lines.isEmpty == false)
     }
 
+    // MARK: - The one route that destroys something
+
+    @Test
+    func `given a worktree the phone deletes when it is listed again then the Mac agrees it is gone`(
+    ) async throws {
+        // given — the phone's own client against the Mac's own router, over a repository this test
+        // owns. A DELETE with no body in either direction is a shape neither side had before, and
+        // the per-side tests each prove their half of it against their own idea of the other.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location, requiresAuthentication: false)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+
+        // when
+        let remaining = try await scenario.application.test(.router) { client in
+            let mac = HttpGranitaRepository(
+                macAt: macAddress,
+                token: PairingToken(rawValue: "unused when authentication is off"),
+                transport: RouterTransport.over(client)
+            )
+            let doomed = try #require(try await mac.worktrees(inProject: nil).first { $0.isPrimary == false })
+            try await mac.delete(doomed.id)
+            return try await mac.worktrees(inProject: nil)
+        }
+
+        // then
+        #expect(remaining.map(\.isPrimary) == [true])
+        #expect(try repository.worktreePaths() == [repository.location.path])
+    }
+
+    @Test
+    func `given the primary checkout when the phone asks to delete it then the refusal arrives typed`(
+    ) async throws {
+        // given — a code the phone branches on rather than a status or a git sentence it can only
+        // print, which is the whole reason this code was added to the contract.
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location, requiresAuthentication: false)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+
+        // when
+        let refusal = try await scenario.application.test(.router) { client in
+            let mac = HttpGranitaRepository(
+                macAt: macAddress,
+                token: PairingToken(rawValue: "unused when authentication is off"),
+                transport: RouterTransport.over(client)
+            )
+            let primary = try #require(try await mac.worktrees(inProject: nil).first(where: \.isPrimary))
+            do throws(ApiFailure) {
+                try await mac.delete(primary.id)
+                return ApiFailure?.none
+            } catch {
+                return error
+            }
+        }
+
+        // then — and the Mac's own sentence with it, which is the only thing that says *which* of
+        // the two refusals it was.
+        #expect(refusal == .worktreeNotDeletable(
+            message: "that is the project's own checkout rather than one of its worktrees"
+        ))
+    }
+
     @Test
     func `given a worktree when the phone reads it then its timestamp is the one the Mac wrote`() async throws {
         // given — both ends now say ISO 8601 rather than inheriting it. A default that moved on one

@@ -76,7 +76,7 @@ enum GitInvocation {
         case .headCommit:
             exitCode == 0 || exitCode == 1
         case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .worktrees,
-             .untrackedPaths, .worktreeStatus, .hashWorktreeFiles:
+             .untrackedPaths, .worktreeStatus, .hashWorktreeFiles, .removeWorktree:
             exitCode == 0
         }
     }
@@ -137,6 +137,12 @@ enum GitInvocation {
         case .fileContent(let path, let revision):
             encoded(["show"] + diffFamilySuffix)
                 + [Array("\(spelling(of: revision)):".utf8) + Array(path.bytes)]
+
+        case .removeWorktree(let worktree):
+            // No diff-family flags: `worktree remove --no-ext-diff` exits 129 with `error: unknown
+            // option`, which is the loud half of the pair — `rev-parse` takes the same flag and
+            // prints it back as an output line.
+            encoded(["worktree", "remove", "--force", "--"]) + [Array(worktree.path.utf8)]
 
         case .hashWorktreeFiles:
             encoded(["hash-object", "--stdin-paths"])

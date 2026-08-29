@@ -1,5 +1,5 @@
 {
-  "originHash" : "18fc34cfef889e5167274d4615f9a13911cc08f219ad0794cef33cc1c090121f",
+  "originHash" : "f3dc323acb142c265c12b6c35e56415975db64756607c20d79d57bcd66a45277",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -267,8 +267,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/xctest-dynamic-overlay",
       "state" : {
-        "revision" : "d9308ad679143c26a30dec52daefe82f54af2b82",
-        "version" : "1.13.1"
+        "revision" : "8f6abcf4c8950e2679d5b2fee4ca284fd7c34886",
+        "version" : "1.11.0"
       }
     }
   ],

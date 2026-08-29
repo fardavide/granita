@@ -67,6 +67,70 @@ struct WorktreeSidebarScreenSnapshotTests {
     }
 
     @Test(arguments: SnapshotLayout.all)
+    func `given the delete confirmation is up when the screen is rendered then it matches its baseline`(
+        layout: SnapshotLayout
+    ) async throws {
+        // given — the alert is not in the raster, so what this asserts is the list underneath it:
+        // the row is untouched while the confirmation is up, because nothing has been asked of the
+        // Mac yet and cancelling must leave no trace.
+        let model = aModel()
+        await model.load()
+        let subject = try #require(model.state.firstRow?.deletionSubject)
+        model.beginDeleting(subject)
+        let diff = await aLoadedViewerModel()
+
+        // when - then
+        assertScreenSnapshot(
+            theSidebar(of: model, opening: diff, in: layout),
+            layout: layout,
+            named: "screen-beneath-the-delete-confirmation"
+        )
+    }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given a deletion the Mac refused when the screen is rendered then it matches its baseline`(
+        layout: SnapshotLayout
+    ) async throws {
+        // given — the Mac will not remove this one, so the row is still exactly where it was.
+        let model = aModel(writeFailure: .worktreeNotDeletable(message: "that worktree is locked"))
+        await model.load()
+        let subject = try #require(model.state.firstRow?.deletionSubject)
+        model.beginDeleting(subject)
+        await model.confirmDeletion(of: subject)
+        let diff = await aLoadedViewerModel()
+
+        // when - then
+        assertScreenSnapshot(
+            theSidebar(of: model, opening: diff, in: layout),
+            layout: layout,
+            named: "screen-beneath-the-refusal-to-delete"
+        )
+    }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given a deletion that never finished when the screen is rendered then it matches its baseline`(
+        layout: SnapshotLayout
+    ) async throws {
+        // given — **this rasterises identically to the one above, on purpose.** The alert is in a
+        // window of its own and no picture includes it, so what these two assert together is that
+        // the row came back to its ordinary appearance on *both* failure paths — which is what a
+        // `defer` that fired on only one would break, leaving a row dimmed and inoperable forever.
+        let model = aModel(writeFailure: .unreachable(diagnostic: "NWError -65563"))
+        await model.load()
+        let subject = try #require(model.state.firstRow?.deletionSubject)
+        model.beginDeleting(subject)
+        await model.confirmDeletion(of: subject)
+        let diff = await aLoadedViewerModel()
+
+        // when - then
+        assertScreenSnapshot(
+            theSidebar(of: model, opening: diff, in: layout),
+            layout: layout,
+            named: "screen-beneath-the-uncertain-deletion"
+        )
+    }
+
+    @Test(arguments: SnapshotLayout.all)
     func `given a write the Mac refused when the screen is rendered then it matches its baseline`(
         layout: SnapshotLayout
     ) async throws {
@@ -126,5 +190,14 @@ private extension WorktreeSidebarState {
     var firstRow: WorktreeListRow? {
         guard case .listing(let listing) = self else { return nil }
         return listing.sections.first?.rows.first
+    }
+}
+
+private extension WorktreeListRow {
+
+    /// What a long press on this row would hand a confirmation, where it offers one at all.
+    var deletionSubject: WorktreeDeletionSubject? {
+        guard case .deletable(let subject) = deletion else { return nil }
+        return subject
     }
 }

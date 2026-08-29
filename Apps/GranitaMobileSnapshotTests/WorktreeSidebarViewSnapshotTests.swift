@@ -45,10 +45,12 @@ struct WorktreeSidebarViewSnapshotTests {
                     state: subject.state,
                     mode: subject.mode,
                     showsQuietWorktrees: subject.showsQuietWorktrees,
+                    removing: subject.removing,
                     onChooseMode: { _ in },
                     onShowQuietWorktrees: { _ in },
                     onRename: { _ in },
                     onSetPinned: { _, _ in },
+                    onDelete: { _ in },
                     onRetry: {}
                 )
             }
@@ -72,24 +74,28 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
     let state: WorktreeSidebarState
     let mode: WorktreeListMode
     let showsQuietWorktrees: Bool
+    let removing: Set<WorktreeID>
 
     var testDescription: String { name }
 
-    /// The Mac's name is the same in every case but one, so it is defaulted here rather than
-    /// repeated ten times: what each of these varies is the state, and a field spelled identically
-    /// on every line reads as noise until the one line that changes it.
+    /// The Mac's name is the same in every case but one, and nothing is being deleted in all but
+    /// two, so both are defaulted rather than repeated on every line: what each of these varies is
+    /// the state, and a field spelled identically ten times reads as noise until the line that
+    /// changes it.
     init(
         name: String,
         macName: String = aMacName,
         state: WorktreeSidebarState,
         mode: WorktreeListMode,
-        showsQuietWorktrees: Bool
+        showsQuietWorktrees: Bool,
+        removing: Set<WorktreeID> = []
     ) {
         self.name = name
         self.macName = macName
         self.state = state
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
+        self.removing = removing
     }
 
     static let all: [SidebarCase] = [
@@ -120,6 +126,29 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: true, now: aFixedMoment)),
             mode: .groupedByProject,
             showsQuietWorktrees: true
+        ),
+
+        // A deletion the Mac has not answered yet. The row keeps its name — that is what says which
+        // row this is, and the one moment a reader most needs to be sure — loses its second line to
+        // the verb they pressed, and trades its age for a spinner. Dimmed because it is genuinely
+        // `.disabled(true)`, which is the difference between this and the dimming §2 rejected.
+        SidebarCase(
+            name: "deleting-in-flight",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            removing: [WorktreeID(rawValue: "w-tls")]
+        ),
+
+        // The same deletion in flat mode, which is the harder picture: that row carries the pin
+        // glyph and promotes its project name, so line two is at its fullest exactly where
+        // `Deleting…` replaces it — and the 320pt sidebar is where that is likeliest to look wrong.
+        SidebarCase(
+            name: "deleting-in-flight-flat",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .mostRecentFirst, showingQuiet: false, now: aFixedMoment)),
+            mode: .mostRecentFirst,
+            showsQuietWorktrees: false,
+            removing: [WorktreeID(rawValue: "w-tls")]
         ),
 
         // One hidden worktree rather than several, which is a sentence of its own rather than the

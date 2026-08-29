@@ -477,6 +477,51 @@ struct WorktreeServiceTests {
         #expect(hashes.count == 1)
     }
 
+    // MARK: - Removing a worktree
+
+    @Test
+    func `given a worktree when it is removed then git is asked from the project rather than from inside it`(
+    ) async throws {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
+        let doomed = RepositoryLocation(path: "/repo/.claude/worktrees/fix-the-thing")
+
+        // when
+        try await scenario.sut.remove(doomed, ofProjectAt: scenario.location)
+
+        // then — the working directory is the project's primary checkout and the argument is the
+        // worktree, which are two different places. Running it from inside the directory being
+        // deleted does work, measured on git 2.52.0, and it is a needless thing to ask of a process.
+        let received = await scenario.git.received
+        #expect(received == [.removeWorktree(at: doomed)])
+        #expect(await scenario.git.locations == [scenario.location])
+    }
+
+    @Test
+    func `given git refuses to remove a worktree when it is removed then the refusal reaches the caller`(
+    ) async throws {
+        // given — git's own sentence is the only thing that makes this diagnosable from a phone,
+        // and a locked worktree is the refusal a reader is most likely to meet.
+        let doomed = RepositoryLocation(path: "/repo/.claude/worktrees/locked")
+        let refusal = GitError.commandFailed(
+            command: .removeWorktree(at: doomed),
+            exitCode: 128,
+            standardError: "fatal: cannot remove a locked working tree"
+        )
+        let scenario = Scenario(
+            raw: [],
+            numstat: [],
+            untracked: [],
+            status: [],
+            refusing: [.removeWorktree(at: doomed): refusal]
+        )
+
+        // when - then
+        await #expect(throws: refusal) {
+            try await scenario.sut.remove(doomed, ofProjectAt: scenario.location)
+        }
+    }
+
     // MARK: - Scenario
 
     private struct Scenario {
@@ -495,6 +540,7 @@ struct WorktreeServiceTests {
             revision: GitRevision = .head,
             fileDiff: String = "",
             failure: GitError? = nil,
+            refusing: [GitCommand: GitError] = [:],
             limits: WorktreeLimits = .standard
         ) {
             git = FakeGitClient(
@@ -505,7 +551,8 @@ struct WorktreeServiceTests {
                     .untrackedPaths: nulSeparated(untracked),
                     .worktreeStatus: nulSeparated(status)
                 ],
-                failures: failure.map { [.worktreeStatus: $0] } ?? [:],
+                failures: (failure.map { [GitCommand.worktreeStatus: $0] } ?? [:])
+                    .merging(refusing) { _, given in given },
                 unhashablePaths: unhashablePaths,
                 anyFileDiff: Data(fileDiff.utf8)
             )
