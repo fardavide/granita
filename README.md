@@ -71,6 +71,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.5.2 — 2026-08-31
+- **Opening and shutting a file no longer snaps the screen out from under you.** Tapping a collapsed
+  bar, shutting a file you have finished, expanding the lines around a hunk, and opening or closing a
+  folder in the file list all move now instead of jumping. The diff below the tap slides to where it
+  is going, so you can see where you were and follow it there.
+
 ### 0.5.1 — 2026-08-31
 - **On iPad, a Mac you have already paired with opens its worktrees across the whole window.** It
   used to open them inside the narrow centred column the pairing screens use — a squeezed sidebar,

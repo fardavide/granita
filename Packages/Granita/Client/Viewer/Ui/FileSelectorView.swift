@@ -67,6 +67,11 @@ public struct FileSelectorView: View {
             // truncation between two renders of an unchanged screen. The inset the rows want is
             // stated above; this stops a second one being added underneath it.
             .contentMargins(.horizontal, 0, for: .scrollContent)
+            // **Shutting a directory takes its children out from under the reader's finger**, and
+            // the row they were about to tap is wherever the list settles. Keyed on the rows
+            // themselves, so the chevron turning, the stats a shut row gains and the children
+            // leaving are one movement rather than three things that happen to change together.
+            .animation(.disclosure, value: listing.rows)
         }
     }
 
