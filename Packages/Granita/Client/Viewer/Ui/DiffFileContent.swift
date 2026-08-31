@@ -54,6 +54,12 @@ public struct DiffFileContent: View {
                 )
             }
         }
+        // **Twenty lines arriving is a layout change the reader pressed for, so it moves rather than
+        // jumps.** Keyed on how many lines each hunk is drawing rather than on the whole diff: that
+        // is exactly what an expansion changes, and the height of everything below the band is what
+        // has to travel. A key of the whole `FileDiff` would also fire on a mark being set, which
+        // moves nothing.
+        .animation(.disclosure, value: diff.hunks.map(\.lines.count))
     }
 
     private func hunkBefore(_ position: Int) -> Hunk? {

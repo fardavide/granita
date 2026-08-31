@@ -608,6 +608,28 @@ so the parser's conflict-marker kind is the only thing that makes them findable 
 tint, the marker text at semibold, and a CONFLICTED badge in the file header so the reader knows
 before they scroll. This is the one status worth a badge.
 
+### Every disclosure moves, and it moves on the platform's own curve
+
+> **Not the review's call — this repository's, in 0.5.2** *(31 August 2026)*. The design review drew
+> the shut bar, the open header and the expand control and said nothing about how one becomes the
+> other, so the first four releases did it in a single frame. Davide's verdict on that was "it looks
+> terrible with the UI jumping", and he is describing the same defect this whole section is built
+> around arriving from the one direction nobody guarded: **the reader's own press.** No-reflow is a
+> rule about content moving *unasked*; it has never been an argument for a layout that teleports when
+> it is asked. Without motion the reader cannot link where a file was to where it went, so the screen
+> reads as replaced rather than changed and they have to re-find their place.
+>
+> **Four sites, one curve, stated once** — shutting or opening a file in §4's scroll, expanding a
+> hunk's context, and opening or shutting a directory in §3's selector. The curve is the platform
+> default. Rejected: a hand-tuned spring per site, which is four answers to one question and four
+> edits when it is refined; rejected too, the 0.2s ease §4's jump-to-file already uses — that one is a
+> *scroll* landing, timed against the baseline that photographs it mid-flight, and this is a layout
+> opening and closing. The default also honours Reduce Motion without any of these views asking.
+>
+> **The baselines cannot see this and never will.** A snapshot photographs a settled state, and every
+> one of them stayed green across all four releases that shipped the jump. It is checked by pressing
+> the control.
+
 ### Viewed is tapped, never inferred
 
 > **Built in 0.3.0, in the file header and nowhere else** *(26 August 2026)*. The circle at the end of

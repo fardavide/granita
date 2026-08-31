@@ -94,6 +94,13 @@ public struct ContinuousDiffView: View {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
                     Section {
                         content(of: entry)
+                            // **Shutting and opening a file is animated, on both halves and on the
+                            // same value.** The bar replaces a 28pt header while the whole diff
+                            // under it goes, so without motion everything below the press relocates
+                            // in one frame — which is the jump this screen spends its whole design
+                            // avoiding, arriving from the one direction the reader asked for. The
+                            // curve is stated once, in `Animation.disclosure`.
+                            .animation(.disclosure, value: entry.collapse.isCollapsed)
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
                             // with `contentOffset`, and the reason is the same one the whole screen
@@ -102,6 +109,7 @@ public struct ContinuousDiffView: View {
                             .onAppear { onReading(position) }
                     } header: {
                         header(of: entry)
+                            .animation(.disclosure, value: entry.collapse.isCollapsed)
                     }
                 }
             }
