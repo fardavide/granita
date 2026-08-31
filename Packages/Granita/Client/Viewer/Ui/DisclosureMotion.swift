@@ -16,6 +16,13 @@ import SwiftUI
 /// Not the 0.2s ease the scroll's jump uses: that one is a *scroll* landing on a file and is timed
 /// against the baseline that photographs it mid-flight. This is a layout opening and closing.
 ///
+/// **It is attached to the container that lays the movement out, never to the row that changed.**
+/// The rows that have to travel when a file shuts are the ones *after* it, and their positions
+/// belong to the stack or the list above them — a scope declared inside a section reaches the
+/// section's own contents and stops there, so the thing that changed cross-fades while everything
+/// else snaps. 0.5.2 made exactly that mistake in the scroll, and it shipped looking like a fix
+/// because the other two sites happened to be at the right altitude already.
+///
 /// Computed rather than stored because this module is main-actor by default, and a curve is a fact
 /// about the app rather than about the actor reading it.
 extension Animation {

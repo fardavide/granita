@@ -82,10 +82,14 @@ Everything else has an answer.
   rule. What is Granita's is that the review's disclosures — a file shutting or opening in §4's
   scroll, a hunk's context expanding, a directory in §3's selector — all move on
   `Animation.disclosure`, keyed on the value that changed. A fifth one reuses it rather than picking
-  a curve. **Do not confuse this with `SPEC.md` §10's no-reflow rule**, which forbids content moving
-  *unasked* and has never been an argument for a layout that jumps when it is pressed; §10 is why
-  this was missed for four releases. Nothing in the snapshot suite can see it — that suite stayed
-  green through every one of those releases — so it is checked by pressing the control.
+  a curve. **The modifier goes on the container that lays out the movement** — §4's lazy stack, §3's
+  list, a file's own column — and never on the row or section inside it: 0.5.2 put §4's on the two
+  halves of a file's section, which cross-faded the bar into the header while every file below it
+  snapped, and shipped as a fix that fixed one site of three. **Do not confuse any of this with
+  `SPEC.md` §10's no-reflow rule**, which forbids content moving *unasked* and has never been an
+  argument for a layout that jumps when it is pressed; §10 is why this was missed for four releases.
+  Nothing in the snapshot suite can see it — that suite stayed green through every one of those
+  releases, and through 0.5.2's half-fix — so it is checked by pressing the control.
 - **The iPad is the phone at rest in a bigger room.** Pre-pairing screens clamp to a 420pt centred
   measure, title included. Post-pairing, the sidebar is 320pt — *narrower* than the phone — so it is
   the harder layout for a row, not the easier one.
