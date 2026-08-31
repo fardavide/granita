@@ -78,6 +78,14 @@ Everything else has an answer.
   loses dark mode, Dynamic Type and platform drift — see the `swift-style` skill.
 - **Motion is the progress indicator, and its absence is the result.** No spinner where the protocol
   has no finish; a symbol effect that stops is what says searching stopped.
+- **A layout the reader changed moves; it never teleports.** The global `ui-motion` skill owns the
+  rule. What is Granita's is that the review's disclosures — a file shutting or opening in §4's
+  scroll, a hunk's context expanding, a directory in §3's selector — all move on
+  `Animation.disclosure`, keyed on the value that changed. A fifth one reuses it rather than picking
+  a curve. **Do not confuse this with `SPEC.md` §10's no-reflow rule**, which forbids content moving
+  *unasked* and has never been an argument for a layout that jumps when it is pressed; §10 is why
+  this was missed for four releases. Nothing in the snapshot suite can see it — that suite stayed
+  green through every one of those releases — so it is checked by pressing the control.
 - **The iPad is the phone at rest in a bigger room.** Pre-pairing screens clamp to a 420pt centred
   measure, title included. Post-pairing, the sidebar is 320pt — *narrower* than the phone — so it is
   the harder layout for a row, not the easier one.
