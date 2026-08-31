@@ -71,6 +71,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.5.3 — 2026-08-31
+- **Opening and shutting a file now really does move.** 0.5.2 said it did, and only the lines around
+  a hunk actually travelled: tapping a collapsed bar still snapped every file below it into its new
+  place in one frame, with a fade over the top. The whole scroll slides now, so the file you were
+  reading goes where you can watch it go.
+
 ### 0.5.2 — 2026-08-31
 - **Opening and shutting a file no longer snaps the screen out from under you.** Tapping a collapsed
   bar, shutting a file you have finished, expanding the lines around a hunk, and opening or closing a

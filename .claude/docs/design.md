@@ -629,6 +629,17 @@ before they scroll. This is the one status worth a badge.
 > **The baselines cannot see this and never will.** A snapshot photographs a settled state, and every
 > one of them stayed green across all four releases that shipped the jump. It is checked by pressing
 > the control.
+>
+> **Corrected in 0.5.3** *(31 August 2026)*: 0.5.2 attached §4's curve to the two halves of a file's
+> section rather than to the scroll that holds them, and Davide pressed it and saw the hunk expansion
+> move while opening and shutting a file did not. An animation scoped inside a section animates that
+> section's own contents; the *other* files — everything that has to travel when one of them shuts —
+> are laid out by the stack above it, and outside every scope the section could declare. So the curve
+> belongs on **the container that lays out the movement**, keyed on the collapse state of all the
+> entries: the lazy stack in §4, the list in §3, the file's own column for a hunk expanding. That §3
+> and the hunks were right by accident is why only one of the four sites was visibly broken — and why
+> a fade over a snapping layout is not a smaller version of the fix, it is the defect wearing a
+> costume.
 
 ### Viewed is tapped, never inferred
 

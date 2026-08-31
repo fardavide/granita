@@ -94,13 +94,6 @@ public struct ContinuousDiffView: View {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
                     Section {
                         content(of: entry)
-                            // **Shutting and opening a file is animated, on both halves and on the
-                            // same value.** The bar replaces a 28pt header while the whole diff
-                            // under it goes, so without motion everything below the press relocates
-                            // in one frame — which is the jump this screen spends its whole design
-                            // avoiding, arriving from the one direction the reader asked for. The
-                            // curve is stated once, in `Animation.disclosure`.
-                            .animation(.disclosure, value: entry.collapse.isCollapsed)
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
                             // with `contentOffset`, and the reason is the same one the whole screen
@@ -109,11 +102,22 @@ public struct ContinuousDiffView: View {
                             .onAppear { onReading(position) }
                     } header: {
                         header(of: entry)
-                            .animation(.disclosure, value: entry.collapse.isCollapsed)
                     }
                 }
             }
             .scrollTargetLayout()
+            // **Shutting and opening a file is animated here, on the stack, and not on the two
+            // halves inside it.** What has to travel when a file shuts is every *other* file below
+            // it, and their positions belong to this stack — an animation attached inside a section
+            // scopes to that section, so 0.5.2 cross-faded the bar into the header while the rest of
+            // the scroll snapped to its new place, which is the jump wearing a fade. One scope over
+            // the whole stack is also what makes the two halves of the swap one gesture rather than
+            // two. Keyed on nothing but the collapse flags, so a diff arriving still lands without
+            // dragging the scroll around. The curve is stated once, in `Animation.disclosure`.
+            //
+            // Under `.scrollTargetLayout()` rather than over it: the marker wants the stack itself,
+            // and a jump landing on a file is a different gesture from a file opening under a thumb.
+            .animation(.disclosure, value: entries.map(\.collapse.isCollapsed))
         }
         // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
         // build called `proxy.scrollTo` from a watch on the target, and the baseline came back with
