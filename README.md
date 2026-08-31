@@ -71,6 +71,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.5.1 — 2026-08-31
+- **On iPad, a Mac you have already paired with opens its worktrees across the whole window.** It
+  used to open them inside the narrow centred column the pairing screens use — a squeezed sidebar,
+  a sliver of a detail column, and white down both sides of the screen. The column is for getting
+  connected; once you are reading worktrees, the iPad gets the room it has.
+
 ### 0.5.0 — 2026-08-28
 - **You can delete a worktree from your phone.** Long-press a row in the worktree list and choose
   *Delete Worktree…*. Your Mac removes the checkout and everything uncommitted in it; the branch

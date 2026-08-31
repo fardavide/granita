@@ -2,6 +2,14 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.5.1 — the iPad read its worktrees through a phone-shaped slot for four releases, and the
+baseline that should have caught it had photographed the defect.** The 420pt measure design §5 puts
+around the pairing screens was released only for a Mac *just paired with*, so the route a reader
+takes every day — tap a Mac already paired with — opened a split view inside a 420pt column: a 320pt
+sidebar, a sliver of detail, white down both sides. The container and the rule moved out of the
+composition root into `PairingSpineScreen` and `PairingSpineNavigation`, where the sequence is a host
+test and the width a push lands at is a baseline. In [`decisions.md`](decisions.md).
+
 **Version 0.5.0 — a worktree can be deleted from the phone, and the screen shipped ahead of its
 design on purpose.** Davide asked for that on 28 August 2026: he was near his weekly limit, wanted
 the feature usable, and wanted the design round trip to correct it afterwards. So the
