@@ -27,14 +27,45 @@ set -euo pipefail
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+ROOT="$(pwd)"
 PACKAGE="Packages/Granita"
 COVERAGE="build/coverage"
 OUT="${COVERAGE}/summary.json"
-DERIVED="${COVERAGE}/DerivedData"
 REF="${GITHUB_REF_NAME:-local}"
+
+# **Every build directory below sits outside `build/coverage`, which the wipe further down empties,
+# and that placement is the point.** Each pass here is a full build — the package, the iOS app, the
+# Mac app — and while they sat beside the exports, every local run paid for all three from cold on a
+# machine that had just built the same tree. Measured on the 1 September 2026 `main` run, the two
+# app builds alone were 4m20s of a 20m30s job. On a fresh runner these start empty either way, so
+# nothing about the numbers changes; on a developer's machine they now stay warm between runs.
+#
+# What must NOT survive a run is the profile. Both app passes locate theirs by searching the tree
+# for `Coverage.profdata` and taking the first hit, so a directory left by an earlier run turns that
+# search into a coin flip between this run's numbers and last week's — a plausible number from the
+# wrong pass, which is the one failure mode worse than a slow job. Xcode writes exactly one, under
+# `Build/ProfileData/<device>/`, so deleting that subtree keeps the search unambiguous and leaves
+# the compiled products in place.
+DERIVED="${ROOT}/build/derived/ios"
+MAC_DERIVED="${ROOT}/build/derived/mac"
+
+# The package's scratch path, deliberately not the `.build` that `make test` uses. Coverage adds
+# instrumentation to every swiftc invocation, so the two cannot share a directory without each
+# invalidating the other, and alternating the two commands in one working copy rebuilt the package
+# from scratch every time. Two directories, two warm builds, at the cost of some disk.
+SCRATCH="${ROOT}/build/derived/package"
 
 rm -rf "$COVERAGE"
 mkdir -p "$COVERAGE"
+rm -rf "${DERIVED}/Build/ProfileData" "${MAC_DERIVED}/Build/ProfileData"
+
+# The package's profile has the same requirement and a nastier version of it: SwiftPM merges *every*
+# `.profraw` sitting in `codecov/` into `default.profdata`, so a raw counter file left by an earlier
+# run of an earlier commit would be added to this run's numbers — coverage credited to lines that
+# this commit's tests never executed, and possibly to lines it no longer has. Harmless while the
+# directory was rebuilt from nothing every time; the moment it is kept warm, this is what keeps the
+# number honest. The glob covers whichever architecture triple the host builds under.
+rm -rf "${SCRATCH}"/*/debug/codecov
 
 # Xcode instruments the *test bundle* on `-enableCodeCoverage YES` alone; the app and the local
 # package targets it links keep no coverage mapping at all, and the export then comes back with zero
@@ -45,6 +76,35 @@ COVERAGE_SETTINGS=(
     ENABLE_CODE_COVERAGE=YES
     CLANG_COVERAGE_MAPPING=YES
 )
+
+# ---------------------------------------------------------------------------------------------
+# the simulator — booted here, used three passes later
+# ---------------------------------------------------------------------------------------------
+#
+# **Started now and waited for later, because a cold boot costs minutes and nothing else needs the
+# device.** Left to `xcodebuild`, the boot happens after its build finishes and the whole job simply
+# stops for it: on the 1 September 2026 `main` run the iOS pass reported 8m49s for a suite whose
+# test bodies account for 5m30s, and the sibling snapshot job — same commit, same suite, unluckier
+# runner — showed a 9m31s gap between the app bundle being touched and the app's first log line.
+# Booting it against the unit pass, which needs no simulator at all, hides that behind work that had
+# to happen anyway. On a developer's machine the device is usually booted already and this returns
+# at once.
+#
+# The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
+# "iPhone 17", and that has already changed once between releases.
+SIMULATOR="$(xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$//')"
+if [ -z "$SIMULATOR" ]; then
+    echo "::error::No recent iPhone simulator on this machine"
+    exit 1
+fi
+echo "Using ${SIMULATOR}"
+
+# `bootstatus -b` boots the device if it is shut down and returns once it is ready, which is the
+# single call that expresses "have this usable by the time I ask". Backgrounded, and its failure is
+# swallowed on purpose: this is an optimisation, and `xcodebuild` boots the device itself if the
+# head start did not happen. Turning a warm-up into a job failure would trade minutes for red runs.
+xcrun simctl bootstatus "$SIMULATOR" -b > /dev/null 2>&1 &
+BOOT_PID=$!
 
 # ---------------------------------------------------------------------------------------------
 # unit — the package suite, on the host
@@ -61,11 +121,13 @@ echo "::group::Coverage — unit"
 # What varies is which lines a scheduler got to before something was torn down, not what the tests
 # assert: `swift test` is green either way. Serialising makes the pass measure the suite instead of
 # the machine, and it costs about ten seconds on a job that already runs the suite four times.
-( cd "$PACKAGE" && swift test --enable-code-coverage --no-parallel )
+( cd "$PACKAGE" && swift test --enable-code-coverage --no-parallel --scratch-path "$SCRATCH" )
 
 # SwiftPM writes the llvm-cov export itself and will tell you where — no locating a .profdata and a
-# test bundle by hand, and no `xcrun llvm-cov` invocation to keep in step with the toolchain.
-UNIT_EXPORT="$(cd "$PACKAGE" && swift test --show-codecov-path)"
+# test bundle by hand, and no `xcrun llvm-cov` invocation to keep in step with the toolchain. The
+# scratch path has to be repeated: without it this reports the default `.build` location, which is
+# where `make test` builds and therefore holds no coverage export at all.
+UNIT_EXPORT="$(cd "$PACKAGE" && swift test --show-codecov-path --scratch-path "$SCRATCH")"
 if [ ! -f "$UNIT_EXPORT" ]; then
     echo "::error::SwiftPM reported no coverage export at ${UNIT_EXPORT}"
     exit 1
@@ -84,8 +146,8 @@ echo "::endgroup::"
 # The merge below needs the binary the profile was written against. `--show-codecov-path` rebuilds
 # if anything is stale, so this is resolved after it: a relinked binary and an older profile produce
 # "no coverage data found" rather than a wrong number, but it fails the job either way.
-UNIT_PROFILE="${PACKAGE}/.build/arm64-apple-macosx/debug/codecov/default.profdata"
-UNIT_BINARY="$(find "${PACKAGE}/.build/arm64-apple-macosx/debug/GranitaPackageTests.xctest" -type f -name GranitaPackageTests | head -1)"
+UNIT_PROFILE="${SCRATCH}/arm64-apple-macosx/debug/codecov/default.profdata"
+UNIT_BINARY="$(find "${SCRATCH}/arm64-apple-macosx/debug/GranitaPackageTests.xctest" -type f -name GranitaPackageTests | head -1)"
 
 # ---------------------------------------------------------------------------------------------
 # snapshot — the iOS suite, on a simulator
@@ -93,14 +155,9 @@ UNIT_BINARY="$(find "${PACKAGE}/.build/arm64-apple-macosx/debug/GranitaPackageTe
 
 echo "::group::Coverage — snapshot"
 
-# The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
-# "iPhone 17", and that has already changed once between releases.
-SIMULATOR="$(xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$//')"
-if [ -z "$SIMULATOR" ]; then
-    echo "::error::No recent iPhone simulator on this machine"
-    exit 1
-fi
-echo "Using ${SIMULATOR}"
+# Collect the boot started before the unit pass. `|| true` for the reason given there: a device that
+# refused to warm up is `xcodebuild`'s problem to solve, slowly, not a reason to fail the job here.
+wait "$BOOT_PID" || echo "::warning::${SIMULATOR} did not finish booting ahead of time; xcodebuild will boot it."
 
 # `|| true` deliberately. This pass wants the profile, not the verdict: whether the baselines still
 # match is the Snapshot job's question, and one stale PNG failing two jobs tells nobody anything the
@@ -154,8 +211,6 @@ echo "::endgroup::"
 # flip between them — which produces a plausible number from the wrong pass.
 
 echo "::group::Coverage — snapshot (macOS)"
-
-MAC_DERIVED="${COVERAGE}/DerivedDataMac"
 
 # `|| true` for the same reason as the iOS pass: this wants the profile, not the verdict.
 xcodebuild test \
