@@ -114,6 +114,9 @@ public struct DiffFileLines: View {
     ///
     /// Outside the horizontal scroll with the numbers: a marker that scrolled away would leave the
     /// row saying nothing on exactly the long lines the reader had to scroll to read.
+    /// **The gap after it is on the column rather than on the glyph**, so the `+` and the `−` stay
+    /// centred in one another's width down the file while the code clears them — a padding inside the
+    /// frame would move the glyph instead of the code.
     private var markers: some View {
         VStack(spacing: 0) {
             ForEach(numbered, id: \.offset) { _, line in
@@ -121,6 +124,7 @@ public struct DiffFileLines: View {
                     .frame(width: DiffGutter.markerWidth, height: rowHeight)
             }
         }
+        .padding(.trailing, DiffGutter.markerTrailingSpace)
     }
 
     /// One scroll for the whole hunk rather than one per line, which is what keeps the lines aligned
@@ -195,7 +199,7 @@ public struct DiffFileLines: View {
                     .offset(x: (trackWidth - thumbWidth) * clamped(scrolledBy / travel))
             }
             .frame(height: Self.indicatorHeight)
-            .padding(.leading, numberColumnWidth + DiffGutter.markerWidth)
+            .padding(.leading, numberColumnWidth + DiffGutter.markerWidth + DiffGutter.markerTrailingSpace)
             .padding(.trailing, Self.codeTrailingInset)
             .accessibilityHidden(true)
         }

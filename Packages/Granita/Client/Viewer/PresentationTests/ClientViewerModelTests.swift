@@ -376,6 +376,63 @@ struct ClientViewerModelTests {
         #expect(scenario.sut.isShowingSelector == false)
     }
 
+    @Test
+    func `given the drawer fills the screen when a file is chosen then it drops to half so the jump can be seen`() async {
+        // given — the reader has pulled the list up over the whole phone, which is the one height at
+        // which the diff behind it is not there to scroll.
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+        scenario.sut.showSelector(true)
+        scenario.sut.drawerDetent = .large
+
+        // when
+        scenario.sut.choose(scenario.fileIds[5])
+
+        // then — halved rather than dismissed: the list is still up, which is what §3 keeps it for.
+        #expect(scenario.sut.drawer == .half)
+        #expect(scenario.sut.isShowingSelector)
+    }
+
+    @Test
+    func `given the drawer is already half when a file is chosen then it is left where the reader put it`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+        scenario.sut.showSelector(true)
+
+        // when
+        scenario.sut.choose(scenario.fileIds[2])
+
+        // then — half is where it starts, and choosing a file is not a reason to move a sheet that
+        // is already showing the diff behind it.
+        #expect(scenario.sut.drawer == .half)
+    }
+
+    @Test
+    func `given the reader drags the drawer up when nothing is chosen then it stays where they put it`() async {
+        // given — the height is the reader's until a jump needs it back, so the sheet's own gesture
+        // has to be able to write it.
+        let scenario = Scenario(files: aChangeSet(of: 8))
+        await scenario.sut.load()
+        scenario.sut.showSelector(true)
+
+        // when — the sheet writes the height it was dragged to, which is what the screen's binding
+        // projects.
+        scenario.sut.drawerDetent = .large
+
+        // then
+        #expect(scenario.sut.drawer == .whole)
+        #expect(scenario.sut.drawerDetent == .large)
+
+        // and when — dragged back down by hand
+        scenario.sut.drawerDetent = .medium
+
+        // then — both halves of the translation, which is the rule the screen used to carry in two
+        // closures nothing could reach.
+        #expect(scenario.sut.drawer == .half)
+        #expect(scenario.sut.drawerDetent == .medium)
+    }
+
     // MARK: - The jump, which is the selector's whole job
 
     @Test

@@ -156,6 +156,13 @@ public struct ContinuousDiffView: View {
             // tap would be a change from a value to itself, and the row would go quiet.
             onJumped()
         }
+        // **The page, and it is what makes design §4's 10pt separation visible.** The gap was built
+        // in 0.6.0 and could not be seen: it was left clear over a screen whose background is the
+        // same white as the rows, so 10pt of white sat between two white files. Colouring the page
+        // once and giving each file an opaque card is one answer for every boundary — between two
+        // bars, between a bar and a header, and under the last file — where a rule per boundary
+        // would be four.
+        .background(Color.diffPage)
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
@@ -184,9 +191,14 @@ public struct ContinuousDiffView: View {
     static let betweenFiles: CGFloat = 10
 
     @ViewBuilder private func content(of entry: ContinuousDiffEntry) -> some View {
+        // **The card**, opaque and full width, so the page only shows where the gap is. A file's
+        // lines draw their own tints and nothing behind them, which over a coloured page would tint
+        // every context row.
+        fileBody(of: entry)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.diffCard)
         // A shut file gets the gap too — the bars are what a reader scans down when most of a change
         // set is reviewed, and bars with nothing between them are one bar with several names.
-        fileBody(of: entry)
         Color.clear
             .frame(height: Self.betweenFiles)
     }

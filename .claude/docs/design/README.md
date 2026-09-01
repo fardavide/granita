@@ -54,6 +54,14 @@ rule that modified gets no colour. Two calls in it were overruled here — the m
 44pt hit area by taking it horizontally, and the iPad keeps a 12pt code size rather than the second
 gutter column §4 had argued for.
 
+**Five of its calls were then built wrongly and repaired in 0.6.1**, which is the case for reading
+the prose rather than trusting the release note: the separation between files was built the same
+colour as the files, the hunk band was drawn in the quaternary *label* rather than the quaternary
+*fill* its own paragraph named, and the header and the bar that replaces it drew two columns. All
+five are in [`../design.md`](../design.md) §3 and §4 beside the alternatives they beat, and the one
+of them that is still half-open — the Mac reporting a file's length as its last hunk's end — is in
+[`../decisions.md`](../decisions.md) and [`../status.md`](../status.md).
+
 **The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
 surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in
 0.0.14, Devices in 0.0.15, and the status item and the window in 0.0.16 — so the last frames were

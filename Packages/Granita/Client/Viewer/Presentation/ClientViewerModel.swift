@@ -1,4 +1,5 @@
 import Observation
+import SwiftUI
 
 import ClientConnectionDomain
 import ClientViewerDomain
@@ -56,6 +57,31 @@ public final class ClientViewerModel {
     ///
     /// Only the phone has one. In a regular width the selector is a column and this is never read.
     public private(set) var isShowingSelector = false
+
+    /// How much of the phone that drawer takes.
+    ///
+    /// **The model's for the reason `isShowingSelector` is**: choosing a file has to be able to move
+    /// it, and a height that lived in the screen's `@State` would be one no test could ask about.
+    /// The sheet's own drag writes it back through `resize`, so this is where the reader's gesture
+    /// and the jump's requirement meet rather than two answers to one question.
+    public private(set) var drawer: FileSelectorDrawer = .half
+
+    /// The same height as the sheet's own detent, so the sheet can be handed a binding rather than a
+    /// pair of closures.
+    ///
+    /// **It is here rather than in the screen, and that is a testing decision as much as a layering
+    /// one.** Written at the call site it is two closures inside a `.sheet` builder — a `get` and a
+    /// `set` that no rendered baseline invokes and no host test can reach, which is to say a rule
+    /// about which height means what, living in the one place nothing in this repository can ask
+    /// about it. Here it is two lines a unit test drives directly, and the screen is left holding
+    /// `$model.drawerDetent`, which is the framework's own projection and no code at all.
+    ///
+    /// `FileSelectorDrawer` stays the stored truth. This is the translation, and it goes one way per
+    /// accessor so the two cannot drift.
+    public var drawerDetent: PresentationDetent {
+        get { drawer == .whole ? .large : .medium }
+        set { drawer = newValue == .large ? .whole : .half }
+    }
 
     /// The arrangement the reader asked for, which is not always the one they get: over three files,
     /// or over a change set that is all one directory, `FileSelector` answers flat regardless.
@@ -139,11 +165,19 @@ public final class ClientViewerModel {
 
     /// Asks the scroll to go to a file, which is the selector's entire job.
     ///
-    /// **The drawer stays up**, which is the whole of design §3's argument for a drawer over a
-    /// modal: the reader walks a change set file by file without a dismiss-present cycle between
-    /// each one, and the diff scrolls behind the list while they do.
+    /// **The drawer stays up but comes down to half**, which is design §3's argument for a drawer
+    /// over a modal followed to where it actually holds. The reader walking a change set file by
+    /// file without a dismiss-present cycle only works while the diff is on screen behind the list —
+    /// and it is not, at the whole-screen height, which is also the one height background
+    /// interaction is off at. A jump under a full-screen sheet scrolls a diff nobody can see, and a
+    /// jump nobody can see is a row that did nothing.
+    ///
+    /// **Halved rather than dismissed**, which is Davide's own preference and the weaker of the two
+    /// interventions: shutting the drawer would cost the reader the list they are working down, and
+    /// the sheet is a drawer precisely so it does not have to be reopened between files.
     public func choose(_ file: FileID) {
         jumpTarget = file
+        drawer = .half
     }
 
     /// Reported by the screen once it has scrolled, so the next tap on the same row is a change

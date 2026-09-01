@@ -133,8 +133,28 @@ func spelledOutFileStatus(_ status: FileStatus) -> String {
 ///
 /// A `Text` rather than a view, so a caller can interpolate it into a sentence or drop it into a row
 /// without the two rendering differently — and so it truncates as part of whatever it is in.
+///
+/// **A side that changed nothing is not printed**, which is Davide's call on 1 September 2026 and is
+/// the same argument design §3 already makes about modified getting no colour: `+0` is the field
+/// carrying no information, and on a binary file or a rename that changed nothing it was the whole
+/// of what the row said about the change — `+0 −0`, twice as wide as it is useful, and wide enough
+/// on those two rows to push the counts under the bezel. What is left is a number the reader can
+/// only read one way.
 public func changeStatsText(_ stats: ChangeStats) -> Text {
-    let added = Text("+\(stats.insertions, format: .number)").foregroundColor(.green)
-    let removed = Text("−\(stats.deletions, format: .number)").foregroundColor(.red)
-    return Text("\(added) \(removed)")
+    switch (stats.insertions, stats.deletions) {
+    // Nothing at all, rather than a zero pair. A binary file and a rename with no content change
+    // both say what they are on the line below the name, which is where that belongs.
+    case (0, 0): Text(verbatim: "")
+    case (let added, 0): plus(added)
+    case (0, let removed): minus(removed)
+    case (let added, let removed): Text("\(plus(added)) \(minus(removed))")
+    }
+}
+
+private func plus(_ insertions: Int) -> Text {
+    Text("+\(insertions, format: .number)").foregroundColor(.green)
+}
+
+private func minus(_ deletions: Int) -> Text {
+    Text("−\(deletions, format: .number)").foregroundColor(.red)
 }

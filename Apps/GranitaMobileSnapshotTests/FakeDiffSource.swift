@@ -249,6 +249,129 @@ nonisolated let aWholeFileInOneHunk = FileDiff(
     truncationReason: nil
 )
 
+/// The same change in a file that carries on afterwards, which is the expander **torn below**.
+///
+/// There is nothing above the hunk to reveal and nineteen lines after it, so the row names its
+/// destination rather than a declaration — design §4: "downward there is no such thing to name, so
+/// it names the destination instead."
+nonisolated let aFileWithLinesAfterItsChange = FileDiff(
+    file: aChangedFile(
+        path: "SwiftlyCore/Sources/Currency/Domain/Models/CurrencyRate.swift",
+        status: .modified,
+        insertions: 1,
+        deletions: 1,
+        estimatedLineCount: 23
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 1,
+            oldCount: 4,
+            newStart: 1,
+            newCount: 4,
+            sectionHeading: nil,
+            lines: [
+                context(old: 1, new: 1, "import Foundation"),
+                context(old: 2, new: 2, ""),
+                deletion(old: 3, "public struct CurrencyRate: Equatable {"),
+                addition(new: 3, "public struct CurrencyRate: Equatable, Sendable {"),
+                context(old: 4, new: 4, "}")
+            ]
+        )
+    ],
+    oldLineCount: 23,
+    newLineCount: 23,
+    isTruncated: false,
+    truncationReason: nil
+)
+
+/// A change the diff had to skip into, which is the expander **torn above**.
+///
+/// Seven lines are missing before it and none after, so the row carries git's own heading for the
+/// hunk below it — the declaration the reader lost by arriving in the middle of the file.
+nonisolated let aFileWithLinesBeforeItsChange = FileDiff(
+    file: aChangedFile(
+        path: "SwiftlyCore/Sources/Currency/Domain/Models/CurrencyWithRate.swift",
+        status: .modified,
+        insertions: 1,
+        deletions: 1,
+        estimatedLineCount: 11
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 8,
+            oldCount: 4,
+            newStart: 8,
+            newCount: 4,
+            sectionHeading: "public struct CurrencyWithRate",
+            lines: [
+                context(old: 8, new: 8, "  let currency: Currency"),
+                deletion(old: 9, "  let rate: Double"),
+                addition(new: 9, "  let rate: CurrencyRate"),
+                context(old: 10, new: 10, "}"),
+                context(old: 11, new: 11, "")
+            ]
+        )
+    ],
+    oldLineCount: 11,
+    newLineCount: 11,
+    isTruncated: false,
+    truncationReason: nil
+)
+
+/// Two changes with four lines between them, which is the expander **torn both ways** — the only
+/// form with two controls and the only one whose count moves into its label.
+///
+/// Both ends of this file are drawn, so it is the middle gap alone. That is what makes it the control
+/// for the two above: a picture of a row torn on one edge says nothing about whether the other edge
+/// is torn only when it should be.
+nonisolated let aFileWithAGapBetweenItsHunks = FileDiff(
+    file: aChangedFile(
+        path: "SwiftlyCore/Sources/Currency/Domain/Models/CurrencyValue.swift",
+        status: .modified,
+        insertions: 2,
+        deletions: 2,
+        estimatedLineCount: 12
+    ),
+    hunks: [
+        Hunk(
+            index: 0,
+            oldStart: 1,
+            oldCount: 4,
+            newStart: 1,
+            newCount: 4,
+            sectionHeading: nil,
+            lines: [
+                context(old: 1, new: 1, "import Foundation"),
+                context(old: 2, new: 2, ""),
+                deletion(old: 3, "public struct CurrencyValue: Equatable {"),
+                addition(new: 3, "public struct CurrencyValue: Equatable, Sendable {"),
+                context(old: 4, new: 4, "  let amount: Decimal")
+            ]
+        ),
+        Hunk(
+            index: 1,
+            oldStart: 9,
+            oldCount: 4,
+            newStart: 9,
+            newCount: 4,
+            sectionHeading: "func formatted() -> String",
+            lines: [
+                context(old: 9, new: 9, "  func formatted() -> String {"),
+                deletion(old: 10, "    amount.description"),
+                addition(new: 10, "    amount.formatted(.currency(code: code))"),
+                context(old: 11, new: 11, "  }"),
+                context(old: 12, new: 12, "}")
+            ]
+        )
+    ],
+    oldLineCount: 12,
+    newLineCount: 12,
+    isTruncated: false,
+    truncationReason: nil
+)
+
 /// A file with no old side at all, which is an agent writing a new file — the ordinary case, and one
 /// no baseline has ever held.
 ///

@@ -61,6 +61,18 @@ public enum DiffGutter {
     /// and a `−` that shifts as the code size changes stops being a column.
     public static let markerWidth: CGFloat = 12
 
+    /// Between the marker and the first character of code.
+    ///
+    /// **The glyph is centred in a 12pt column, so a line with no leading whitespace starts about
+    /// 2.7pt after it** — near enough to touching that `−public struct` read as one token, which is
+    /// the opposite of what a marker at full saturation is for. Design §4 puts the code's origin at
+    /// 48pt over a 30pt figure column and a 12pt marker, and this is the six points that arithmetic
+    /// has always implied.
+    ///
+    /// Spacing rather than text, for the reason `trailingSpace` is: the gap wants to stay a gap when
+    /// the code size changes.
+    public static let markerTrailingSpace: CGFloat = 6
+
     /// Which side's number a row shows, in the one column that now carries both.
     ///
     /// **A deletion shows the old side and everything else shows the new**, which is what makes the
