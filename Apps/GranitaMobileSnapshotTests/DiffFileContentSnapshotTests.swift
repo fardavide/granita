@@ -27,7 +27,7 @@ struct DiffFileContentSnapshotTests {
     ) {
         // given - when - then
         assertScreenSnapshot(
-            DiffFileContent(diff: subject.diff, showsOldNumber: layout.isRegularWidth) { _, _, _ in }
+            DiffFileContent(diff: subject.diff, pointSize: layout.codePointSize) { _, _, _ in }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
             named: subject.name

@@ -4408,3 +4408,79 @@ which is the other half of why nothing noticed.
 `startingAt:` is a required parameter rather than a defaulted one for the same reason: it is what
 lets a baseline open the stack at the push it is photographing, and the root passes an empty path
 explicitly.
+
+## One gutter column with a marker beside it, which reverses §4's rejection of exactly that
+
+*(1 September 2026, 0.6.0)*
+
+The diff design review's first fault is a correctness bug: the gutter held the **new**-side number
+alone, so a deletion — which has no new-side number — drew an empty column. A reader who wanted to
+say "line 6 is wrong" had nothing to point at on the one row kind that says something was removed.
+
+The fix the review draws is one column carrying whichever side the row is on, and `design.md` §4 had
+**rejected that by name**: "it looks like one sequence and is two, so scanning it produces wrong line
+numbers with total confidence." That rejection assumed nothing else on the row said which side you
+were reading. The review's rule 2 adds the thing that does — a 12pt `+`/`−` column at full
+saturation — so the objection does not survive its own premise. **The two rules only work together**,
+and adopting either alone would be worse than today: a marker without the number leaves the bug, and
+the number without the marker is the ambiguity §4 named.
+
+Davide adopted both. What it costs is about three characters of code per row, and the review's answer
+to that is the one worth keeping: the row those characters came from was *already* cut off at the
+bezel without saying so, so they were never being read.
+
+**It departs from `SPEC.md` §10** — "gutter with old and new line numbers" — and the departure is
+recorded here rather than assumed, because it is the second half of one that was never written down:
+the phone has shipped a single column since 0.2.0 and no entry says so. Both halves are recorded now.
+Rejected: two columns on the phone, which §4 measured at 41 characters and called a keyhole; and the
+marker alone, which leaves the bug it was meant to fix.
+
+The iPad loses its second column with the phone. §4 argued that both columns are "the whole reason
+the phone can afford to drop one"; with the interleaved column that argument has nothing left to
+support, and the review's own iPad frame draws one 44pt column.
+
+## Every status gets a bar, modified included, and that reverses "modified gets no colour"
+
+*(1 September 2026, 0.6.0)*
+
+The review replaces the file header's status **letter** with a 3pt colour bar, and draws three
+colours: amber modified, green added, red deleted. `design.md` §3 has seven statuses and four
+treatments, and gives modified **no colour at all** — "modified is four rows in five; colouring the
+default case spends the palette on the thing that carries no information."
+
+Both cannot hold. A letter can be uncoloured and still be a letter; **a bar with no colour is not a
+bar**, it is a hole, and four rows in five drawing a hole is a column of gaps rather than a column.
+Davide settled it: every state is reflected, and modified keeps its bar. So the palette grows a fifth
+treatment rather than losing two — added and untracked green, deleted red, renamed indigo, conflicted
+orange, and modified and type-changed the review's own amber.
+
+**The amber is a literal `#C0821F`, the only one in the file**, and it is deliberately not `.orange`.
+Conflicted is orange, and two statuses a reader cannot tell apart is worse than the no-colour it
+replaces. The system palette had no fifth hue left that reads at 3pt against both cards.
+
+The **letter** survives unchanged in §3's selector, where a column of letters is scannable and 3pt of
+colour repeated down a 32pt row is not — but both now resolve their colour through one function, so a
+rename cannot be green in one screen and indigo in the other.
+
+## The hunk band is 26pt and its control is 44 wide rather than 44 tall
+
+*(1 September 2026, 0.6.0)*
+
+The review's fourth fault is inverted weight: a 43pt full-bleed grey slab standing for two lines of
+code drawn at 13.7pt. Rule 3 takes the band to 26pt and the code rows to 18.
+
+The band was 43pt **because the expand control set its height** — "the band grows to 44pt only where
+it carries a control", and the alternative that entry rejected was a hit area larger than the row it
+is drawn in, which overlaps the code above and below and turns a missed tap into an expanded hunk.
+The review draws a 26pt band with an expand chevron in it and does not say what happened to the 44pt,
+which is the one place it argues against itself: its own eighth fault is a 21pt tap target being
+"well under the 44pt minimum".
+
+Resolved by buying the area horizontally: **44pt wide in a 26pt band**, which is the trade the file
+header's viewed toggle already made for the same reason. It is a departure from the 44pt square and
+from the review's drawing both, and it is here so that a later measurement can contradict it. The
+same change makes every band one height whether or not it carries a control, so a file no longer
+changes rhythm down its length.
+
+Rejected: a 44pt hit area overflowing a 26pt band, for the reason the original entry gives; and
+keeping 43pt, which leaves the fault the rule exists to fix.

@@ -85,6 +85,19 @@ nonisolated let theAwkwardLines: [DiffLine] = [
     )
 ]
 
+/// A hundred lines cut from the end of a file, so the old side runs into four figures while the new
+/// side stops at two.
+///
+/// **The one column has to be sized from the larger of the two**, and this is the case that says so:
+/// measured on the new maximum, `1041` would be drawn into a column cut for `12`.
+nonisolated let anOldSideThatOutrunsTheNew: [DiffLine] = [
+    context(old: 1_038, new: 11, "    // Everything below here moved to LegacyExport.swift."),
+    deletion(old: 1_039, "    func exportAsPropertyList() throws -> Data {"),
+    deletion(old: 1_040, "        try PropertyListEncoder().encode(self)"),
+    deletion(old: 1_041, "    }"),
+    context(old: 1_042, new: 12, "}")
+]
+
 // MARK: - Builders
 
 private func context(old: Int, new: Int, _ text: String) -> DiffLine {
@@ -522,7 +535,10 @@ nonisolated let aShutDirectory = "Apps/GranitaMobileSnapshotTests/__Snapshots__/
 
 /// One changed file, as the change set reports it. A factory rather than a memberwise call, which is
 /// where this repository allows defaults to live.
-private func aChangedFile(
+///
+/// Not `private`: the file header's own suite photographs each of the seven statuses through it, and
+/// a second builder beside this one is a second set of defaults to keep in step.
+func aChangedFile(
     path: String,
     status: FileStatus,
     insertions: Int,

@@ -1,5 +1,17 @@
 import Foundation
 
+import CoreDiffDomain
+
+/// Whether a row was added, removed, or neither — the `+`/`−` column's whole vocabulary.
+///
+/// `unchanged` rather than `none`, which would shadow `Optional.none` at every call site that also
+/// handles an optional line.
+public enum DiffMarker: Hashable, Sendable {
+    case added
+    case removed
+    case unchanged
+}
+
 /// How wide a line-number column is, and design §4's argument for why the phone gets one of them.
 ///
 /// **The width is per file, from that file's own highest line number.** One width for the whole
@@ -38,5 +50,53 @@ public enum DiffGutter {
     public static func columnWidth(forHighestLineNumber highest: Int, atPointSize pointSize: CGFloat) -> CGFloat {
         let figures = max(1, String(max(0, highest)).count)
         return leadingInset + CGFloat(figures) * advanceWidth(atPointSize: pointSize) + trailingSpace
+    }
+
+    /// The `+`/`−` column, between the figures and the code.
+    ///
+    /// A glyph rather than a run of colour, and at full saturation: the review's rule 2 moves the
+    /// strongest colour in a row out from *behind* the code and into the marker, which is what frees
+    /// the row tint to be almost nothing. Fixed rather than derived from the point size — one
+    /// character of SF Mono at 11pt is 6.6pt and the column is 12, because the glyph is centred in it
+    /// and a `−` that shifts as the code size changes stops being a column.
+    public static let markerWidth: CGFloat = 12
+
+    /// Which side's number a row shows, in the one column that now carries both.
+    ///
+    /// **A deletion shows the old side and everything else shows the new**, which is what makes the
+    /// column never empty. Before this, the gutter held the new-side number alone and a deletion drew
+    /// a blank — the review's first fault, and the only one it called a correctness bug.
+    ///
+    /// Nothing falls back to the other side when its own is absent. A deletion with no old number is
+    /// not something the parser produces, and a row quietly showing the number of the side it is not
+    /// on is the misreading the whole column exists to prevent.
+    public static func number(of line: DiffLine) -> Int? {
+        switch line.kind {
+        case .deletion: line.oldNumber
+        case .addition, .context: line.newNumber
+        // **A conflict marker is a real line and it is numbered.** The parser resolves the kind from
+        // the *text* but takes the numbers from the diff prefix the line arrived with, so a
+        // `<<<<<<<` that came through as context carries both numbers and one that came through as
+        // an addition carries the new one. Whichever it has is the one to show; blanking these would
+        // put the empty gutter back on the rows a reader most needs to point at.
+        case .conflictMarker: line.newNumber ?? line.oldNumber
+        // Not a line of the file at all. `\ No newline at end of file` is git's own annotation, and
+        // numbering it would claim the file has a line it does not.
+        case .noNewlineMarker: nil
+        }
+    }
+
+    /// Which glyph stands beside the figure.
+    ///
+    /// The exhaustive answer matters more here than the two obvious cases: `SPEC.md` §5.3 makes a
+    /// conflict marker an ordinary diff line with its own kind, and it is neither side of the
+    /// comparison. The no-`default:` rule is what forces that to be decided rather than defaulted
+    /// into a `+`.
+    public static func marker(of line: DiffLine) -> DiffMarker {
+        switch line.kind {
+        case .addition: .added
+        case .deletion: .removed
+        case .context, .noNewlineMarker, .conflictMarker: .unchanged
+        }
     }
 }

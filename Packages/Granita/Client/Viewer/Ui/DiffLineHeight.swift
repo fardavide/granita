@@ -15,14 +15,26 @@ import UIKit
 /// leaves Dynamic Type governing the chrome around it.
 enum DiffLineHeight {
 
+    /// What the review's rule 3 buys, and the only number in this file that is a judgement rather
+    /// than a measurement.
+    ///
+    /// The font's own line height at 11pt is 14, and the screen Davide photographed drew rows at
+    /// 13.7 — "the chrome is loose and the content is cramped, which is backwards". Four points of
+    /// leading takes a row to 18 and costs about five rows of the viewport, which the same rule wins
+    /// back by taking the scope strip from 43pt to 26 and the file header from 50 to 46.
+    ///
+    /// Added to the font's metric rather than replacing it, so the code size stays a setting: at any
+    /// point size a row is still as tall as the glyphs need plus this.
+    static let leading: CGFloat = 4
+
     static func at(pointSize: CGFloat) -> CGFloat {
         #if canImport(UIKit)
-        return UIFont.monospacedSystemFont(ofSize: pointSize, weight: .regular).lineHeight.rounded(.up)
+        return UIFont.monospacedSystemFont(ofSize: pointSize, weight: .regular).lineHeight.rounded(.up) + leading
         #else
         // The package builds for the host so `make test` can run without a simulator, and nothing
         // on that platform draws a diff. Six fifths is the ratio the iOS metric comes out at, near
         // enough for a build that never renders.
-        return (pointSize * 1.2).rounded(.up)
+        return (pointSize * 1.2).rounded(.up) + leading
         #endif
     }
 }

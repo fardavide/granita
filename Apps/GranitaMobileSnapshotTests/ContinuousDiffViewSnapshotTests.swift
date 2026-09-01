@@ -31,7 +31,7 @@ struct ContinuousDiffViewSnapshotTests {
         assertScreenSnapshot(
             ContinuousDiffView(
                 state: subject.state,
-                showsOldNumber: layout.isRegularWidth,
+                pointSize: layout.codePointSize,
                 jumpTarget: subject.jumpTarget,
                 onReading: { _ in },
                 onJumped: {},

@@ -71,6 +71,29 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.6.0 — 2026-09-01
+- **A removed line has a number again.** It never had one: the gutter held the line number of the
+  file as it is now, and a removed line does not exist there — so the one row that says something was
+  taken away was the one row you could not point at. Every row carries a number now.
+- **`+` and `−` beside every changed line.** Colour was the only thing saying which side a line was
+  on, which fails for red-green colour blindness, fails in sunlight, and fails the moment you paste a
+  screenshot into a chat that dims images.
+- **A long line fades at the edge instead of stopping dead.** `extension Lce: Sendable where C:
+  Sendable` is 57 characters and the row fitted 56, so it looked finished and was not. There is a
+  scroll indicator under each hunk now, so you can see there is more to the right before you go
+  looking for it.
+- **The code got room and the chrome gave it up.** Rows go from 13.7pt to 18, the grey band between
+  hunks from 43pt to 26, and files are separated rather than running into one another.
+- **A file says its name, then where it lives.** `…out/Presentation/Models/AboutState.swift` threw
+  away the module, which is the only thing telling eleven files apart when three of them are in a
+  folder called `Models`.
+- **Marking a file read is a real target.** It was a 21pt ring against the edge of the screen; it is
+  44pt now, it fills green, and the file it belongs to goes quiet — so on a long review you can see
+  where you got to.
+- **The iPad's file list folds away.** Press the sidebar button to give the whole window to the code,
+  and the *Files* button comes back while it is folded. The iPad also draws code a point larger, which
+  is about 110 characters without wrapping.
+
 ### 0.5.3 — 2026-08-31
 - **Opening and shutting a file now really does move.** 0.5.2 said it did, and only the lines around
   a hunk actually travelled: tapping a collapsed bar still snapped every file below it into its new
