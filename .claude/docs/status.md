@@ -2,6 +2,52 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.6.1 — five of 0.6.0's answers were right in the prose and wrong on the glass**, which is
+the release the same review's photographs would have caught if the review had been run against them.
+Davide read 0.6.0 on the device and sent five: files with no gap between them, a grey band in the
+wrong colours, an open header and a shut bar drawing two different columns, empty grey bands under
+small files, and a file list whose rows gave nothing back when pressed.
+
+Four of the five were *built and invisible* rather than missing. §4's 10pt separation was there and
+was the same white as the rows either side of it — the files now sit as cards on a grouped page. The
+hunk band was drawn with `.background(.quaternary)`, which resolves the quaternary **label** rather
+than the quaternary **fill** its own prose named, so a strip standing for skipped lines was the
+loudest thing on the screen; it is `quaternarySystemFill` with a hairline at each edge now. The
+header and the bar disagreed by a few points because `chevron.down` and `chevron.right` do not
+measure the same and the two rows spaced themselves differently — one stated slot and one stated
+spacing, both on the header, read by the bar. And §3's drawer now drops back to the medium detent
+when a file is chosen, because background interaction is only enabled *up through* medium: a tap at
+full height was jumping a scroll nobody could see.
+
+**Then the review came back with the expander redrawn, and it replaced the band rather than restyling
+it.** A bar says a control is here; a tear says something is missing here, and the second is the fact
+a reader needs while reading. The row is torn on the side the content is missing from, which produces
+all three forms without a rule per form — torn above at the top of a file, torn below after the last
+change, torn both ways between two hunks — and a file the diff drew whole gets none at all. Three
+settled calls fell to it: the glyph moved into the gutter §4 had forbidden it, the 26pt band became a
+44pt row, and a row now stands for one **gap** rather than for one hunk. That last one is the
+structural half: `DiffFileRow.rows(of:)` decides the whole thing in `Domain`, with a test per
+placement, and `DiffFileContent` draws what it is handed. All in [`decisions.md`](decisions.md).
+
+The fifth was half a fix and now has a boundary drawn round it. A band with no heading and no gap
+either side is no longer drawn — it names nothing and opens nothing. **Davide's hunch that an arrow
+was missing is also right**, and that half is the Mac's: `WorktreeService` derives a file's new-side
+length from its *last hunk's* end rather than from the file, so the last hunk of every file reports
+no gap below it and never offers the downward chevron. He ruled against spending the two extra `git`
+invocations per file it would take — *"it is fine in case there's nothing to expand below, but we
+should not show an empty expander"* — so the requirement is on the drawing and it is met. In
+[`decisions.md`](decisions.md), with what it costs. **The redrawn expander raises the price of that
+call**: its *remainder of file* form is exactly the state the Mac cannot report, so that form is
+built, has a baseline in all four layouts, and cannot currently be reached by a real diff.
+
+**A sixth thing came out of the coverage gate rather than out of the screen.** The rule saying which
+detent means which drawer height was written as a `Binding(get:set:)` inside the sheet — two closures
+no baseline renders and no host test reaches — and the Snapshot row fell for it. It is on
+`ClientViewerModel` now as `drawerDetent`, the screen hands the sheet the framework's own projection,
+and a unit test drives both directions. The row's usual answer for a falling number is *do not
+restructure the screen*; that answer is for an action closure, and this was a decision hiding in a
+binding.
+
 **Version 0.6.0 — the diff view was reviewed against a photograph of itself, and it had a correctness
 bug in it.** The gutter carried the new-side line number alone, so a *removed* line — which has no
 new-side number — drew an empty column: the one row that says something was taken away was the one

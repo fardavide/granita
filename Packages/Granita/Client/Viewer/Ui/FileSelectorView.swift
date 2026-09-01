@@ -22,6 +22,19 @@ public struct FileSelectorView: View {
     /// beside it, which is where `WorktreeSidebarView` keeps its own for the same reason.
     public static let widthBesideTheDiff: CGFloat = 320
 
+    /// §3's rows are 32pt and 34pt, which the list's own insets are roughly twice. A selector is
+    /// worth having because it shows a whole change set at once, and default insets cost a third of
+    /// the rows on screen.
+    ///
+    /// **Applied inside the row rather than as `listRowInsets`, so the press highlight reaches the
+    /// bezel.** A row's own tap feedback is the thing that says the tap was received, and one that
+    /// stops 12pt short at each end reads as a chip floating in a list rather than as the row being
+    /// pressed. The insets are stated once here and spent in two places: zero given to the list, and
+    /// this given to each row's label.
+    /// `nonisolated` because the list's separator guide is a `Sendable` closure and this is the one
+    /// number it needs.
+    private nonisolated static let rowInsets = EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)
+
     private let listing: FileSelectorListing
     private let onChoose: (FileID) -> Void
     private let onToggleDirectory: (String) -> Void
@@ -50,10 +63,14 @@ public struct FileSelectorView: View {
                         case .file(let file): self.file(file)
                         }
                     }
-                    // §3's rows are 32pt and 34pt, which the list's own insets are roughly twice.
-                    // A selector is worth having because it shows a whole change set at once, and
-                    // default insets cost a third of the rows on screen.
-                    .listRowInsets(EdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12))
+                    // Nothing, because the row's own label carries them — see `rowInsets`. The
+                    // separator takes its leading edge from the row's content, which is now the list's
+                    // own edge, so it is put back where the insets used to put it: past the margin and
+                    // past this row's indent, which is what makes a run of separators read the tree.
+                    .listRowInsets(EdgeInsets())
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in
+                        Self.rowInsets.leading + Self.indent(atDepth: row.depth)
+                    }
                 }
                 if let footer = listing.footer {
                     self.footer(footer)
@@ -133,10 +150,11 @@ public struct FileSelectorView: View {
                 }
                 viewedMark(isViewed: directory.isEntirelyViewed)
             }
-            .padding(.leading, indent(atDepth: directory.depth))
+            .padding(.leading, Self.indent(atDepth: directory.depth))
+            .padding(Self.rowInsets)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressedRow)
         .accessibilityLabel(
             directory.isExpanded
                 ? "\(directory.name), expanded"
@@ -147,6 +165,12 @@ public struct FileSelectorView: View {
     /// **The row's whole job is to jump**, which is why the viewed mark beside it is a report and
     /// never a control: a 32pt row inside a sheet cannot hold two tap targets without generating
     /// mis-taps. The toggle lives in the diff's file header, where the reader is when they finish.
+    ///
+    /// **And a row whose job is to jump has to say it was pressed.** What the tap does is scroll a
+    /// diff the reader may not be able to see — behind the drawer at its full height, or off the top
+    /// of a long change set — so without a press highlight the only feedback for the one control on
+    /// this screen is a change somewhere else. `.plain` draws none inside a `List`, which is what
+    /// this style replaces.
     private func file(_ file: FileSelectorFile) -> some View {
         Button { onChoose(file.id) } label: {
             // Design §3's drop order, as the two things that can go: the stats first, because the
@@ -157,9 +181,10 @@ public struct FileSelectorView: View {
                 row(file, showingStats: false, showingMark: true)
                 row(file, showingStats: false, showingMark: false)
             }
+            .padding(Self.rowInsets)
             .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressedRow)
     }
 
     private func row(_ file: FileSelectorFile, showingStats: Bool, showingMark: Bool) -> some View {
@@ -180,7 +205,7 @@ public struct FileSelectorView: View {
                 viewedMark(isViewed: file.isViewed)
             }
         }
-        .padding(.leading, indent(atDepth: file.depth))
+        .padding(.leading, Self.indent(atDepth: file.depth))
     }
 
     /// One text view holding one or two runs, which is design §3's "same row, different label".
@@ -246,7 +271,9 @@ public struct FileSelectorView: View {
         .listRowSeparator(.hidden)
     }
 
-    private func indent(atDepth depth: Int) -> CGFloat {
+    /// `nonisolated` and `static` because the separator's own guide is a `Sendable` closure, and the
+    /// separator has to start where the row's content does or a run of them stops reading as a tree.
+    private nonisolated static func indent(atDepth depth: Int) -> CGFloat {
         CGFloat(FileSelectorRow.indentLevel(atDepth: depth)) * CGFloat(FileSelectorRow.indentPerLevel)
     }
 }

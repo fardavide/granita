@@ -4484,3 +4484,147 @@ changes rhythm down its length.
 
 Rejected: a 44pt hit area overflowing a 26pt band, for the reason the original entry gives; and
 keeping 43pt, which leaves the fault the rule exists to fix.
+
+## The files sit on a coloured page, because a gap the same colour as the rows is not a gap
+
+*(1 September 2026, 0.6.1)*
+
+0.6.0 built design §4's 10pt separation between files and it could not be seen. The gap was a clear
+strip on a screen whose background is the same white as every row in it, so what shipped was ten
+points of white between two white files — and Davide's first note on the release was "there's no
+spacer between files".
+
+The screen now draws what the review draws: a **grouped background** behind the whole scroll, an
+**opaque card** behind each file's header, bar and lines, and the gap left clear so the page shows
+through. It is one decision for every boundary — bar to bar, bar to header, header to code, and under
+the last file — and it stays right when a file shuts, opens, or is still arriving, which is the
+property a per-boundary rule does not have.
+
+Expensive to reverse because it settles what every surface in the diff composites onto: the pinned
+header and the collapsed bar are now opaque by contract rather than by inheritance, and the hunk
+band's own fill is read against the card rather than against the window.
+
+**The pair is the grouped one, and the first attempt was the plain one.** `systemBackground` over
+`systemGroupedBackground` separates in light — white on grey — and in dark they are **both**
+`#000000`, so the first rendering of this fixed one appearance and reproduced the original fault on
+the other, which the dark baseline caught. `secondarySystemGroupedBackground` over
+`systemGroupedBackground` holds in both: white on grey, then `#1C1C1E` on black.
+
+Rejected: a `Divider` at each gap — it draws a line where the review draws a space, needs a rule for
+which side of a boundary owns it, and says nothing at all under the last file. Rejected: colouring
+the gap itself and leaving the rows transparent, which is the same pixels and puts the answer in ten
+points of a lazy stack rather than in the screen.
+
+## A hunk band with nothing to say and nothing to press is removed, and one arrow is missing under it
+
+*(1 September 2026, 0.6.1)*
+
+`DiffHunkHeader` drew its 26pt strip unconditionally. For a short file — one hunk, from the first
+line to the last, and no section heading, which is what git gives whenever nothing encloses the
+change — that is a band with no name to carry and no gap to open: 26pt of grey chrome under the file
+header of most small diffs. Davide: *"some grey bars are empty… they should either have arrow/s or be
+hidden (I think they're missing arrow)"*.
+
+The band is now drawn only where it has a heading **or** a gap on one side, which is design §4's
+"a chevron over an empty gap is the smallest possible lie" applied to the thing the chevron sits in.
+
+**His hunch is also right, and that half is not fixed here.** `WorktreeService.fileDiff` derives
+`FileDiff.newLineCount` from the last hunk's own end — `newStart + newCount - 1` — while
+`DiffModels.swift` documents the field as "total lines on each side, which is what makes *can this
+hunk expand downwards* answerable without asking the server". They are the same number only when the
+last hunk runs to the end of the file, so **the last hunk of every file reports no gap below it** and
+never offers the downward chevron. `oldLineCount` has the same shape.
+
+The honest fix is the Mac's and it is not free: git's diff output does not carry a file's length, so
+the service would have to read the working copy for the new side and the compared revision for the
+old — one or two extra `git` invocations per file, on a route that already runs one per file and is
+called five files at a time.
+
+**Davide settled it on 1 September 2026 and the answer is not to spend that**: *"it is fine in case
+there's nothing to expand below, but we should not show an empty expander."* The requirement is on
+what the screen draws, not on what the Mac knows. A chevron over an empty gap was already absent, a
+band with nothing to say is absent now, and a missing downward chevron on a file's last hunk is a
+smaller fault than either — it shows nothing rather than lying about something.
+
+What it costs, stated so a later measurement can reopen it: a long file whose last hunk git left
+unheaded loses its band rather than gaining the chevron it should have, and the reader reaches the
+lines below that hunk by opening the file on the Mac.
+
+## The hunk band becomes a tear, and three of §4's own calls go with it
+
+*(1 September 2026, 0.6.1)*
+
+The design review came back a second time with the expander redrawn, and it replaces the band rather
+than restyling it. **A bar says a control is here; a tear says something is missing here** — and the
+second is the fact a reader needs while reading, because a broken edge registers before any label
+does. The row is torn on the side the content is missing from, and that one rule produces the three
+forms: torn above at the top of a file, torn below after the last change, torn both ways between two
+hunks.
+
+Three settled calls are reversed by it, and each was argued for here:
+
+- **"Expansion lives on the trailing edge, not the leading edge: that is the gutter's column, and a
+  glyph there reads as a line number."** The glyph moves into the gutter. The objection was right
+  about a *chevron* and is the reason the new mark is not one: an arrow over three short rules **is**
+  line numbers, near enough — they stand for the rows not being drawn, which is what the column is
+  empty for.
+- **"The band is 26pt and its control buys its hit area horizontally, 44pt wide rather than 44
+  tall."** The row is 44pt tall, because in two of its three forms the row *is* the control and there
+  is nothing else in it to press. The screen does not pay for it: the band was drawn above every
+  hunk, and a tear is drawn only across a gap — most files now have fewer of these rows than they had
+  bands, and a file the diff drew whole has none at all.
+- **"A band with no heading and no gap either side is not drawn."** Kept, and generalised past the
+  point of being a rule: a row *is* a gap now, so a row with nothing behind it cannot be constructed.
+  §4 calls this the fourth state and says there is none.
+
+**The structural change is that a row stands for one gap rather than for one hunk**, and it is what
+makes the three forms decidable at all. A band drawn per hunk carried both an up and a down control
+standing for two *different* stretches of file — the one before the hunk and the one after it — so
+pressing either meant working out which. `DiffFileRow.rows(of:)` interleaves gaps and hunks in `Domain`
+instead, which puts the whole rule in a pure function with a test per placement rather than in a view.
+
+Rejected: keeping the grey band and tearing only its edges, which is the bar the review is arguing
+against wearing a serrated top. Rejected: a system symbol for the glyph — nothing in SF Symbols means
+*these lines are not being shown*, and the closest are arrows that read as navigation. The tear and
+the glyph are the only two drawings in this app, and both are recorded in §4 with the measurement
+they were drawn at.
+
+## §3's drawer comes down to medium when a file is chosen
+
+*(1 September 2026, 0.6.1)*
+
+`presentationBackgroundInteraction(.enabled(upThrough: .medium))` is what makes §3's sheet a drawer
+rather than a modal, and *up through medium* is the modifier's own boundary. At the large detent the
+sheet covers the phone: the diff is neither visible nor scrollable behind it, so a tap on a row jumps
+a scroll nobody can see. The row did something and the reader has no way to know, which is the one
+failure this repository treats as unshippable.
+
+Choosing a file now writes the detent back to medium. **Reduced rather than dismissed** — Davide's own
+preference, and the weaker intervention: shutting the drawer would cost the reader the list they are
+working down, and §3 keeps the list up precisely so it need not be reopened between files.
+
+The height lives on `ClientViewerModel` rather than in the screen's `@State`, which is the rule this
+repository wrote down for `isShowingSelector` and for the Mac's Devices tab: a control whose only
+effect is a `@State` two layers up is a control nothing can be asked about. `FileSelectorDrawer` is a
+domain enum with two cases, and the model carries a `drawerDetent` beside it that translates one to
+the other — so the screen hands the sheet `$model.drawerDetent` and holds no rule of its own.
+
+**The translation is on the model because the alternative is untestable, and the coverage gate is
+what said so.** Written at the call site it is a `Binding(get:set:)` — two closures inside a `.sheet`
+builder that no rendered baseline invokes and no host test reaches, which is *which height means
+what* living in the one place nothing here can ask about it. That is five uncovered regions and a
+failing Snapshot row, and the row was right: the rule really was unreachable. Moved onto the model it
+is two accessors a unit test drives in four lines, and the screen is left with the framework's own
+projection and no code at all.
+
+The `swift-testing` skill's standing answer to a falling Snapshot row is *do not restructure the
+screen, read the export and say so* — and that still holds for an action closure, which is a control
+being pressed and genuinely undrivable. This was not one. It was a decision hiding in a binding, and
+taking decisions out of view code is a rule this repository already had.
+
+Rejected: dismissing the sheet, which is the modal §3 rejected arriving by another door. Rejected:
+offering only the medium detent, which takes away a reader's ability to read a long file list.
+Rejected: exempting the screen from the Snapshot row — `UNREACHABLE_FILES`'s bar is "unrunnable by
+construction" and a file-level exemption would have removed the fifty regions a baseline *does* cover
+in that screen along with the five it does not, which lowers the row rather than correcting it. That
+is the arithmetic the existing entries warn about.

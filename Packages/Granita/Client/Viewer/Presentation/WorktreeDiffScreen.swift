@@ -66,7 +66,19 @@ public struct WorktreeDiffScreen: View {
                 // which is what makes tapping a file *while the list is open* a different tool from
                 // a modal that has to be dismissed between every file.
                 selector
-                    .presentationDetents([.medium, .large])
+                    // **The detent is a value the model holds rather than one the sheet keeps to
+                    // itself**, because choosing a file has to be able to move it: at `.large` the
+                    // diff behind the sheet is not on screen and background interaction is off, so
+                    // the jump the tap asked for lands where nobody can see it. `choose` drops this
+                    // back to `.medium`, and the reader's own drag writes it the other way.
+                    //
+                    // **Projected rather than hand-built**, which is the difference between a rule a
+                    // test can drive and one it cannot: a `Binding(get:set:)` here would put "which
+                    // height means what" inside two closures that no baseline renders and no host
+                    // test reaches. `drawerDetent` is on the model, and this is the framework's own
+                    // projection of it — which also avoids the `Binding` setter shape the
+                    // presentation flag above documents a compiler crash for.
+                    .presentationDetents([.medium, .large], selection: $model.drawerDetent)
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             }
             .alert(

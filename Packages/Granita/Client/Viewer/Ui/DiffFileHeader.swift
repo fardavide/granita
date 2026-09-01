@@ -56,8 +56,28 @@ public struct DiffFileHeader: View {
     /// the stats do not add a third.
     public static let height: CGFloat = 46
 
+    /// The slot the chevron sits in, and it is a slot rather than a glyph on purpose.
+    ///
+    /// **`chevron.down` and `chevron.right` do not measure the same**, so a header and the bar that
+    /// replaces it when the file shuts put their status bars, their filenames and their paths in two
+    /// different columns — about 4pt apart, which is enough to see down a change set and impossible
+    /// to attribute to anything. Stating the width makes the two rows one column, and it is also
+    /// what the bar's chevron-less rows reserve so their names line up with everything else.
+    ///
+    /// Wide enough for the larger of the two at `.caption2`, which is the size both draw at.
+    public static let chevronWidth: CGFloat = 12
+
+    /// **One spacing for the whole row, which is the other half of the same alignment.** The bar
+    /// spaces its row at 8 throughout; a header that spaced its own at 0 and made up the difference
+    /// inside a nested stack put its stats and its toggle 8pt off the bar's.
+    static let rowSpacing: CGFloat = 8
+
+    /// After the 44pt slot, which is the four points design §4's frame draws there. Small, and it is
+    /// the difference between a row that ends and a row that runs out of the screen.
+    static let rowTrailingInset: CGFloat = 4
+
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Self.rowSpacing) {
             // **The dim covers what the row says and not what it does.** Rule 5 drops a reviewed
             // file to 45%, and a toggle dropped with it is the control for undoing that state made
             // hardest to see and hardest to hit exactly when the reader wants it.
@@ -65,24 +85,25 @@ public struct DiffFileHeader: View {
                 shutControl
                 Spacer(minLength: 8)
                 // Spaced rather than butted: the badge is a word and the stats are numbers, and with
-                // no gap between them the baseline read `CONFLICTED+4 −2` as one token.
-                HStack(spacing: 8) {
-                    if file.status == .conflicted {
-                        badge
-                    }
-                    stats
+                // no gap between them the baseline read `CONFLICTED+4 −2` as one token — which the
+                // row's own spacing now gives them.
+                if file.status == .conflicted {
+                    badge
                 }
+                stats
             }
             .opacity(file.isViewed ? Self.viewedOpacity : 1)
             viewedToggle
         }
         .font(.footnote)
         .padding(.leading, 12)
+        .padding(.trailing, Self.rowTrailingInset)
         .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height, alignment: .leading)
         // Opaque rather than a material: this floats over code while the code scrolls under it, and
         // anything translucent turns the line the reader is orienting by into a blur of the line
-        // they have already read.
-        .background(.background)
+        // they have already read. The card's own colour rather than the window's, so a pinned header
+        // is the same surface as the file under it — see `Color.diffCard`.
+        .background(Color.diffCard)
         .overlay(alignment: .bottom) { Divider() }
     }
 
@@ -99,10 +120,11 @@ public struct DiffFileHeader: View {
     /// is the filename, and the filename is what identifies it.
     private var shutControl: some View {
         Button { onSetOpen(false, file.id) } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: Self.rowSpacing) {
                 Image(systemName: "chevron.down")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .frame(width: Self.chevronWidth)
                 FileStatusBar(status: file.status)
                 VStack(alignment: .leading, spacing: 1) {
                     // **Never truncated.** It is the shortest of the two strings and the one that
@@ -142,9 +164,15 @@ public struct DiffFileHeader: View {
             .foregroundStyle(.orange)
     }
 
+    /// Kept at its own width, with the path below the name giving way instead — the bar this header
+    /// swaps with carries the argument, and the two have to agree or the counts step sideways when a
+    /// file shuts.
     private var stats: some View {
         changeStatsText(file.stats)
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
     }
 
     /// **Tapped, never inferred**, which is design §4's call and the one it argues hardest for: this
