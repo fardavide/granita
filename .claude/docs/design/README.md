@@ -43,6 +43,17 @@ a mark; the two rows with nothing behind them are drawn with **no chevron** rath
 the frame shows, because a faded chevron is still a chevron; and *Expand all* is absent with the menu
 it belongs to, which arrives whole or not at all.
 
+**The diff design review arrived and left in the same release**, which is the shortest this cycle has
+ever been: it was a review of a screen already built, so there was nothing to wait for. Davide sent a
+photograph of the running app on 1 September 2026 and it came back with eight faults, six rules and
+five frames. What it left recorded rather than built is in [`../design.md`](../design.md) §4 — the
+inline title it wanted to make large, the change-set totals its own note calls invented, and the
+proportion bar it ruled out of its own scope. What it **reversed** is in
+[`../decisions.md`](../decisions.md): §4's rejection of a single interleaved gutter column, and §3's
+rule that modified gets no colour. Two calls in it were overruled here — the marker column keeps its
+44pt hit area by taking it horizontally, and the iPad keeps a 12pt code size rather than the second
+gutter column §4 had argued for.
+
 **The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
 surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in
 0.0.14, Devices in 0.0.15, and the status item and the window in 0.0.16 — so the last frames were

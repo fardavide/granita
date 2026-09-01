@@ -29,9 +29,11 @@ struct DiffFileLinesSnapshotTests {
         assertScreenSnapshot(
             DiffFileLines(
                 lines: subject.lines,
-                showsOldNumber: subject.showsOldNumber,
-                highestOldNumber: subject.lines.compactMap(\.oldNumber).max() ?? 0,
-                highestNewNumber: subject.lines.compactMap(\.newNumber).max() ?? 0
+                highestNumber: max(
+                    subject.lines.compactMap(\.oldNumber).max() ?? 0,
+                    subject.lines.compactMap(\.newNumber).max() ?? 0
+                ),
+                pointSize: subject.pointSize
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
@@ -48,34 +50,49 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
     let name: String
     let lines: [DiffLine]
 
-    /// Design §4 keeps the new number on the phone and both on iPad, so both are photographed — the
-    /// two devices are deliberately not showing the same gutter, and that is what lets the phone
-    /// afford 51 characters where two columns would leave 41.
-    let showsOldNumber: Bool
+    /// 11pt on the phone and 12pt beside the selector column, which is the review's iPad
+    /// measurement. The gutter, the marker and the row height all derive from it, so the two sizes
+    /// are two different grids rather than one grid scaled.
+    let pointSize: CGFloat
 
     var testDescription: String { name }
 
     static let all: [DiffLinesCase] = [
         // The ordinary case, and the one the segmented pair lives in: the deletion and the addition
-        // under it differ by one word, and what says so is the *text* rather than a second box.
-        DiffLinesCase(name: "a-changed-function", lines: aChangedFunction, showsOldNumber: false),
+        // under it differ by one word, and what says so is a background over the row's own tint.
+        //
+        // **It is also where the review's first fault is photographed fixed.** The deletion carries
+        // its old-side number now, where before it drew an empty gutter — so the two rows of the
+        // pair both have something a reader can point at.
+        DiffLinesCase(name: "a-changed-function", lines: aChangedFunction, pointSize: 11),
 
-        // The same lines with both columns, which is what an iPad's 554pt of code affords and the
-        // phone's 390 does not: 78pt of gutter against 39.
-        DiffLinesCase(name: "a-changed-function-both-columns", lines: aChangedFunction, showsOldNumber: true),
+        // The same lines at the iPad's size, where 846pt of pane holds about 110 characters.
+        DiffLinesCase(name: "a-changed-function-beside-the-selector", lines: aChangedFunction, pointSize: 12),
 
         // Wrap off means this line leaves the screen and the numbers do not follow it. The baseline
         // holds the resting position, which is the one where the defect showed: the code must run
         // past the trailing edge rather than truncate at it, and the gutter must still be at the
         // leading edge rather than pushed off it by the code's own width.
-        DiffLinesCase(name: "a-line-past-the-edge", lines: aLineThatRunsOffTheEdge, showsOldNumber: false),
+        //
+        // **And it is the only case that photographs the fade and the indicator.** The review's
+        // third fault is a line that ends at the bezel looking complete; what a baseline can hold is
+        // that the last characters are fading rather than cut, and that the 3pt bar under the hunk
+        // says there is more to the right.
+        DiffLinesCase(name: "a-line-past-the-edge", lines: aLineThatRunsOffTheEdge, pointSize: 11),
 
         // The one status worth a badge, and here the row half of it: a full-width warning tint and
-        // the marker text at semibold, so a reader scrolling finds them without reading them.
-        DiffLinesCase(name: "a-conflicted-hunk", lines: aConflictedHunk, showsOldNumber: false),
+        // the marker text at semibold, so a reader scrolling finds them without reading them. Its
+        // marker column is deliberately empty — a conflict marker is neither side of the comparison.
+        DiffLinesCase(name: "a-conflicted-hunk", lines: aConflictedHunk, pointSize: 11),
 
         // Three lines that each measure differently from how they look, which is the case the row
         // height exists for: a taller row would misalign every number below it.
-        DiffLinesCase(name: "the-awkward-lines", lines: theAwkwardLines, showsOldNumber: true)
+        DiffLinesCase(name: "the-awkward-lines", lines: theAwkwardLines, pointSize: 12),
+
+        // **The column is sized from the larger side, and this is the file that proves it.** A
+        // hundred lines deleted from the end leaves an old side running into four figures while the
+        // new side stops at two — sized on the new maximum, the old numbers would not fit the column
+        // they are drawn in.
+        DiffLinesCase(name: "an-old-side-that-outruns-the-new", lines: anOldSideThatOutrunsTheNew, pointSize: 11)
     ]
 }

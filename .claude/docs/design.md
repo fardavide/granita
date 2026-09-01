@@ -512,22 +512,103 @@ moves.
 > you can do to a reader even when nothing reflows. Rejected: a floating path chip — a sticky header
 > that has given up its collapse control and its stats.
 
-### One gutter column on the phone. Both on iPad.
+### One gutter column, never empty, with a marker beside it
+
+> **The interleaved column this section rejected is what ships, because rule 2 answers the objection**
+> *(1 September 2026)*. What follows replaces "keep the new number", and the reversal is in
+> [`decisions.md`](decisions.md). The old call left a **deletion with no number at all** — the diff
+> design review's only correctness bug — because a deletion has no new-side number and the column
+> held nothing else.
 
 SF Mono at 11pt advances 6.6pt per character. A four-digit number is 26.4pt; with 9pt of trailing
 space and 4pt of leading inset, one column is 39pt and two are 78pt. At 390pt with a 12pt trailing
 inset that is **51 characters of code with one column and 41 with two**. Neither reaches 80, which is
 the honest headline of the section — but 41 is not a diff viewer, it is a keyhole.
 
-**Keep the new number.** The reader is reading the current state of the file and will go looking for
-line *N* in the working copy; the old number is only useful for talking to someone about the previous
-state, which v1 cannot do — there are no comments and no export. On a deletion row the column is
-blank, and the row tint already says which side it is. Width is computed per file from that file's
-own maximum line number, so a 200-line file gets a 3-digit gutter and 8 more characters of code.
+**One column, carrying whichever side the row is on**: a deletion shows its old number, an addition
+and a context line show the new one, and a conflict marker shows whichever it arrived with — the
+parser resolves that kind from the *text* but numbers the line from the diff prefix, so those rows are
+numbered like the ordinary lines they came in as. Only `\ No newline at end of file` has none, and it
+is not a line of the file. Width is computed per file from the **larger** of the two sides' maxima, so
+a file with a hundred lines cut from its end still fits its four-figure old numbers.
 
-> Rejected: a single interleaved column showing whichever number exists — it looks like one sequence
-> and is two, so scanning it produces wrong line numbers with total confidence. Rejected: shrinking to
-> 10pt to fit two columns — 57 characters, and code you have to squint at.
+**Beside it, a 12pt `+`/`−` column at full saturation.** This is what makes one column honest, and
+the two calls stand or fall together: the marker says which side you are reading, so the figure no
+longer has to. It is also the only thing on the row that survives red-green colour blindness,
+sunlight, and a chat client that dims the screenshot — colour alone was the review's second fault.
+Both the figures and the marker sit **outside** the horizontal scroll with the tints; a marker that
+scrolled away would leave the row saying nothing on exactly the long lines the reader scrolled to
+read. Code therefore starts at 48pt rather than 19pt, which is about **54 characters** instead of 57.
+
+> Rejected: the marker alone, keeping today's column — it leaves the unnumbered deletion, which is
+> the bug. Rejected: two columns on the phone, which is `SPEC.md` §10 taken literally and the keyhole
+> measured above. Rejected: shrinking to 10pt to fit two columns — 57 characters, and code you have
+> to squint at.
+>
+> The **iPad loses its second column too.** This section used to argue that both columns there were
+> "the whole reason the phone can afford to drop one"; with an interleaved column that argument has
+> nothing left to support, and the review's own iPad frame draws one 44pt column. What the iPad
+> spends the room on instead is **12pt code** — about 110 characters in an 846pt pane, so nothing in
+> an ordinary change set is cut at all.
+
+### Rows loosen and the chrome tightens
+
+> **Added by the diff design review** *(1 September 2026)*. Its fourth fault: 43pt of grey slab
+> standing for two lines of code drawn at 13.7pt. "The chrome is loose and the content is cramped,
+> which is backwards."
+
+Code rows go to **18pt** — the font's own line height plus 4pt of leading, so the code size stays a
+setting rather than becoming a constant. The hunk band goes to **26pt** and its expand control buys
+its hit area horizontally, 44pt wide rather than 44 tall. The file header goes to **46pt** and carries
+two lines where it carried one. The screen holds about the same number of code rows and reads at half
+the effort.
+
+**Files are separated by 10pt of page**, which is the review's seventh fault: without it a collapsed
+bar floats in the same 8pt of white as the closing brace above it, and a header sitting directly under
+a code row makes that code read as belonging to the file below. The gap goes at the *foot* of a
+section, never the head, because the head of a section is the pinned header.
+
+### The file row is a name over a place
+
+> **Added by the diff design review** *(1 September 2026)*, replacing one line of head-truncated path.
+
+The filename gets its own line and is **never truncated**; the directory goes under it in mono, and
+**truncates in the middle** so both of its ends survive. That is a different answer from §3's
+head-truncation and it is derived the same way — from what the string is. A path's tail is the
+filename, so head-truncation keeps what identifies it; but once the filename is on its own line the
+second line is a *place*, and both of a place's ends carry information.
+`…out/Presentation/Models/AboutState.swift` deletes the module, and the module is what tells eleven
+files apart when three of them live in a folder called `Models`.
+
+The status **letter** is replaced here by a **3pt colour bar** — see `decisions.md` for why modified
+now carries one when §3 says it carries none. The letter stays in §3's selector.
+
+### Three of the review's calls are recorded here rather than built
+
+> *(1 September 2026)*, and two of them the review itself marked as not-yet-answerable.
+
+**The screen keeps its inline title.** The frames draw `main` as a large title over a subtitle
+reading `working tree · 11 files · +105 −12`. The title stays inline for the reason this section
+already gives: 34pt bold holds about sixteen characters and a worktree's name here is an agent's
+session summary, which is a sentence. The frames assumed a branch name.
+
+**The subtitle's totals are not built, and the review says why.** Its own note calls `+105 −12` a
+placeholder — "the seven files I can see sum to +102" — so there is nothing to render yet. A
+change-set total is a real thing the Mac could send; it is not on the wire today.
+
+**The `+n −m` counts keep no proportion**, which the review raises and rules out of its own scope:
+`+95` and `+1` look equally significant, a five-segment bar would fix it, and that is a new control.
+It stays a question for Davide rather than a call.
+
+### Reviewed is quiet, closed, and a 44pt target
+
+> **Added by the diff design review** *(1 September 2026)*. Its eighth fault: a 21pt ring hard against
+> the right bezel, identical on every row, on the one control a reader presses once per file.
+
+44pt square. Checked fills **green** — agreeing with the `+` in the gutter and the added-line tint —
+collapses the file, and drops the row's *information* to 45%. **The toggle itself does not dim**: it
+is the control for undoing the state it reports, and dimming it hides it exactly when it is wanted.
+An eleven-file pass therefore leaves a visible trail, and the unreviewed files are the loud ones.
 
 ### The word segment is a background, and the ratio is what is stated
 

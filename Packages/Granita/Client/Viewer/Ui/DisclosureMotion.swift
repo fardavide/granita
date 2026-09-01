@@ -25,7 +25,9 @@ import SwiftUI
 ///
 /// Computed rather than stored because this module is main-actor by default, and a curve is a fact
 /// about the app rather than about the actor reading it.
+/// Public because the iPad's selector column folds on it too, and that fold is laid out a layer up
+/// in `Presentation` — a fifth disclosure reusing the curve is the whole point of stating it once.
 extension Animation {
 
-    static var disclosure: Animation { .default }
+    public static var disclosure: Animation { .default }
 }

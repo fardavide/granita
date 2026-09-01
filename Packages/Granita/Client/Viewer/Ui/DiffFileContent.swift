@@ -17,18 +17,18 @@ import CoreDiffDomain
 public struct DiffFileContent: View {
 
     private let diff: FileDiff
-    private let showsOldNumber: Bool
+    private let pointSize: CGFloat
     private let onExpand: (ContextDirection, Int, FileID) -> Void
 
     /// The expansion reports which file it is in, because this view has the whole `FileDiff` and its
     /// caller would only be re-attaching an identifier it is already holding.
     public init(
         diff: FileDiff,
-        showsOldNumber: Bool,
+        pointSize: CGFloat,
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void
     ) {
         self.diff = diff
-        self.showsOldNumber = showsOldNumber
+        self.pointSize = pointSize
         self.onExpand = onExpand
     }
 
@@ -48,9 +48,8 @@ public struct DiffFileContent: View {
                 )
                 DiffFileLines(
                     lines: hunk.lines,
-                    showsOldNumber: showsOldNumber,
-                    highestOldNumber: highestOldNumber,
-                    highestNewNumber: highestNewNumber
+                    highestNumber: highestNumber,
+                    pointSize: pointSize
                 )
             }
         }
@@ -70,11 +69,13 @@ public struct DiffFileContent: View {
         position + 1 < diff.hunks.count ? diff.hunks[position + 1] : nil
     }
 
-    private var highestOldNumber: Int {
-        diff.hunks.flatMap(\.lines).compactMap(\.oldNumber).max() ?? 0
-    }
-
-    private var highestNewNumber: Int {
-        diff.hunks.flatMap(\.lines).compactMap(\.newNumber).max() ?? 0
+    /// **The larger of the two sides, because one column now carries both.** A file whose old side
+    /// runs past its new one — a deletion of a hundred lines from the end — would otherwise size its
+    /// gutter on the new maximum and then draw four-figure old numbers into a three-figure column.
+    private var highestNumber: Int {
+        let lines = diff.hunks.flatMap(\.lines)
+        let highestOld = lines.compactMap(\.oldNumber).max() ?? 0
+        let highestNew = lines.compactMap(\.newNumber).max() ?? 0
+        return max(highestOld, highestNew)
     }
 }

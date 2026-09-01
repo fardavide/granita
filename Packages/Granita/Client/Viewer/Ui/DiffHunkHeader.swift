@@ -19,9 +19,20 @@ import CoreDiffDomain
 /// nothing, and nothing is what removes the control.
 public struct DiffHunkHeader: View {
 
-    /// §4's hit area. The band itself is shorter than this, so the control is what sets the row's
-    /// height rather than the other way round.
-    public static let controlSide: CGFloat = 44
+    /// **The band is 26pt now and the control no longer sets its height**, which is the review's
+    /// fourth fault answered: a full-bleed grey slab taller than three rows of the code it stands
+    /// for, over rows the same review calls cramped. "The chrome is loose and the content is
+    /// cramped, which is backwards."
+    public static let height: CGFloat = 26
+
+    /// **The hit area is bought horizontally instead of vertically.** 44pt of width in a 26pt band,
+    /// which is the same trade the file header's viewed toggle used to make for the same reason: a
+    /// hit area taller than the row it is drawn in overlaps the code above and below it, and a tap
+    /// that lands on a diff line and expands a hunk is worse than one that misses.
+    ///
+    /// It is a departure from the 44pt square, and it is deliberate — recorded in
+    /// `.claude/docs/decisions.md` rather than left as a number that drifted.
+    public static let controlWidth: CGFloat = 44
 
     private let hunk: Hunk
     private let canExpandAbove: Bool
@@ -43,19 +54,17 @@ public struct DiffHunkHeader: View {
         self.onExpandBelow = onExpandBelow
     }
 
-    /// **The band grows to 44pt only where it carries a control**, so a hunk with nothing to expand
-    /// is the same thin band it was before they arrived. The alternative — a hit area larger than
-    /// the row it is drawn in — overlaps the code above and below it, and a tap that lands on a
-    /// diff line and expands a hunk is worse than one that misses.
+    /// **One height whether or not it carries a control**, which is what taking the control down to
+    /// the band's own height buys: a hunk that can expand and one that cannot are now the same strip,
+    /// so a file does not change rhythm down its length.
     public var body: some View {
         HStack(spacing: 0) {
             heading
                 .padding(.leading, 12)
-                .padding(.vertical, 4)
             Spacer(minLength: 8)
             controls
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height, alignment: .leading)
         .background(.quaternary)
     }
 
@@ -102,7 +111,7 @@ public struct DiffHunkHeader: View {
             Image(systemName: symbol)
                 .font(.caption2)
                 .foregroundStyle(Color.accentColor)
-                .frame(width: Self.controlSide, height: Self.controlSide)
+                .frame(width: Self.controlWidth, height: Self.height)
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)

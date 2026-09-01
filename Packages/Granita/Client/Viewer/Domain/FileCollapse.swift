@@ -102,7 +102,7 @@ public enum FileCollapsing {
            // A rename the Mac could not name is a sentence with a hole in it, and shutting a file
            // behind one is worse than opening a diff with nothing in it.
            let oldPath = file.oldPath {
-            return .renamedWithNoContentChange(from: filename(of: oldPath))
+            return .renamedWithNoContentChange(from: DiffFilePath.name(of: oldPath))
         }
         if file.isViewed {
             return .viewed
@@ -113,10 +113,4 @@ public enum FileCollapsing {
         return nil
     }
 
-    private static func filename(of path: String) -> String {
-        // Split rather than `URL(fileURLWithPath:)`, which is a filesystem call over a string that
-        // deliberately never touches this device's filesystem. POSIX separators are the wire's,
-        // per `FileChange.path`.
-        String(path.split(separator: "/").last ?? Substring(path))
-    }
 }

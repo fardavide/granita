@@ -2,6 +2,34 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.6.0 — the diff view was reviewed against a photograph of itself, and it had a correctness
+bug in it.** The gutter carried the new-side line number alone, so a *removed* line — which has no
+new-side number — drew an empty column: the one row that says something was taken away was the one
+row a reader could not point at. It ships now as one column carrying whichever side the row is on,
+with a `+`/`−` marker beside it, and the two calls stand or fall together — the marker is what
+answers §4's own reason for rejecting a single interleaved column. Long lines fade at the trailing
+edge instead of stopping dead, each hunk carries a scroll indicator, rows went from 13.7pt to 18 while
+the hunk band went from 43 to 26, a file says its name over its place, and the viewed control is a
+44pt target that leaves a visible trail. Both reversals are in [`decisions.md`](decisions.md);
+[`design.md`](design.md) §4 is rewritten around them.
+
+**Two of the review's own calls were overruled here**, and both are recorded rather than quietly
+resolved: the hunk band's expand control keeps its 44pt hit area by taking it horizontally in a 26pt
+band, because the review draws a 26pt target while its own eighth fault is a target under 44pt; and
+the iPad drops its second gutter column with the phone, spending the room on 12pt code instead.
+
+**Three things in the review are recorded and not built.** The large title and its `working tree · 11
+files · +105 −12` subtitle — the totals are a placeholder the review itself flags as invented, and a
+change-set total is not on the wire; and the proportion bar for `+95` against `+1`, which the review
+rules out of its own scope and leaves as a question for Davide.
+
+**Versions 0.5.2 and 0.5.3 had no entry here and now have one.** Both are diff-view releases and both
+were about the same defect: a layout the reader changed was snapping rather than moving. 0.5.2 put the
+curve on the two halves of a file's section, which cross-faded the bar into the header while every
+file below it jumped; 0.5.3 moved it to the stack that lays the movement out. The rule that came out
+of it — **the animation goes on the container, never on the row** — is in [`design.md`](design.md)
+§4, and nothing in the snapshot suite can see it.
+
 **Version 0.5.1 — the iPad read its worktrees through a phone-shaped slot for four releases, and the
 baseline that should have caught it had photographed the defect.** The 420pt measure design §5 puts
 around the pairing screens was released only for a Mac *just paired with*, so the route a reader

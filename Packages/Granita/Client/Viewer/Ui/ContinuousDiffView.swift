@@ -35,7 +35,7 @@ public struct ContinuousDiffView: View {
     @State private var scrolledTo: FileID?
 
     private let state: ContinuousDiffState
-    private let showsOldNumber: Bool
+    private let pointSize: CGFloat
 
     /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
     private let jumpTarget: FileID?
@@ -49,7 +49,7 @@ public struct ContinuousDiffView: View {
 
     public init(
         state: ContinuousDiffState,
-        showsOldNumber: Bool,
+        pointSize: CGFloat,
         jumpTarget: FileID?,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
@@ -59,7 +59,7 @@ public struct ContinuousDiffView: View {
         onRetry: @escaping () -> Void
     ) {
         self.state = state
-        self.showsOldNumber = showsOldNumber
+        self.pointSize = pointSize
         self.jumpTarget = jumpTarget
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
@@ -173,7 +173,25 @@ public struct ContinuousDiffView: View {
         }
     }
 
+    /// **The gap between two files, and the review's seventh fault.** Without it a collapsed bar
+    /// floats in the same 8pt of white as the closing brace of the file above it, and twice on the
+    /// photographed screen a file header sat directly under a code row — so the code above read as
+    /// belonging to the file below.
+    ///
+    /// It goes at the *foot* of a section rather than the head of the next one, because the head of a
+    /// section is the pinned header: a gap there would either travel up with the pin or be left
+    /// behind by it, and both are the header changing height while it floats.
+    static let betweenFiles: CGFloat = 10
+
     @ViewBuilder private func content(of entry: ContinuousDiffEntry) -> some View {
+        // A shut file gets the gap too — the bars are what a reader scans down when most of a change
+        // set is reviewed, and bars with nothing between them are one bar with several names.
+        fileBody(of: entry)
+        Color.clear
+            .frame(height: Self.betweenFiles)
+    }
+
+    @ViewBuilder private func fileBody(of entry: ContinuousDiffEntry) -> some View {
         if entry.collapse.isCollapsed {
             // Nothing at all, which is the whole point of a bar: the height a shut file takes is
             // the 44pt its bar takes and not one row more.
@@ -188,7 +206,7 @@ public struct ContinuousDiffView: View {
                 Color.clear
                     .frame(height: reservedHeight(of: entry))
             case .ready(let diff):
-                DiffFileContent(diff: diff, showsOldNumber: showsOldNumber, onExpand: onExpand)
+                DiffFileContent(diff: diff, pointSize: pointSize, onExpand: onExpand)
             }
         }
     }
@@ -234,6 +252,6 @@ public struct ContinuousDiffView: View {
     }
 
     private func reservedHeight(of entry: ContinuousDiffEntry) -> CGFloat {
-        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: DiffFileLines.codePointSize)
+        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: pointSize)
     }
 }

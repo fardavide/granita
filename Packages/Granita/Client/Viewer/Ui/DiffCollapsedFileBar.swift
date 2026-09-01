@@ -49,17 +49,20 @@ public struct DiffCollapsedFileBar: View {
     private var row: some View {
         HStack(alignment: .center, spacing: 8) {
             chevron
-            FileStatusLetter(status: file.status)
+            FileStatusBar(status: file.status)
             VStack(alignment: .leading, spacing: 1) {
-                path
-                reason
+                name
+                secondLine
             }
             Spacer(minLength: 8)
             stats
             viewedMark
         }
+        // **Reviewed means quiet**, the same 45% the open header uses. A shut, read file is the row
+        // a reader scans *past*, and an eleven-file pass leaves a visible trail of them.
+        .opacity(file.isViewed ? DiffFileHeader.viewedOpacity : 1)
         .font(.footnote)
-        .padding(.horizontal, 12)
+        .padding(.leading, 12)
         .frame(height: Self.height)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
@@ -90,14 +93,42 @@ public struct DiffCollapsedFileBar: View {
         }
     }
 
-    /// Head-truncated, because a path's tail is the filename and the filename is what identifies it.
-    private var path: some View {
-        Text(verbatim: file.path)
+    /// The filename alone and never truncated, which is the open header's treatment brought down to
+    /// the bar so a file does not change what it calls itself when it shuts.
+    private var name: some View {
+        Text(verbatim: DiffFilePath.name(of: file.path))
+            .fontWeight(.semibold)
             .lineLimit(1)
-            .truncationMode(.head)
             // A file already read is a file the reader is done with, and the selector's row says the
             // same thing the same way.
             .foregroundStyle(collapse.reason == .viewed ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+    }
+
+    /// **The reason when there is one, and the directory when there is not.**
+    ///
+    /// The reason is the more useful of the two — "1,558 lines · Load diff" is why the file is shut
+    /// and what pressing it will do — so it wins the slot wherever it exists. A file the reader shut
+    /// by hand has no reason, and rather than leaving that bar a single line the slot falls back to
+    /// the place the file lives, which is what the open header shows there.
+    @ViewBuilder private var secondLine: some View {
+        if reasonText != nil {
+            reason
+        } else {
+            directory
+        }
+    }
+
+    /// Middle-truncated for the same reason the open header's is: both ends of a directory carry
+    /// information, and head-truncation deletes the module.
+    @ViewBuilder private var directory: some View {
+        let place = DiffFilePath.directory(of: file.path)
+        if place.isEmpty == false {
+            Text(verbatim: place)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
     }
 
     /// The line design §4 added to the specification, and `nil` where there is nothing true to say.
@@ -144,12 +175,20 @@ public struct DiffCollapsedFileBar: View {
     /// **It reports and does not act**, which is §3's call about a row with a jump on it and the
     /// same one applies here: the whole bar is one tap target, so a second one inside it generates
     /// mis-taps. The writer is the circle in the file header, one tap away.
-    @ViewBuilder private var viewedMark: some View {
-        if file.isViewed {
-            Image(systemName: "checkmark")
-                .font(.caption2)
-                .foregroundStyle(Color.accentColor)
-                .accessibilityLabel("Viewed")
+    ///
+    /// **The slot is always there and is the header's own width**, empty or not. Without it a shut
+    /// file's stats sat 46pt further right than an open file's, so the one column a reader scans down
+    /// a change set stepped in and out at every boundary — visible in the baseline as soon as the
+    /// header grew its 44pt target.
+    private var viewedMark: some View {
+        Group {
+            if file.isViewed {
+                Image(systemName: "checkmark")
+                    .font(.footnote)
+                    .foregroundStyle(Color.green)
+                    .accessibilityLabel("Viewed")
+            }
         }
+        .frame(width: DiffFileHeader.height)
     }
 }
