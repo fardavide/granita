@@ -4661,19 +4661,32 @@ denominator.
 happens after its build finishes: the iOS pass reported 8m49s for a suite whose test bodies account
 for 5m30s, and the sibling snapshot job on the same commit showed a **9m31s** gap between the app
 bundle being touched and the app's first log line — `xcrun simctl list` alone took 74s on that runner,
-which is what a cold CoreSimulator looks like. The boot is now started at the top of the script and
-collected before the iOS pass, so it happens against the unit pass, which needs no device at all.
-Its failure is swallowed: `xcodebuild` boots the device itself, slowly, and turning a warm-up into a
-red run would trade minutes for false alarms.
+which is what a cold CoreSimulator looks like. The boot now starts immediately before the iOS pass,
+so it runs against `xcodebuild`'s own build of the app — which needs no device until it starts
+testing. Its failure is swallowed: `xcodebuild` boots the device itself, slowly, and turning a
+warm-up into a red run would trade minutes for false alarms.
+
+**It was first written to boot before the *unit* pass, and the runner rejected that outright.** The
+reasoning had been that the unit pass needs no simulator, so the boot was free there — but a
+simulator booting beside the package build starves it. Measured on this change's own first run, #62:
+the unit pass went from 5m27s to **15m16s**, the suite's own wall time doubled from 25s to 50.3s, and
+the job went from 20m30s to **38m06s** while trying to get faster.
+
+**The wall clock was the smaller half of that.** The unit pass is `--no-parallel` because this suite's
+coverage number moves with how busy the machine is — five runs of one commit once reported two
+different numbers — so a booting simulator beside it feeds noise into the measurement that flag exists
+to remove. An optimisation that competes with the thing being measured is not an optimisation. What
+survives is the overlap that costs nothing: a boot against a build that wants no device.
 
 **`Snapshot tests (iOS)` got the same head start, because it was the job actually being waited on.**
 It is where the 9m31s gap was measured, it reported 946s against the coverage job's 529s for the same
 suite on the same commit, and at twenty minutes it outlasts the coverage job even after everything
 above — so fixing one and not the other would have moved a number without shortening a single pull
-request. It boots with `simctl boot` rather than the script's `bootstatus -b`: the workflow needs the
-device warming *across* a step boundary, and a backgrounded child of one `run:` step cannot be relied
-on to outlive it, whereas `boot` hands the request to CoreSimulator's own daemon and returns. It
-fails when the device is already booted, which is the outcome wanted anyway.
+request. **It is also the one place the head start was an unambiguous win: 19m54s to 10m53s on #62**,
+because there the boot overlaps an app build and there is no host suite beside it to starve. It boots
+with `simctl boot`, which returns as soon as CoreSimulator has taken the request and lets the daemon
+carry it across the step boundary — a backgrounded child of one `run:` step cannot be relied on to
+outlive it. It fails when the device is already booted, which is the outcome wanted anyway.
 
 The derived data directories moved out of `build/coverage` for the same reason — the script wipes that
 directory on every run, which on a fresh runner costs nothing and on a developer's machine meant two
