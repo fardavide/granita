@@ -78,35 +78,6 @@ COVERAGE_SETTINGS=(
 )
 
 # ---------------------------------------------------------------------------------------------
-# the simulator — booted here, used three passes later
-# ---------------------------------------------------------------------------------------------
-#
-# **Started now and waited for later, because a cold boot costs minutes and nothing else needs the
-# device.** Left to `xcodebuild`, the boot happens after its build finishes and the whole job simply
-# stops for it: on the 1 September 2026 `main` run the iOS pass reported 8m49s for a suite whose
-# test bodies account for 5m30s, and the sibling snapshot job — same commit, same suite, unluckier
-# runner — showed a 9m31s gap between the app bundle being touched and the app's first log line.
-# Booting it against the unit pass, which needs no simulator at all, hides that behind work that had
-# to happen anyway. On a developer's machine the device is usually booted already and this returns
-# at once.
-#
-# The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
-# "iPhone 17", and that has already changed once between releases.
-SIMULATOR="$(xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$//')"
-if [ -z "$SIMULATOR" ]; then
-    echo "::error::No recent iPhone simulator on this machine"
-    exit 1
-fi
-echo "Using ${SIMULATOR}"
-
-# `bootstatus -b` boots the device if it is shut down and returns once it is ready, which is the
-# single call that expresses "have this usable by the time I ask". Backgrounded, and its failure is
-# swallowed on purpose: this is an optimisation, and `xcodebuild` boots the device itself if the
-# head start did not happen. Turning a warm-up into a job failure would trade minutes for red runs.
-xcrun simctl bootstatus "$SIMULATOR" -b > /dev/null 2>&1 &
-BOOT_PID=$!
-
-# ---------------------------------------------------------------------------------------------
 # unit — the package suite, on the host
 # ---------------------------------------------------------------------------------------------
 
@@ -155,9 +126,29 @@ UNIT_BINARY="$(find "${SCRATCH}/arm64-apple-macosx/debug/GranitaPackageTests.xct
 
 echo "::group::Coverage — snapshot"
 
-# Collect the boot started before the unit pass. `|| true` for the reason given there: a device that
-# refused to warm up is `xcodebuild`'s problem to solve, slowly, not a reason to fail the job here.
-wait "$BOOT_PID" || echo "::warning::${SIMULATOR} did not finish booting ahead of time; xcodebuild will boot it."
+# The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
+# "iPhone 17", and that has already changed once between releases.
+SIMULATOR="$(xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$//')"
+if [ -z "$SIMULATOR" ]; then
+    echo "::error::No recent iPhone simulator on this machine"
+    exit 1
+fi
+echo "Using ${SIMULATOR}"
+
+# **Booted here rather than earlier, and that boundary was paid for.** A cold boot costs minutes, so
+# the first version of this started it before the unit pass to hide it behind work that had to happen
+# anyway. On the runner that was a straight loss: booting a simulator alongside the package build
+# starved it, and the pass went from 5m27s to 15m16s with the suite's own wall time doubling from 25s
+# to 50.3s — measured on this script's first run, #62. **The unit pass is `--no-parallel` precisely
+# because its coverage number moves with how busy the machine is**, so putting a booting simulator
+# beside it threatens the measurement and not just the clock.
+#
+# What is left is the overlap that costs nothing: the boot runs against `xcodebuild`'s own build of
+# the app below, which needs no device until it starts testing. `boot` returns as soon as
+# CoreSimulator has taken the request rather than waiting for the device, which is what makes this a
+# head start instead of a stall. It fails when the device is already booted — the outcome wanted
+# anyway — and if it fails for any other reason `xcodebuild` boots the device itself.
+xcrun simctl boot "$SIMULATOR" || true
 
 # `|| true` deliberately. This pass wants the profile, not the verdict: whether the baselines still
 # match is the Snapshot job's question, and one stale PNG failing two jobs tells nobody anything the
