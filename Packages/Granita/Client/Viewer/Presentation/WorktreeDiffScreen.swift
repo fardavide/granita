@@ -25,6 +25,12 @@ public struct WorktreeDiffScreen: View {
 
     @State private var model: ClientViewerModel
 
+    /// **Open by default and shut by the reader**, which is the review's iPad and Davide's amendment
+    /// to it on 1 September 2026: the tree is furniture rather than a modal, and a reader who wants
+    /// the whole window for code can fold it away and get the phone's *Files* button back in its
+    /// place. Nothing is lost by shutting it, which is what makes shutting it safe to offer.
+    @State private var isSelectorColumnOpen = true
+
     private let worktreeName: String
 
     #if !os(macOS)
@@ -48,6 +54,7 @@ public struct WorktreeDiffScreen: View {
             // sixteen characters, and an agent's session summary is a sentence rather than a word.
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .toolbar { selectorColumnToggle }
             .toolbar { filesButton }
             // The setter is written out rather than handed `model.showSelector`, which is the
             // repository's IRGen crash arriving from a new direction: a method reference in a
@@ -59,7 +66,19 @@ public struct WorktreeDiffScreen: View {
                 // which is what makes tapping a file *while the list is open* a different tool from
                 // a modal that has to be dismissed between every file.
                 selector
-                    .presentationDetents([.medium, .large])
+                    // **The detent is a value the model holds rather than one the sheet keeps to
+                    // itself**, because choosing a file has to be able to move it: at `.large` the
+                    // diff behind the sheet is not on screen and background interaction is off, so
+                    // the jump the tap asked for lands where nobody can see it. `choose` drops this
+                    // back to `.medium`, and the reader's own drag writes it the other way.
+                    //
+                    // **Projected rather than hand-built**, which is the difference between a rule a
+                    // test can drive and one it cannot: a `Binding(get:set:)` here would put "which
+                    // height means what" inside two closures that no baseline renders and no host
+                    // test reaches. `drawerDetent` is on the model, and this is the framework's own
+                    // projection of it — which also avoids the `Binding` setter shape the
+                    // presentation flag above documents a compiler crash for.
+                    .presentationDetents([.medium, .large], selection: $model.drawerDetent)
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             }
             .alert(
@@ -93,22 +112,29 @@ public struct WorktreeDiffScreen: View {
     }
 
     @ViewBuilder private var content: some View {
-        if showsSelectorAsAColumn {
-            HStack(spacing: 0) {
+        HStack(spacing: 0) {
+            if layout.showsSelectorColumn {
                 selector
                     .frame(width: FileSelectorView.widthBesideTheDiff)
+                    // The column leaving and arriving is a layout change the reader pressed for, so
+                    // it moves rather than teleports — the same curve every other disclosure on this
+                    // screen uses.
+                    .transition(.move(edge: .leading))
                 Divider()
-                diff
+                    .transition(.opacity)
             }
-        } else {
             diff
         }
+        // On the container that lays out the movement, which is what 0.5.2 got wrong inside a file
+        // and is the same rule here: the thing that travels when the column goes is the diff beside
+        // it, and the diff's position belongs to this stack.
+        .animation(.disclosure, value: layout.showsSelectorColumn)
     }
 
     private var diff: some View {
         ContinuousDiffView(
             state: model.state,
-            showsOldNumber: showsBothGutterColumns,
+            pointSize: layout.codePointSize,
             jumpTarget: model.jumpTarget,
             onReading: { position in Task { await model.reading(position) } },
             onJumped: model.didJump,
@@ -135,8 +161,12 @@ public struct WorktreeDiffScreen: View {
     /// **Absent while there is nothing to select**, which is every state but one: a button opening a
     /// drawer over a worktree that failed to load, or has nothing changed in it, would open an empty
     /// list and say nothing about why.
+    ///
+    /// **It comes back when the iPad's column is folded away.** A width that could show the tree but
+    /// currently is not is the phone's situation exactly, and leaving the reader with no way to the
+    /// list would make the fold control a one-way door.
     @ToolbarContentBuilder private var filesButton: some ToolbarContent {
-        if case .reading(let entries) = model.state, showsSelectorAsAColumn == false {
+        if case .reading(let entries) = model.state, layout.showsFilesButton {
             ToolbarItem(placement: .primaryAction) {
                 Button { model.showSelector(true) } label: {
                     Text(entries.count == 1 ? "1 file" : "\(entries.count, format: .number) files")
@@ -145,23 +175,44 @@ public struct WorktreeDiffScreen: View {
         }
     }
 
-    /// Design §4's iPad: the selector column is permanently visible, so the drawer exists only on
-    /// the phone.
+    /// **The fold, and it is a plain icon rather than a labelled control.** The review's own note on
+    /// the iPad bar is that mixing an icon and text in one element makes two controls read as one, so
+    /// this stands apart from the back button and says nothing.
     ///
-    /// The question asked is the horizontal size class rather than the device, because an iPad in a
-    /// narrow multitasking width is the phone's layout too — and a 320pt column taken out of 500 is
-    /// the keyhole §4 rejected two number columns for being.
-    private var showsSelectorAsAColumn: Bool {
-        #if os(macOS)
-        return true
-        #else
-        return horizontalSizeClass == .regular
-        #endif
+    /// Only where a column would fit: on the phone there is no column to fold, and a toggle for a
+    /// layout that does not exist is the dead control this project refuses to ship.
+    @ToolbarContentBuilder private var selectorColumnToggle: some ToolbarContent {
+        if layout.showsSelectorColumnToggle {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    isSelectorColumnOpen.toggle()
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                }
+                .accessibilityLabel(isSelectorColumnOpen ? "Hide the file list" : "Show the file list")
+            }
+        }
     }
 
-    /// Design §4 keeps the new line number on the phone and both on iPad — 78pt of gutter against
-    /// 39, which is the difference between 41 characters of code and 51.
-    private var showsBothGutterColumns: Bool {
-        showsSelectorAsAColumn
+    /// Every layout answer this screen needs, decided in one place a test can reach.
+    ///
+    /// The horizontal size class rather than the device, because an iPad in a narrow multitasking
+    /// width is the phone's layout too — and a 320pt column taken out of 500 is the keyhole design
+    /// §4 rejected two number columns for being.
+    private var layout: DiffPaneLayout {
+        #if os(macOS)
+        let fits = true
+        #else
+        let fits = horizontalSizeClass == .regular
+        #endif
+        return DiffPaneLayout(
+            fitsSelectorColumn: fits,
+            isSelectorColumnOpen: isSelectorColumnOpen,
+            hasFilesToSelect: hasFilesToSelect
+        )
+    }
+
+    private var hasFilesToSelect: Bool {
+        if case .reading = model.state { true } else { false }
     }
 }

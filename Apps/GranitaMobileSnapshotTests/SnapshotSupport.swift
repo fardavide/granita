@@ -1,3 +1,4 @@
+import ClientViewerDomain
 import Foundation
 import SnapshotTesting
 import SwiftUI
@@ -51,6 +52,18 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
     /// site reads as plumbing rather than as the distinction it is.
     var isRegularWidth: Bool {
         configuration.traits.horizontalSizeClass == .regular
+    }
+
+    /// The code size this layout draws at — 11pt on the phone, 12pt beside the selector column.
+    ///
+    /// The same question `WorktreeDiffScreen` asks, answered the same way, so a baseline photographs
+    /// the grid the app builds rather than one the suite chose.
+    var codePointSize: CGFloat {
+        DiffPaneLayout(
+            fitsSelectorColumn: isRegularWidth,
+            isSelectorColumnOpen: true,
+            hasFilesToSelect: true
+        ).codePointSize
     }
 
     /// iPhone and iPad, light and dark. Four renderings per state.

@@ -43,6 +43,25 @@ a mark; the two rows with nothing behind them are drawn with **no chevron** rath
 the frame shows, because a faded chevron is still a chevron; and *Expand all* is absent with the menu
 it belongs to, which arrives whole or not at all.
 
+**The diff design review arrived and left in the same release**, which is the shortest this cycle has
+ever been: it was a review of a screen already built, so there was nothing to wait for. Davide sent a
+photograph of the running app on 1 September 2026 and it came back with eight faults, six rules and
+five frames. What it left recorded rather than built is in [`../design.md`](../design.md) §4 — the
+inline title it wanted to make large, the change-set totals its own note calls invented, and the
+proportion bar it ruled out of its own scope. What it **reversed** is in
+[`../decisions.md`](../decisions.md): §4's rejection of a single interleaved gutter column, and §3's
+rule that modified gets no colour. Two calls in it were overruled here — the marker column keeps its
+44pt hit area by taking it horizontally, and the iPad keeps a 12pt code size rather than the second
+gutter column §4 had argued for.
+
+**Five of its calls were then built wrongly and repaired in 0.6.1**, which is the case for reading
+the prose rather than trusting the release note: the separation between files was built the same
+colour as the files, the hunk band was drawn in the quaternary *label* rather than the quaternary
+*fill* its own paragraph named, and the header and the bar that replaces it drew two columns. All
+five are in [`../design.md`](../design.md) §3 and §4 beside the alternatives they beat, and the one
+of them that is still half-open — the Mac reporting a file's length as its last hunk's end — is in
+[`../decisions.md`](../decisions.md) and [`../status.md`](../status.md).
+
 **The Mac's review is gone, which is this rule working rather than a loss.** All seven of its
 surfaces are built — General in 0.0.10, Connections in 0.0.11, Advanced in 0.0.11, Projects in
 0.0.14, Devices in 0.0.15, and the status item and the window in 0.0.16 — so the last frames were

@@ -46,27 +46,42 @@ public enum ContextExpansion {
     /// new context loses their place, which is the thing expansion exists to protect.
     public static let step = 20
 
-    /// The lines immediately above a hunk, bounded by the file's top or by the hunk before it.
+    /// Every new-side line above a hunk that the diff is not drawing, bounded by the file's top or by
+    /// the hunk before it.
     ///
-    /// `nil` when the gap is empty, and that is what the header reads to decide whether to draw the
-    /// control at all — design §4's chevron over nothing is the smallest possible lie.
-    public static func above(_ hunk: Hunk, after previous: Hunk?) -> LineWindow? {
+    /// **The whole gap, not the window a press opens.** Design §4's expander says how many lines are
+    /// missing before it says anything else, so the size and the reachability are one question — and
+    /// asking it twice is how a row comes to advertise a count it cannot reveal. `nil` when the gap
+    /// is empty, which is what removes the expander entirely.
+    public static func gapAbove(_ hunk: Hunk, after previous: Hunk?) -> Range<Int>? {
         let upperBound = newRange(of: hunk).lowerBound
         let gapStart = previous.map { newRange(of: $0).upperBound } ?? 1
         guard gapStart < upperBound else { return nil }
-        let start = max(gapStart, upperBound - step)
-        return LineWindow(side: .new, start: start, count: upperBound - start)
+        return gapStart..<upperBound
     }
 
-    /// The lines immediately below a hunk, bounded by the hunk after it or by the end of the file.
+    /// The same below a hunk, bounded by the hunk after it or by the end of the file.
     ///
     /// - Parameter newLineCount: How long the new side is, which `FileDiff` carries for exactly
     ///   this — it is what makes "can this hunk expand downwards" answerable without a round trip.
-    public static func below(_ hunk: Hunk, before next: Hunk?, endingAt newLineCount: Int) -> LineWindow? {
+    public static func gapBelow(_ hunk: Hunk, before next: Hunk?, endingAt newLineCount: Int) -> Range<Int>? {
         let start = max(1, newRange(of: hunk).upperBound)
         let gapEnd = next.map { newRange(of: $0).lowerBound } ?? (newLineCount + 1)
         guard start < gapEnd else { return nil }
-        return LineWindow(side: .new, start: start, count: min(step, gapEnd - start))
+        return start..<gapEnd
+    }
+
+    /// The lines immediately above a hunk, which is the last `step` of the gap in front of it.
+    public static func above(_ hunk: Hunk, after previous: Hunk?) -> LineWindow? {
+        guard let gap = gapAbove(hunk, after: previous) else { return nil }
+        let start = max(gap.lowerBound, gap.upperBound - step)
+        return LineWindow(side: .new, start: start, count: gap.upperBound - start)
+    }
+
+    /// The lines immediately below a hunk, which is the first `step` of the gap after it.
+    public static func below(_ hunk: Hunk, before next: Hunk?, endingAt newLineCount: Int) -> LineWindow? {
+        guard let gap = gapBelow(hunk, before: next, endingAt: newLineCount) else { return nil }
+        return LineWindow(side: .new, start: gap.lowerBound, count: min(step, gap.count))
     }
 
     /// The hunk with a window of context in front of it.

@@ -400,6 +400,24 @@ the scroll *with the list still open*, and the reader walks a change set file by
 dismiss-present cycle between each one. That is a materially different tool from the modal version,
 and it is one modifier.
 
+> **The drawer comes down to medium when a file is chosen** *(1 September 2026)*. Background
+> interaction is enabled *up through* medium, which is the modifier's own limit and not a choice — at
+> the large detent the sheet covers the phone and the diff behind it is neither visible nor
+> scrollable. So a tap at full height jumps a scroll nobody can see, which is this project's dead
+> control wearing a detent: the row did something, and the reader has no way to know. Choosing a file
+> therefore writes the detent back to medium. **Reduced rather than dismissed**, which is Davide's own
+> preference and the weaker intervention — shutting the drawer would cost the reader the list they are
+> working down, and the drawer exists so it need not be reopened between files. The height is the
+> model's, not the sheet's, for the reason every other one here is: a control whose only effect is a
+> `@State` two layers up is a control nothing can be asked about.
+>
+> **And the row shows that it was pressed.** Its effect happens somewhere else on screen — behind the
+> sheet, or off the top of a long change set — so without a press highlight the one control on this
+> screen gives the reader nothing back. `.plain` draws none inside a `List`, and the automatic style
+> tints the filename with the accent colour, which reads as a link. A fill behind the label at the
+> press, edge to edge: the row's insets moved inside its own label so the highlight reaches the bezel
+> rather than stopping 12pt short at each end and reading as a chip.
+
 > Rejected: a jump-to-file menu in the diff toolbar. Cheaper, and it loses on three counts. A menu
 > cannot indent, so directory grouping cannot be expressed in it. It cannot scroll to 300 items
 > usefully and cannot be searched. And it cannot show *viewed* across the whole set, which is the
@@ -512,22 +530,174 @@ moves.
 > you can do to a reader even when nothing reflows. Rejected: a floating path chip — a sticky header
 > that has given up its collapse control and its stats.
 
-### One gutter column on the phone. Both on iPad.
+### One gutter column, never empty, with a marker beside it
+
+> **The interleaved column this section rejected is what ships, because rule 2 answers the objection**
+> *(1 September 2026)*. What follows replaces "keep the new number", and the reversal is in
+> [`decisions.md`](decisions.md). The old call left a **deletion with no number at all** — the diff
+> design review's only correctness bug — because a deletion has no new-side number and the column
+> held nothing else.
 
 SF Mono at 11pt advances 6.6pt per character. A four-digit number is 26.4pt; with 9pt of trailing
 space and 4pt of leading inset, one column is 39pt and two are 78pt. At 390pt with a 12pt trailing
 inset that is **51 characters of code with one column and 41 with two**. Neither reaches 80, which is
 the honest headline of the section — but 41 is not a diff viewer, it is a keyhole.
 
-**Keep the new number.** The reader is reading the current state of the file and will go looking for
-line *N* in the working copy; the old number is only useful for talking to someone about the previous
-state, which v1 cannot do — there are no comments and no export. On a deletion row the column is
-blank, and the row tint already says which side it is. Width is computed per file from that file's
-own maximum line number, so a 200-line file gets a 3-digit gutter and 8 more characters of code.
+**One column, carrying whichever side the row is on**: a deletion shows its old number, an addition
+and a context line show the new one, and a conflict marker shows whichever it arrived with — the
+parser resolves that kind from the *text* but numbers the line from the diff prefix, so those rows are
+numbered like the ordinary lines they came in as. Only `\ No newline at end of file` has none, and it
+is not a line of the file. Width is computed per file from the **larger** of the two sides' maxima, so
+a file with a hundred lines cut from its end still fits its four-figure old numbers.
 
-> Rejected: a single interleaved column showing whichever number exists — it looks like one sequence
-> and is two, so scanning it produces wrong line numbers with total confidence. Rejected: shrinking to
-> 10pt to fit two columns — 57 characters, and code you have to squint at.
+**Beside it, a 12pt `+`/`−` column at full saturation.** This is what makes one column honest, and
+the two calls stand or fall together: the marker says which side you are reading, so the figure no
+longer has to. It is also the only thing on the row that survives red-green colour blindness,
+sunlight, and a chat client that dims the screenshot — colour alone was the review's second fault.
+Both the figures and the marker sit **outside** the horizontal scroll with the tints; a marker that
+scrolled away would leave the row saying nothing on exactly the long lines the reader scrolled to
+read. Code therefore starts at 48pt rather than 19pt, which is about **54 characters** instead of 57.
+
+> Rejected: the marker alone, keeping today's column — it leaves the unnumbered deletion, which is
+> the bug. Rejected: two columns on the phone, which is `SPEC.md` §10 taken literally and the keyhole
+> measured above. Rejected: shrinking to 10pt to fit two columns — 57 characters, and code you have
+> to squint at.
+>
+> The **iPad loses its second column too.** This section used to argue that both columns there were
+> "the whole reason the phone can afford to drop one"; with an interleaved column that argument has
+> nothing left to support, and the review's own iPad frame draws one 44pt column. What the iPad
+> spends the room on instead is **12pt code** — about 110 characters in an 846pt pane, so nothing in
+> an ordinary change set is cut at all.
+
+### Rows loosen and the chrome tightens
+
+> **Added by the diff design review** *(1 September 2026)*. Its fourth fault: 43pt of grey slab
+> standing for two lines of code drawn at 13.7pt. "The chrome is loose and the content is cramped,
+> which is backwards."
+
+Code rows go to **18pt** — the font's own line height plus 4pt of leading, so the code size stays a
+setting rather than becoming a constant. The file header goes to **46pt** and carries two lines where
+it carried one. The screen holds about the same number of code rows and reads at half the effort.
+
+> **The band's 26pt did not survive the expander** *(1 September 2026, 0.6.1)*. This paragraph used to
+> take the hunk band from 43pt to 26 and buy its control's hit area horizontally. The band is gone —
+> what replaced it is a torn row that exists only where lines are missing, and it is **44pt**, because
+> in two of its three forms the row itself is the control. The saving the rule was after is bigger
+> than the one it costs: the band was drawn above every hunk, and a tear is drawn only across a gap.
+
+**Files are separated by 10pt of page**, which is the review's seventh fault: without it a collapsed
+bar floats in the same 8pt of white as the closing brace above it, and a header sitting directly under
+a code row makes that code read as belonging to the file below. The gap goes at the *foot* of a
+section, never the head, because the head of a section is the pinned header.
+
+> **And the page is a colour, which is what 0.6.1 had to add before the gap could be seen**
+> *(1 September 2026)*. 0.6.0 built the 10pt and left it clear over a screen whose background is the
+> same white as the rows, so what shipped was ten points of white between two white files — Davide's
+> first note on it was "there's no spacer between files". The review draws the files as **cards on a
+> grouped page**: the scroll takes the grouped background, each file's header, bar and lines take the
+> opaque one, and the gap is the page showing through. One colour answers every boundary — bar to
+> bar, bar to header, and under the last file — where a rule per boundary would be four and would
+> still have to be re-decided each time a file shuts. The pair is the **grouped** one — the plain
+> `systemBackground` over `systemGroupedBackground` is white on grey in light and black on black in
+> dark, which fixes one appearance and reproduces the fault in the other. Rejected: a `Divider` per
+> gap, which draws a line where the review draws a space, and says nothing under the last file.
+
+**There is no hunk band.** What stood above every hunk is now a torn row drawn across a gap, and it
+has its own section below — *The expander is a tear*.
+
+> **Two calls were made here and then overtaken inside one release** *(1 September 2026, 0.6.1)*, and
+> they are kept because the second review answered the first: the band was drawn with
+> `.background(.quaternary)`, which resolves the quaternary **label** rather than the quaternary
+> **fill** its own prose named, so a strip standing for skipped lines was the loudest thing on a
+> screen whose subject is the code — Davide's note was that its colours were wrong. It was corrected
+> to `quaternarySystemFill` with a hairline at each edge, and then the band stopped existing: an
+> expander is accent-tinted, because it is a control rather than chrome. The other call — that a band
+> with no heading and no gap either side is not drawn — survived intact and grew into the rule that
+> *every* row is a gap, so a row with nothing missing behind it cannot exist to be suppressed.
+>
+> **What neither fixes, and it is a defect rather than a call:** the last hunk of every file reports
+> no gap below it, because the Mac derives a file's new-side length from that hunk's own end rather
+> than from the file. The *remainder of file* row is therefore built, tested and currently
+> unreachable. In [`decisions.md`](decisions.md); the fix is the Mac's, not this screen's.
+
+**The marker column has six points after it**, so the code clears the `+` and the `−`.
+
+> **Added in 0.6.1** *(1 September 2026)*. The glyph is centred in a 12pt column, which leaves about
+> 2.7pt before the code — and on a line with no leading whitespace `−public struct` read as one
+> token, which is the opposite of what a marker at full saturation is for. Six points is what §4's
+> own arithmetic has always implied: a 30pt figure column plus a 12pt marker against a code origin it
+> puts at 48. Davide: *"`+/-` must have padding to the right"*.
+
+**A side that changed nothing is not printed.** `+84 −0` is `+84`, `+0 −26` is `−26`, and a file
+whose change set says `+0 −0` shows no counts at all.
+
+> **Added in 0.6.1** *(1 September 2026)*, and it is §3's *modified gets no colour* argument applied
+> to a number: `+0` is the field carrying no information. On the two rows that carry it — a binary
+> file and a rename that changed nothing — it was the whole of what the row said about the change,
+> and it was wide enough there to push the counts under the bezel. What is left is a figure a reader
+> can only read one way. Rejected: dimming the zero, which spends a treatment on saying *ignore this*
+> where absence says it for nothing.
+
+**Nothing in the row ends against the bezel.** Four points after the 44pt slot, and the slot is drawn
+whether or not there is a mark in it.
+
+> **Added in 0.6.1** *(1 September 2026)*. A `Group` wrapping an absent `if` is an `EmptyView`, and a
+> frame around one reserves nothing — so the shut bar's mark slot existed in the source and never in
+> the layout, and an unread file's counts ran under the right bezel with the last figure cut off.
+> `+1,240 −318` on the one row a reader most needs to size. The glyph is drawn **clear** at rest
+> instead, which is the treatment §3's own row already uses and for the same stated reason.
+
+**The header and the bar that replaces it draw one column.** The chevron sits in a stated 12pt slot
+and the whole row is spaced at 8.
+
+> **Added in 0.6.1** *(1 September 2026)*. `chevron.down` and `chevron.right` do not measure the
+> same, and the header spaced its trailing run at 0 where the bar spaced its at 8 — so shutting a
+> file moved its status bar, its name and its counts by a few points each. Small enough to be
+> deniable in a single row and unmistakable down a change set, which is exactly the class of thing
+> the review keeps finding. Both numbers are stated on the header and read by the bar, because the
+> two rows are one row in two states.
+
+### The file row is a name over a place
+
+> **Added by the diff design review** *(1 September 2026)*, replacing one line of head-truncated path.
+
+The filename gets its own line and is **never truncated**; the directory goes under it in mono, and
+**truncates in the middle** so both of its ends survive. That is a different answer from §3's
+head-truncation and it is derived the same way — from what the string is. A path's tail is the
+filename, so head-truncation keeps what identifies it; but once the filename is on its own line the
+second line is a *place*, and both of a place's ends carry information.
+`…out/Presentation/Models/AboutState.swift` deletes the module, and the module is what tells eleven
+files apart when three of them live in a folder called `Models`.
+
+The status **letter** is replaced here by a **3pt colour bar** — see `decisions.md` for why modified
+now carries one when §3 says it carries none. The letter stays in §3's selector.
+
+### Three of the review's calls are recorded here rather than built
+
+> *(1 September 2026)*, and two of them the review itself marked as not-yet-answerable.
+
+**The screen keeps its inline title.** The frames draw `main` as a large title over a subtitle
+reading `working tree · 11 files · +105 −12`. The title stays inline for the reason this section
+already gives: 34pt bold holds about sixteen characters and a worktree's name here is an agent's
+session summary, which is a sentence. The frames assumed a branch name.
+
+**The subtitle's totals are not built, and the review says why.** Its own note calls `+105 −12` a
+placeholder — "the seven files I can see sum to +102" — so there is nothing to render yet. A
+change-set total is a real thing the Mac could send; it is not on the wire today.
+
+**The `+n −m` counts keep no proportion**, which the review raises and rules out of its own scope:
+`+95` and `+1` look equally significant, a five-segment bar would fix it, and that is a new control.
+It stays a question for Davide rather than a call.
+
+### Reviewed is quiet, closed, and a 44pt target
+
+> **Added by the diff design review** *(1 September 2026)*. Its eighth fault: a 21pt ring hard against
+> the right bezel, identical on every row, on the one control a reader presses once per file.
+
+44pt square. Checked fills **green** — agreeing with the `+` in the gutter and the added-line tint —
+collapses the file, and drops the row's *information* to 45%. **The toggle itself does not dim**: it
+is the control for undoing the state it reports, and dimming it hides it exactly when it is wanted.
+An eleven-file pass therefore leaves a visible trail, and the unreviewed files are the loud ones.
 
 ### The word segment is a background, and the ratio is what is stated
 
@@ -584,29 +754,84 @@ them, and a disclosure control that discloses nothing is the smallest possible l
 so the scroll steps over every file it is drawing shut and opening one asks for it. That is why the
 affordance is the whole row rather than a word.
 
-### Expansion lives on the trailing edge of the hunk header
+### The expander is a tear, and the tear goes where the lines are missing
 
-> **Built in 0.4.0, twenty lines a press, and the band grows only where it can be pressed**
-> *(26 August 2026)*. The 44pt hit area is taken literally, which makes a band carrying a control
-> nearly four times the height of one that does not — so a hunk with no gap above or below it keeps
-> the thin band it always had, and the cost is paid only where there is something to press. Twenty
-> lines is about a third of a phone screen at 11pt: enough to see what encloses a change, little
-> enough that the line the reader was on is still on screen afterwards.
->
+> **Redrawn, and it replaces the band rather than restyling it** *(1 September 2026, 0.6.1)*. This
+> section used to read *"expansion lives on the trailing edge of the hunk header"*, and everything in
+> it followed from the band being a header that happened to carry a control. It is the other way
+> round now: the row **is** the gap, and where the gap sits decides the rest. Every paragraph below
+> replaces one above it, and the reversals are in [`decisions.md`](decisions.md).
+
+**A bar says a control is here. A tear says something is missing here.** The second is the fact a
+reader needs while reading, and it is the one that survives being skimmed — a broken edge registers
+before any label does. So the row is torn on the side the content is missing from, and that single
+rule draws all three forms.
+
+| Where the gap is | Torn | What it says | Controls |
+|---|---|---|---|
+| Above the first hunk | Top | git's heading for the hunk below — the declaration you are inside, which is what arriving in the middle of a file loses | The whole row |
+| After the last hunk | Bottom | *remainder of file* — there is no declaration to name below a change, so it names its destination | The whole row |
+| Between two hunks | Both | the count, moved into the label | Two 44pt controls, up and down |
+
+Accent-tinted rather than grey: 5% of the accent in light and 10% in dark, a hairline of it at each
+edge, and the tear a denser wash of the same hue cut with a scallop every 9pt. The label is a
+darkened accent in light and a lightened one in dark, because 10pt type on a 5% wash of its own hue
+is at the edge of readable. Every row carries a count.
+
+**The glyph moves into the gutter, which this section used to forbid.** It refused the leading edge on
+the grounds that "a glyph there reads as a line number" — true of a chevron, and the reason this is
+not one. An arrow over three short rules *is* line numbers, near enough: the rules stand for the rows
+that are not being drawn, which is exactly what the column is empty for. The two-way row has no glyph
+at all, because there is no single direction to point in; its two controls say it instead.
+
+**There is no fourth state.** At the first line of a file there is nothing above to reveal, so the row
+is **absent** — not drawn greyed out. "A disabled control that can never be enabled is just a label,
+and this one would sit at the top of every file you open."
+
+**Twenty lines a press**, which is about a third of a phone screen at 11pt: enough to see what
+encloses a change, little enough that the line the reader was on is still on screen afterwards. The
+count on the row is the whole gap, not the window one press opens.
+
 > **"Expand all" is not built**, and neither is the menu it lives in. That menu is also where *Mark
-> everything above as viewed* and *Open on its own* belong, so it arrives whole or not at all; it is
-> absent rather than drawn, and one visible control per hunk is what this section already calls
-> enough.
-
-The hunk header is already a full-width band carrying git's section heading — the most useful free
-string in the whole diff, and the reason the header does not read as content. Put the expand control
-at its trailing edge in a 44pt hit area. Not the leading edge: that is the gutter's column, and a
-glyph there reads as a line number. "Expand all" goes in the file header's menu, not on screen.
+> everything above as viewed* and *Open on its own* belong, so it arrives whole or not at all.
 
 **Conflict markers get the orange row and the file gets a badge.** They arrive as ordinary diff lines,
 so the parser's conflict-marker kind is the only thing that makes them findable — a full-width warning
 tint, the marker text at semibold, and a CONFLICTED badge in the file header so the reader knows
 before they scroll. This is the one status worth a badge.
+
+### Every disclosure moves, and it moves on the platform's own curve
+
+> **Not the review's call — this repository's, in 0.5.2** *(31 August 2026)*. The design review drew
+> the shut bar, the open header and the expand control and said nothing about how one becomes the
+> other, so the first four releases did it in a single frame. Davide's verdict on that was "it looks
+> terrible with the UI jumping", and he is describing the same defect this whole section is built
+> around arriving from the one direction nobody guarded: **the reader's own press.** No-reflow is a
+> rule about content moving *unasked*; it has never been an argument for a layout that teleports when
+> it is asked. Without motion the reader cannot link where a file was to where it went, so the screen
+> reads as replaced rather than changed and they have to re-find their place.
+>
+> **Four sites, one curve, stated once** — shutting or opening a file in §4's scroll, expanding a
+> hunk's context, and opening or shutting a directory in §3's selector. The curve is the platform
+> default. Rejected: a hand-tuned spring per site, which is four answers to one question and four
+> edits when it is refined; rejected too, the 0.2s ease §4's jump-to-file already uses — that one is a
+> *scroll* landing, timed against the baseline that photographs it mid-flight, and this is a layout
+> opening and closing. The default also honours Reduce Motion without any of these views asking.
+>
+> **The baselines cannot see this and never will.** A snapshot photographs a settled state, and every
+> one of them stayed green across all four releases that shipped the jump. It is checked by pressing
+> the control.
+>
+> **Corrected in 0.5.3** *(31 August 2026)*: 0.5.2 attached §4's curve to the two halves of a file's
+> section rather than to the scroll that holds them, and Davide pressed it and saw the hunk expansion
+> move while opening and shutting a file did not. An animation scoped inside a section animates that
+> section's own contents; the *other* files — everything that has to travel when one of them shuts —
+> are laid out by the stack above it, and outside every scope the section could declare. So the curve
+> belongs on **the container that lays out the movement**, keyed on the collapse state of all the
+> entries: the lazy stack in §4, the list in §3, the file's own column for a hunk expanding. That §3
+> and the hunks were right by accident is why only one of the four sites was visibly broken — and why
+> a fade over a snapping layout is not a smaller version of the fix, it is the defect wearing a
+> costume.
 
 ### Viewed is tapped, never inferred
 

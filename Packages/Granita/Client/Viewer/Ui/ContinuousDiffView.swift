@@ -35,7 +35,7 @@ public struct ContinuousDiffView: View {
     @State private var scrolledTo: FileID?
 
     private let state: ContinuousDiffState
-    private let showsOldNumber: Bool
+    private let pointSize: CGFloat
 
     /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
     private let jumpTarget: FileID?
@@ -49,7 +49,7 @@ public struct ContinuousDiffView: View {
 
     public init(
         state: ContinuousDiffState,
-        showsOldNumber: Bool,
+        pointSize: CGFloat,
         jumpTarget: FileID?,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
@@ -59,7 +59,7 @@ public struct ContinuousDiffView: View {
         onRetry: @escaping () -> Void
     ) {
         self.state = state
-        self.showsOldNumber = showsOldNumber
+        self.pointSize = pointSize
         self.jumpTarget = jumpTarget
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
@@ -106,6 +106,18 @@ public struct ContinuousDiffView: View {
                 }
             }
             .scrollTargetLayout()
+            // **Shutting and opening a file is animated here, on the stack, and not on the two
+            // halves inside it.** What has to travel when a file shuts is every *other* file below
+            // it, and their positions belong to this stack — an animation attached inside a section
+            // scopes to that section, so 0.5.2 cross-faded the bar into the header while the rest of
+            // the scroll snapped to its new place, which is the jump wearing a fade. One scope over
+            // the whole stack is also what makes the two halves of the swap one gesture rather than
+            // two. Keyed on nothing but the collapse flags, so a diff arriving still lands without
+            // dragging the scroll around. The curve is stated once, in `Animation.disclosure`.
+            //
+            // Under `.scrollTargetLayout()` rather than over it: the marker wants the stack itself,
+            // and a jump landing on a file is a different gesture from a file opening under a thumb.
+            .animation(.disclosure, value: entries.map(\.collapse.isCollapsed))
         }
         // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
         // build called `proxy.scrollTo` from a watch on the target, and the baseline came back with
@@ -144,6 +156,13 @@ public struct ContinuousDiffView: View {
             // tap would be a change from a value to itself, and the row would go quiet.
             onJumped()
         }
+        // **The page, and it is what makes design §4's 10pt separation visible.** The gap was built
+        // in 0.6.0 and could not be seen: it was left clear over a screen whose background is the
+        // same white as the rows, so 10pt of white sat between two white files. Colouring the page
+        // once and giving each file an opaque card is one answer for every boundary — between two
+        // bars, between a bar and a header, and under the last file — where a rule per boundary
+        // would be four.
+        .background(Color.diffPage)
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
@@ -161,7 +180,30 @@ public struct ContinuousDiffView: View {
         }
     }
 
+    /// **The gap between two files, and the review's seventh fault.** Without it a collapsed bar
+    /// floats in the same 8pt of white as the closing brace of the file above it, and twice on the
+    /// photographed screen a file header sat directly under a code row — so the code above read as
+    /// belonging to the file below.
+    ///
+    /// It goes at the *foot* of a section rather than the head of the next one, because the head of a
+    /// section is the pinned header: a gap there would either travel up with the pin or be left
+    /// behind by it, and both are the header changing height while it floats.
+    static let betweenFiles: CGFloat = 10
+
     @ViewBuilder private func content(of entry: ContinuousDiffEntry) -> some View {
+        // **The card**, opaque and full width, so the page only shows where the gap is. A file's
+        // lines draw their own tints and nothing behind them, which over a coloured page would tint
+        // every context row.
+        fileBody(of: entry)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.diffCard)
+        // A shut file gets the gap too — the bars are what a reader scans down when most of a change
+        // set is reviewed, and bars with nothing between them are one bar with several names.
+        Color.clear
+            .frame(height: Self.betweenFiles)
+    }
+
+    @ViewBuilder private func fileBody(of entry: ContinuousDiffEntry) -> some View {
         if entry.collapse.isCollapsed {
             // Nothing at all, which is the whole point of a bar: the height a shut file takes is
             // the 44pt its bar takes and not one row more.
@@ -176,7 +218,7 @@ public struct ContinuousDiffView: View {
                 Color.clear
                     .frame(height: reservedHeight(of: entry))
             case .ready(let diff):
-                DiffFileContent(diff: diff, showsOldNumber: showsOldNumber, onExpand: onExpand)
+                DiffFileContent(diff: diff, pointSize: pointSize, onExpand: onExpand)
             }
         }
     }
@@ -222,6 +264,6 @@ public struct ContinuousDiffView: View {
     }
 
     private func reservedHeight(of entry: ContinuousDiffEntry) -> CGFloat {
-        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: DiffFileLines.codePointSize)
+        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: pointSize)
     }
 }

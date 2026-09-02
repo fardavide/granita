@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.6.0 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
+**Version 0.6.2 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
 the app working only while his MacBook was unlocked. A direct test settled what it actually was: a
 Mac that is **locked but awake** serves fine, so the lock was never the variable — `pmset` has system
 sleep at one minute idle and the log shows Maintenance Sleep every 45 seconds all morning, on AC.
@@ -26,6 +26,94 @@ dead port for the life of that screen.
 Power Adapter* — `womp 1` on AC, `womp 0` on battery — and a Mac on battery ignores the packet.
 Saying so in the app is a new surface on the Mac's General tab and therefore design-blocked; for now
 it is in the changelog. **If waking is ever reported as still not working, check that first.**
+
+**And one thing Apple has to allow.** iOS gates broadcast behind
+`com.apple.developer.networking.multicast`, a restricted entitlement Apple grants on request. It is
+wired in `project.yml` so a device build can be tried, but until the grant lands the packet does not
+leave the phone — and neither the simulator nor the loopback test can catch its absence, because
+loopback is neither broadcast nor multicast.
+
+**Version 0.6.1 — five of 0.6.0's answers were right in the prose and wrong on the glass**, which is
+the release the same review's photographs would have caught if the review had been run against them.
+Davide read 0.6.0 on the device and sent five: files with no gap between them, a grey band in the
+wrong colours, an open header and a shut bar drawing two different columns, empty grey bands under
+small files, and a file list whose rows gave nothing back when pressed.
+
+Four of the five were *built and invisible* rather than missing. §4's 10pt separation was there and
+was the same white as the rows either side of it — the files now sit as cards on a grouped page. The
+hunk band was drawn with `.background(.quaternary)`, which resolves the quaternary **label** rather
+than the quaternary **fill** its own prose named, so a strip standing for skipped lines was the
+loudest thing on the screen; it is `quaternarySystemFill` with a hairline at each edge now. The
+header and the bar disagreed by a few points because `chevron.down` and `chevron.right` do not
+measure the same and the two rows spaced themselves differently — one stated slot and one stated
+spacing, both on the header, read by the bar. And §3's drawer now drops back to the medium detent
+when a file is chosen, because background interaction is only enabled *up through* medium: a tap at
+full height was jumping a scroll nobody could see.
+
+**Then the review came back with the expander redrawn, and it replaced the band rather than restyling
+it.** A bar says a control is here; a tear says something is missing here, and the second is the fact
+a reader needs while reading. The row is torn on the side the content is missing from, which produces
+all three forms without a rule per form — torn above at the top of a file, torn below after the last
+change, torn both ways between two hunks — and a file the diff drew whole gets none at all. Three
+settled calls fell to it: the glyph moved into the gutter §4 had forbidden it, the 26pt band became a
+44pt row, and a row now stands for one **gap** rather than for one hunk. That last one is the
+structural half: `DiffFileRow.rows(of:)` decides the whole thing in `Domain`, with a test per
+placement, and `DiffFileContent` draws what it is handed. All in [`decisions.md`](decisions.md).
+
+The fifth was half a fix and now has a boundary drawn round it. A band with no heading and no gap
+either side is no longer drawn — it names nothing and opens nothing. **Davide's hunch that an arrow
+was missing is also right**, and that half is the Mac's: `WorktreeService` derives a file's new-side
+length from its *last hunk's* end rather than from the file, so the last hunk of every file reports
+no gap below it and never offers the downward chevron. He ruled against spending the two extra `git`
+invocations per file it would take — *"it is fine in case there's nothing to expand below, but we
+should not show an empty expander"* — so the requirement is on the drawing and it is met. In
+[`decisions.md`](decisions.md), with what it costs. **The redrawn expander raises the price of that
+call**: its *remainder of file* form is exactly the state the Mac cannot report, so that form is
+built, has a baseline in all four layouts, and cannot currently be reached by a real diff.
+
+**A sixth thing came out of the coverage gate rather than out of the screen.** The rule saying which
+detent means which drawer height was written as a `Binding(get:set:)` inside the sheet — two closures
+no baseline renders and no host test reaches — and the Snapshot row fell for it. It is on
+`ClientViewerModel` now as `drawerDetent`, the screen hands the sheet the framework's own projection,
+and a unit test drives both directions. The row's usual answer for a falling number is *do not
+restructure the screen*; that answer is for an action closure, and this was a decision hiding in a
+binding.
+
+**Version 0.6.0 — the diff view was reviewed against a photograph of itself, and it had a correctness
+bug in it.** The gutter carried the new-side line number alone, so a *removed* line — which has no
+new-side number — drew an empty column: the one row that says something was taken away was the one
+row a reader could not point at. It ships now as one column carrying whichever side the row is on,
+with a `+`/`−` marker beside it, and the two calls stand or fall together — the marker is what
+answers §4's own reason for rejecting a single interleaved column. Long lines fade at the trailing
+edge instead of stopping dead, each hunk carries a scroll indicator, rows went from 13.7pt to 18 while
+the hunk band went from 43 to 26, a file says its name over its place, and the viewed control is a
+44pt target that leaves a visible trail. Both reversals are in [`decisions.md`](decisions.md);
+[`design.md`](design.md) §4 is rewritten around them.
+
+**Two of the review's own calls were overruled here**, and both are recorded rather than quietly
+resolved: the hunk band's expand control keeps its 44pt hit area by taking it horizontally in a 26pt
+band, because the review draws a 26pt target while its own eighth fault is a target under 44pt; and
+the iPad drops its second gutter column with the phone, spending the room on 12pt code instead.
+
+**Three things in the review are recorded and not built.** The large title and its `working tree · 11
+files · +105 −12` subtitle — the totals are a placeholder the review itself flags as invented, and a
+change-set total is not on the wire; and the proportion bar for `+95` against `+1`, which the review
+rules out of its own scope and leaves as a question for Davide.
+
+**Versions 0.5.2 and 0.5.3 had no entry here and now have one.** Both are diff-view releases and both
+were about the same defect: a layout the reader changed was snapping rather than moving. 0.5.2 put the
+curve on the two halves of a file's section, which cross-faded the bar into the header while every
+file below it jumped; 0.5.3 moved it to the stack that lays the movement out. The rule that came out
+of it — **the animation goes on the container, never on the row** — is in [`design.md`](design.md)
+§4, and nothing in the snapshot suite can see it.
+
+**Version 0.5.1 — the iPad read its worktrees through a phone-shaped slot for four releases, and the
+baseline that should have caught it had photographed the defect.** The 420pt measure design §5 puts
+around the pairing screens was released only for a Mac *just paired with*, so the route a reader
+takes every day — tap a Mac already paired with — opened a split view inside a 420pt column: a 320pt
+sidebar, a sliver of detail, white down both sides. The container and the rule moved out of the
+composition root into `PairingSpineScreen` and `PairingSpineNavigation`, where the sequence is a host
+test and the width a push lands at is a baseline. In [`decisions.md`](decisions.md).
 
 **Version 0.5.0 — a worktree can be deleted from the phone, and the screen shipped ahead of its
 design on purpose.** Davide asked for that on 28 August 2026: he was near his weekly limit, wanted

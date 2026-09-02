@@ -7,7 +7,6 @@ import UIKit
 import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
-import ClientConnectionUi
 import ClientViewerPresentation
 import ClientWorktreesData
 import ClientWorktreesPresentation
@@ -20,92 +19,54 @@ import ClientWorktreesPresentation
 /// lives in the app bundle.
 public struct GranitaMobileScene: Scene {
 
-    /// The stack's path, held here because the stack is.
-    ///
-    /// It exists rather than being left implicit for one reason: **a pairing that works replaces
-    /// the pairing screens instead of pushing over them**, and only a path a screen can assign to
-    /// makes that expressible. Back then returns to the Mac list, never to a viewfinder holding a
-    /// code that has already been spent.
-    @State private var path = NavigationPath()
-
-    /// Whether the reader is past the Macs and into a worktree list, which is the only thing in
-    /// this app that changes the measure.
-    ///
-    /// It is navigation state and belongs beside the path for the same reason the path does — the
-    /// container is the root's, so what the container is showing is too. It cannot be *read* off
-    /// the path: `NavigationPath` is type-erased on purpose, so that each destination is declared
-    /// beside the link that reaches it, and a paired Mac and a Mac about to be paired with both sit
-    /// at depth one.
-    @State private var isReadingAPairedMac = false
-
     public init() {}
 
     public var body: some Scene {
         WindowGroup {
-            // The stack, and nothing about where its rows lead — `ServerDiscoveryScreen` declares
-            // that itself, because the module that offers a link is the one that must know where it
-            // goes. This root used to be where the destination would have gone, and the destination
-            // was simply absent: tapping the Mac a reader opened the app to read answered with
-            // silence, and it shipped. See `CLAUDE.md` and `.claude/docs/decisions.md`.
-            NavigationStack(path: $path) {
-                ServerDiscoveryScreen(
-                    model: ClientConnectionModel(
-                        // **Wrapped so that a browse wakes the Macs it is about to look for.**
-                        // Since macOS 15 a sleeping Mac withdraws its Bonjour advertisement rather
-                        // than leaving it with a sleep proxy, so an undecorated browse searches an
-                        // empty network and reports nothing found. The wake runs beside the stream
-                        // and cannot delay or filter it.
-                        browsing: WakingServerDiscovery(
-                            discovery: BonjourServerDiscovery(),
-                            macs: Self.rememberedMacStore,
-                            waking: Self.waking
-                        ),
-                        joining: MacPairing(macs: Self.rememberedMacStore, handshake: Self.handshake),
-                        camera: CaptureDeviceCameraAuthorization(),
-                        scanner: Self.scanner,
-                        // And wrapped again here, because the browse can be a step ahead of the
-                        // machine: a Mac woken a moment ago resolves to nothing until it is back.
-                        addresses: Self.addresses
+            // The stack, the measure around it and where its two exits lead all belong to
+            // `PairingSpineScreen`, and what is left here is the wiring that only a composition root
+            // can do: which implementation answers each protocol, and which session each of the two
+            // worktree lists speaks over. **The container moved out because it holds a decision** —
+            // the measure is released past the pairing spine and not before — and a decision left in
+            // a `Main` module is untested code that no longer looks untested. This one was wrong for
+            // the route every reader takes and shipped that way; see `.claude/docs/decisions.md`.
+            PairingSpineScreen(
+                model: ClientConnectionModel(
+                    // **Wrapped so that a browse wakes the Macs it is about to look for.**
+                    // Since macOS 15 a sleeping Mac withdraws its Bonjour advertisement rather
+                    // than leaving it with a sleep proxy, so an undecorated browse searches an
+                    // empty network and reports nothing found. The wake runs beside the stream
+                    // and cannot delay or filter it.
+                    browsing: WakingServerDiscovery(
+                        discovery: BonjourServerDiscovery(),
+                        macs: Self.rememberedMacStore,
+                        waking: Self.waking
                     ),
-                    phone: Self.phone,
-                    path: $path,
-                    // **The one link in the app whose destination is a module away**, so the two
-                    // are written together: this closure is what a paired Mac lands on, and the
-                    // modifier below is where it lands. Everything the pairing screens push
-                    // declares its own destination beside its own link.
-                    //
-                    // Assigned rather than appended, which is the whole of design §5's success:
-                    // the pairing screens are replaced, so back returns to the Mac list and never
-                    // to a viewfinder holding a code that has already been spent.
-                    onPaired: { mac in
-                        isReadingAPairedMac = true
-                        path = NavigationPath([mac])
-                    },
-                    // A Mac this phone has paired with before opens its worktrees, and nothing in
-                    // between: the Keychain read, the Bonjour lookup and the pinned session all
-                    // happen behind the list's own loading state. **Not `onAppear`, not a screen
-                    // that resolves an address** — either would put the pairing screen back in front
-                    // of a reader who has already paired, which is the entire complaint.
-                    readingARememberedMac: { server in
-                        Self.worktrees(
-                            of: server.name,
-                            over: RememberedMacRepository(reading: server, through: Self.rememberedMacs)
-                        )
-                    }
-                )
-                // The list this product exists for, in design §2's own container: one sidebar and
-                // one detail column, which the phone collapses back to the list alone. It titles
-                // itself after the Mac, which §5 asks for — and which is set inside that screen
-                // rather than out here, because a title applied to a container does not override
-                // one applied within it. See `.claude/docs/decisions.md`.
-                .navigationDestination(for: PairedMac.self) { mac in
-                    // **Through the reconnection, not straight over the address pairing returned.**
-                    // A just-paired Mac arrives holding a `host:port` that was true at the moment
-                    // the code was spent and is wrong the moment it sleeps or restarts — and a
-                    // repository built directly on it never learns that, so *Try Again* re-dials a
-                    // dead port for as long as the screen is up. Going through `RememberedMacs`
-                    // means an unreachable read drops the address and the next one resolves again,
-                    // which is what makes waking a Mac from this screen work at all.
+                    joining: MacPairing(macs: Self.rememberedMacStore, handshake: Self.handshake),
+                    camera: CaptureDeviceCameraAuthorization(),
+                    scanner: Self.scanner,
+                    // And wrapped again here, because the browse can be a step ahead of the
+                    // machine: a Mac woken a moment ago resolves to nothing until it is back.
+                    addresses: Self.addresses
+                ),
+                phone: Self.phone,
+                startingAt: NavigationPath(),
+                // A Mac this phone has paired with before looks its address and its key up on the
+                // first request, behind the list's own loading state.
+                readingARememberedMac: { server in
+                    Self.worktrees(
+                        of: server.name,
+                        over: RememberedMacRepository(reading: server, through: Self.rememberedMacs)
+                    )
+                },
+                // **Through the reconnection, not straight over the address pairing returned.**
+                // A just-paired Mac arrives holding a `host:port` that was true at the moment the
+                // code was spent and is wrong the moment it sleeps or restarts — and a repository
+                // built directly on it never learns that, so *Try Again* re-dials a dead port for
+                // as long as the screen is up. Going through `RememberedMacs` means an unreachable
+                // read drops the address and the next one resolves again, which is what makes
+                // waking a Mac from this screen work at all.
+                readingAJustPairedMac: { mac in
                     Self.worktrees(
                         of: mac.name,
                         over: RememberedMacRepository(
@@ -114,24 +75,7 @@ public struct GranitaMobileScene: Scene {
                         )
                     )
                 }
-            }
-            // The measure goes around the stack rather than around the screen, because iOS draws a
-            // large title in the navigation bar and not in the content: framing the content alone
-            // centres the rows under a title still pinned to the window's leading edge, which is the
-            // misalignment this is here to remove.
-            //
-            // **It stops at the paired Mac**, which is the one place two designs meet: §5 puts
-            // "everything before a paired Mac in a 420pt column, title included", and §2 puts the
-            // list itself in a split view whose sidebar is 320. A 420pt cap around a two-column
-            // split view would leave the iPad reading its worktrees through a phone-shaped slot.
-            .frame(maxWidth: isReadingAPairedMac ? .infinity : ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity)
-            // Back out of the worktree list is the only way off it, and it puts the measure back.
-            // Watched on the path rather than set by the screen, because the button that performs it
-            // is the system's and nothing of ours is told it was pressed.
-            .onChange(of: path.isEmpty) { _, isAtTheMacList in
-                if isAtTheMacList { isReadingAPairedMac = false }
-            }
+            )
         }
     }
 

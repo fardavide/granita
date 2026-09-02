@@ -3,7 +3,8 @@ import SwiftUI
 import ClientViewerDomain
 import CoreDiffDomain
 
-/// One file's diff lines with wrap off: the numbers pinned and the code scrolling under them.
+/// One hunk's diff lines with wrap off: the numbers and markers pinned, and the code scrolling under
+/// them.
 ///
 /// **The two halves are separate view trees, and that is the shape rather than an implementation
 /// detail.** `SPEC.md` §10 says long lines scroll horizontally within the file *with the gutter
@@ -17,45 +18,64 @@ import CoreDiffDomain
 /// **The tints are drawn behind both halves rather than on either.** A row's colour says which side
 /// of the comparison the line is on, which is a fact about the row and not about the text — so it
 /// belongs outside the scroll, where it reaches the trailing edge and stays put while the code moves.
+///
+/// **One number column and a marker beside it, which is the diff design review's rules 1 and 2.**
+/// They arrived together and only work together: `design.md` §4 had rejected a single interleaved
+/// column because "it looks like one sequence and is two", and the `+`/`−` column is what answers
+/// that — it says which side you are reading, so the figure no longer has to. What it costs is three
+/// characters of code, and the review's own argument for spending them is that the row which used to
+/// hold them was already cut off without saying so. Davide adopted both on 1 September 2026.
 public struct DiffFileLines: View {
-
-    /// 11pt, and every measurement in design §4 is taken at it: it is what makes 51 characters fit
-    /// at 390pt with one gutter column. Whether it is readable at arm's length is the one thing a
-    /// drawing could not judge and a device has to answer, which is why it is a named constant
-    /// rather than a literal in four places.
-    public static let codePointSize: CGFloat = 11
 
     /// §4's inset between the last character of code and the trailing edge.
     public static let codeTrailingInset: CGFloat = 12
 
+    /// The width of the fade at the trailing edge, and the review's answer to its third fault.
+    ///
+    /// `extension Lce: Sendable where C: Sendable, E: Sendable` is 57 characters and the row fitted
+    /// 56, so it looked complete and was not — four files on the photographed screen hid their
+    /// closing brace that way. A clipped edge that fades never reads as an end.
+    public static let trailingFade: CGFloat = 26
+
+    /// The always-visible scroll indicator under a hunk that overflows.
+    ///
+    /// The system's own indicator is transient, and a horizontal axis nobody knows is there is a
+    /// gesture nobody makes. Three points, drawn per hunk, and absent entirely when the hunk fits —
+    /// an indicator over content that cannot scroll is a control that does nothing.
+    public static let indicatorHeight: CGFloat = 3
+
+    /// The shortest the thumb is allowed to get, so a file whose longest line runs to ten screens
+    /// still shows something you can see rather than a dot.
+    static let shortestIndicator: CGFloat = 24
+
     private let lines: [DiffLine]
-    private let showsOldNumber: Bool
-    private let highestOldNumber: Int
-    private let highestNewNumber: Int
+    private let highestNumber: Int
+    private let pointSize: CGFloat
+
+    @State private var visibleWidth: CGFloat = 0
+    @State private var contentWidth: CGFloat = 0
+    @State private var scrolledBy: CGFloat = 0
 
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The two highest numbers are handed in rather than taken from these lines, because a hunk is
-    /// not a file: sized per hunk, the column would step in and out as the reader scrolled, which
-    /// is a gutter that changes width mid-file. Design §4 sizes it from the file's own maximum.
-    public init(
-        lines: [DiffLine],
-        showsOldNumber: Bool,
-        highestOldNumber: Int,
-        highestNewNumber: Int
-    ) {
+    /// The highest number is handed in rather than taken from these lines, because a hunk is not a
+    /// file: sized per hunk, the column would step in and out as the reader scrolled, which is a
+    /// gutter that changes width mid-file. Design §4 sizes it from the file's own maximum.
+    public init(lines: [DiffLine], highestNumber: Int, pointSize: CGFloat) {
         self.lines = lines
-        self.showsOldNumber = showsOldNumber
-        self.highestOldNumber = highestOldNumber
-        self.highestNewNumber = highestNewNumber
+        self.highestNumber = highestNumber
+        self.pointSize = pointSize
     }
 
     public var body: some View {
-        ZStack(alignment: .topLeading) {
-            tints
-            columns
+        VStack(spacing: 0) {
+            ZStack(alignment: .topLeading) {
+                tints
+                columns
+            }
+            .font(.system(size: pointSize, design: .monospaced))
+            indicator
         }
-        .font(.system(size: Self.codePointSize, design: .monospaced))
     }
 
     /// A strip per row, full width, behind everything. Outside the scroll on purpose: a tint that
@@ -74,6 +94,7 @@ public struct DiffFileLines: View {
     private var columns: some View {
         HStack(alignment: .top, spacing: 0) {
             numbers
+            markers
             code
         }
     }
@@ -81,19 +102,33 @@ public struct DiffFileLines: View {
     private var numbers: some View {
         VStack(spacing: 0) {
             ForEach(numbered, id: \.offset) { _, line in
-                HStack(spacing: 0) {
-                    if showsOldNumber {
-                        figure(line.oldNumber, inColumnOf: highestOldNumber)
-                    }
-                    figure(line.newNumber, inColumnOf: highestNewNumber)
-                }
-                .frame(height: rowHeight)
+                figure(of: line)
+                    .frame(height: rowHeight)
             }
         }
     }
 
-    /// One scroll for the whole file rather than one per line, which is what keeps the lines
-    /// aligned with each other while they move.
+    /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
+    /// whole argument. It frees the row tint to be almost nothing, and it is the only marker that
+    /// survives red-green colour blindness, sunlight, and a chat client that dims the screenshot.
+    ///
+    /// Outside the horizontal scroll with the numbers: a marker that scrolled away would leave the
+    /// row saying nothing on exactly the long lines the reader had to scroll to read.
+    /// **The gap after it is on the column rather than on the glyph**, so the `+` and the `−` stay
+    /// centred in one another's width down the file while the code clears them — a padding inside the
+    /// frame would move the glyph instead of the code.
+    private var markers: some View {
+        VStack(spacing: 0) {
+            ForEach(numbered, id: \.offset) { _, line in
+                marker(of: line)
+                    .frame(width: DiffGutter.markerWidth, height: rowHeight)
+            }
+        }
+        .padding(.trailing, DiffGutter.markerTrailingSpace)
+    }
+
+    /// One scroll for the whole hunk rather than one per line, which is what keeps the lines aligned
+    /// with each other while they move.
     private var code: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
@@ -104,6 +139,14 @@ public struct DiffFileLines: View {
                 }
             }
             .padding(.trailing, Self.codeTrailingInset)
+            // Watched rather than read once: expanding a hunk splices longer lines into these rows,
+            // and an indicator sized on the width the hunk had before the expansion is an indicator
+            // that lies about how much is left.
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                contentWidth = width
+            }
         }
         // **Height stated, not inherited.** A `ScrollView` is greedy on both axes whatever its
         // scroll axis is, so left alone this one fills the screen — which is invisible in a
@@ -111,20 +154,76 @@ public struct DiffFileLines: View {
         // The same arithmetic the tints behind it use, so the two trees cannot come out different
         // heights.
         .frame(height: rowHeight * CGFloat(lines.count))
+        // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
+        // scroll, so a gradient painted in the background colour would have to composite the tint
+        // back on top of itself to avoid a grey notch on every added and removed row. Fading the
+        // code away instead reveals whatever is behind it, which is already the right colour in both
+        // appearances and over every tint.
+        .mask(alignment: .leading) {
+            HStack(spacing: 0) {
+                Rectangle()
+                LinearGradient(
+                    colors: [.black, .black.opacity(0)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: Self.trailingFade)
+            }
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.x
+        } action: { _, offset in
+            scrolledBy = offset
+        }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            visibleWidth = width
+        }
     }
 
-    /// Blank on the side a line does not exist on — a deletion has no new number — and the row tint
-    /// is what says which side that is, so nothing has to be written in the gap.
-    private func figure(_ value: Int?, inColumnOf highest: Int) -> some View {
-        Text(value.map(String.init) ?? "")
+    /// The proportional thumb, and nothing at all when the hunk fits.
+    ///
+    /// Read from the scroll rather than driving it — `SPEC.md` §10 forbids *positioning* by content
+    /// offset, and this only reports where the reader already is.
+    @ViewBuilder private var indicator: some View {
+        if contentWidth > visibleWidth, visibleWidth > 0 {
+            let travel = contentWidth - visibleWidth
+            let proportion = visibleWidth / contentWidth
+            GeometryReader { proxy in
+                let trackWidth = proxy.size.width
+                let thumbWidth = max(Self.shortestIndicator, trackWidth * proportion)
+                Capsule()
+                    .fill(.tertiary)
+                    .frame(width: thumbWidth, height: Self.indicatorHeight)
+                    .offset(x: (trackWidth - thumbWidth) * clamped(scrolledBy / travel))
+            }
+            .frame(height: Self.indicatorHeight)
+            .padding(.leading, numberColumnWidth + DiffGutter.markerWidth + DiffGutter.markerTrailingSpace)
+            .padding(.trailing, Self.codeTrailingInset)
+            .accessibilityHidden(true)
+        }
+    }
+
+    /// Never blank now, which is the review's first fault answered: a deletion shows the old side's
+    /// number and everything else the new side's, so a reader who wants to say "line 6 is wrong" has
+    /// something to point at on every row.
+    private func figure(of line: DiffLine) -> some View {
+        Text(DiffGutter.number(of: line).map(String.init) ?? "")
             .foregroundStyle(.tertiary)
             .monospacedDigit()
-            .frame(
-                width: DiffGutter.columnWidth(forHighestLineNumber: highest, atPointSize: Self.codePointSize)
-                    - DiffGutter.trailingSpace,
-                alignment: .trailing
-            )
+            .frame(width: numberColumnWidth - DiffGutter.trailingSpace, alignment: .trailing)
             .padding(.trailing, DiffGutter.trailingSpace)
+    }
+
+    @ViewBuilder private func marker(of line: DiffLine) -> some View {
+        switch DiffGutter.marker(of: line) {
+        case .added: Text(verbatim: "+").foregroundStyle(Color.green)
+        case .removed: Text(verbatim: "−").foregroundStyle(Color.red)
+        // Four rows in five are context, and a glyph on each one is a column of noise the eye has to
+        // filter before it can find the two that matter.
+        case .unchanged: Color.clear
+        }
     }
 
     /// The changed run carried by a **background**, over the row's own tint.
@@ -179,14 +278,14 @@ public struct DiffFileLines: View {
         }
     }
 
-    /// 10% of the semantic colour in light and 16% in dark, which is design §4's measurement: below
-    /// that the tint is invisible against black, and above it there is nothing left for the word
-    /// segment to be stronger than.
+    /// **Almost nothing now, which is what rule 2 bought.** The marker carries the saturation, so the
+    /// row tint no longer has to compete with the word segment over it — the review's fifth fault was
+    /// two states drawn in four background colours, with the strongest of them on the smallest run.
     ///
     /// Stated once because the segment's alpha is solved from it: two numbers that have to hold a
     /// ratio cannot each be written down separately.
     private var tintAlpha: Double {
-        colorScheme == .dark ? 0.16 : 0.10
+        colorScheme == .dark ? 0.10 : 0.06
     }
 
     private func tint(of line: DiffLine) -> Color {
@@ -207,12 +306,22 @@ public struct DiffFileLines: View {
         Array(lines.enumerated())
     }
 
+    private var numberColumnWidth: CGFloat {
+        DiffGutter.columnWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize)
+    }
+
     /// Stated once because two stacks depend on it.
     ///
     /// Taken from the font rather than guessed at a ratio: a row holding `図` is taller than one
     /// holding `142` if either is allowed to size itself, and one row taller than its own number
     /// misaligns every row under it in the file.
     private var rowHeight: CGFloat {
-        DiffLineHeight.at(pointSize: Self.codePointSize)
+        DiffLineHeight.at(pointSize: pointSize)
     }
+}
+
+// MARK: -
+
+private func clamped(_ fraction: CGFloat) -> CGFloat {
+    min(1, max(0, fraction))
 }

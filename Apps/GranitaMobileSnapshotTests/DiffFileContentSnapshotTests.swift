@@ -27,7 +27,7 @@ struct DiffFileContentSnapshotTests {
     ) {
         // given - when - then
         assertScreenSnapshot(
-            DiffFileContent(diff: subject.diff, showsOldNumber: layout.isRegularWidth) { _, _, _ in }
+            DiffFileContent(diff: subject.diff, pointSize: layout.codePointSize) { _, _, _ in }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
             named: subject.name
@@ -58,11 +58,19 @@ struct DiffFileCase: Sendable, CustomTestStringConvertible {
             diff: aFileOf(aFileWhoseHunksDisagreeOnWidth, newLineCount: 2_000)
         ),
 
-        // **A file whose hunks have nowhere left to go**, which is the control the two above need:
-        // they photograph a band carrying two chevrons, and without this one the picture asserts
-        // "a band has chevrons" rather than "a band has chevrons where there is a gap". One hunk,
-        // from the first line of the file to the last.
+        // **A file whose hunks have nowhere left to go**, which is the control every case below
+        // needs: design §4's fourth state is that there is none, so a file the diff drew whole gets
+        // no expander at either end. Without this the pictures assert "a torn row exists" rather
+        // than "a torn row exists where lines are missing".
         DiffFileCase(name: "a-hunk-with-no-gaps", diff: aWholeFileInOneHunk),
+
+        // **The three forms, one to a picture**, which is how §4 draws them: the tear goes on the
+        // side the content is missing from, and that rule is only visible in a set where each side
+        // is missing on its own. The label changes with it — a declaration going up, a destination
+        // going down, and the count itself in the middle, where neither direction is the obvious one.
+        DiffFileCase(name: "a-gap-above-the-first-hunk", diff: aFileWithLinesBeforeItsChange),
+        DiffFileCase(name: "a-gap-after-the-last-hunk", diff: aFileWithLinesAfterItsChange),
+        DiffFileCase(name: "a-gap-between-two-hunks", diff: aFileWithAGapBetweenItsHunks),
 
         // **A file that has only one side**, which is the gutter's own fallback and until now had
         // never been drawn. A wholly added file has no old number anywhere in it, so the width the

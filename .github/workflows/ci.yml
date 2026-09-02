@@ -167,6 +167,22 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
 
+      # The unit pass builds the package a second time and, uncached, that was 5m02s of a 20m30s job
+      # to run 25s of tests — measured on the 1 September 2026 `main` run.
+      #
+      # Its own key rather than the one `Unit tests (Granita)` uses, and its own directory rather
+      # than `Packages/Granita/.build`: these objects carry coverage instrumentation, so the two
+      # builds invalidate each other whenever they meet. That is the same reason measure-coverage.sh
+      # gives the pass a scratch path of its own, and it is also why the script deletes `codecov/`
+      # before building — a warm directory must not carry an older run's raw counters into this
+      # run's number.
+      - name: Cache the instrumented package build
+        uses: actions/cache@v4
+        with:
+          path: build/derived/package
+          key: spm-coverage-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: spm-coverage-${{ runner.os }}-
+
       # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
       # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
       # image is externally managed and refuses a plain `pip install`.
@@ -322,6 +338,20 @@ jobs:
           fi
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "Using $name"
+
+          # **Start the boot here so it overlaps the build below, rather than leaving it to
+          # xcodebuild, which boots only once its build has finished and then simply waits.** On the
+          # 1 September 2026 `main` run this job reported 946s for a suite whose test bodies account
+          # for 5m30s, with a 9m31s gap between the app bundle being touched and the app's first log
+          # line — and `simctl list` above took 74s on that runner, which is what a cold
+          # CoreSimulator costs before anything has been asked of it.
+          #
+          # `boot` rather than `bootstatus -b`: this must not block the step, and a background child
+          # would not reliably outlive it. `boot` returns as soon as CoreSimulator has taken the
+          # request, and the daemon carries it on across the step boundary. It fails when the device
+          # is already booted, which is a success for our purposes — hence the swallow. If the head
+          # start does not happen for any other reason, xcodebuild still boots the device itself.
+          xcrun simctl boot "$name" || true
 
       # See the macOS job below for why this one keeps "(iOS)" in its name.
       # Renders 24 baselines: six discovery states across iPhone and iPad, light and dark. The

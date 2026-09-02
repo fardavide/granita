@@ -137,15 +137,42 @@ struct PairingSpineSnapshotTests {
             named: "a-mac-already-paired-with"
         )
     }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given a Mac just paired with when the spine is rendered then the worktrees are reached`(
+        layout: SnapshotLayout
+    ) async {
+        // given — the other way past the spine, and the only one that had a baseline before this
+        // release: a pairing that worked replaces the pairing screens with the Mac it produced.
+        //
+        // **It is here for the width as much as for the destination.** The two routes are the same
+        // arrival and must be given the same measure, and the release that got that wrong got it
+        // wrong by treating them as two things. Read this baseline beside `a-mac-already-paired-with`
+        // on the same device: the same screen, at the same width, reached by the other route.
+        let model = aModel(camera: .granted, joining: .refused(.pairingExpired), resolving: .failure(.localNetworkDenied))
+        await model.start()
+
+        // when - then
+        assertScreenSnapshot(
+            theSpine(model, atTheWorktreesOf: aPairedMac, on: aPhone()),
+            layout: layout,
+            named: "a-mac-just-paired-with"
+        )
+    }
 }
 
 // MARK: -
 
-/// The stack the composition root owns, holding a Mac and whichever steps follow it.
+/// **The screen the composition root presents, not a copy of it.**
 ///
-/// Clamped the way the root clamps it and on the same side of the container: §5 puts everything
-/// before a paired Mac in a 420pt column, title included, and iOS draws a title in the bar rather
-/// than in the content — so a measure applied inside would assert an alignment the app does not have.
+/// It used to be a copy — the same stack, rebuilt here, with §5's 420pt measure hardcoded around it.
+/// That is why these baselines went on being green through the release that clamped an iPad's
+/// worktree list to a phone-shaped slot: the replica applied the measure unconditionally, so it
+/// photographed the defect and called it the truth. The condition now lives in
+/// `PairingSpineScreen` and this suite renders that screen, so the width a push lands at is asserted
+/// rather than assumed.
+///
+/// Everything the root supplies that reaches the network is replaced; what a Mac leads to is not.
 @MainActor
 private func theSpine(
     _ model: ClientConnectionModel,
@@ -157,33 +184,63 @@ private func theSpine(
     for step in steps {
         path.append(step)
     }
-    return NavigationStack(path: .constant(path)) {
-        ServerDiscoveryScreen(
-            model: model,
-            phone: phone,
-            path: .constant(path),
-            onPaired: { _ in }
-        ) { mac in
-            // **Where a Mac already paired with goes, standing in for the worktree list.**
-            //
-            // The composition root puts the real one here, over a session pinned to that Mac. This
-            // suite deliberately does not: what it asserts is *which destination a push reaches*, and
-            // building a worktree list to find that out would make each baseline a second, worse copy
-            // of a screen that has four suites of its own — and would put a repository behind a test
-            // about navigation.
-            //
-            // So the destination names itself, the way `PairingStep` is public so a step can be put
-            // on the path. It appears in exactly one baseline. In the other four the Mac is not
-            // remembered, and this sentence turning up in any of them is the picture saying so.
+    return theSpine(model, startingAt: path, on: phone)
+}
+
+/// The same stack, opened where a pairing that worked leaves it: the Mac it produced, and none of the
+/// screens that produced it.
+@MainActor
+private func theSpine(
+    _ model: ClientConnectionModel,
+    atTheWorktreesOf mac: PairedMac,
+    on phone: ThisPhone
+) -> some View {
+    theSpine(model, startingAt: NavigationPath([mac]), on: phone)
+}
+
+@MainActor
+private func theSpine(
+    _ model: ClientConnectionModel,
+    startingAt path: NavigationPath,
+    on phone: ThisPhone
+) -> some View {
+    PairingSpineScreen(
+        model: model,
+        phone: phone,
+        startingAt: path,
+        // **Where a Mac already paired with goes, standing in for the worktree list.**
+        //
+        // The composition root puts the real one here, over a session pinned to that Mac. This
+        // suite deliberately does not: what it asserts is *which destination a push reaches, and at
+        // what width*, and building a worktree list to find that out would make each baseline a
+        // second, worse copy of a screen that has four suites of its own — and would put a
+        // repository behind a test about navigation.
+        //
+        // So the destination names itself, the way `PairingStep` is public so a step can be put on
+        // the path. It appears in exactly one baseline. In the other four the Mac is not remembered,
+        // and this sentence turning up in any of them is the picture saying so.
+        //
+        // **A stand-in still measures the measure.** It is the frame around the stack that changes,
+        // not anything this text does, so where these two lines wrap is what says whether the iPad
+        // is reading through a 420pt slot or through the window.
+        readingARememberedMac: { mac in
             Text("The worktrees on \(mac.name), reached without pairing.")
                 .font(.title3)
                 .multilineTextAlignment(.center)
                 .padding()
                 .navigationTitle(mac.name)
+        },
+        // Reached by spending a credential rather than by a push, so no baseline here lands on it —
+        // and it is required, which is the point: the two ways out of the spine are declared
+        // together, and neither can quietly be given a different measure from the other.
+        readingAJustPairedMac: { mac in
+            Text("The worktrees on \(mac.name), reached by pairing.")
+                .font(.title3)
+                .multilineTextAlignment(.center)
+                .padding()
+                .navigationTitle(mac.name)
         }
-    }
-    .frame(maxWidth: ServerDiscoveryView.contentWidth)
-    .frame(maxWidth: .infinity)
+    )
 }
 
 /// Every collaborator spelled out at each call site rather than defaulted, because which of them a

@@ -4468,3 +4468,361 @@ would mean an off-label mutation of the live `NWListener`, a store schema bump, 
 General tab footnote that currently tells the reader in as many words that the port changes every
 launch — which is a screen, and therefore design-blocked. The phone re-resolves after each wake, so
 the port it ends up on is the one Bonjour publishes.
+
+## The measure is released where the spine ends, and the composition root was the wrong place to say so
+
+Design §5 puts everything before a paired Mac in a 420pt centred column, title included, and §2 puts
+the worktree list in a split view with a 320pt sidebar. Those are two different measures, so the
+container carries a **condition**, and from 0.4.1 that condition lived in `GranitaMobileScene` as a
+flag set beside the pairing that succeeded.
+
+**A Mac is paired with once and opened every day after, and only the first of those set the flag.**
+The everyday route — tap a Mac this phone already knows, go straight to its worktrees — pushes a
+`DiscoveredServer` from the discovery list's own rows and never passes through the pairing that
+assigned it. So on iPad the split view opened inside the 420pt slot the pre-pairing screens use: a
+320pt sidebar, roughly 100pt of detail column with the file names running off the end of it, and
+white either side of the whole thing. On the phone nothing was visibly wrong, because 420pt is wider
+than the phone.
+
+**The container is now `PairingSpineScreen` and the rule is `PairingSpineNavigation`**, both in
+`ClientConnectionPresentation`. The screen takes the two destinations past the spine as builders —
+the remembered Mac and the just-paired one — because a `Presentation` target may not see a sibling
+one, and marks both in adjacent lines with the same one-line helper, so the two ways out cannot be
+given different measures and a third added later is a three-word omission next to its neighbour
+rather than a missing assignment in another module. The root keeps what only a composition root can
+answer: which implementation fills each protocol, and which session each list speaks over.
+
+### The rule is an object because a rule is a sequence, and a view body is one frame
+
+`PairingSpineNavigation` holds the path and answers one question — how wide the container may draw.
+It is split out rather than left as two `@State` properties for the reason the defect happened: the
+measure follows from a *sequence* of pushes and pops, a rendered baseline can only photograph one
+frame of a sequence, and a `Main` module is exempt from both coverage rows. As an object in
+`Presentation` it is a plain host test, and the sequence that has to hold — open a Mac, leave the
+spine, come back, open a different Mac — is eight assertions rather than a thing nobody can run.
+
+The reset lives in the setter of `path` rather than in an `onChange` in the view, because emptying
+the path is the *only* signal there is that the reader went back: the button that does it is the
+system's and nothing of ours is told it was pressed. The two ways out of the spine are then a method
+reference and an `onAppear`, so the view body has no closure a test cannot reach.
+
+### The flag cannot be read off the path, which is why it is written rather than derived
+
+`NavigationPath` is type-erased on purpose — it is what lets every destination be declared beside the
+link that reaches it — so the stack cannot be asked what it is showing. A Mac already paired with and
+a Mac about to be paired with are the *same value* at depth one, and which of the two a push reaches
+is decided inside `ChosenMacScreen` from a set that changes. So there is nothing to derive from, and
+the honest form is a flag written at the two places that know.
+
+### The baseline photographed the defect and stayed green through it
+
+`PairingSpineSnapshotTests` existed precisely to assert that a value put on the path comes back as a
+screen rather than as the system's missing-destination placeholder — and it rebuilt the root's stack
+itself, with `.frame(maxWidth: ServerDiscoveryView.contentWidth)` hardcoded around it. Its
+`a-mac-already-paired-with` iPad baseline is therefore a picture of the destination clamped to 420pt,
+recorded as the truth. **A replica of the thing under test asserts the replica.** The suite now
+renders the real `PairingSpineScreen` and hands it stand-ins for the two destinations, so the width a
+push lands at is measured; the two iPad baselines were re-recorded, and they are the diff that says
+what was wrong.
+
+`a-mac-just-paired-with` is new beside it, and the pair is the assertion: the same arrival, at the
+same width, reached by the other route. The route that *worked* had no baseline at all until now,
+which is the other half of why nothing noticed.
+
+`startingAt:` is a required parameter rather than a defaulted one for the same reason: it is what
+lets a baseline open the stack at the push it is photographing, and the root passes an empty path
+explicitly.
+
+## One gutter column with a marker beside it, which reverses §4's rejection of exactly that
+
+*(1 September 2026, 0.6.0)*
+
+The diff design review's first fault is a correctness bug: the gutter held the **new**-side number
+alone, so a deletion — which has no new-side number — drew an empty column. A reader who wanted to
+say "line 6 is wrong" had nothing to point at on the one row kind that says something was removed.
+
+The fix the review draws is one column carrying whichever side the row is on, and `design.md` §4 had
+**rejected that by name**: "it looks like one sequence and is two, so scanning it produces wrong line
+numbers with total confidence." That rejection assumed nothing else on the row said which side you
+were reading. The review's rule 2 adds the thing that does — a 12pt `+`/`−` column at full
+saturation — so the objection does not survive its own premise. **The two rules only work together**,
+and adopting either alone would be worse than today: a marker without the number leaves the bug, and
+the number without the marker is the ambiguity §4 named.
+
+Davide adopted both. What it costs is about three characters of code per row, and the review's answer
+to that is the one worth keeping: the row those characters came from was *already* cut off at the
+bezel without saying so, so they were never being read.
+
+**It departs from `SPEC.md` §10** — "gutter with old and new line numbers" — and the departure is
+recorded here rather than assumed, because it is the second half of one that was never written down:
+the phone has shipped a single column since 0.2.0 and no entry says so. Both halves are recorded now.
+Rejected: two columns on the phone, which §4 measured at 41 characters and called a keyhole; and the
+marker alone, which leaves the bug it was meant to fix.
+
+The iPad loses its second column with the phone. §4 argued that both columns are "the whole reason
+the phone can afford to drop one"; with the interleaved column that argument has nothing left to
+support, and the review's own iPad frame draws one 44pt column.
+
+## Every status gets a bar, modified included, and that reverses "modified gets no colour"
+
+*(1 September 2026, 0.6.0)*
+
+The review replaces the file header's status **letter** with a 3pt colour bar, and draws three
+colours: amber modified, green added, red deleted. `design.md` §3 has seven statuses and four
+treatments, and gives modified **no colour at all** — "modified is four rows in five; colouring the
+default case spends the palette on the thing that carries no information."
+
+Both cannot hold. A letter can be uncoloured and still be a letter; **a bar with no colour is not a
+bar**, it is a hole, and four rows in five drawing a hole is a column of gaps rather than a column.
+Davide settled it: every state is reflected, and modified keeps its bar. So the palette grows a fifth
+treatment rather than losing two — added and untracked green, deleted red, renamed indigo, conflicted
+orange, and modified and type-changed the review's own amber.
+
+**The amber is a literal `#C0821F`, the only one in the file**, and it is deliberately not `.orange`.
+Conflicted is orange, and two statuses a reader cannot tell apart is worse than the no-colour it
+replaces. The system palette had no fifth hue left that reads at 3pt against both cards.
+
+The **letter** survives unchanged in §3's selector, where a column of letters is scannable and 3pt of
+colour repeated down a 32pt row is not — but both now resolve their colour through one function, so a
+rename cannot be green in one screen and indigo in the other.
+
+## The hunk band is 26pt and its control is 44 wide rather than 44 tall
+
+*(1 September 2026, 0.6.0)*
+
+The review's fourth fault is inverted weight: a 43pt full-bleed grey slab standing for two lines of
+code drawn at 13.7pt. Rule 3 takes the band to 26pt and the code rows to 18.
+
+The band was 43pt **because the expand control set its height** — "the band grows to 44pt only where
+it carries a control", and the alternative that entry rejected was a hit area larger than the row it
+is drawn in, which overlaps the code above and below and turns a missed tap into an expanded hunk.
+The review draws a 26pt band with an expand chevron in it and does not say what happened to the 44pt,
+which is the one place it argues against itself: its own eighth fault is a 21pt tap target being
+"well under the 44pt minimum".
+
+Resolved by buying the area horizontally: **44pt wide in a 26pt band**, which is the trade the file
+header's viewed toggle already made for the same reason. It is a departure from the 44pt square and
+from the review's drawing both, and it is here so that a later measurement can contradict it. The
+same change makes every band one height whether or not it carries a control, so a file no longer
+changes rhythm down its length.
+
+Rejected: a 44pt hit area overflowing a 26pt band, for the reason the original entry gives; and
+keeping 43pt, which leaves the fault the rule exists to fix.
+
+## The files sit on a coloured page, because a gap the same colour as the rows is not a gap
+
+*(1 September 2026, 0.6.1)*
+
+0.6.0 built design §4's 10pt separation between files and it could not be seen. The gap was a clear
+strip on a screen whose background is the same white as every row in it, so what shipped was ten
+points of white between two white files — and Davide's first note on the release was "there's no
+spacer between files".
+
+The screen now draws what the review draws: a **grouped background** behind the whole scroll, an
+**opaque card** behind each file's header, bar and lines, and the gap left clear so the page shows
+through. It is one decision for every boundary — bar to bar, bar to header, header to code, and under
+the last file — and it stays right when a file shuts, opens, or is still arriving, which is the
+property a per-boundary rule does not have.
+
+Expensive to reverse because it settles what every surface in the diff composites onto: the pinned
+header and the collapsed bar are now opaque by contract rather than by inheritance, and the hunk
+band's own fill is read against the card rather than against the window.
+
+**The pair is the grouped one, and the first attempt was the plain one.** `systemBackground` over
+`systemGroupedBackground` separates in light — white on grey — and in dark they are **both**
+`#000000`, so the first rendering of this fixed one appearance and reproduced the original fault on
+the other, which the dark baseline caught. `secondarySystemGroupedBackground` over
+`systemGroupedBackground` holds in both: white on grey, then `#1C1C1E` on black.
+
+Rejected: a `Divider` at each gap — it draws a line where the review draws a space, needs a rule for
+which side of a boundary owns it, and says nothing at all under the last file. Rejected: colouring
+the gap itself and leaving the rows transparent, which is the same pixels and puts the answer in ten
+points of a lazy stack rather than in the screen.
+
+## A hunk band with nothing to say and nothing to press is removed, and one arrow is missing under it
+
+*(1 September 2026, 0.6.1)*
+
+`DiffHunkHeader` drew its 26pt strip unconditionally. For a short file — one hunk, from the first
+line to the last, and no section heading, which is what git gives whenever nothing encloses the
+change — that is a band with no name to carry and no gap to open: 26pt of grey chrome under the file
+header of most small diffs. Davide: *"some grey bars are empty… they should either have arrow/s or be
+hidden (I think they're missing arrow)"*.
+
+The band is now drawn only where it has a heading **or** a gap on one side, which is design §4's
+"a chevron over an empty gap is the smallest possible lie" applied to the thing the chevron sits in.
+
+**His hunch is also right, and that half is not fixed here.** `WorktreeService.fileDiff` derives
+`FileDiff.newLineCount` from the last hunk's own end — `newStart + newCount - 1` — while
+`DiffModels.swift` documents the field as "total lines on each side, which is what makes *can this
+hunk expand downwards* answerable without asking the server". They are the same number only when the
+last hunk runs to the end of the file, so **the last hunk of every file reports no gap below it** and
+never offers the downward chevron. `oldLineCount` has the same shape.
+
+The honest fix is the Mac's and it is not free: git's diff output does not carry a file's length, so
+the service would have to read the working copy for the new side and the compared revision for the
+old — one or two extra `git` invocations per file, on a route that already runs one per file and is
+called five files at a time.
+
+**Davide settled it on 1 September 2026 and the answer is not to spend that**: *"it is fine in case
+there's nothing to expand below, but we should not show an empty expander."* The requirement is on
+what the screen draws, not on what the Mac knows. A chevron over an empty gap was already absent, a
+band with nothing to say is absent now, and a missing downward chevron on a file's last hunk is a
+smaller fault than either — it shows nothing rather than lying about something.
+
+What it costs, stated so a later measurement can reopen it: a long file whose last hunk git left
+unheaded loses its band rather than gaining the chevron it should have, and the reader reaches the
+lines below that hunk by opening the file on the Mac.
+
+## The hunk band becomes a tear, and three of §4's own calls go with it
+
+*(1 September 2026, 0.6.1)*
+
+The design review came back a second time with the expander redrawn, and it replaces the band rather
+than restyling it. **A bar says a control is here; a tear says something is missing here** — and the
+second is the fact a reader needs while reading, because a broken edge registers before any label
+does. The row is torn on the side the content is missing from, and that one rule produces the three
+forms: torn above at the top of a file, torn below after the last change, torn both ways between two
+hunks.
+
+Three settled calls are reversed by it, and each was argued for here:
+
+- **"Expansion lives on the trailing edge, not the leading edge: that is the gutter's column, and a
+  glyph there reads as a line number."** The glyph moves into the gutter. The objection was right
+  about a *chevron* and is the reason the new mark is not one: an arrow over three short rules **is**
+  line numbers, near enough — they stand for the rows not being drawn, which is what the column is
+  empty for.
+- **"The band is 26pt and its control buys its hit area horizontally, 44pt wide rather than 44
+  tall."** The row is 44pt tall, because in two of its three forms the row *is* the control and there
+  is nothing else in it to press. The screen does not pay for it: the band was drawn above every
+  hunk, and a tear is drawn only across a gap — most files now have fewer of these rows than they had
+  bands, and a file the diff drew whole has none at all.
+- **"A band with no heading and no gap either side is not drawn."** Kept, and generalised past the
+  point of being a rule: a row *is* a gap now, so a row with nothing behind it cannot be constructed.
+  §4 calls this the fourth state and says there is none.
+
+**The structural change is that a row stands for one gap rather than for one hunk**, and it is what
+makes the three forms decidable at all. A band drawn per hunk carried both an up and a down control
+standing for two *different* stretches of file — the one before the hunk and the one after it — so
+pressing either meant working out which. `DiffFileRow.rows(of:)` interleaves gaps and hunks in `Domain`
+instead, which puts the whole rule in a pure function with a test per placement rather than in a view.
+
+Rejected: keeping the grey band and tearing only its edges, which is the bar the review is arguing
+against wearing a serrated top. Rejected: a system symbol for the glyph — nothing in SF Symbols means
+*these lines are not being shown*, and the closest are arrows that read as navigation. The tear and
+the glyph are the only two drawings in this app, and both are recorded in §4 with the measurement
+they were drawn at.
+
+## §3's drawer comes down to medium when a file is chosen
+
+*(1 September 2026, 0.6.1)*
+
+`presentationBackgroundInteraction(.enabled(upThrough: .medium))` is what makes §3's sheet a drawer
+rather than a modal, and *up through medium* is the modifier's own boundary. At the large detent the
+sheet covers the phone: the diff is neither visible nor scrollable behind it, so a tap on a row jumps
+a scroll nobody can see. The row did something and the reader has no way to know, which is the one
+failure this repository treats as unshippable.
+
+Choosing a file now writes the detent back to medium. **Reduced rather than dismissed** — Davide's own
+preference, and the weaker intervention: shutting the drawer would cost the reader the list they are
+working down, and §3 keeps the list up precisely so it need not be reopened between files.
+
+The height lives on `ClientViewerModel` rather than in the screen's `@State`, which is the rule this
+repository wrote down for `isShowingSelector` and for the Mac's Devices tab: a control whose only
+effect is a `@State` two layers up is a control nothing can be asked about. `FileSelectorDrawer` is a
+domain enum with two cases, and the model carries a `drawerDetent` beside it that translates one to
+the other — so the screen hands the sheet `$model.drawerDetent` and holds no rule of its own.
+
+**The translation is on the model because the alternative is untestable, and the coverage gate is
+what said so.** Written at the call site it is a `Binding(get:set:)` — two closures inside a `.sheet`
+builder that no rendered baseline invokes and no host test reaches, which is *which height means
+what* living in the one place nothing here can ask about it. That is five uncovered regions and a
+failing Snapshot row, and the row was right: the rule really was unreachable. Moved onto the model it
+is two accessors a unit test drives in four lines, and the screen is left with the framework's own
+projection and no code at all.
+
+The `swift-testing` skill's standing answer to a falling Snapshot row is *do not restructure the
+screen, read the export and say so* — and that still holds for an action closure, which is a control
+being pressed and genuinely undrivable. This was not one. It was a decision hiding in a binding, and
+taking decisions out of view code is a rule this repository already had.
+
+Rejected: dismissing the sheet, which is the modal §3 rejected arriving by another door. Rejected:
+offering only the medium detent, which takes away a reader's ability to read a long file list.
+Rejected: exempting the screen from the Snapshot row — `UNREACHABLE_FILES`'s bar is "unrunnable by
+construction" and a file-level exemption would have removed the fifty regions a baseline *does* cover
+in that screen along with the five it does not, which lowers the row rather than correcting it. That
+is the arithmetic the existing entries warn about.
+
+## The coverage gate keeps its build directories, and boots the simulator before it needs one
+
+*(1 September 2026, 0.6.1)*
+
+The Coverage job took 20m30s against a 1m56s unit job and a 2m09s build job, and the reason was never
+the measuring. Read off the 1 September `main` run (`da17334`, job 99827756013): 1m01s of prologue,
+**5m27s** of unit pass of which 5m02s was building the package, **10m36s** of iOS pass, 2m55s of macOS
+pass of which xcodebuild reported **14.2s** as the actual test operation, and 31s of merging and
+export. Three cold builds and a boot, wrapped around about six minutes of tests.
+
+Three things were paid for and none of them bought anything.
+
+**The package was built from scratch to run 25 seconds of tests.** `Unit tests (Granita)` caches
+`Packages/Granita/.build` and finishes the entire job in 1m56s; this one cached nothing. It now has
+a cache of its own — and a directory of its own, `build/derived/package`, because these objects carry
+coverage instrumentation and sharing `.build` with `make test` means each command invalidates the
+other's build every time they alternate. That is the local half of the same fix: two directories,
+two warm builds.
+
+**A warm package directory is only honest if `codecov/` is emptied first.** SwiftPM merges *every*
+`.profraw` in that directory into `default.profdata`, so a raw counter file left by an earlier run of
+an earlier commit would be added to this run's numbers — coverage credited to lines these tests never
+executed, and possibly to lines the commit no longer has. It could not happen while the directory was
+rebuilt from nothing each time, which is exactly why caching it is the change that introduces it. The
+script deletes the directory before the pass. **A wrong number is worse than a slow job**, and this
+repository has spent enough on the arithmetic of which file moved a row to want no doubt about the
+denominator.
+
+**Nothing booted the simulator, so the job stopped and waited for it.** Left to `xcodebuild` the boot
+happens after its build finishes: the iOS pass reported 8m49s for a suite whose test bodies account
+for 5m30s, and the sibling snapshot job on the same commit showed a **9m31s** gap between the app
+bundle being touched and the app's first log line — `xcrun simctl list` alone took 74s on that runner,
+which is what a cold CoreSimulator looks like. The boot now starts immediately before the iOS pass,
+so it runs against `xcodebuild`'s own build of the app — which needs no device until it starts
+testing. Its failure is swallowed: `xcodebuild` boots the device itself, slowly, and turning a
+warm-up into a red run would trade minutes for false alarms.
+
+**It was first written to boot before the *unit* pass, and the runner rejected that outright.** The
+reasoning had been that the unit pass needs no simulator, so the boot was free there — but a
+simulator booting beside the package build starves it. Measured on this change's own first run, #62:
+the unit pass went from 5m27s to **15m16s**, the suite's own wall time doubled from 25s to 50.3s, and
+the job went from 20m30s to **38m06s** while trying to get faster.
+
+**The wall clock was the smaller half of that.** The unit pass is `--no-parallel` because this suite's
+coverage number moves with how busy the machine is — five runs of one commit once reported two
+different numbers — so a booting simulator beside it feeds noise into the measurement that flag exists
+to remove. An optimisation that competes with the thing being measured is not an optimisation. What
+survives is the overlap that costs nothing: a boot against a build that wants no device.
+
+**`Snapshot tests (iOS)` got the same head start, because it was the job actually being waited on.**
+It is where the 9m31s gap was measured, it reported 946s against the coverage job's 529s for the same
+suite on the same commit, and at twenty minutes it outlasts the coverage job even after everything
+above — so fixing one and not the other would have moved a number without shortening a single pull
+request. **It is also the one place the head start was an unambiguous win: 19m54s to 10m53s on #62**,
+because there the boot overlaps an app build and there is no host suite beside it to starve. It boots
+with `simctl boot`, which returns as soon as CoreSimulator has taken the request and lets the daemon
+carry it across the step boundary — a backgrounded child of one `run:` step cannot be relied on to
+outlive it. It fails when the device is already booted, which is the outcome wanted anyway.
+
+The derived data directories moved out of `build/coverage` for the same reason — the script wipes that
+directory on every run, which on a fresh runner costs nothing and on a developer's machine meant two
+from-scratch app builds per `make coverage`. What still must not survive is the profile, since both
+app passes find theirs by searching the tree for `Coverage.profdata` and taking the first hit; Xcode
+writes exactly one, under `Build/ProfileData/<device>/`, so that subtree alone is deleted.
+
+Rejected: parallel testing, in either the unit pass or the snapshot passes. The unit pass is
+`--no-parallel` for a recorded reason — five runs of one commit reported two different numbers — and a
+ratchet with no slack cannot absorb a suite that measures the machine instead of itself. Rendering
+views across simulator clones is the same bet at longer odds. Rejected: having the job reuse the
+profiles the two snapshot jobs already produce rather than running those suites again. It removes
+about thirteen minutes from this job but serialises it behind a twenty-minute one, so the wall clock
+a pull request actually waits through barely moves — and the duplication is deliberate anyway, so a
+stale baseline reddens one job rather than two.

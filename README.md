@@ -71,7 +71,7 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
-### 0.6.0 — 2026-08-29
+### 0.6.2 — 2026-09-02
 - **Your phone wakes your Mac.** A Mac that has gone to sleep used to be a Mac that simply was not
   there — nothing in the list, nothing to tap, and no way to tell it apart from one that was
   switched off. Opening Granita now sends the Macs you have paired with the packet their network
@@ -92,6 +92,70 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 - **And one thing Apple has to allow.** Sending the wake needs the multicast networking entitlement,
   which Apple grants on request. Until it is granted on this app, the packet never leaves the phone
   and waking does nothing — everything else in this release works regardless.
+
+### 0.6.1 — 2026-09-01
+- **Files are actually separated now.** 0.6.0 put ten points between them and made those ten points
+  the same white as the files, so there was nothing to see. The diff sits on a grey page and each
+  file is a card on it, which is what makes the gap a gap.
+- **The grey band is now a tear across the page.** Where the diff skipped something you get a torn
+  row — torn along the top if the lines are missing above, along the bottom if they are below, along
+  both if they are in the middle — saying how many lines are hidden and, going up, which declaration
+  you are inside. Tap the row to open it; between two changes there is a control for each direction.
+- **A file the diff drew whole has no band at all.** There is nothing to reveal, so there is nothing
+  to press, and a row that could never do anything is not drawn.
+- **A file that shuts stops shifting sideways.** The open header and the bar that replaces it drew
+  their name, their status and their counts in two slightly different columns, which was visible down
+  a long change set. One column now.
+- **The `+` and `−` beside a line have room before the code now**, so a changed line with no
+  indentation no longer reads as one word starting with a minus sign.
+- **A file that added nothing says nothing about additions.** `+84 −0` is now just `+84`, and a
+  binary file or a rename that changed nothing shows no counts at all instead of `+0 −0`.
+- **The counts on a shut file no longer run off the edge of the screen.** `+1,240 −318` was losing
+  its last figure under the bezel on exactly the biggest files.
+- **Tapping a file in the list shows you it was tapped, and lets you see where it went.** The row
+  highlights under your thumb, and if you had pulled the list up over the whole screen it drops back
+  to half height so the file you asked for is behind it rather than hidden by it.
+
+### 0.6.0 — 2026-09-01
+- **A removed line has a number again.** It never had one: the gutter held the line number of the
+  file as it is now, and a removed line does not exist there — so the one row that says something was
+  taken away was the one row you could not point at. Every row carries a number now.
+- **`+` and `−` beside every changed line.** Colour was the only thing saying which side a line was
+  on, which fails for red-green colour blindness, fails in sunlight, and fails the moment you paste a
+  screenshot into a chat that dims images.
+- **A long line fades at the edge instead of stopping dead.** `extension Lce: Sendable where C:
+  Sendable` is 57 characters and the row fitted 56, so it looked finished and was not. There is a
+  scroll indicator under each hunk now, so you can see there is more to the right before you go
+  looking for it.
+- **The code got room and the chrome gave it up.** Rows go from 13.7pt to 18, the grey band between
+  hunks from 43pt to 26, and files are separated rather than running into one another.
+- **A file says its name, then where it lives.** `…out/Presentation/Models/AboutState.swift` threw
+  away the module, which is the only thing telling eleven files apart when three of them are in a
+  folder called `Models`.
+- **Marking a file read is a real target.** It was a 21pt ring against the edge of the screen; it is
+  44pt now, it fills green, and the file it belongs to goes quiet — so on a long review you can see
+  where you got to.
+- **The iPad's file list folds away.** Press the sidebar button to give the whole window to the code,
+  and the *Files* button comes back while it is folded. The iPad also draws code a point larger, which
+  is about 110 characters without wrapping.
+
+### 0.5.3 — 2026-08-31
+- **Opening and shutting a file now really does move.** 0.5.2 said it did, and only the lines around
+  a hunk actually travelled: tapping a collapsed bar still snapped every file below it into its new
+  place in one frame, with a fade over the top. The whole scroll slides now, so the file you were
+  reading goes where you can watch it go.
+
+### 0.5.2 — 2026-08-31
+- **Opening and shutting a file no longer snaps the screen out from under you.** Tapping a collapsed
+  bar, shutting a file you have finished, expanding the lines around a hunk, and opening or closing a
+  folder in the file list all move now instead of jumping. The diff below the tap slides to where it
+  is going, so you can see where you were and follow it there.
+
+### 0.5.1 — 2026-08-31
+- **On iPad, a Mac you have already paired with opens its worktrees across the whole window.** It
+  used to open them inside the narrow centred column the pairing screens use — a squeezed sidebar,
+  a sliver of a detail column, and white down both sides of the screen. The column is for getting
+  connected; once you are reading worktrees, the iPad gets the room it has.
 
 ### 0.5.0 — 2026-08-28
 - **You can delete a worktree from your phone.** Long-press a row in the worktree list and choose
