@@ -22,18 +22,40 @@ public struct DiffFileContent: View {
 
     private let diff: FileDiff
     private let pointSize: CGFloat
-    private let onExpand: (ContextDirection, Int, FileID) -> Void
 
-    /// The expansion reports which file it is in, because this view has the whole `FileDiff` and its
-    /// caller would only be re-attaching an identifier it is already holding.
+    /// Every comment the reader has written, not only this file's.
+    ///
+    /// **Filtered here rather than by the caller**, for the reason the expansion callback is shaped
+    /// the way it is: this view holds the whole `FileDiff`, so it is the one place that can answer
+    /// which of them belong to it without an identifier being re-attached on the way in.
+    private let comments: [ReviewComment]
+
+    /// The run being picked out, wherever it is. `CommentRail` drops it if it is not this file's.
+    private let pending: PendingComment?
+
+    private let onExpand: (ContextDirection, Int, FileID) -> Void
+    private let onTapGutter: (DiffLinePosition, FileID) -> Void
+    private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
+
+    /// The expansion and the two gutter gestures all report which file they are in, because this view
+    /// has the whole `FileDiff` and its caller would only be re-attaching an identifier it is already
+    /// holding.
     public init(
         diff: FileDiff,
         pointSize: CGFloat,
-        onExpand: @escaping (ContextDirection, Int, FileID) -> Void
+        comments: [ReviewComment] = [],
+        pending: PendingComment? = nil,
+        onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
+        onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in }
     ) {
         self.diff = diff
         self.pointSize = pointSize
+        self.comments = comments
+        self.pending = pending
         self.onExpand = onExpand
+        self.onTapGutter = onTapGutter
+        self.onLongPressGutter = onLongPressGutter
     }
 
     public var body: some View {
@@ -48,7 +70,13 @@ public struct DiffFileContent: View {
                     DiffFileLines(
                         lines: hunk.lines,
                         highestNumber: highestNumber,
-                        pointSize: pointSize
+                        pointSize: pointSize,
+                        // **Clipped to this hunk, which is what makes a rail across a hunk boundary
+                        // possible at all.** A file is several views with torn rows between them, so
+                        // there is no coordinate space a single rail could span.
+                        runs: CommentRail.runs(of: hunk, in: diff, comments: comments, pending: pending),
+                        onTap: { onTapGutter($0, diff.file.id) },
+                        onLongPress: { onLongPressGutter($0, diff.file.id) }
                     )
                 }
             }

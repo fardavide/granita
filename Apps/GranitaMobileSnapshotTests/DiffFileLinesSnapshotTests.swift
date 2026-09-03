@@ -1,3 +1,4 @@
+import ClientViewerDomain
 import ClientViewerUi
 import CoreDiffDomain
 import SwiftUI
@@ -33,7 +34,8 @@ struct DiffFileLinesSnapshotTests {
                     subject.lines.compactMap(\.oldNumber).max() ?? 0,
                     subject.lines.compactMap(\.newNumber).max() ?? 0
                 ),
-                pointSize: subject.pointSize
+                pointSize: subject.pointSize,
+                runs: subject.runs
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
@@ -54,6 +56,10 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
     /// measurement. The gutter, the marker and the row height all derive from it, so the two sizes
     /// are two different grids rather than one grid scaled.
     let pointSize: CGFloat
+
+    /// The comment rails this hunk draws. Empty for every case that predates §7, so none of their
+    /// baselines moves.
+    var runs: [CommentRun] = []
 
     var testDescription: String { name }
 
@@ -93,6 +99,74 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
         // hundred lines deleted from the end leaves an old side running into four figures while the
         // new side stops at two — sized on the new maximum, the old numbers would not fit the column
         // they are drawn in.
-        DiffLinesCase(name: "an-old-side-that-outruns-the-new", lines: anOldSideThatOutrunsTheNew, pointSize: 11)
+        DiffLinesCase(name: "an-old-side-that-outruns-the-new", lines: anOldSideThatOutrunsTheNew, pointSize: 11),
+
+        // MARK: - Design §7.3's rail
+
+        // **One row, which is the shortest a rail gets: an 18pt stub.** What this holds is the thing
+        // the whole treatment turns on — that 3pt in the leading inset does not move a single figure,
+        // a single marker, or a single character of code. Compare it against `a-changed-function`,
+        // which is the same lines with no rail: everything but the rail is identical.
+        DiffLinesCase(
+            name: "a-rail-on-one-row",
+            lines: aChangedFunction,
+            pointSize: 11,
+            runs: [CommentRun(firstRow: 2, rowCount: 1, isPending: false)]
+        ),
+
+        // **Four rows, which is the case length has to carry.** Design §7.3 spends the rail's whole
+        // argument on this: a run reads as a run without a count, without colour and without a point
+        // of new height, because the bar is simply four times as long.
+        DiffLinesCase(
+            name: "a-rail-across-four-rows",
+            lines: aChangedFunction,
+            pointSize: 11,
+            runs: [CommentRun(firstRow: 1, rowCount: 4, isPending: false)]
+        ),
+
+        // **Square caps, which mean a run being picked out rather than a comment that exists.** It is
+        // a difference in shape rather than in colour on purpose, so it survives a greyscale
+        // screenshot and a reader who cannot tell indigo from blue — which is exactly what a baseline
+        // pair like this one and the two above it can be asked to show.
+        DiffLinesCase(
+            name: "a-rail-still-being-picked-out",
+            lines: aChangedFunction,
+            pointSize: 11,
+            runs: [CommentRun(firstRow: 1, rowCount: 2, isPending: true)]
+        ),
+
+        // **Two comments in one hunk, with a gap between them.** Design §7.3 says they must read as
+        // separate objects rather than as one long mark with a break in it, and nothing but the gap
+        // says so.
+        DiffLinesCase(
+            name: "two-rails-in-one-hunk",
+            lines: aChangedFunction,
+            pointSize: 11,
+            runs: [
+                CommentRun(firstRow: 0, rowCount: 1, isPending: false),
+                CommentRun(firstRow: 3, rowCount: 2, isPending: false)
+            ]
+        ),
+
+        // **The narrowest gutter a change set can produce**, where the strip is about 38pt rather
+        // than 51 and the leading inset is the same 4pt it always is. If the rail were going to
+        // collide with a figure anywhere, it would be here.
+        DiffLinesCase(
+            name: "a-rail-on-a-short-file",
+            lines: aShortFile,
+            pointSize: 11,
+            runs: [CommentRun(firstRow: 1, rowCount: 2, isPending: false)]
+        )
     ]
 }
+
+// MARK: -
+
+/// A file of nine lines, so its figure column is one digit wide — the narrowest gutter, and the
+/// tightest the rail's 3pt ever has to sit in.
+private let aShortFile: [DiffLine] = [
+    DiffLine(kind: .context, oldNumber: 6, newNumber: 6, text: "func main() {", displayColumns: 13, segments: nil),
+    DiffLine(kind: .deletion, oldNumber: 7, newNumber: nil, text: "    print(\"hi\")", displayColumns: 15, segments: nil),
+    DiffLine(kind: .addition, oldNumber: nil, newNumber: 7, text: "    print(\"hello\")", displayColumns: 18, segments: nil),
+    DiffLine(kind: .context, oldNumber: 8, newNumber: 8, text: "}", displayColumns: 1, segments: nil)
+]

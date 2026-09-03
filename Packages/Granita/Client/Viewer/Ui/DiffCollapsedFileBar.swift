@@ -26,13 +26,23 @@ public struct DiffCollapsedFileBar: View {
 
     private let file: FileChange
     private let collapse: FileCollapse
+    private let commentCount: Int
     private let onSetOpen: (Bool, FileID) -> Void
 
     /// It reports which file it is about, for the reason the header does: the bar has the file, and
     /// a caller re-attaching its identifier is a wrapper per bar per frame.
-    public init(file: FileChange, collapse: FileCollapse, onSetOpen: @escaping (Bool, FileID) -> Void) {
+    ///
+    /// **This is the row the chip exists for.** A shut file has no rows, so it can carry no rail —
+    /// design §7.3's whole argument for having a second mark at all.
+    public init(
+        file: FileChange,
+        collapse: FileCollapse,
+        commentCount: Int = 0,
+        onSetOpen: @escaping (Bool, FileID) -> Void
+    ) {
         self.file = file
         self.collapse = collapse
+        self.commentCount = commentCount
         self.onSetOpen = onSetOpen
     }
 
@@ -55,6 +65,7 @@ public struct DiffCollapsedFileBar: View {
                 secondLine
             }
             Spacer(minLength: 8)
+            CommentCountChip(count: commentCount)
             stats
             viewedMark
         }

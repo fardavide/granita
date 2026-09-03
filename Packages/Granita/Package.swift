@@ -357,6 +357,12 @@ let package = Package(
             swiftSettings: [swift6]
         ),
         .testTarget(
+            name: "ClientViewerDataTests",
+            dependencies: ["ClientViewerData", "ClientViewerDomain", "CoreDiffDomain"],
+            path: "Client/Viewer/DataTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
             name: "ClientViewerPresentationTests",
             dependencies: [
                 "ClientViewerPresentation",

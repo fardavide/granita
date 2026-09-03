@@ -52,19 +52,47 @@ public struct DiffFileLines: View {
     private let highestNumber: Int
     private let pointSize: CGFloat
 
+    /// The stretches of comment rail this hunk draws, decided by `CommentRail` in `Domain`.
+    private let runs: [CommentRun]
+
+    private let onTap: (DiffLinePosition) -> Void
+    private let onLongPress: (DiffLinePosition) -> Void
+
     @State private var visibleWidth: CGFloat = 0
     @State private var contentWidth: CGFloat = 0
     @State private var scrolledBy: CGFloat = 0
+
+    /// Bumped when a long press is recognised, so the haptic is a declarative consequence of a state
+    /// change rather than a call into the system from inside a view body.
+    @State private var holds = 0
+
+    /// Whether the current press has already been reported, so one hold marks one row.
+    @State private var isPressing = false
 
     @Environment(\.colorScheme) private var colorScheme
 
     /// The highest number is handed in rather than taken from these lines, because a hunk is not a
     /// file: sized per hunk, the column would step in and out as the reader scrolled, which is a
     /// gutter that changes width mid-file. Design §4 sizes it from the file's own maximum.
-    public init(lines: [DiffLine], highestNumber: Int, pointSize: CGFloat) {
+    ///
+    /// **The two gestures report a row and not a file**, because a hunk does not hold a `FileID` and
+    /// the view that does — `DiffFileContent` — re-attaches its own on the way back up. That is the
+    /// same seam `onExpand` already uses, and it is one fewer place for the wrong identifier to be
+    /// attached.
+    public init(
+        lines: [DiffLine],
+        highestNumber: Int,
+        pointSize: CGFloat,
+        runs: [CommentRun] = [],
+        onTap: @escaping (DiffLinePosition) -> Void = { _ in },
+        onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
+    ) {
         self.lines = lines
         self.highestNumber = highestNumber
         self.pointSize = pointSize
+        self.runs = runs
+        self.onTap = onTap
+        self.onLongPress = onLongPress
     }
 
     public var body: some View {
@@ -74,8 +102,93 @@ public struct DiffFileLines: View {
                 columns
             }
             .font(.system(size: pointSize, design: .monospaced))
+            // **Overlaid rather than added to the row, which is the whole of design §7.3's call 7.**
+            // A fourth column in `columns` would widen the gutter by 3pt and desynchronise two
+            // constants that are computed rather than measured — the scroll indicator's leading inset
+            // and `DiffExpander`'s code origin — so every torn row and every thumb would sit 3pt off
+            // the code they belong to. An overlay takes no space at all, and the space it draws in is
+            // the 4pt of leading inset that no figure ever reaches.
+            .overlay(alignment: .topLeading) { rails }
+            // **The target, and it is one strip rather than a control per row.** See `GutterTarget`
+            // for why an 18pt row is allowed to be the unit here: this has no boundaries in it and no
+            // dead space, so a miss cannot produce nothing.
+            .overlay(alignment: .topLeading) { tapStrip }
             indicator
         }
+        .sensoryFeedback(.selection, trigger: holds)
+    }
+
+    /// One capsule per stretch, positioned by row rather than by point so the arithmetic is the same
+    /// one the tints and the numbers already agree on.
+    ///
+    /// **Square caps mean pending and round caps mean saved.** Design §7.1 makes it a difference in
+    /// shape rather than in colour, so the state survives a greyscale screenshot, a dimmed one, and a
+    /// reader who cannot tell indigo from blue.
+    private var rails: some View {
+        ForEach(runs) { run in
+            // One shape rather than two, because the difference *is* the corner: a square-capped rail
+            // is a run still being picked out and a round-capped one is a comment that exists.
+            RoundedRectangle(cornerRadius: run.isPending ? 0 : DiffGutter.railWidth / 2, style: .continuous)
+                .fill(Color.diffCommentRail)
+                .frame(width: DiffGutter.railWidth, height: rowHeight * CGFloat(run.rowCount))
+                .offset(y: rowHeight * CGFloat(run.firstRow))
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// Everything to the left of the code, taking both gestures and drawing nothing.
+    ///
+    /// **A tap and a long press, resolved by arithmetic rather than by hit testing.** The alternative
+    /// — a `contentShape` per row — needs 44pt to be a legal target, which overhangs its neighbours
+    /// by 13pt on each side and leaves three rows claiming one point with z-order deciding. This has
+    /// one answer everywhere in it.
+    private var tapStrip: some View {
+        Color.clear
+            .frame(
+                width: DiffGutter.tapStripWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize),
+                height: rowHeight * CGFloat(lines.count)
+            )
+            .contentShape(.rect)
+            .gesture(
+                SpatialTapGesture().onEnded { touch in
+                    if let row = row(at: touch.location.y) {
+                        onTap(row)
+                    }
+                }
+            )
+            // **Sequenced with a zero-distance drag purely to learn where the finger is.** A bare
+            // `onLongPressGesture` reports that a press happened and not where, and where is the
+            // whole question. The press has to win before the drag begins, which is also what keeps
+            // this from competing with the vertical scroll: until 0.35s has passed, the pan is the
+            // scroll's.
+            .gesture(
+                LongPressGesture(minimumDuration: 0.35)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .onChanged { phase in
+                        switch phase {
+                        // The press is still being held and has not won yet.
+                        case .first:
+                            isPressing = false
+                        // **Once per press, not once per frame.** A zero-distance drag reports every
+                        // movement of a finger that is already down, and a hold that fired on each of
+                        // them would re-mark the row and re-fire the haptic all the way through a
+                        // press.
+                        case .second(let recognised, let touch):
+                            guard recognised, isPressing == false, let touch,
+                                  let row = row(at: touch.startLocation.y) else { return }
+                            isPressing = true
+                            holds += 1
+                            onLongPress(row)
+                        }
+                    }
+                    .onEnded { _ in isPressing = false }
+            )
+    }
+
+    /// Which row a touch meant, and nothing when no row there can carry a comment.
+    private func row(at y: CGFloat) -> DiffLinePosition? {
+        guard let index = GutterTarget.row(at: y, of: lines, rowHeight: rowHeight) else { return nil }
+        return DiffLinePosition.of(lines[index])
     }
 
     /// A strip per row, full width, behind everything. Outside the scroll on purpose: a tint that

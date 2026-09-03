@@ -40,27 +40,44 @@ public struct ContinuousDiffView: View {
     /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
     private let jumpTarget: FileID?
 
+    /// The whole review, judged against this change set. Each file takes what is its own: the runs
+    /// that still resolve become rails, and the ones that do not become a row under its header.
+    private let comments: [ReviewedComment]
+
+    /// The run being picked out, if one is.
+    private let pending: PendingComment?
+
     private let onReading: (Int) -> Void
     private let onJumped: () -> Void
     private let onSetViewed: (Bool, FileID) -> Void
     private let onSetOpen: (Bool, FileID) -> Void
     private let onExpand: (ContextDirection, Int, FileID) -> Void
+    private let onTapGutter: (DiffLinePosition, FileID) -> Void
+    private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
+    private let onOpenReview: () -> Void
     private let onRetry: () -> Void
 
     public init(
         state: ContinuousDiffState,
         pointSize: CGFloat,
         jumpTarget: FileID?,
+        comments: [ReviewedComment] = [],
+        pending: PendingComment? = nil,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void,
         onSetOpen: @escaping (Bool, FileID) -> Void,
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
+        onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onOpenReview: @escaping () -> Void = {},
         onRetry: @escaping () -> Void
     ) {
         self.state = state
         self.pointSize = pointSize
         self.jumpTarget = jumpTarget
+        self.comments = comments
+        self.pending = pending
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
         _scrolledTo = State(initialValue: jumpTarget ?? state.firstFile)
@@ -69,6 +86,9 @@ public struct ContinuousDiffView: View {
         self.onSetViewed = onSetViewed
         self.onSetOpen = onSetOpen
         self.onExpand = onExpand
+        self.onTapGutter = onTapGutter
+        self.onLongPressGutter = onLongPressGutter
+        self.onOpenReview = onOpenReview
         self.onRetry = onRetry
     }
 
@@ -174,10 +194,31 @@ public struct ContinuousDiffView: View {
     /// one per row per frame and one more place for the wrong identifier to be attached.
     @ViewBuilder private func header(of entry: ContinuousDiffEntry) -> some View {
         if entry.collapse.isCollapsed {
-            DiffCollapsedFileBar(file: entry.file, collapse: entry.collapse, onSetOpen: onSetOpen)
+            DiffCollapsedFileBar(
+                file: entry.file,
+                collapse: entry.collapse,
+                commentCount: count(in: entry.id),
+                onSetOpen: onSetOpen
+            )
         } else {
-            DiffFileHeader(file: entry.file, onSetOpen: onSetOpen, onSetViewed: onSetViewed)
+            DiffFileHeader(
+                file: entry.file,
+                commentCount: count(in: entry.id),
+                onSetOpen: onSetOpen,
+                onSetViewed: onSetViewed
+            )
         }
+    }
+
+    /// Every comment on this file, whether or not its lines are still there — the chip counts what
+    /// the reader wrote, and a stale one is still in the review and still in the document.
+    private func count(in file: FileID) -> Int {
+        comments.count { $0.comment.anchor.file == file }
+    }
+
+    /// The ones this file can no longer draw a rail for.
+    private func stale(of entry: ContinuousDiffEntry) -> [ReviewedComment] {
+        comments.filter { $0.isStale && $0.comment.anchor.file == entry.id }
     }
 
     /// **The gap between two files, and the review's seventh fault.** Without it a collapsed bar
@@ -209,6 +250,16 @@ public struct ContinuousDiffView: View {
             // the 44pt its bar takes and not one row more.
             EmptyView()
         } else {
+            // **Under the header and above the code**, which is the only place left for a comment
+            // whose rows are gone. See `StaleCommentRow` for why inserting 44pt here does not break
+            // the no-reflow rule, and for what would make it start breaking it.
+            ForEach(stale(of: entry), id: \.id) { reviewed in
+                StaleCommentRow(
+                    count: 1,
+                    line: reviewed.comment.lines.first,
+                    onOpenReview: onOpenReview
+                )
+            }
             switch entry.content {
             case .awaiting:
                 // Deliberately empty rather than a spinner. There is no per-file progress worth
@@ -218,7 +269,18 @@ public struct ContinuousDiffView: View {
                 Color.clear
                     .frame(height: reservedHeight(of: entry))
             case .ready(let diff):
-                DiffFileContent(diff: diff, pointSize: pointSize, onExpand: onExpand)
+                DiffFileContent(
+                    diff: diff,
+                    pointSize: pointSize,
+                    // The rails are drawn from the comments that still resolve; a stale one has the
+                    // row above instead. Handed the raw comments because `CommentRail` is what
+                    // decides which of them this file's hunks can place.
+                    comments: comments.filter { $0.isStale == false }.map(\.comment),
+                    pending: pending,
+                    onExpand: onExpand,
+                    onTapGutter: onTapGutter,
+                    onLongPressGutter: onLongPressGutter
+                )
             }
         }
     }

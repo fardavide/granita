@@ -104,6 +104,66 @@ struct WorktreeDiffScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-refused-mark")
     }
+
+    // MARK: - Design §7's two corners
+
+    /// **The capsule, and the fact that it is not in the toolbar.** Design §7.4's call 2: a toolbar
+    /// hides on scroll and reading is exactly when the count changes, so the way into the review
+    /// floats over the bottom trailing corner instead — and `primaryAction` keeps *12 files*, which
+    /// is the only place the phone says how big the read is.
+    ///
+    /// **On the iPad this baseline is the other half of the same call**: no capsule there, a
+    /// bubble-and-count in the toolbar instead, because a column already on screen needs no button to
+    /// announce it and that toolbar does not hide.
+    @Test(arguments: SnapshotLayout.all)
+    func `given comments exist when the screen is rendered then the way into the review is on it`(
+        layout: SnapshotLayout
+    ) async {
+        // given — the entries have to be `ready`, because a comment cannot attach to a file whose
+        // diff has not arrived and a rail cannot be drawn beside rows that are not there.
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-review-in-progress")
+    }
+
+    /// **The state Davide's gesture leaves the reader in, and the sentence that explains it.** One row
+    /// is held and the app is waiting for a second tap that may never come — a state no iOS
+    /// convention explains and that nothing in the scroll can, because every pixel of it is code.
+    ///
+    /// It also holds the other half of §7.4's argument: the bar and the capsule share this position
+    /// and can never both be true, so a review in progress with a row held shows the bar and no
+    /// capsule.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a row is held when the screen is rendered then the bar explains it and the capsule stands aside`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+        if let file = aChangeSetPartlyArrived.first?.id {
+            model.longPressedGutter(aRowOfTheFirstFile, in: file)
+        }
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-row-held")
+    }
+
+    /// **The iPad's review column, which takes the tree's place rather than sitting beside it.**
+    /// Design §7.7's call 6, and the arithmetic is the argument: three columns at 1194pt leave the
+    /// code about 60 characters. On the phone the same model state is a sheet, so the two phone
+    /// layouts here photograph the diff behind it — which is the assertion that the sheet did not
+    /// take the column's place by accident.
+    @Test(arguments: SnapshotLayout.all)
+    func `given the review is open when the screen is rendered then the iPad gives it the tree's column`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+        model.showReview()
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "the-review-is-open")
+    }
 }
 
 // MARK: -

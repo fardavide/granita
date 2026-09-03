@@ -15,8 +15,10 @@ Granita is two halves of one product:
   highlighting, a directory-grouped file tree, word-level intra-line diff, mark-as-viewed, and the
   reading ergonomics of a real review tool.
 
-v1 is read-only apart from worktree aliases and pins. You review on the phone, then talk to Claude
-in the mobile app as usual. Inline comments and pushing feedback back into the agent are v2.
+v1 is read-only apart from worktree aliases, pins, and the comments you leave on a change. You
+review on the phone, copy the review out, and paste it to the agent. **Pushing it back into the
+session automatically is still v2**, and so is anything that would put your comments on the Mac —
+today they live on the phone that wrote them.
 
 Nothing is exposed to the phone until you enable it explicitly, and the connection is TLS with a
 pinned certificate — the payload is your private source code.
@@ -70,6 +72,25 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 `main` is PR-gated: land every change through a pull request and wait for the checks.
 
 ## Changelog
+
+### 0.7.0 — 2026-09-03
+- **You can leave comments on the code now, and send them back to the agent that wrote it.** Tap the
+  line numbers beside a line to write one. Press and hold a line, then tap another, to comment on a
+  run of them.
+- **A comment is a thin indigo bar beside the lines it is about**, as long as the run it covers, and
+  the file's header says how many the file carries. Nothing moves when you write one: the diff you
+  were reading stays exactly where it was.
+- **A *Review* button appears in the corner once you have written something.** It never disappears
+  while you scroll, because that is when you are writing.
+- **The review is one screen**: an optional note for the agent — or Skip — and every comment in the
+  order the diff draws them. *Show text* reveals exactly what will be copied.
+- **Copy it, and only then are you offered a way to clear it.** The comments live on this phone and
+  nowhere else, so the button that throws them away appears after the one that sends them, never
+  before, and it asks first.
+- **Tap a comment's bar to edit it, swipe it in the review to delete it.**
+- **A comment whose lines the agent has since changed says so** rather than disappearing — it moves
+  to a row under the file's name and is still included when you copy.
+- **On iPad the review is a column** that takes the file tree's place, so the code keeps its width.
 
 ### 0.6.1 — 2026-09-01
 - **Files are actually separated now.** 0.6.0 put ten points between them and made those ten points

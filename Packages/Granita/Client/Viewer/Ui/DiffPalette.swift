@@ -44,6 +44,26 @@ extension Color {
         #endif
     }
 
+    /// The rail a commented run draws in the gutter's leading inset.
+    ///
+    /// **`.indigo`, and it is the only violet on the screen.** Green, red and orange are spoken for
+    /// by the diff's own vocabulary — added, removed, conflicted — and the comment is a fourth thing
+    /// that is none of them. It is deliberately *not* load-bearing: design §7.3 makes the rail's
+    /// position and its length carry the meaning, so it survives greyscale, a dimmed screenshot and a
+    /// reader who cannot tell it from blue.
+    ///
+    /// **It collides with a renamed file's status bar, which is also indigo**, and that is recorded
+    /// rather than resolved: the system palette ran out at four hues, the two are different shapes in
+    /// different places — a 3pt vertical rail in the gutter against a 3pt horizontal bar in a header
+    /// — and neither carries its meaning by colour alone. See `.claude/docs/decisions.md`.
+    static var diffCommentRail: Color { .indigo }
+
+    /// A comment whose lines are gone, which is the one comment state that is a warning.
+    ///
+    /// Amber rather than red: nothing is broken and nothing was lost — the comment is still in the
+    /// review and still goes in the document. What it has lost is somewhere to sit.
+    static var diffCommentStale: Color { .orange }
+
     /// The hunk band's fill, and the review's fourth fault finished.
     ///
     /// **`quaternarySystemFill`, which is what this band was always documented as and never drawn

@@ -62,7 +62,12 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
         DiffPaneLayout(
             fitsSelectorColumn: isRegularWidth,
             isSelectorColumnOpen: true,
-            hasFilesToSelect: true
+            hasFilesToSelect: true,
+            // The code size is taken from the room rather than from what is folded into it, so
+            // neither of these moves it — stated rather than defaulted, because a default here would
+            // be a second answer to a question this type exists to answer once.
+            isReviewOpen: false,
+            hasComments: false
         ).codePointSize
     }
 

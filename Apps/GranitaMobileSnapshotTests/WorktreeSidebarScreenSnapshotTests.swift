@@ -166,7 +166,7 @@ private func theSidebar(
     in layout: SnapshotLayout
 ) -> some View {
     NavigationStack {
-        WorktreeSidebarScreen(model: model) { _, displayName in
+        WorktreeSidebarScreen(model: model) { _, displayName, _ in
             WorktreeDiffScreen(worktreeName: displayName, model: diff)
         }
     }

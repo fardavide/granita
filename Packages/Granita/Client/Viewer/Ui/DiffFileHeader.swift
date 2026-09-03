@@ -33,6 +33,7 @@ import CoreDiffDomain
 public struct DiffFileHeader: View {
 
     private let file: FileChange
+    private let commentCount: Int
     private let onSetOpen: (Bool, FileID) -> Void
     private let onSetViewed: (Bool, FileID) -> Void
 
@@ -41,10 +42,12 @@ public struct DiffFileHeader: View {
     /// per frame, and one more place for the wrong identifier to be attached.
     public init(
         file: FileChange,
+        commentCount: Int = 0,
         onSetOpen: @escaping (Bool, FileID) -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void
     ) {
         self.file = file
+        self.commentCount = commentCount
         self.onSetOpen = onSetOpen
         self.onSetViewed = onSetViewed
     }
@@ -90,6 +93,9 @@ public struct DiffFileHeader: View {
                 if file.status == .conflicted {
                     badge
                 }
+                // Before the stats rather than after, so the two numbers on this row are not adjacent
+                // — `2 +95 −3` reads as one figure and the chip is about something else entirely.
+                CommentCountChip(count: commentCount)
                 stats
             }
             .opacity(file.isViewed ? Self.viewedOpacity : 1)

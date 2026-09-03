@@ -4702,3 +4702,231 @@ profiles the two snapshot jobs already produce rather than running those suites 
 about thirteen minutes from this job but serialises it behind a twenty-minute one, so the wall clock
 a pull request actually waits through barely moves — and the duplication is deliberate anyway, so a
 stale baseline reddens one job rather than two.
+
+## Inline comments arrive in v1, which `SPEC.md` §11 lists as v2
+
+Davide asked for them on 3 September 2026: a comment on a run of changed lines, a button that
+appears once there are any, one prompt for an overall note or a *Skip*, and the whole thing collected
+into one piece of text he can copy and paste back to the agent that wrote the code.
+
+`SPEC.md` §11 puts *"inline comments, line and range, with threads"* and *"feedback export"* in the
+v2 backlog under **build none of them**, and §1 says v1 *"must not build v2"*. So this is a departure
+rather than a slice, and it is recorded here rather than by editing the specification: the line §11
+drew is what kept v1 finishable, and moving it quietly would lose the reason it was drawn.
+
+**What is taken is narrower than what §11 describes, and deliberately.** No threads — a review is a
+note left for an agent, not a conversation — and no `REVIEW.md`, no share sheet, no injection into a
+live session. The known unknown §11 flags about `claude --resume` is untouched, because the
+pasteboard is the reliable fallback that paragraph names and this builds only that.
+
+**The architecture §11 asked for held.** Nothing on the wire changed, no route was added, the
+contract version did not move, and the Mac does not know this feature exists. That is the *"design so
+these stay cheap"* clause being cashed rather than a claim about it.
+
+## A comment is addressed by the numbers its rows carry, never by where they sit
+
+An anchor has to survive two things: a hunk expansion, which splices twenty lines into the middle of
+a file, and the screen re-appearing, which re-runs `load()` and replaces every hunk. An offset into
+the drawn rows survives neither.
+
+Old line numbers rise monotonically down the old side and new ones down the new side, so the pair
+`(oldNumber, newNumber)` is unique within a file and unmoved by both: a deletion is `(11, nil)` and
+stays `(11, nil)` however much context arrives above it, and spliced context arrives carrying real
+numbers. That pair is `DiffLinePosition`, and a comment stores the pair at each end of its run.
+
+**A row with no number on either side therefore cannot be an end of a selection**, and that costs
+nothing because design §4's gutter draws no figure for such a row — there is nothing to tap. A
+selection still *spans* one and the quote carries it verbatim.
+
+**The first version of this rule named the wrong rows, and a test found it.** It said conflict
+markers were the numberless case, which reads plausibly and is wrong: a conflicted working tree holds
+`<<<<<<< HEAD` as literal content, so git diffs it behind an ordinary `+` and `UnifiedDiffParser`
+numbers it from *that* prefix before re-tagging it by its text. The `.conflictMarker` arm of
+`occupiesOldSide` is unreachable. So the markers stay addressable, which is the outcome worth having
+— a conflict is what a reader most wants to point at — and the one genuinely numberless row is
+`\ No newline at end of file`, of which a hunk holds two whenever a trailing newline is added.
+
+**The same discovery moved the quote's markers off the kind and onto the numbers.** Re-tagging throws
+the prefix away, so a `+`/`-`/space chosen by `DiffLineKind` would put the wrong one on every
+conflict marker. Which sides a row occupies survives the re-tagging and says the same thing.
+*Superseded by §7's return, below: the excerpt carries no diff markers at all.*
+
+## The excerpt is snapshotted when the comment is written, not resolved when it is exported
+
+A comment carries the path, the span and the quoted rows as they were on screen. The obvious
+alternative — hold the anchor and re-read the diff at export time — is wrong for the one reason this
+feature exists: the agent is about to change exactly those lines, so a quote resolved later shows its
+reply rather than the reader's question. It also keeps a comment sendable after its file has left the
+change set, which is what happens when the agent reverts something between the note and the paste.
+
+**A run that is entirely deletions is named on the old side and the document says so.** Everything
+else is named on the new side, because the agent opens the working copy and "line 12" has to mean the
+line it would find; reporting a new-side number for lines that exist nowhere in it would send the
+agent to whatever now sits there. It is said only in the case that needs it, so the ordinary comment
+stays quiet. *The wording and its placement changed with §7's return, below — it is a line under the
+path rather than a suffix on it.*
+
+## The review lives in the phone's user defaults, and #64 is where it should live
+
+Davide's call on 3 September 2026: persisted on the phone now, with an issue to move it to the Mac.
+
+**Persisted rather than held in the model**, because a review is written over as long as it takes to
+read a change set and iOS ends a backgrounded app whenever it likes. Comments lost to a phone call
+are an afternoon lost, and the thing they were written on is the one thing the app cannot re-derive.
+
+**Keyed per worktree**, because that is what a review is of. Two agents in two checkouts of one
+project are two reviews.
+
+The Mac is the right home — it survives a new phone, it is where the worktree is, and `SPEC.md` §9's
+`Store` protocol was written for exactly this growth — and it is a wire change with new routes and a
+contract version, so it is [#64](https://github.com/fardavide/granita/issues/64) rather than this
+slice. **Nothing here has to be rewritten when it moves**: `ReviewCommentStore` is a `Domain`
+protocol, and the Mac's version is a second conformer and one line of the composition root.
+
+## The screens wait for their frames, and only the screens
+
+The composer, the way a line is chosen, the button that appears once a review exists, the overall-note
+prompt with its *Skip*, and the copy are all reader-facing and none of them is drawn, so
+`design-handoff`'s rule applies in full: no pull request touching a screen opens before the frames
+exist. The prompt was written on 3 September 2026.
+
+**What shipped alongside is everything a frame cannot be authoritative about** — the anchor, the
+selection, the document, the store, its conformer, and the model's whole comment half — which is that
+skill's own instruction rather than a way around it. It is the same split 0.5.0's worktree deletion
+used, taken the other way: there Davide chose to ship the screen ahead of its design and pay for it
+in thirteen recorded calls; here he chose to wait.
+
+**The pasteboard is not in this half, and that is a coverage call as much as a scope one.** Copying
+is I/O and belongs behind a seam its `Domain` owns, the way the Mac's `SystemGestures` does — and the
+Mac's conformer had to be added to `UNREACHABLE_FILES` to get there, which is a scope redefinition
+rather than a commit. Adding a seam for a button nobody can press yet would spend that conversation
+early and blind. It lands with the button.
+
+## §7 came back, and the call it turns on is that the gutter is a coordinate rather than a control
+
+The design round trip for inline comments returned on 3 September 2026. Its headline is a single
+structural decision that every other one follows from: **nothing opens in the diff.** No row grows, no
+file re-lays out, no sheet pushes the scroll up. A comment is 3pt of colour at the leading edge and a
+sheet at the bottom of the screen — which is what lets a feature that GitHub builds entirely out of
+reflow live inside `SPEC.md` §10's no-reflow rule without touching it.
+
+**The 44pt question was answered by re-classifying the target, and this is a departure with Davide's
+sentence still owing.** A code row is 18pt at the smallest size a reader can choose. The design's
+argument is that the 44pt minimum governs *discrete* controls — things with a boundary you must land
+inside, where a miss produces nothing — and that one gesture recogniser over the whole gutter strip is
+not one of those: it has no boundaries, no dead space, and no way to fail. A miss cannot produce
+nothing; it can only land one row off. The remedies are paired with it rather than assumed: the
+composer opens showing the code it is about to attach to, and its anchor is a full-size control.
+
+`SPEC.md` treats a sub-44pt control as a defect with no exception, and the only exception ever
+recorded here — 0.6.0's 26pt hunk band with a 44pt-wide control — was reverted in 0.6.1. **So this
+ships as designed and is flagged rather than resolved.** The sentence being asked for is one line: *a
+continuous spatial recogniser with no dead space and no internal boundary is not a discrete control.*
+If Davide declines it, `GutterTarget` and the two gestures on `DiffFileLines` come out and the feature
+needs a different way in — the design says the only one left is picking lines from a list, and argues
+against it.
+
+**Two more numbers came out of the arithmetic, and the code was right where the document was wrong.**
+`design.md` §4 quotes the gutter as 39pt and the code origin as 48pt as though both were constants;
+`DiffGutter.columnWidth` sizes the figures per file, so 39.4 is the four-figure case and the real
+origin is 57.4pt there and 50.8 on a three-figure file. The design read the code rather than the
+document and its measurements match to a tenth of a point. `§4` is corrected.
+
+## The tap strip is per hunk, not per file, and the design's own shape is why
+
+§7 asks for one recogniser over "the gutter column of each file section". A file is not one view:
+`DiffFileContent` lays out one `DiffFileLines` per hunk with 44pt torn expander rows between them, and
+each hunk adds a 3pt scroll indicator one layout pass after its own geometry resolves. A file-level
+`floor(y / rowHeight)` would have to sum hunk heights, expander heights and an indicator that appears
+late.
+
+Per hunk keeps every property the design argued for — one spatial recogniser rather than forty-two
+buttons, `floor(y / rowHeight)`, nearest-numbered-centre resolution — and is the coordinate space
+`GutterTarget` was already written against. Rejected: a 44pt `contentShape` per row, which the design
+also rejects and for the better reason: it overhangs its neighbours by 13pt on each side, so three
+rows claim one point and z-order decides.
+
+## The rail is indigo, it collides with a renamed file, and neither of them is load-bearing
+
+`FileStatusLetter` already returns `.indigo` for a rename, and its own doc says green, red, indigo and
+orange are the four the palette has. There is no fifth hue.
+
+Shipped anyway, and recorded rather than resolved: the two are different shapes in different places —
+a 3pt vertical rail in the gutter's leading inset against a 3pt horizontal status bar in a file header
+— and **neither carries its meaning by colour**. The rail's position and length are what say *a
+comment, this long, here*; the status bar's letter is what says *renamed*. Both survive greyscale,
+which is the test §4's marker column was added to pass.
+
+**The colourblind-safe rail the design specifies is not built, because the palette it belongs to is
+not built.** `SPEC.md` §10 asks for a blue-and-orange toggle and nothing in the repository implements
+one — no setting, no enum, no alternate colour. §7's dark ochre is recorded as waiting on that slice,
+and it would collide with `fileStatusAmber` when it arrives, which is worth knowing before it does.
+
+## The export is plain text, and that reverses what was built two days earlier
+
+The first implementation emitted Markdown — `# Review of <worktree>`, `## path:span`, a fenced `diff`
+block — reasoning that the reader was about to paste it into a chat. §7 overturned it and the argument
+is better: the destination is a terminal on the Mac the phone is lying beside, the audience is an
+agent rather than a renderer, and heading syntax is something that has to be stripped before it can be
+acted on. What replaced it is the shape the text already had.
+
+Four decisions inside it are the design's: full repository-relative paths, document order, the excerpt
+quoted with `> ` from a snapshot taken when the comment was written, and no trace at all of a skipped
+note — because an agent reading a placeholder treats it as an instruction to go and find one.
+
+**The excerpt lost its `+`/`−` markers with it**, which is a straight reversal of the entry above.
+The frame draws none, and the reason holds up: what a comment is about is those lines, which side they
+are on is what the numbers beside the path say, and `+ func awaitItem()` is a string that appears in
+no file — an agent that greps for it finds nothing. The one row that keeps a prefix is
+`\ No newline at end of file`, which is git's own annotation rather than a line of the file and reads
+as a sentence of English in the middle of some code without it.
+
+**One line in the document is ours rather than the design's, and it is flagged as such.** A run named
+on the old side gets `(these lines were removed — the numbers are from before the change)`. §7's own
+example could not surface the case: it quotes four additions and one deletion whose comment text
+happens to say it was deleted. A run that exists nowhere in the working copy sends an agent opening
+the file at those numbers to whatever now sits there. It borrows the idiom the stale line already
+established rather than inventing a second one, and it is one line in the case that needs it.
+
+## Three things §7 drew that are built differently, and one it drew that is not built
+
+**The iPad's review column is 320pt rather than 360.** The design's 360 takes the code pane from 874pt
+to 834 when the review opens. `SPEC.md` §10 caches every measured row height on `availableWidth` and
+requires a `(fileID, lineIndex)` anchor capture across any width change — so 40pt of list costs a
+reflow of the file the reader is looking at, on a control they pressed for a different reason.
+Matching the tree's own 320 moves the code pane by exactly zero, which is the same argument
+`DiffPaneLayout` already makes for keeping the point size off the fold.
+
+**The composer's anchor is a label rather than a `Menu`.** §7 draws a 44pt menu offering extend-up,
+extend-down and shrink-from-either-end, and it is the stated remedy for a one-row miss. The controls
+behind it are not built, and a menu with no items is this project's dead control — so it ships as the
+44pt row saying what the comment is about, and the menu lands with the operations. **This weakens the
+44pt argument above and is the strongest reason to build them next.**
+
+**The composer's refusal state is deliberately not built**, which is the design's own instruction: it
+verified that the screen loads once from its `.task` and that a reader cannot reach the retry with a
+composer over it, so the state is unreachable in 0.6.1. What §7 asks for alongside — that
+`ReviewCommentStore.save` be able to return a refusal so it is not retro-fitted — is **declined**. It
+would add a branch no test kind here can drive, under a coverage ratchet with no slack, for a state
+the design says not to build. `commentFailure` already covers the one refusal that is reachable, and
+it has an alert now: a comment whose lines moved cannot be written against an anchor that no longer
+resolves, and an invented anchor is worse than no comment because the agent acts on it.
+
+**The iPad's third column was promised to focus mode** by `SPEC.md` §10 and `design.md` §5, and §7
+takes it for the review. Recorded as an override rather than a conflict: focus mode is unbuilt, and
+this repository already refused a real three-column split view for reasons that have not changed.
+
+## The stale row inserts 44pt into a file, and it is legal for one reason only
+
+A comment whose anchor no longer resolves has no rows to sit beside, so it cannot keep a rail. §7
+gives it a 44pt amber row under its file's own header — which inserts height into a file, and the
+no-reflow rule forbids exactly that.
+
+It is legal because **staleness can only become true when the diff is re-read**, and a re-read
+re-measures the document from the top. It cannot land under a finger. Today the screen loads once from
+its `.task` and the only other route in is a retry from the failure state, so the row can only appear
+across a relaunch.
+
+**If a refresh is ever added — and `SPEC.md` §10's live updates are exactly that — this row becomes
+illegal and the mark has to move into the review sheet alone.** The design says so itself, and it is
+written into `StaleCommentRow`'s own doc comment so the next person to touch the refresh path finds it.

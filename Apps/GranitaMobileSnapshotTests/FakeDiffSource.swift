@@ -772,14 +772,66 @@ func aLoadedViewerModel() async -> ClientViewerModel {
 
 @MainActor
 func aLoadedViewerModel(of entries: [ContinuousDiffEntry]) async -> ClientViewerModel {
+    await aLoadedViewerModel(of: entries, holding: [])
+}
+
+/// The same model with a review already written against it, for the states §7 draws.
+@MainActor
+func aLoadedViewerModel(of entries: [ContinuousDiffEntry], holding comments: [ReviewComment]) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
-        repository: FakeDiffRepository(entries: entries)
+        worktreeName: "TLS pinning",
+        projectName: "granita",
+        repository: FakeDiffRepository(entries: entries),
+        // In memory rather than this simulator's defaults: a baseline must photograph the same
+        // screen on the tenth run as on the first, and a store that persists would carry whatever
+        // the last recording wrote into the next one.
+        commentStore: FakeReviewCommentStore(holding: comments),
+        pasteboard: FakeReviewPasteboard()
     )
     await model.load()
     await model.reading(0)
     return model
 }
+
+/// A review of the first file in `aChangeSetPartlyArrived`, anchored to rows that file really has.
+///
+/// **It has to be the arrived file**, because a comment cannot attach to a diff that has not landed
+/// and a rail cannot be drawn beside rows that are not there — which is the same rule the model
+/// enforces and the reason a screen baseline showing a rail cannot use the all-awaiting change set.
+///
+/// Two comments: a run of three rows and a single row above it, so the header's chip reads 2 and the
+/// two rails have a gap between them.
+nonisolated let aReviewOfTheFirstFile: [ReviewComment] = [
+    ReviewComment(
+        anchor: CommentAnchor(
+            file: FileID(repositoryRelativePath: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift"),
+            first: DiffLinePosition(oldNumber: 138, newNumber: 138),
+            last: DiffLinePosition(oldNumber: 138, newNumber: 138)
+        ),
+        path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
+        lines: CommentedLines(side: .new, first: 138, last: 138),
+        quotedLines: ["    /// Reads the Mac's health before spending anything."],
+        text: "This comment is now wrong — it also spends the code."
+    ),
+    ReviewComment(
+        anchor: CommentAnchor(
+            file: FileID(repositoryRelativePath: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift"),
+            first: DiffLinePosition(oldNumber: 140, newNumber: 140),
+            last: DiffLinePosition(oldNumber: 141, newNumber: nil)
+        ),
+        path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
+        lines: CommentedLines(side: .new, first: 140, last: 140),
+        quotedLines: [
+            "\tlet request = Request(path: \"/v1/health\")",
+            "        let trust = try await verify(cert)"
+        ],
+        text: "Take the certificate as a parameter rather than reading it back off the session."
+    )
+]
+
+/// A row of the first file that really exists, so the instruction bar names something.
+nonisolated let aRowOfTheFirstFile = DiffLinePosition(oldNumber: 140, newNumber: 140)
 
 /// The change set above with every file still on its way, which is what the selector reads from —
 /// the file list arrives whole and the diffs follow.
