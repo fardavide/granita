@@ -45,6 +45,12 @@ Immediately after, because everything past `--` is a pathspec.
 - **Prove the hardening against a repository configured to defeat it.** When you add a flag here,
   add the config key that defeats it to `.fixtures/hostile`, and check the new test goes red when
   the flag is removed. No other fixture can tell a hardened invocation from an unhardened one.
+- **An argument passed as bytes is NUL-terminated before it leaves for the child process.**
+  swift-subprocess's byte-array `Arguments` hands each element to `strdup`, which reads past the end
+  of a Swift array until it meets a zero byte, so an unterminated element arrives carrying whatever
+  the allocator left beside it. The terminator belongs at that boundary — `ProcessGitClient` — and
+  never in the vector, which stays assertable as text. **A corrupted pathspec is silent**: it matches
+  nothing, so `git diff` prints nothing, says nothing on standard error and exits 0.
 
 ## Environment, every child process
 

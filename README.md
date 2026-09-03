@@ -71,6 +71,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.6.2 — 2026-09-03
+- **A changed file no longer opens onto nothing.** Some files showed their name and their `+`/`−`
+  counts and then an empty body, however long you left them — and it was the same files every time
+  you opened that worktree, while the files either side of them were fine. The Mac was asking git
+  about a filename with a few stray bytes stuck on the end, which matches no file, so git answered
+  that nothing had changed and said so without complaint. Every file's diff now arrives.
+
 ### 0.6.1 — 2026-09-01
 - **Files are actually separated now.** 0.6.0 put ten points between them and made those ten points
   the same white as the files, so there was nothing to see. The diff sits on a grey page and each
