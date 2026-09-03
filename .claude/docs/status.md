@@ -71,6 +71,17 @@ touches it, so *does a tap on 18pt of strip open the composer on the row the rea
 question for a thumb. It is the whole feature's premise and it is on the device afternoon's list,
 first.
 
+**Version 0.6.2 — two files in a ten-file worktree drew a header and then nothing, and the Mac was
+asking git about a filename with stray bytes on the end.** `Arguments`' byte-array form hands each
+element to `strdup`, which reads until it meets a zero byte; a Swift array has none after its last
+element, so an argument arrived at git carrying whatever the allocator left beside it. A pathspec
+that matches nothing makes `git diff` print nothing and exit 0, so the file came back as a diff with
+no hunks and the viewer drew it empty — while the change set naming it stayed correct, because
+nothing that builds one carries a path. Reproduced against Davide's own worktree through
+`granita-server --insecure-http` before anything was changed, and the terminator is now added at the
+library boundary rather than in the vector `GitInvocation` builds. In [`decisions.md`](decisions.md),
+with why the regression test asserts the invariant instead of running git.
+
 **Version 0.6.1 — five of 0.6.0's answers were right in the prose and wrong on the glass**, which is
 the release the same review's photographs would have caught if the review had been run against them.
 Davide read 0.6.0 on the device and sent five: files with no gap between them, a grey band in the

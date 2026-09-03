@@ -36,6 +36,7 @@ public struct ProcessGitClient: GitClient {
     }
 
     public func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
+        let arguments = Arguments(Self.terminated(GitInvocation.arguments(for: command)))
         let overrides = Dictionary(uniqueKeysWithValues: GitInvocation.environmentOverrides.map {
             (Environment.Key(stringLiteral: $0.key), $0.value)
         })
@@ -48,7 +49,7 @@ public struct ProcessGitClient: GitClient {
             if let standardInput = GitInvocation.standardInput(for: command) {
                 let result = try await Subprocess.run(
                     .path(FilePath(executablePath)),
-                    arguments: Arguments(GitInvocation.arguments(for: command)),
+                    arguments: arguments,
                     environment: .inherit.updating(overrides),
                     workingDirectory: FilePath(location.path),
                     input: .data(standardInput),
@@ -61,7 +62,7 @@ public struct ProcessGitClient: GitClient {
             } else {
                 let result = try await Subprocess.run(
                     .path(FilePath(executablePath)),
-                    arguments: Arguments(GitInvocation.arguments(for: command)),
+                    arguments: arguments,
                     environment: .inherit.updating(overrides),
                     workingDirectory: FilePath(location.path),
                     input: .none,
@@ -98,6 +99,28 @@ public struct ProcessGitClient: GitClient {
         }
 
         return GitOutput(standardOutput: outcome.standardOutput, isTruncated: outcome.isTruncated)
+    }
+
+    /// The argument vector with a zero byte on the end of every element.
+    ///
+    /// **The byte-array form of `Arguments` hands each element straight to `strdup`, which reads on
+    /// until it meets a zero byte.** A Swift array carries its length beside it and nothing after
+    /// it, so an element without a terminator is copied out of the array and on into whatever the
+    /// allocator happened to leave next to it — the argument git receives is the one we built plus a
+    /// run of unrelated bytes, and which arguments it happens to and on which run depends on the
+    /// heap.
+    ///
+    /// **It is a silent corruption in the one place it matters most.** Everything after `--` is a
+    /// pathspec, and a pathspec that matches nothing makes git print nothing, write nothing to
+    /// standard error and exit 0 — which reads exactly like a file with no changes. Measured on a
+    /// real worktree of ten changed files: two of them served an empty diff on every request, while
+    /// the change set that named them was correct, because the commands that build it carry no path.
+    ///
+    /// The string form is safe — Swift hands a `String` to a C API already terminated — so this is
+    /// only needed because paths are bytes. Terminating twice would be harmless in the other
+    /// direction; `strdup` stops at the first zero either way.
+    static func terminated(_ arguments: [[UInt8]]) -> [[UInt8]] {
+        arguments.map { $0 + [0] }
     }
 
     /// Reads both streams at once and holds the clock over them.

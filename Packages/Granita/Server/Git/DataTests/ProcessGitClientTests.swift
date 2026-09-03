@@ -64,6 +64,36 @@ struct ProcessGitClientTests {
         #expect(scenario.text(of: output).contains("+never staged"))
     }
 
+    // MARK: - Handing the vector to the library that spawns the process
+
+    @Test
+    func `when the vector is handed to the subprocess library then every argument carries its terminator`(
+    ) {
+        // given — the longest vector this product builds, and the one whose corruption is silent:
+        // everything after `--` is a pathspec, and a pathspec that matches nothing makes git print
+        // nothing, say nothing on standard error and exit 0.
+        let command = GitCommand.fileDiff(
+            path: RepositoryRelativePath("src/deep/nested/directory/with/a/long/name/file.txt"),
+            against: .head,
+            contextLines: 3
+        )
+
+        // when
+        let vector = ProcessGitClient.terminated(GitInvocation.arguments(for: command))
+
+        // then — a Swift array carries its length beside it and nothing after it, and the library
+        // hands each element straight to `strdup`, which reads on until it meets a zero byte. An
+        // argument without one arrives at git with whatever the allocator left next to it stuck on
+        // the end. Measured: a real worktree served two of its ten files as an empty diff.
+        #expect(vector.allSatisfy { $0.last == 0 })
+        // Exactly one, at the end. A second would end the argument early instead of late, which is
+        // the same defect wearing the opposite sign.
+        #expect(vector.allSatisfy { $0.dropLast().contains(0) == false })
+        // And nothing else about the vector moved: this adds a terminator and is not a second place
+        // where what git is asked gets decided.
+        #expect(vector.map { Array($0.dropLast()) } == GitInvocation.arguments(for: command))
+    }
+
     // MARK: - Hardening, proven against a repository configured to defeat it
 
     @Test
