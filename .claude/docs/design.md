@@ -25,9 +25,10 @@ says so and shows the measurement.
 | §1 | Server discovery | built | **applied** — the code matches this document |
 | §2 | The worktree sidebar | M4 | built |
 | §3 | The file selector | M5 | built |
-| §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. The header's second form and wrap-on are not, and **syntax highlighting was never drawn at all** |
+| §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. Syntax highlighting was never drawn and is built anyway, with its calls recorded below; the header's second form and wrap-on are still not |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 | §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
+| §7 | Inline comments — choosing the lines, the composer, the mark, the review, the copy, the iPad | 0.7.0 | **drawn and built.** Returned 3 September 2026. Three calls are built differently from the frames and one they draw is deliberately absent; all four are below and in [`decisions.md`](decisions.md). One departure — the 18pt target — is **flagged and waiting on Davide** |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
 number rather than renumbering four sections that a dozen documents already cite; in the reader's
@@ -146,31 +147,33 @@ direction costs the reader one tap; being wrong the other way costs them the app
 *Should feel like* the app taking responsibility. The words are ours; the diagnostic is in small
 print at the bottom where diagnostics go.
 
-### The iPad is constrained, not stretched
+### The iPad draws these screens the way SwiftUI draws them *(revised in 0.7.1)*
 
-A 1,150pt row pulls its two ends apart: the name at x=150 and its chevron at x=1,140, with nothing on
-screen saying they belong to the same tap target. A row that wide stops reading as a row. The empty
-space is the smaller problem.
+**The 420pt centred measure is gone.** Every screen before a paired Mac used to be clamped to it —
+discovery, a Mac's two credentials, the viewfinder, the six words and the receipt — with the
+navigation container inside the clamp so the large title came with it. What that produced on anything
+wider than a phone was a 420pt strip of content down the middle of the window with the rest of it
+bare white: the large title floating at x=362 rather than at a leading edge, and a run in a Mac
+window reading as an app that had failed to lay itself out. Davide called it on 4 September 2026,
+looking at all three of those screens.
 
-One constraint, applied to the **whole screen** rather than to the list: a maximum content width of
-420pt, centred, with the large title inside the same measure so the title's leading edge lines up
-with the rows. Every state gets it, so the empty states stop being small things in a large room and
-become a centred card. It is the iPad setup idiom — Apple TV pairing, Home hub setup, Migration
-Assistant — and the phone layout is then literally the same layout at its natural width.
+So these screens are stock SwiftUI at the width they are given: a `List`, a `ContentUnavailableView`,
+a `.navigationTitle`, and nothing around any of them. What the room does with them is the framework's
+call rather than ours.
 
-**The measure goes around the navigation container, not around the screen.** iOS draws a large title
-in the navigation bar rather than in the content, so a frame applied inside centres the rows and
-leaves the title pinned to the window's leading edge — the exact misalignment the measure exists to
-remove. Whoever owns the navigation container applies it, and the snapshot suite clamps on the same
-side so the baselines assert the alignment that ships. The one thing to watch: the navigation bar's
-own background is clamped too, so a future screen whose content scrolls under it will show a 420pt
-frosted strip. None of the six discovery states scroll.
+> Rejected: keeping the measure and painting the grouped background across the window, so the column
+> reads as a card in a room. It answers the white, and it is one more hand-rolled layer around a
+> stack that had two already. Rejected: releasing the measure only in a Mac window — a size-class
+> condition written for one platform, which is the shape of thing this file exists to keep out.
+> Rejected, still: rendering discovery as the sidebar of the eventual split view with a placeholder
+> detail column, and a form-sheet presentation with nothing behind it to dismiss to.
 
-> Rejected: rendering discovery as the sidebar of the eventual split view with a placeholder detail
-> column — more code, and it shows a two-column shell for a product the reader has not connected to
-> yet. Rejected: a form-sheet presentation. There is nothing behind it to dismiss to.
+**What this gives up, said plainly**, because it is what the measure was for: a 1,150pt row pulls its
+two ends apart, the name at one edge and its chevron at the other, with nothing on screen saying they
+belong to the same tap target. That argument has not stopped being true. It lost to the thing a
+reader actually sees, which is a window that looks broken.
 
-*Should feel like* the same screen as the phone, at rest in the middle of a bigger display.
+*Should feel like* the same screen as the phone, in a room the size of the window.
 
 ### No second line on the row. A section instead. *(M4 — needs pairing history)*
 
@@ -484,13 +487,14 @@ The states:
 
 *Should feel like* the Xcode navigator, minus the parts of the Xcode navigator nobody uses on a phone.
 
-## §4 — The continuous diff *(M5 — everything but highlighting, wrap-on and the header's second form)*
+## §4 — The continuous diff *(M5 — everything but wrap-on and the header's second form)*
 
 **What is built, and what deliberately is not.** The one continuous scroll, the gutter, the line
 tints and the word segments, the hunk bands and a sticky file header landed in 0.2.0; the viewed
-toggle in 0.3.0; **the collapsed bars and hunk expansion in 0.4.0**. What is left is syntax
-highlighting, the wrap-on mode and the header's second form, and each is absent rather than disabled
-— nothing on that screen is a control that does not work.
+toggle in 0.3.0; **the collapsed bars and hunk expansion in 0.4.0**; **syntax highlighting in
+0.8.0**, which no frame ever drew and whose calls are written down below instead. What is left is
+the wrap-on mode and the header's second form, and each is absent rather than disabled — nothing on
+that screen is a control that does not work.
 
 Five calls below were changed by building them, and each says so where it is made: the row splits
 into two view trees, the file header ships in one form, a shut file's bar replaces its header rather
@@ -725,6 +729,51 @@ could not, and the baselines are what say so.
 > a descender. Rejected: bold — SF Mono keeps its advance when bold, so it is technically safe, but
 > bold already means "keyword" to anyone who reads code. Rejected: one alpha for both appearances,
 > which is the version of this the review measured and correctly refused.
+
+### The lexer colours text, and it is Xcode's palette
+
+> **Built without a design, on Davide's instruction** *(4 September 2026, 0.8.0)*. This section had
+> no highlighting in it at all — the review saw the edge of the collision above and never drew the
+> two together — and the `design-handoff` rule says no pull request touching a screen opens before
+> its frames exist. Davide waived it in one sentence: *"We don't really need design for syntax
+> highlighting."* What follows is therefore this repository's own calls rather than a return, and
+> they are written down here for the same reason a return would be.
+
+**Xcode's own stylesheets, `xcode` in light and `xcode-dark` in dark.** Granita's design language is
+Apple's throughout and the phone is lying beside the Mac the diff came from, so the colours that
+already mean *keyword* and *string* to this reader are the ones Xcode gave them. They are also the
+most muted of the credible pairs, which matters more here than in an editor: a row already carries an
+add or remove tint and a word-diff background at three times it, and the section above rests entirely
+on those staying the loudest thing in the row.
+
+> Rejected: GitHub's pair, which is what a diff normally looks like and is more saturated than
+> Xcode's, so it competes with the row tints the argument above depends on. Rejected: Atom One, which
+> is Highlightr's own default and matches nothing else the reader sees. **Not rejected, deferred:**
+> making it a setting, which is [#70](https://github.com/fardavide/granita/issues/70) and needs a
+> Settings surface the phone does not have yet.
+
+**The text colour is the lexer's and the background is the diff's**, which is what makes the two
+treatments compose rather than collide. It is also why the paragraph above was reverted to `SPEC.md`
+§10 on 28 August 2026: a lexer colours text, so a line already using its text colour to mean *this
+part changed* has nothing left to say `keyword` with. Order on the row is colours first, the changed
+run's background over them.
+
+**The theme's own base colour is kept**, so unhighlighted code inside a highlighted file is `#000000`
+in light and `#FFFFFF` in dark. Those are `UIColor.label` to the byte in both appearances, so a file
+the lexer refused and a file it accepted draw their plain text identically — which is the whole
+requirement, since a change set mixes the two on one screen. **Its font is dropped**, because every
+row's height is computed from the code point size and a stylesheet asking for Courier at 14pt would
+break the grid the gutter is aligned to.
+
+**A file arrives plain and gains its colours in place.** `SPEC.md` §10's own instruction, and it is
+what keeps the treatment inside §10's no-reflow rule for free: a colour changes no measurement, so
+nothing moves when one lands. The file the reader is looking at is lexed before the ones fetched
+ahead of them, and a file drawn shut is not lexed at all.
+
+**A conflict marker is never coloured, and neither is git's no-newline annotation.** `<<<<<<< HEAD`
+is not source in any language and a lexer handed one mis-lexes every line after it — which would have
+been the one row that announces a conflict taking the rest of the file down with it. The marker keeps
+its own amber tint and its semibold, which is what §4 already gives it.
 
 ### A collapsed bar must say why it is shut
 
@@ -1113,25 +1162,25 @@ is the step with no deadline of its own. See [`decisions.md`](decisions.md).
 *Should feel like* a receipt. It tells you what happened, whether it cost you anything, and the one
 thing left to do.
 
-### iPad: 420pt, camera included
+### iPad: a card, not a room painted black *(revised in 0.7.1)*
 
-The clamp holds, and it holds for the viewfinder. The preview is a 420pt-wide 4:3 rounded card
-inside the measure, on the ordinary grouped background — **the iPad scanner does not go dark.** Dark
-is right on the phone because the camera fills the screen and the app disappears behind it; on iPad
-the camera is one element among several, and blacking out 1194pt to host a 420pt card makes a modal
-out of a pushed screen.
+**The iPad scanner does not go dark**, and that call survives the measure that used to carry it. Dark
+is right on the phone because the camera fills the screen and the app disappears behind it; at a
+regular width the camera is one element among several, and blacking out the window to host a card
+makes a modal out of a pushed screen.
 
-Detection does not suffer: the metadata output reads the whole capture frame rather than the
-preview, so a smaller preview costs aim and nothing else — and aim is easier at arm's length on a
-stand than with the whole slab raised. Nobody lifts an 11-inch iPad to point it at a Mac.
+What produces the card now is the screen's own layout rather than a clamp around the stack: a 4:3 fit
+in a padded column, which is a card in any window and never a full-bleed preview. It is larger than
+the 420pt it used to be, and that costs nothing — detection reads the whole capture frame rather than
+the preview, so preview size buys aim and only aim.
 
-The six-word screen needs no iPad drawing of its own: the same measure, the field at the top, the
-keyboard taking the bottom third. It is also the path most iPad readers will take, because an iPad
-on a stand beside a Mac is exactly the geometry that makes scanning tedious.
+The six-word screen needs no iPad drawing of its own: the field at the top, the keyboard taking the
+bottom third, at the width of the window. It is also the path most iPad readers will take, because an
+iPad on a stand beside a Mac is exactly the geometry that makes scanning tedious.
 
 > Rejected: a full-bleed iPad viewfinder with the controls floating over it. It is the phone layout
-> scaled onto a surface nobody holds that way, and it breaks the rule every pre-pairing screen
-> shares — everything before a paired Mac lives in a 420pt column, title included.
+> scaled onto a surface nobody holds that way, and the compact branch already draws it for the
+> surface people do hold that way.
 
 *Should feel like* the same screen you used on the phone, sitting still in a bigger room.
 
@@ -1294,3 +1343,292 @@ evaluated until it opens, so the delete item and the two disabled explanations h
 the snapshot layouts are four device-and-appearance pairs with **no Dynamic Type axis at all**, so
 §2's "Large and xxLarge both" is unassertable in this repository under any design. Both are a device
 afternoon, not a check.
+
+---
+
+## §7 — Inline review comments *(returned 3 September 2026, built in 0.7.0)*
+
+The review's own headline, and the sentence the rest of the section hangs from:
+
+> Nothing opens in the diff. The review is a place you leave and come back to.
+>
+> Every one of the seven sections is drawn so that the scroll never changes height. The comment is
+> not under the row; it is a 3pt rail beside it and a sheet at the bottom of the screen. That single
+> decision is what makes the no-reflow rule survive a feature that, on GitHub, is built entirely out
+> of reflow.
+
+### The gutter is a coordinate, and the 44pt rule does not govern one
+
+**This is the section's own flagged departure, and it is the one thing here still owing Davide a
+sentence.** A code row is 18pt at the smallest code size a reader can choose, and `SPEC.md` treats a
+control under 44pt as a defect with no exception.
+
+The argument is that the minimum governs **discrete** controls — things with a boundary you have to
+land inside, where a miss produces nothing. The gutter is not one. It is one gesture recogniser over
+the whole strip, with the row derived from the touch's `y` and resolved to the nearest numbered
+centre: no boundaries in it, no dead space anywhere, and no way to fail. A miss cannot produce
+nothing; it can only land one row off.
+
+The miss is made cheap rather than the target made bigger, twice: the composer opens **showing the
+code it is about to attach itself to**, and its anchor is a full-size control on the row above the
+field.
+
+> Rejected: a 44pt `contentShape` per row. It overhangs its neighbours by 13pt on each side, so three
+> rows claim the same point and z-order decides which wins — the same forgiveness with an undefined
+> answer. Rejected: forty-two recognisers per screen inside a lazy stack, which is a scrolling cost
+> where one recogniser is none. Rejected, and the review says it would fight it: moving the target off
+> the row entirely into the file header, which means picking lines from a list instead of from code.
+>
+> **18pt is a floor rather than a size.** `DiffLineHeight.at(pointSize:)` is the font's line height
+> plus 4, `SPEC.md` §10 makes the code size a setting, and the regular-width default is already 20 —
+> so the exception is being asked for at one end of a range the reader controls.
+
+**The strip is everything to the left of the code's origin**: the figure column, the 12pt marker, and
+the 6pt after it — all three already outside the per-hunk horizontal scroll, so taking them together
+costs nothing. About 51pt on a three-figure file, 57 on four, and **38 on a file with nine lines in
+it**, which is the narrowest a change set can produce.
+
+> **Two of §4's numbers are corrected by this section.** It quotes the gutter as 39pt and the code
+> origin as 48 as though both were constants. `DiffGutter.columnWidth` sizes the figures per file:
+> 39.4 is the four-figure case, and the origin is 57.4pt there and 50.8 on three figures. The document
+> was wrong and the code was right.
+
+### §7.1 — A held row needs a way out, so it gets a sentence
+
+Tap the gutter to comment on that row. Long press to hold one. A second tap extends the run and opens
+the composer.
+
+The hold leaves the reader somewhere iOS has no convention for — one row marked, the app waiting for a
+second tap that may never come — and nothing in the scroll can explain it, because every pixel of the
+scroll is code. So the explanation goes where the thumb already is: **a 44pt bar at the bottom safe
+area, floating over the diff**, reading *Tap another line to extend* with the file and row under it
+and a Cancel beside it.
+
+Three rules the held state obeys:
+
+- **Scrolling does not cancel it.** The second line may be off screen, and a selection that dies when
+  you go looking for its other end is unusable. Only Cancel or a second tap ends it.
+- **The tint and the rail are outside the horizontal scroll**, so a held run stays held while the code
+  slides under it.
+- **A row with no figure is not a target.** `\ No newline at end of file` is the only one, and
+  nearest-centre resolution skips it: it can sit inside a run and can never end one.
+
+> **The tint is a rule of this section and was built as nothing at all.** 2c's caption says it in four
+> words — *square-capped rail, tinted row, one haptic* — and the first build drew only the rail. The
+> frames give the numbers: **indigo at 14% in light and 20% in dark**, over the 6% and 10% an added or
+> removed row already carries, and **the held run's line numbers go indigo too**, which is the one
+> place the selection reaches a glyph rather than a background.
+>
+> **It does not contradict §7.3's rejection of a row tint, and reading it as though it did is what
+> lost it.** §7.3 rejects a tint for a *saved* comment — a mark that has to sit beside a diff for as
+> long as the reader is reading, competing with the `+`/`−` tints and the word-diff background. A
+> selection is the opposite kind of thing: it lasts seconds and has to be unmissable while it does.
+> 2d settles it by drawing a commented row with no tint at all, only its own green.
+
+> **Built with one recogniser per hunk rather than per file**, which the review's own shape requires:
+> `DiffFileContent` lays out one `DiffFileLines` per hunk with 44pt torn rows between them, so there is
+> no single coordinate space a file-level `floor(y / rowHeight)` could use. Every property the section
+> argues for survives. In [`decisions.md`](decisions.md).
+>
+> **The cancel-by-tapping-the-code the section also offers is not built.** That area is inside the
+> horizontal scroll whose trailing 26pt is masked, so a tap there competes with the pan. Cancel and a
+> second tap are the two ways out.
+
+### §7.2 — The composer is a sheet at one detent, over a diff that keeps scrolling
+
+One custom 300pt detent with background interaction enabled up through it. No dimming, no `.large`,
+and no drag to resize — the keyboard has already decided the height.
+
+**Opening the composer dismisses the file selector, and closing it does not bring it back.** One is a
+list of places to go and the other is a keyboard, so they are mutually exclusive; the reader asked for
+a comment, not a file. Built as one `.sheet` over a three-case enum, so that rule is a type rather
+than bookkeeping.
+
+**The excerpt is the receipt for an 18pt aim** — three rows of the anchored code at 10.5pt, and a
+count for the rest. It is the same snapshot that gets exported, which is why it is drawn from the diff
+rather than re-fetched.
+
+**And it keeps the gutter's own figures**, right-aligned in a column of their own, over a card tinted
+in the rail's colour at 12%. Both were missed in the first build, and the numbers are the half that
+matters: a reader who landed one row off recognises the *number* they were aiming at, and the text
+alone looks equally plausible one row up — which makes the excerpt a sample rather than a receipt.
+The anchor above it carries the rail too, which is the third surface it appears on after the gutter
+and the instruction bar.
+
+> Rejected: an alert with a text field. It cannot show the excerpt, cannot scroll a long comment, and
+> cannot carry the anchor control — which would make the 18pt answer above untrue.
+>
+> **The anchor ships as a 44pt label rather than the `Menu` the frames draw.** The extend-up,
+> extend-down and shrink operations behind it are not built, and a menu with no items is the dead
+> control this project refuses. **This weakens the section's own 44pt argument and is the strongest
+> reason to build those three next.**
+>
+> **The refusal state is drawn and deliberately not built.** The review verified it is unreachable
+> while the screen loads once from its `.task`. What it asks for alongside — a refusal from the
+> store's `save` — is declined in [`decisions.md`](decisions.md); the reachable refusal has an alert.
+
+### §7.3 — The mark is a 3pt rail in the leading inset, and the gutter keeps its figures
+
+**Call 7, answered: beside the gutter, not in it.** The rail takes 3 of the 4pt leading inset, which
+is the only width on the row carrying nothing — and it is real drawn space, because a figure is
+trailing-aligned in a frame that much wider than the figures themselves.
+
+**Length is the carrier.** A comment on one row is an 18pt stub and one on four rows is a 72pt bar, so
+a run reads as a run without a count, without colour, and without a point of new height. **Square caps
+mean pending and round caps mean saved** — a difference in shape, so the state survives greyscale.
+
+**The file header takes a bubble-and-count chip** for what the rail cannot cover: a file whose rows are
+all off screen, and a file the reader has shut, which draws as a 44pt bar with no rows under it at all.
+
+> Rejected: a row tint. It loses to the `+`/`−` tints outright — a commented added line would need a
+> third tint reading as both, and the word-diff background is already the strongest colour in the row.
+> Rejected: a bubble replacing the figure, which re-opens §4's first fault, the only one the diff
+> review called a correctness bug. Rejected: a pin at the trailing edge, which costs two characters of
+> code on every row of every file, forever, to mark four rows.
+>
+> **The rail is `.indigo`, which a renamed file's status bar already is.** Shipped and recorded: the
+> two are different shapes in different places, and neither carries its meaning by colour. **The
+> colourblind-safe ochre the section specifies is not built, because that palette does not exist
+> anywhere in the repository** — `SPEC.md` §10 asks for it and nothing implements it.
+
+**A comment whose anchor no longer resolves becomes a 44pt amber row under its file's header**, naming
+the line it used to be on and opening the review. Drawn rather than hidden: the comment is still in the
+export, and a mark you cannot see is a mark you cannot delete. It inserts height into a file, which the
+no-reflow rule forbids — **legal only because staleness can become true only across a re-read, which
+re-measures from the top.** If a refresh is ever added, this row has to be re-argued.
+
+### §7.4 — The way in is a floating capsule, because the toolbar is not there when you need it
+
+**Call 2, answered.** 44pt, bottom trailing, `.thinMaterial`, above the home indicator. It appears
+when the first comment is saved and is absent at zero. **It does not hide on scroll**, because reading
+is exactly when the count changes and a review button that vanishes while you review is a bug with a
+nice animation. `primaryAction` keeps *12 files* untouched — the only place the phone says how big the
+read is.
+
+It **shares its position with §7.1's bar** and the two can never both be true, which is what lets both
+live in the bottom of the screen with nothing arbitrating between them.
+
+> **They are one pill at one position, and both were first built as something else** — the bar
+> full-width and flush to the bottom with a hairline over it, the capsule a padded pill in the corner.
+> §7 draws both as **44pt capsules of material, 12pt from the side edges and 38pt from the bottom**,
+> with a hairline and a soft shadow; the bar spans both edges and the capsule only the trailing one,
+> and that is the whole difference. A bar flush to the bottom reads as chrome the screen has grown,
+> and both of these are states that arrive and leave.
+>
+> The bar carries **the same 3pt rail** at its leading edge — the third place that rail appears, and
+> what lets a reader carry their eye from the sentence at the bottom back up to the row it is about.
+> The capsule carries a `bubble.left` and a **monospaced indigo count**, so the number reads as
+> counting marks in the gutter rather than files in the change set.
+
+> Rejected: shrinking it to a glyph and a badge. A count with no word beside it reads as a status, and
+> a status is not something a reader presses.
+
+### §7.5 and §7.6 — One sheet: the note, the list, the copy, and only then the clear
+
+`.large`, no background interaction. Unlike the composer this is a **destination**: the diff behind it
+is not the subject any more.
+
+**Call 3, answered: it lists the comments, with the document behind a *Show text* disclosure.** The
+list is the only place a typo gets fixed before it is sent and the only place a stale comment can be
+deleted; the document stays one tap away, because what lands on the pasteboard should never be a
+surprise.
+
+**It is a panel, and the first build made it a settings screen.** Davide's note on it was *"the
+comment panel looks awful and doesn't respect design"*, and the cause is worth stating because it is
+easy to repeat: the frames were read for their content and not for their treatment. Every string was
+in the right place and the shape came out of a stock `.insetGrouped` `List`. What is drawn, and what
+is built now:
+
+| | |
+|---|---|
+| Header | Its own 52pt row — `Close`, `Review` centred, and the count at the trailing edge **in monospace**, which is what keeps the title centred while the number grows. Not a navigation bar, and not a subtitle |
+| Section labels | Monospaced, uppercase, letter-spaced — this document's own idiom — not system section headers |
+| Cards | Radius 10 on the grouped page, which is the same page-and-card pair the files already use |
+| A comment row | **The 3pt indigo rail**, at the gutter's own width and corner, then the anchor label in that same indigo with its colon left secondary, then the text |
+| A stale row | Tinted amber across its width, an amber rail, and a warning glyph before its label |
+| Show text | A centred link with a chevron, not a disclosure row in a card |
+| Copy review | A filled indigo button, 50pt, **pinned to the bottom**, turning green with a checkmark for the two seconds it says *Copied* |
+
+**The rail in the list is the load-bearing one.** It is what makes a row here and a mark in the gutter
+the same object rather than two reports of one, and it was the thing most conspicuously missing.
+
+**The amber is the app's own.** `#C0821F` in the frames is `Color.fileStatusAmber` to the byte — what
+`.modified` has carried since 0.6.0. `.orange` was wrong twice: it is what *conflicted* means, and it
+is not what was drawn.
+
+**Call 1, answered: a Copy button, not a `ShareLink`.** The destination is a terminal on the Mac the
+reader is holding a phone next to. A share sheet's first item is Copy, so the free version is the same
+action two taps deeper with a system sheet on top of a sheet.
+
+**Call 5, answered: Clear is inline, after the copy, and it confirms.** A destructive control that
+exists before the copy can destroy a review that has been sent nowhere, and this review is the only
+copy of itself. **There is no path to Clear that does not go through Copy.** The alert's second
+sentence — *they are not stored on the Mac* — is the whole reason it exists.
+
+**The note is focused on open, and *Skip* is on the keyboard bar.** Skipped means gone: the document
+starts at the first file with no heading and no placeholder, because an agent reading one treats it as
+an instruction to go and find a note.
+
+The exported document, as drawn:
+
+```
+Review of uncommitted changes — swiftly, worktree main, 12 files
+
+SwiftlyCore/Sources/About/Presentation/Models/AboutState.swift:6
+(these lines are no longer in the current diff)
+> public struct AboutUiModel: Equatable, Sendable {
+Sendable here needs a test, not just a conformance.
+```
+
+Four decisions inside it: **full repository-relative paths**, because the reader is not the audience
+and a shell is; **document order**, so the agent walks the tree once; **the excerpt quoted with `> `**
+and snapshotted when the comment was written, which is what makes a stale comment still worth sending;
+and **no trace of a skipped note**.
+
+> **One line in the document is ours rather than the review's.** A run named on the old side says
+> `(these lines were removed — the numbers are from before the change)`. The frames' own example could
+> not surface the case, and lines that exist nowhere in the working copy send an agent opening the
+> file at those numbers to whatever now sits there. It borrows the stale line's idiom.
+
+### §7.7 — On iPad the review is a column, in the tree's place
+
+**Call 6, answered, and the arithmetic is the argument.** The files column is 320pt and the pane keeps
+about 110 characters at 12pt. A third column beside it drops the pane to about 60, which is not a diff
+viewer. So the review **takes the tree's place**: opening it folds the tree, and the fold already in
+the toolbar is the way back.
+
+There is no capsule at regular width. The trailing toolbar gets the bubble-and-count instead, which is
+the only place the count lives there — and that toolbar does not hide.
+
+> **The composer is still a sheet on iPad, and that is the section's own undrawn state rather than a
+> departure.** §7.7 says the composer should be the column's editing state, and then says plainly
+> what it did not draw: *the column in its composing state, and the folded-tree transition.* Building
+> an undrawn state is the thing `design-handoff` forbids, so the composer keeps the form that **was**
+> drawn — a 300pt sheet — at both widths. It works, it is not a dead control, and the column's
+> editing state is owed. **This is the one thing to ask Design for next**, alongside the anchor's
+> three range operations.
+>
+> **The review column carries no navigation stack**, which the iPad baseline is what caught. Rendered
+> with one inside the screen's `HStack`, its title and its Close were drawn into the *screen's*
+> navigation bar: opening the review replaced the worktree's name with the word *Review* and put a
+> Close where the back button goes. A sheet brings its own chrome and a column must not, so
+> `ReviewSheetView` takes which it is.
+
+> **Built at 320pt rather than the 360 the frame draws.** At 360 the code pane goes 874 → 834 when the
+> review opens, and `SPEC.md` §10 caches every measured row height on `availableWidth`: 40pt of list
+> costs a reflow of the file being read. 320 moves the code pane by zero. In
+> [`decisions.md`](decisions.md).
+>
+> **The third column was promised to focus mode** by `SPEC.md` §10 and §5 of this document. Recorded
+> as an override: focus mode is unbuilt, and a real three-column split view was already refused here.
+
+### What no baseline can reach
+
+A hosted view presents a sheet into its own window and the raster excludes it, so **the 300pt detent,
+the grabber and the background interaction are not photographable at all** — the composer and the
+review are rendered directly in their own suites instead, which holds their contents and not their
+presentation.
+
+And the aim itself. A snapshot renders a gutter and never touches one, so *does a tap on 18pt of strip
+open the composer on the row the reader meant* is a question for a thumb. It is this feature's whole
+premise.

@@ -26,7 +26,7 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — loaded before rendering, so the raster is settled rather than a race between the
         // screen's own `.task` and the shutter.
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
 
         // when - then — the phone gets the toolbar's *7 files*; the iPad gets the column instead,
         // which is why that button is absent there rather than duplicated.
@@ -49,11 +49,33 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
         model.showSelector(true)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "the-drawer-is-up")
+    }
+
+    /// **A file this phone cannot colour, drawn plain beside one it can.**
+    ///
+    /// The Mac names a file's language from its extension and the phone's copy of highlight.js is
+    /// whatever shipped with the app, so a Mac updated ahead of the phone can name a language this
+    /// bundle has never heard of — which is the one refusal in `HighlightrSyntaxHighlighter` that a
+    /// rendered screen can reach, and the reason it is a check rather than a hope: the library
+    /// assigns the result of a JavaScript call to a non-optional value, and highlight.js v11 throws
+    /// for a language it does not know.
+    ///
+    /// What the picture holds is that the outcome is *plain code* rather than a blank, an error or a
+    /// file drawn in some other language's colours.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a language this phone cannot colour when the screen is rendered then the code is drawn plain`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetTheLexerCannotRead, in: layout)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-language-we-cannot-colour")
     }
 
     /// **The count has two spellings and only one of them is the plural.** Left unphotographed it
@@ -63,7 +85,7 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: Array(aChangeSetToSelectFrom.prefix(1)))
+        let model = await aLoadedViewerModel(of: Array(aChangeSetToSelectFrom.prefix(1)), in: layout)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "one-changed-file")
@@ -81,7 +103,7 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — reached on purpose: the sidebar's *Show them anyway* is how a reader opens a
         // worktree they were told was clean.
-        let model = await aLoadedViewerModel(of: [])
+        let model = await aLoadedViewerModel(of: [], in: layout)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-clean-worktree")
@@ -96,13 +118,108 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — the fake refuses every write, which is what this Mac does when the file has moved
         // under the hash the mark was written against.
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
         if let file = aChangeSetToSelectFrom.first?.id {
             await model.setViewed(true, on: file)
         }
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-refused-mark")
+    }
+
+    // MARK: - Design §7's two corners
+
+    /// **The capsule, and the fact that it is not in the toolbar.** Design §7.4's call 2: a toolbar
+    /// hides on scroll and reading is exactly when the count changes, so the way into the review
+    /// floats over the bottom trailing corner instead — and `primaryAction` keeps *12 files*, which
+    /// is the only place the phone says how big the read is.
+    ///
+    /// **On the iPad this baseline is the other half of the same call**: no capsule there, a
+    /// bubble-and-count in the toolbar instead, because a column already on screen needs no button to
+    /// announce it and that toolbar does not hide.
+    @Test(arguments: SnapshotLayout.all)
+    func `given comments exist when the screen is rendered then the way into the review is on it`(
+        layout: SnapshotLayout
+    ) async {
+        // given — the entries have to be `ready`, because a comment cannot attach to a file whose
+        // diff has not arrived and a rail cannot be drawn beside rows that are not there.
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-review-in-progress")
+    }
+
+    /// **The state Davide's gesture leaves the reader in, and the sentence that explains it.** One row
+    /// is held and the app is waiting for a second tap that may never come — a state no iOS
+    /// convention explains and that nothing in the scroll can, because every pixel of it is code.
+    ///
+    /// It also holds the other half of §7.4's argument: the bar and the capsule share this position
+    /// and can never both be true, so a review in progress with a row held shows the bar and no
+    /// capsule.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a row is held when the screen is rendered then the bar explains it and the capsule stands aside`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
+        if let file = aChangeSetPartlyArrived.first?.id {
+            model.longPressedGutter(aRowOfTheFirstFile, in: file)
+        }
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-row-held")
+    }
+
+    /// **The iPad's review column, which takes the tree's place rather than sitting beside it.**
+    /// Design §7.7's call 6, and the arithmetic is the argument: three columns at 1194pt leave the
+    /// code about 60 characters. On the phone the same model state is a sheet, so the two phone
+    /// layouts here photograph the diff behind it — which is the assertion that the sheet did not
+    /// take the column's place by accident.
+    @Test(arguments: SnapshotLayout.all)
+    func `given the review is open when the screen is rendered then the iPad gives it the tree's column`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
+        model.showReview()
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "the-review-is-open")
+    }
+
+    /// **The amber row, in the scroll it actually belongs to.** Design §7.3 gives a comment whose
+    /// anchor no longer resolves a 44pt row under its file's header, and every other baseline that
+    /// holds a review anchors to rows the diff still has — so the branch that draws it ran in no test
+    /// at all, and inverting the filter or unwiring the button would have left everything green.
+    ///
+    /// It is also where the chip and the rail are seen disagreeing on purpose: the header counts
+    /// three comments, only two of which have rails, and the row under it is what accounts for the
+    /// third.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a comment whose lines are gone when the screen is rendered then its file says so`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewWithOneCommentAdrift,
+            in: layout
+        )
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-comment-adrift")
     }
 }
 

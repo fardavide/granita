@@ -20,7 +20,7 @@ import Testing
 /// `_raiseExceptionForBackgroundThreadLayerPropertyModification`. That trap is worse than a plain
 /// failure: the crash restarts the test host, and the retry then reports "0 tests passed", so the
 /// suite goes green having rendered nothing.
-@Suite("Diff collapsed file bar")
+@Suite("Diff collapsed file bar", .serialized)
 @MainActor
 struct DiffCollapsedFileBarSnapshotTests {
 
@@ -31,7 +31,11 @@ struct DiffCollapsedFileBarSnapshotTests {
     ) {
         // given - when - then
         assertScreenSnapshot(
-            DiffCollapsedFileBar(file: subject.file, collapse: subject.collapse) { _, _ in }
+            DiffCollapsedFileBar(
+                file: subject.file,
+                collapse: subject.collapse,
+                commentCount: subject.commentCount
+            ) { _, _ in }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top),
             layout: layout,
             named: subject.name
@@ -48,13 +52,17 @@ struct CollapsedBarCase: Sendable, CustomTestStringConvertible {
     let file: FileChange
     let collapse: FileCollapse
 
+    /// Zero for every case that predates §7, so none of their baselines moves.
+    let commentCount: Int
+
     var testDescription: String { name }
 
     /// **Built through `FileCollapsing` rather than by hand**, so a picture cannot show a pairing
     /// the domain would never produce — a chevron on a binary file, or a reason on an open one.
-    private init(name: String, file: FileChange, openedByTheReader: Bool?) {
+    private init(name: String, file: FileChange, openedByTheReader: Bool?, commentCount: Int = 0) {
         self.name = name
         self.file = file
+        self.commentCount = commentCount
         collapse = FileCollapsing.state(of: file, openedByTheReader: openedByTheReader)
     }
 
@@ -134,6 +142,23 @@ struct CollapsedBarCase: Sendable, CustomTestStringConvertible {
                 isViewed: false
             ),
             openedByTheReader: false
+        ),
+
+        // **The row design §7.3 invented the chip for.** A shut file has no rows on screen, so it can
+        // carry no rail — the chip is the whole mark, and it has to survive the 45% a viewed file is
+        // drawn at, because it is the one thing on the row that is not decoration.
+        CollapsedBarCase(
+            name: "viewed-and-carrying-comments",
+            file: aFileOnABar(
+                path: "SwiftlyCore/Sources/Common/Utils/GenericError.swift",
+                status: .modified,
+                insertions: 1,
+                deletions: 1,
+                estimatedLineCount: 20,
+                isViewed: true
+            ),
+            openedByTheReader: nil,
+            commentCount: 1
         )
     ]
 }

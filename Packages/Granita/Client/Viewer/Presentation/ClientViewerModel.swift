@@ -39,6 +39,31 @@ public final class ClientViewerModel {
     /// The refusal the Mac gave the last time a mark was written, if it gave one.
     public private(set) var viewedFailure: ApiFailure?
 
+    /// What each open file's code has been lexed as, filed by the file it belongs to.
+    ///
+    /// **Empty is the ordinary first state rather than a failure.** `SPEC.md` §10 says to render
+    /// unhighlighted and upgrade in place, so every file is drawn plain the moment its diff lands and
+    /// gains its colours a beat later — which is also exactly what a file the lexer refused keeps
+    /// drawing forever.
+    public private(set) var highlighted: [FileID: HighlightedFile] = [:]
+
+    /// Everything the reader has said about this worktree, in the order the scroll draws it.
+    ///
+    /// **Read from the store when the model is built rather than when the screen loads**, because a
+    /// review outlives the read that produced it: the phone is backgrounded mid-review far more
+    /// often than a change set fails, and comments that arrived a beat after the diff would flicker
+    /// onto a screen the reader was already using.
+    public private(set) var comments: [ReviewComment] = []
+
+    /// Set when a comment could not be attached to the lines it was written against.
+    ///
+    /// **It exists so that Save can never be a control that did nothing.** The ends of a selection
+    /// are addresses into the diff that was on screen, and a diff that moved under an open composer
+    /// leaves them addressing nothing — rare, because a file already fetched is never re-fetched and
+    /// the reader cannot press anything behind a sheet, and reachable enough that swallowing it
+    /// would mean typing a paragraph and watching it evaporate.
+    public private(set) var commentFailure = false
+
     /// The refusal the Mac gave the last time a hunk was expanded, if it gave one.
     ///
     /// **Reported rather than swallowed, unlike a refused batch of diffs**, and the difference is
@@ -47,23 +72,82 @@ public final class ClientViewerModel {
     /// and a press that leaves the hunk exactly as it was is a control that did nothing.
     public private(set) var expansionFailure: ApiFailure?
 
-    /// Whether §3's drawer is up.
+    /// Which of the three sheets is up, if any.
     ///
-    /// **It is the model's rather than the screen's**, which is a rule this repository wrote down
-    /// the day the Mac's Devices tab needed opening from a menu: a control whose only effect is a
+    /// **One value rather than three flags, and one `.sheet` rather than three.** Only one of them
+    /// can ever present — the sidebar screen made the same call for its two alerts, on the grounds
+    /// that several modifiers of the same kind on one view is the shape where only one ever fires —
+    /// and it is also design §7.2's rule expressed as a type rather than as bookkeeping: opening the
+    /// composer dismisses the file selector, and closing the composer does not bring it back, because
+    /// there is one slot and the composer is in it.
+    ///
+    /// **It is the model's rather than the screen's**, which is a rule this repository wrote down the
+    /// day the Mac's Devices tab needed opening from a menu: a control whose only effect is a
     /// `@State` two layers up is a control nothing can be asked about. Here it also decides what a
-    /// baseline can see — the drawer is the phone's only way to the file list, and a presented state
-    /// no test can set is a screen photographed with its main affordance shut.
+    /// baseline can see — a presented state no test can set is a screen photographed with its main
+    /// affordance shut.
+    public private(set) var sheet: ViewerSheet?
+
+    /// The gesture design §7.1 draws, as the state machine `Domain` owns.
     ///
-    /// Only the phone has one. In a regular width the selector is a column and this is never read.
-    public private(set) var isShowingSelector = false
+    /// Read by the diff for its pending rail and by the screen for the instruction bar, and written
+    /// only through the four entry points below.
+    public private(set) var draft: CommentDraft = .idle
+
+    /// What the composer's field holds, seeded when it opens.
+    ///
+    /// A plain `var` because a `TextField` binds to it directly, which is the one place in this model
+    /// where the view writes rather than reports — a keystroke is not a decision, and routing every
+    /// one of them through a method would be a write per character with nothing to assert about it.
+    public var composerText = ""
+
+    /// What the review sheet's note field holds. A `var` for the reason `composerText` is one.
+    ///
+    /// Typing into it un-skips it, because the two states are the same empty field and the reader has
+    /// just said which one they are in.
+    public var noteDraft = "" {
+        didSet {
+            if noteDraft.isEmpty == false {
+                hasSkippedNote = false
+            }
+        }
+    }
+
+    /// Whether the review is showing the text it is about to copy.
+    ///
+    /// **On the model rather than in the sheet, for the reason every other presentation flag here
+    /// is**: a `@State` inside the view is a state no baseline can set and no test can ask about, so
+    /// *Show text* would be a control whose entire effect is invisible to everything this repository
+    /// can run. The Snapshot row said so before this moved — the branch that draws the document was
+    /// the one thing on that screen no picture reached.
+    public private(set) var isShowingDocument = false
+
+    /// Whether the reader pressed *Skip* rather than leaving the note field alone.
+    ///
+    /// **The two look identical and mean the same thing to the document**, which says nothing either
+    /// way — an agent reading a placeholder treats it as an instruction to go and find the note. What
+    /// it changes is the screen: a reader who skipped and then wondered whether it took has nothing
+    /// else to read, so §7.5 says it out loud.
+    public private(set) var hasSkippedNote = false
+
+    /// Whether this review has been put on the pasteboard yet.
+    ///
+    /// **It is what gates *Clear*, which is design §7.6's sequencing and a safety property rather
+    /// than a nicety**: the pasteboard is the only other copy of a review that lives nowhere but this
+    /// phone, so a control that could destroy it before it had been pasted is a control that can
+    /// destroy an afternoon. There is no path to Clear that does not go through Copy.
+    ///
+    /// It survives for the rest of the session rather than for the two seconds the button says
+    /// *Copied*, because a reader who copies, scrolls back to check one thing and returns has still
+    /// copied it.
+    public private(set) var hasCopied = false
 
     /// How much of the phone that drawer takes.
     ///
-    /// **The model's for the reason `isShowingSelector` is**: choosing a file has to be able to move
-    /// it, and a height that lived in the screen's `@State` would be one no test could ask about.
-    /// The sheet's own drag writes it back through `resize`, so this is where the reader's gesture
-    /// and the jump's requirement meet rather than two answers to one question.
+    /// **The model's for the reason `sheet` is**: choosing a file has to be able to move it, and a
+    /// height that lived in the screen's `@State` would be one no test could ask about. The sheet's
+    /// own drag writes it back through `drawerDetent`, so this is where the reader's gesture and the
+    /// jump's requirement meet rather than two answers to one question.
     public private(set) var drawer: FileSelectorDrawer = .half
 
     /// The same height as the sheet's own detent, so the sheet can be handed a binding rather than a
@@ -103,12 +187,73 @@ public final class ClientViewerModel {
     /// so without this the same five files would be re-requested on every one of them.
     private var inFlight: Set<FileID> = []
 
-    private let worktree: WorktreeID
-    private let repository: any GranitaRepository
+    /// Every question already put to the lexer.
+    ///
+    /// **A question rather than an answer**, which is what makes one entry do two jobs: a side
+    /// already coloured is not lexed twice, and a side the lexer *refused* is not asked again either
+    /// — a refusal is a property of the text and the language, so asking a second time spends a
+    /// hundred milliseconds to be told the same thing.
+    ///
+    /// It is also the guard on a late answer. Changing appearance empties this, so a result that was
+    /// in flight when the screen went dark arrives holding a key nothing is waiting for and is
+    /// dropped rather than drawn in the wrong colours.
+    private var asked: Set<HighlightKey> = []
 
-    public init(worktree: WorktreeID, repository: any GranitaRepository) {
+    /// The appearance the screen is drawing in, which is an environment value and therefore reported
+    /// rather than known.
+    ///
+    /// Light until the screen says otherwise. That is a guess for exactly one frame and it costs
+    /// nothing, because nothing has been fetched to colour yet when it is made.
+    private var appearance: HighlightAppearance = .light
+
+    /// The code size the screen is drawing at, which `DiffPaneLayout` decides from the room.
+    private var codePointSize = Double(DiffPaneLayout.codePointSize)
+
+    /// Which file the reader has reached, so the one under their thumb is lexed before the ones
+    /// fetched ahead of them — `SPEC.md` §10's "highlight the visible file first".
+    private var readingPosition = 0
+
+    private let worktree: WorktreeID
+
+    /// What the review calls the worktree it is of, which is the only thing in the exported document
+    /// that is not one of the comments.
+    ///
+    /// Held here rather than passed to the call that builds the document: the model is per worktree
+    /// and this is a fact about that worktree, so a screen handing it back on every invocation would
+    /// be a second copy of something already decided.
+    private let worktreeName: String
+
+    /// The repository this checkout is of, which the exported review names and nothing else here
+    /// does.
+    ///
+    /// **Handed in rather than looked up**, because it is not on the wire this screen reads: a change
+    /// set carries a revision, stats and files and no project, so the only source is the worktree the
+    /// reader tapped — which is the sidebar's to resolve, beside the display name, for the reason its
+    /// own doc comment gives.
+    private let projectName: String
+
+    private let repository: any GranitaRepository
+    private let commentStore: any ReviewCommentStore
+    private let pasteboard: any ReviewPasteboard
+    private let highlighter: any SyntaxHighlighter
+
+    public init(
+        worktree: WorktreeID,
+        worktreeName: String,
+        projectName: String,
+        repository: any GranitaRepository,
+        commentStore: any ReviewCommentStore,
+        pasteboard: any ReviewPasteboard,
+        highlighter: any SyntaxHighlighter
+    ) {
         self.worktree = worktree
+        self.worktreeName = worktreeName
+        self.projectName = projectName
         self.repository = repository
+        self.commentStore = commentStore
+        self.pasteboard = pasteboard
+        self.highlighter = highlighter
+        comments = commentStore.comments(in: worktree)
     }
 
     /// Reads what changed, which is the file list and the stats and never the hunks.
@@ -129,10 +274,18 @@ public final class ClientViewerModel {
         do {
             let changes = try await repository.changes(in: worktree)
             entries = changes.files.map(ContinuousDiffEntry.awaiting)
+            // A new change set is a new set of files, so nothing lexed against the last one addresses
+            // anything here. Held rather than dropped, they would be entries under identifiers this
+            // screen no longer draws — memory nothing can reach.
+            highlighted = [:]
+            asked = []
             isTruncated = changes.isTruncated
             collapsed = FileSelector.initiallyCollapsed(in: changes.files)
             state = entries.isEmpty ? .nothingChanged : .reading(entries)
             rearrange()
+            // The comments were read before any file was named, so until now they have been in the
+            // order they were written in. This is the first moment the scroll's order exists.
+            comments = ReviewedComment.ordered(comments, against: entries)
         } catch .cancelled {
             state = entries.isEmpty ? .loading : .reading(entries)
         } catch {
@@ -146,6 +299,7 @@ public final class ClientViewerModel {
     /// whole of §10's no-reflow trap: a file whose placeholder becomes real content above the
     /// viewport moves everything below it, the reader's own screen included.
     public func reading(_ position: Int) async {
+        readingPosition = position
         let wanted = ContinuousDiffLoading.next(
             from: position,
             of: entries.map(\.id),
@@ -159,8 +313,56 @@ public final class ClientViewerModel {
         await fetch(wanted)
     }
 
+    /// Reports what the screen is drawing with, and re-colours everything when either changes.
+    ///
+    /// **The appearance cannot be the model's own**, because it is an environment value: a model that
+    /// guessed would keep a dark screen coloured for light until something else happened to
+    /// invalidate it. The code size is the same fact, arriving from `DiffPaneLayout` rather than from
+    /// the system.
+    ///
+    /// Safe to call on every appearance, which is what the screen does: an unchanged pair colours
+    /// whatever is open and not yet coloured, and there is usually nothing.
+    public func drawing(in appearance: HighlightAppearance, at pointSize: Double) async {
+        if appearance != self.appearance || pointSize != codePointSize {
+            self.appearance = appearance
+            codePointSize = pointSize
+            // **Thrown away rather than restyled.** The colours are baked into what the lexer
+            // answered, so an entry made for the other appearance is the *wrong* colours rather than
+            // stale ones — black tokens on a black card. One frame of plain text is what every file
+            // starts as anyway.
+            highlighted = [:]
+            asked = []
+        }
+        await highlight()
+    }
+
+    /// **Both of these drop the draft, and that is the fix for a screen that could get stuck.** The
+    /// toolbar is live behind the composer's detent, so *12 files* and the review chip can each
+    /// replace the composer without going through `dismissSheet` — and the run stayed `.composing`
+    /// with no composer over it, a square-capped rail in the gutter, no instruction bar, and every
+    /// further gutter gesture a no-op for the life of the screen, because a composing draft ignores
+    /// them all.
     public func showSelector(_ isShowing: Bool) {
-        isShowingSelector = isShowing
+        draft = draft.cancelled()
+        sheet = isShowing ? .selector : nil
+    }
+
+    /// Opens the review, which is design §7.4's capsule and the iPad's toolbar toggle.
+    public func showReview() {
+        draft = draft.cancelled()
+        sheet = .review
+    }
+
+    /// Puts whichever sheet is up away.
+    ///
+    /// **It drops the draft with it**, because the composer *is* the draft's third state: a sheet
+    /// dismissed by a drag rather than by Cancel would otherwise leave a run picked out with nothing
+    /// on screen saying so, and the next tap would extend a selection the reader had abandoned.
+    public func dismissSheet() {
+        if sheet == .composer {
+            draft = draft.cancelled()
+        }
+        sheet = nil
     }
 
     /// Asks the scroll to go to a file, which is the selector's entire job.
@@ -250,8 +452,15 @@ public final class ClientViewerModel {
         guard entries[position].collapse.isCollapsible else { return }
         entries[position] = entries[position].opened(isOpen)
         state = .reading(entries)
-        guard isOpen, entries[position].isReady == false else { return }
-        await fetch([file])
+        guard isOpen else { return }
+        // **Opening a file is the moment it becomes something to colour.** `SPEC.md` §10 forbids
+        // lexing a file nobody has opened, so `highlight` steps over every shut one — which means a
+        // file whose diff was already in hand when it was shut has never been offered to the lexer.
+        guard entries[position].isReady else {
+            await fetch([file])
+            return
+        }
+        await highlight()
     }
 
     /// Shows the lines a hunk skipped, on the side the reader pressed.
@@ -314,6 +523,10 @@ public final class ClientViewerModel {
                 )
             )
             state = .reading(entries)
+            // **A wider side is a different question, and the key says so.** The spliced lines were
+            // never lexed, and the entry already on screen keeps drawing until the new answer lands —
+            // which is what makes an expansion upgrade in place rather than flash back to plain.
+            await highlight()
         } catch {
             expansionFailure = error
         }
@@ -321,6 +534,193 @@ public final class ClientViewerModel {
 
     public func dismissExpansionFailure() {
         expansionFailure = nil
+    }
+
+    /// A tap on a file's gutter, which is either a comment on one row or the second end of a run.
+    ///
+    /// **The composer opens on whatever it produces**, and if that run already carries a comment it
+    /// opens holding it — design §7.1's "a single tap on a rail opens that comment for editing, no
+    /// long press, no menu". The file selector goes with it, because there is one sheet.
+    /// **A tap that changes nothing writes nothing**, and that guard is load-bearing rather than
+    /// defensive. The composer's own detent enables background interaction, which is what lets a
+    /// reader scroll the diff behind it to check the caller they are about to complain about — and it
+    /// also means a thumb can land on the gutter while the sheet is up. Without this, that tap left
+    /// the composer open on the same rows and emptied the field: three sentences gone, and nothing on
+    /// screen to say why.
+    public func tappedGutter(_ end: DiffLinePosition, in file: FileID) {
+        let next = draft.tapped(end, in: file)
+        guard next != draft else { return }
+        draft = next
+        composerText = editingComment?.text ?? ""
+        sheet = .composer
+    }
+
+    /// A long press on a file's gutter, which begins a run and raises the instruction bar.
+    ///
+    /// It opens no sheet: what the reader has done is pick one end, and the bar over the diff is what
+    /// says so and what offers the way out.
+    public func longPressedGutter(_ end: DiffLinePosition, in file: FileID) {
+        draft = draft.longPressed(end, in: file)
+    }
+
+    /// The instruction bar's Cancel.
+    public func cancelDraft() {
+        draft = draft.cancelled()
+    }
+
+    /// The composer's Save.
+    ///
+    /// **Nothing is written for an empty field.** A reader who opens the composer and thinks better
+    /// of it gets the same outcome as Cancel rather than a comment with no words in it, which would
+    /// be a rail in the gutter and a line in the document saying nothing.
+    public func saveComment() {
+        guard let pending = draft.pending else { return }
+        let written = composerText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if written.isEmpty {
+            dismissSheet()
+            return
+        }
+        comment(on: pending.file, from: pending.from, to: pending.to, saying: written)
+        dismissSheet()
+    }
+
+    /// The composer's Delete, which design §7.2 gives only to a comment that already exists.
+    public func deleteComposedComment() {
+        guard let anchor = editingComment?.anchor else { return }
+        removeComment(anchor)
+        dismissSheet()
+    }
+
+    /// The comment the composer is editing, if the run it is open on already carries one.
+    ///
+    /// **Resolved against the diff rather than compared as typed**, because the two ends of a pending
+    /// run are in the order the reader's thumb touched them and an anchor is in the order the diff
+    /// draws them. Comparing the raw pair would make a run held upwards a different run from the same
+    /// one held downwards, which is the duplicate `CommentAnchor` exists to prevent.
+    public var editingComment: ReviewComment? {
+        guard let anchor = anchorOfTheDraft else { return nil }
+        return comments.first { $0.anchor == anchor }
+    }
+
+    /// The lines the composer quotes above its field, which are the receipt for an 18pt aim.
+    ///
+    /// Design §7.2: three rows of the anchored code, so a reader never types a paragraph against the
+    /// wrong line and finds out on the Mac.
+    public var composerExcerpt: [ExcerptLine] {
+        guard let pending = draft.pending,
+              case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
+              let rows = CommentSelection.rows(of: diff, from: pending.from, to: pending.to) else {
+            return []
+        }
+        // The same spelling the export uses, which is the whole claim the excerpt makes: what the
+        // reader is looking at here is what the agent will be handed. With the gutter's own figures
+        // beside it, because the number is what a reader who aimed one row off would recognise.
+        return CommentSelection.excerpt(of: rows)
+    }
+
+    /// What the composer's own header says the comment is about — `Turbine.swift:41-44`.
+    public var composerAnchorLabel: String {
+        draft.pending.map(label(of:)) ?? ""
+    }
+
+    /// The same sentence for the row the reader is holding, because the other end may be a screen
+    /// away by the time they go looking for it and scrolling deliberately does not cancel the hold.
+    public var heldRowLabel: String {
+        draft.held.map(label(of:)) ?? ""
+    }
+
+    /// The review's *Show text*, which reveals exactly what the copy will put on the pasteboard.
+    public func showDocument(_ isShowing: Bool) {
+        isShowingDocument = isShowing
+    }
+
+    /// The review sheet's *Skip*, which is one of the two answers §7.5 offers for the note.
+    public func skipNote() {
+        noteDraft = ""
+        hasSkippedNote = true
+    }
+
+    /// Puts the review on the pasteboard, which is the only thing this feature does to the outside
+    /// world.
+    ///
+    /// **Only after this can the review be cleared.** See `hasCopied`.
+    public func copyReview() {
+        pasteboard.copy(feedback(note: noteDraft))
+        hasCopied = true
+    }
+
+    /// Writes down what the reader had to say about one run of lines, or replaces what they said
+    /// before.
+    ///
+    /// **The anchor is the identity, so a second comment on the same run is an edit.** A review is a
+    /// note left for an agent rather than a thread, and two notes on one span would be one thing to
+    /// read written twice.
+    ///
+    /// **Only a file whose diff is in hand can carry one**, which costs nothing: the ends came from
+    /// rows the screen drew, and a file that is awaiting or shut has drawn none.
+    public func comment(on file: FileID, from: DiffLinePosition, to: DiffLinePosition, saying text: String) {
+        guard case .ready(let diff)? = entries.first(where: { $0.id == file })?.content,
+              let written = CommentSelection.comment(on: diff, from: from, to: to, saying: text) else {
+            commentFailure = true
+            return
+        }
+        comments.removeAll { $0.anchor == written.anchor }
+        comments.append(written)
+        remember()
+    }
+
+    /// Takes one comment back, which is what an empty composer and a delete both come to.
+    public func removeComment(_ anchor: CommentAnchor) {
+        comments.removeAll { $0.anchor == anchor }
+        remember()
+    }
+
+    /// Forgets the whole review — the comments, the note, and the fact that it was copied.
+    ///
+    /// **Offered after the document has been copied and never before**, which is design §7.6's
+    /// sequencing: the pasteboard is the only other copy there is, so clearing before it has been
+    /// pasted destroys the afternoon. What makes it safe to offer at all is that it follows the copy
+    /// rather than sitting beside it.
+    ///
+    /// It puts the screen back exactly where a first run leaves it, capsule and all, which is what
+    /// makes *Clear* a finish rather than a partial one.
+    public func clearComments() {
+        comments = []
+        noteDraft = ""
+        hasSkippedNote = false
+        hasCopied = false
+        sheet = nil
+        remember()
+    }
+
+    public func dismissCommentFailure() {
+        commentFailure = false
+    }
+
+    /// Every comment judged against the diff as it stands, which is what the review list draws and
+    /// what the document is written from.
+    ///
+    /// Computed rather than stored: staleness is a fact about a comment *and* a change set, and both
+    /// move — a batch lands, a hunk grows, the screen is re-opened. A stored flag would have three
+    /// writers and be wrong the first time one of them did not run.
+    public var reviewed: [ReviewedComment] {
+        ReviewedComment.listing(of: comments, against: entries)
+    }
+
+    /// The review as the one piece of text that goes back to the agent.
+    ///
+    /// `note` absent is the *Skip* the flow offers, and the document leaves nothing standing in for
+    /// it.
+    public func feedback(note: String?) -> String {
+        ReviewFeedback.document(
+            project: projectName,
+            worktree: worktreeName,
+            // What the reader is being asked about, which is the change set rather than the review:
+            // "12 files" is the size of the read the comments came out of.
+            fileCount: entries.count,
+            note: note,
+            comments: reviewed
+        )
     }
 
     /// One batch, with the answers spliced back into the files that asked for them.
@@ -346,6 +746,94 @@ public final class ClientViewerModel {
             entries[position] = entries[position].arrived(diff)
         }
         state = .reading(entries)
+        // **A batch landing is the moment a comment on that file becomes placeable.** `load()` orders
+        // a restored review while every file is still awaiting, so the only key available there is
+        // the reported line — the one `ReviewedComment.ordered` documents as wrong across the two
+        // sides. Re-ordering here is what settles it, and it costs nothing on the ordinary screen
+        // because a review is a handful of comments.
+        comments = ReviewedComment.ordered(comments, against: entries)
+        await highlight()
+    }
+
+    /// Colours every file the reader has open, starting from the one they are looking at.
+    ///
+    /// **Two rules of `SPEC.md` §10 live here and nowhere else**: never lex a file that has not been
+    /// opened, and lex the visible one first. The first is why a shut file is stepped over even when
+    /// its diff is in hand; the second is why this starts at the reader's own position and wraps,
+    /// rather than walking the change set from the top — files are fetched five *ahead*, so from the
+    /// top means colouring the file they left before the one they are on.
+    private func highlight() async {
+        guard entries.isEmpty == false else { return }
+        let first = min(max(0, readingPosition), entries.count - 1)
+        // Taken as values before the first await rather than walked by index, so a batch landing
+        // partway through cannot leave this indexing a list that has since become shorter.
+        for entry in Array(entries[first...]) + Array(entries[..<first]) {
+            guard entry.collapse.isCollapsed == false, case .ready(let diff) = entry.content else { continue }
+            for side in DiffSide.allCases {
+                await highlight(diff, side: side)
+            }
+        }
+    }
+
+    /// One side of one file, asked once and filed under the numbers the gutter draws.
+    private func highlight(_ diff: FileDiff, side: DiffSide) async {
+        guard let key = SyntaxHighlighting.key(
+            for: diff,
+            side: side,
+            appearance: appearance,
+            pointSize: codePointSize
+        ) else {
+            return
+        }
+        guard asked.contains(key) == false,
+              case .highlight(let source) = SyntaxHighlighting.plan(for: diff, side: side) else { return }
+        // Recorded before the await rather than after it, so two passes over one file — a batch
+        // landing while the reader opens something — do not both put the same question.
+        asked.insert(key)
+        guard let lines = await highlighter.highlight(source.text, as: key.language, for: appearance) else {
+            return
+        }
+        let indexed = source.indexed(lines)
+        // Two refusals with one outcome, which is the file carrying on plain. **The key is no longer
+        // in the set** when the screen changed appearance or size while this was in flight, so what
+        // came back is the wrong colours rather than late ones. **`indexed` is empty** when the lexer
+        // answered with a different number of lines than it was given, which `HighlightSource`
+        // discards whole rather than shifting every colour after the gap onto the wrong row.
+        guard asked.contains(key), indexed.isEmpty == false else { return }
+        highlighted[key.fileId] = (highlighted[key.fileId] ?? .none).replacing(side, with: indexed)
+    }
+
+    /// `Turbine.swift:41-44` — the file's name and the span, resolved against the diff.
+    ///
+    /// The name rather than the path, because the reader is looking at the file: the full path is
+    /// what the exported document carries, where the audience is a shell.
+    private func label(of pending: PendingComment) -> String {
+        guard case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
+              let rows = CommentSelection.rows(of: diff, from: pending.from, to: pending.to),
+              let lines = CommentedLines.of(rows) else {
+            return ""
+        }
+        let name = DiffFilePath.name(of: diff.file.path)
+        return lines.first == lines.last
+            ? "\(name):\(lines.first)"
+            : "\(name):\(lines.first)-\(lines.last)"
+    }
+
+    /// The draft's run as an address, in the order the diff draws it.
+    private var anchorOfTheDraft: CommentAnchor? {
+        guard let pending = draft.pending,
+              case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
+              let ends = CommentSelection.ends(of: diff, from: pending.from, to: pending.to) else {
+            return nil
+        }
+        return CommentAnchor(file: pending.file, first: ends.first, last: ends.last)
+    }
+
+    /// Puts the review back in the scroll's order and writes it down, in that order, so the list on
+    /// screen and the document that gets copied cannot disagree about what comes first.
+    private func remember() {
+        comments = ReviewedComment.ordered(comments, against: entries)
+        commentStore.save(comments, in: worktree)
     }
 
     private func rearrange() {
@@ -356,6 +844,28 @@ public final class ClientViewerModel {
             isTruncated: isTruncated
         )
     }
+}
+
+// MARK: -
+
+/// Which of the diff screen's three sheets is up.
+///
+/// **One slot, so the rule design §7.2 asks for is a type rather than bookkeeping**: opening the
+/// composer dismisses the file selector, and closing the composer does not bring it back. The reader
+/// asked for a comment, not a file.
+public enum ViewerSheet: Hashable, Sendable, Identifiable {
+
+    /// Design §3's file list, at the medium and large detents with the diff live behind it.
+    case selector
+
+    /// Design §7.2's composer, at one 300pt detent with the diff live behind it.
+    case composer
+
+    /// Design §7.6's review, at `.large` with nothing behind it — this one is a destination rather
+    /// than a drawer, and the diff is no longer the subject.
+    case review
+
+    public var id: Self { self }
 }
 
 // MARK: -

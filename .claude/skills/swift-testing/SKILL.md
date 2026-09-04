@@ -26,7 +26,7 @@ rule it supports.
   [references/golden-fixtures.md](references/golden-fixtures.md)
 - Snapshot tolerance values, the drift measurements, and the recording procedure per platform: see
   [references/snapshots.md](references/snapshots.md)
-- What each coverage row is measured over, and the four recorded redefinitions: see
+- What each coverage row is measured over, and the recorded redefinitions: see
   [references/coverage-report.md](references/coverage-report.md)
 
 ## Framework — Swift Testing, never XCTest
@@ -120,10 +120,25 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
   and `.claude/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill. Review every changed PNG by eye before committing.
+- **Every `@Suite` here carries `.serialized`**, all twenty of them. The suites share one real window,
+  so anything a render leaves behind is the next render's input, and waiting for it to clear means
+  spinning the run loop — which lets another suite take the window mid-assertion unless nothing else
+  can run. That cost 22 baselines in a single run.
+- **A view that takes focus raises a software keyboard, and a keyboard is geometry.** It never appears
+  in a raster and it still shortens the screen the layout is measured against. The rise is
+  asynchronous and lands on **whichever render is laying out when it arrives**, not the next one, so
+  the harness drains on both sides of every render.
+- **A clean run prints nothing from the probe.** A `[snapshot] … safeBottom=` line means a render was
+  laid out against an inset past 40pt, which no real safe area reaches — that baseline cannot be
+  trusted whether it passed or not.
+- **A green local run is not evidence of absence** when which render catches a fault is luck. This one
+  was green here and red on CI three times running, because locally the keyboard landed on an
+  iPad-dark render that structurally cannot show the damage.
 
 Why each of these bites — the hostless-render mechanism, the trap that restarts the test host,
 tolerance values and the drift measurements behind them, the recording commands for each platform,
-and how to read a failure: [snapshots.md](references/snapshots.md).
+how to read a failure, and the four wrong fixes behind the keyboard rules:
+[snapshots.md](references/snapshots.md).
 
 ## Cover it as you write it, and run the gate before the pull request
 
@@ -152,13 +167,22 @@ ternary, **or a closure body**. So write the test as you write the code, for eac
   subject of its own** — the states you photograph are the states you cover, and a state you argued
   for in a comment but never rendered is a state nothing holds you to.
 
-**The one you cannot fix with a test: an action closure in a screen.** `GranitaSettingsScreen`'s
-uncovered regions are, every one of them, closures like `onRestart: { Task { await model.restart() } }`.
-A snapshot renders a view and never invokes its actions, so adding a control to that screen lowers
-the Snapshot regions row and no test this project can currently run will lift it — only the `Ui`
-kind would, and that target cannot run without an Accessibility grant. **Do not respond by
-restructuring the screen or by widening a scope**: read the export, confirm that is what you are
-looking at, and say so to Davide. It is a known structural gap, not a thing you did wrong.
+**An action closure in a view is no longer counted, and that has a rule attached.** A snapshot
+renders a view and never presses its controls, so a closure like
+`onRestart: { Task { await model.restart() } }` was uncovered by construction and every control added
+to a screen lowered the Snapshot regions row. Since 2026-09-04 the regions column leaves those out:
+a closure returning `()` draws nothing, so it is outside what that row asks. Its **lines are still
+counted**, because a closure written inline shares them with the view it sits in.
+
+So the rule that replaces "read the export and say so to Davide":
+
+- **Keep an action closure to one call into the model.** Its body is now judged by nothing — the
+  views scope is the only row that sees view code, and this takes it out of that row.
+- **A closure that grows a branch has outgrown a view.** Move it to the model, where the Unit row
+  judges it. Do not argue it back into the denominator, and do not leave a `guard` or a `??` inside a
+  `Button`'s action where nothing will ever hold you to it.
+- The exclusion is closures, not methods: a named method in a `Ui` file **is** still counted, because
+  it has a name and a test can call it.
 
 ## Test kinds, and the coverage gate
 
@@ -185,12 +209,13 @@ for the first time is not judged — it joins on the next `main` run.
   code the row cannot reach is code that *should not be there*: fix that first, then ask whether the
   predicate is still wrong.
 - **The bar for `UNREACHABLE_FILES` is "unrunnable by construction", never "hard to test".** Adding
-  a name there is a redefinition, so it comes with a rename of the scope string.
+  a name there is a redefinition, so it comes with a rename of the scope string. The Snapshot row's
+  action-closure exclusion meets the same bar at a finer grain, and paid the same price.
 - **The rows have different denominators, so do not subtract them.** Only `All tests` spans the
   project. Coverage rising after tests are deleted is the signature of this, not of an improvement.
 - **Changing what a row measures un-judges it for one run.** Redefine deliberately, and expect one
   run with that row unenforced.
 
 What each row is measured over and why, the 2026-08-23 measurement behind the Snapshot row's scope,
-the denominator hazard in full, and the four recorded redefinitions including the one that was
+the denominator hazard in full, and the recorded redefinitions including the one that was
 wrong: [coverage-report.md](references/coverage-report.md).

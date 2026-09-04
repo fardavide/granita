@@ -32,7 +32,24 @@ public enum DiffGutter {
     public static let advanceRatio: CGFloat = 0.6
 
     /// Between the leading edge and the first figure.
+    ///
+    /// **Real drawn space rather than arithmetic**, which is what design §7's comment rail is built
+    /// on: a figure is trailing-aligned in a frame this much wider than the figures themselves, so
+    /// even the file's own longest number leaves these four points empty at the leading edge. Three
+    /// of them are the rail. Nothing else on the row was carrying nothing.
     public static let leadingInset: CGFloat = 4
+
+    /// The mark a commented run draws, in the leading inset rather than in the figure column.
+    ///
+    /// **Design §7's call 7.** The alternatives each cost something the gutter cannot give up: a
+    /// glyph replacing the figure re-opens the diff review's first fault, which is the only one it
+    /// called a correctness bug; a row tint collides with the `+`/`−` tints and the word-diff
+    /// background, which is already the strongest colour in the row; and a pin at the trailing edge
+    /// costs two characters of code on every row of every file, forever, to mark four of them.
+    ///
+    /// Length is what says how long the run is — 18pt for one row and 72 for four — so a run reads
+    /// without a count, without colour, and without a single point of new height.
+    public static let railWidth: CGFloat = 3
 
     /// Between the last figure and the code. Spacing rather than text, so it does not scale with
     /// the point size — the gap wants to stay a gap.
@@ -72,6 +89,21 @@ public enum DiffGutter {
     /// Spacing rather than text, for the reason `trailingSpace` is: the gap wants to stay a gap when
     /// the code size changes.
     public static let markerTrailingSpace: CGFloat = 6
+
+    /// Everything to the left of the first character of code, which is the strip a comment is aimed
+    /// at.
+    ///
+    /// **The figures, the marker, and the space after it** — all three already sit outside the
+    /// per-hunk horizontal scroll, so taking them together costs nothing and buys the difference
+    /// between a 20pt target and a 51pt one. Design §7 measures the ordinary case at about 51pt and
+    /// the narrowest a change set can produce — a file with nine lines in it — at about 38.
+    ///
+    /// It is the width of a *target*, not of a control: `GutterTarget` resolves a touch anywhere in
+    /// it to the nearest numbered row, so there is no boundary in it to land inside and no dead space
+    /// to land in.
+    public static func tapStripWidth(forHighestLineNumber highest: Int, atPointSize pointSize: CGFloat) -> CGFloat {
+        columnWidth(forHighestLineNumber: highest, atPointSize: pointSize) + markerWidth + markerTrailingSpace
+    }
 
     /// Which side's number a row shows, in the one column that now carries both.
     ///

@@ -38,6 +38,13 @@ public struct HighlightSource: Hashable, Sendable {
     /// construct opened in a gap and closed in a hunk is lexed without its opening. That is the
     /// approximation `SPEC.md` §10 chooses knowingly, and it is a far smaller one than lexing a
     /// hunk at a time, which gives the lexer no opening context at all.
+    ///
+    /// **The lines are on the grid the row draws, tabs already expanded.** A colour comes back as a
+    /// range into this string and is applied to the string `DrawnDiffLine` produces, so the two have
+    /// to be the same string — a tab left raw here is one character where the row draws two, three or
+    /// four, and every colour after it lands partway through the wrong token. A tab is whitespace to
+    /// every lexer, so expanding it costs the lexer nothing and saves a second mapping between two
+    /// spellings of one line.
     public let text: String
 
     /// The file line number each line of `text` came from, in the same order.
@@ -87,6 +94,14 @@ public struct HighlightKey: Hashable, Sendable {
     public let side: DiffSide
     public let language: String
     public let appearance: HighlightAppearance
+
+    /// The code size the side was lexed for.
+    ///
+    /// **Nothing in what comes back is measured at it, and the field stays anyway.** The highlighter
+    /// keeps the theme's colours and drops its fonts, so the row's own monospaced font is what draws
+    /// every result — which means this over-invalidates rather than under-invalidates. It costs
+    /// nothing, because `SPEC.md` §10 already throws away every cached row height when the code size
+    /// changes: a re-lex rides along with a relayout that was happening regardless.
     public let pointSize: Double
 
     /// Which of the file's lines this side was assembled from.
@@ -128,10 +143,17 @@ public struct HighlightKey: Hashable, Sendable {
 ///
 /// **Which side a line is on is read off the numbers the parser wrote.** `UnifiedDiffParser` has
 /// already decided that a context line occupies both sides, a deletion only the old and an addition
-/// only the new — and that a conflict marker and git's no-newline annotation occupy neither. Asking
-/// the numbers rather than re-deciding from the kind is what keeps one judgement in one place, and
-/// it is what keeps `<<<<<<<` out of the string the lexer reads: a marker is not source, and a lexer
-/// handed one mis-lexes everything after it.
+/// only the new. Asking the numbers rather than re-deciding from the kind is what keeps one
+/// judgement in one place.
+///
+/// **The two annotations are excluded by kind as well, and the numbers alone were not enough.** This
+/// used to read the numbers only, on the belief that a conflict marker carries none — and the marker
+/// the parser actually produces carries both. A conflicted working tree holds `<<<<<<< HEAD` as
+/// literal content, so git diffs it behind a `+` and the parser numbers it from that prefix before
+/// re-tagging it by its text, which let every real marker through to the lexer. `<<<<<<<` is not
+/// source in any language, and a lexer handed one mis-lexes everything after it — which is the whole
+/// failure this section is written to avoid, arriving through the one row that announces a conflict.
+/// Recorded in `.claude/docs/decisions.md`.
 public enum SyntaxHighlighting {
 
     /// `SPEC.md` §10's caps, above which a side renders plain.
@@ -181,18 +203,31 @@ public enum SyntaxHighlighting {
 
     // MARK: -
 
-    /// Every line of the diff that sits on one side, in file order, with the number it sits at.
+    /// Every line of the diff that sits on one side and is source, in file order, with the number it
+    /// sits at.
     ///
     /// Document order rather than sorted: the hunks arrive in order and their lines with them, so
     /// sorting here would hide a diff that did not — and a diff whose lines are out of order is a
     /// defect worth seeing rather than one worth tidying.
     private static func lines(of diff: FileDiff, side: DiffSide) -> [(number: Int, text: String)] {
         diff.hunks.flatMap(\.lines).compactMap { line in
+            guard isSource(line) else { return nil }
             let number = switch side {
             case .old: line.oldNumber
             case .new: line.newNumber
             }
-            return number.map { (number: $0, text: line.text) }
+            return number.map { (number: $0, text: MonospacedGrid.expandingTabs(in: line.text)) }
+        }
+    }
+
+    /// Whether a row is a line of the file rather than something git or a merge wrote into it.
+    private static func isSource(_ line: DiffLine) -> Bool {
+        switch line.kind {
+        case .context, .addition, .deletion: true
+        // `<<<<<<< HEAD` is not source and `\ No newline at end of file` is git talking about the
+        // file rather than a line of it. Both are drawn — §4 gives the marker its own tint and
+        // semibold — and neither is lexed.
+        case .conflictMarker, .noNewlineMarker: false
         }
     }
 }

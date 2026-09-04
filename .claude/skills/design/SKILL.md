@@ -90,9 +90,12 @@ Everything else has an answer.
   argument for a layout that jumps when it is pressed; §10 is why this was missed for four releases.
   Nothing in the snapshot suite can see it — that suite stayed green through every one of those
   releases, and through 0.5.2's half-fix — so it is checked by pressing the control.
-- **The iPad is the phone at rest in a bigger room.** Pre-pairing screens clamp to a 420pt centred
-  measure, title included. Post-pairing, the sidebar is 320pt — *narrower* than the phone — so it is
-  the harder layout for a row, not the easier one.
+- **A wide window gets stock SwiftUI, not a column hand-drawn in the middle of it.** Pre-pairing
+  screens were clamped to a 420pt centred measure until 0.7.1, which drew a strip of content down the
+  middle of an iPad with bare white either side; they now lay out at the width they are given. Reach
+  for a `.frame(maxWidth:)` around a screen and you are rebuilding the thing that was removed.
+  Post-pairing, the sidebar is 320pt — *narrower* than the phone — so it is the harder layout for a
+  row, not the easier one.
 - **Modified is the default case and gets no colour.** Four rows in five are modified; colouring it
   spends the palette on the field carrying no information.
 - **Viewed is tapped, never inferred.** The only concession is an explicit "mark everything above".

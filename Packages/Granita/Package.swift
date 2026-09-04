@@ -357,6 +357,12 @@ let package = Package(
             swiftSettings: [swift6]
         ),
         .testTarget(
+            name: "ClientViewerDataTests",
+            dependencies: ["ClientViewerData", "ClientViewerDomain", "CoreDiffDomain"],
+            path: "Client/Viewer/DataTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
             name: "ClientViewerPresentationTests",
             dependencies: [
                 "ClientViewerPresentation",
@@ -384,7 +390,12 @@ let package = Package(
                 "ClientWorktreesPresentation",
                 "ClientWorktreesData",
                 "ClientViewerPresentation",
-                "ClientViewerData"
+                "ClientViewerData",
+                // The one Highlightr-backed lexer is composed here, which is why a root sees a `Ui`
+                // target: highlighting produces attributed strings for rendering, so `SPEC.md` §2
+                // pins the dependency to `ClientViewerUi` — and choosing the implementation behind a
+                // `Domain` protocol is a root's job wherever the implementation happens to live.
+                "ClientViewerUi"
             ],
             path: "Client/App/Main",
             swiftSettings: [swift6, mainActorByDefault]

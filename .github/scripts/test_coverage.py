@@ -23,8 +23,16 @@ def summary(categories: dict[str, dict], ref: str = "main", commit: str = "abc12
     return {"ref": ref, "commit": commit, "categories": categories}
 
 
-def export(files: list[tuple[str, tuple[int, int], tuple[int, int]]]) -> dict:
-    """An llvm-cov export shaped the way both SwiftPM and `xcrun llvm-cov` emit it."""
+def export(
+    files: list[tuple[str, tuple[int, int], tuple[int, int]]],
+    functions: list[dict] | None = None,
+) -> dict:
+    """An llvm-cov export shaped the way both SwiftPM and `xcrun llvm-cov` emit it.
+
+    The function records are optional because most of these tests are about which *files* count, and
+    an export without them subtracts nothing — which is the honest reading of "this run identified no
+    action closure", not a silent fallback.
+    """
     return {
         "data": [
             {
@@ -37,10 +45,26 @@ def export(files: list[tuple[str, tuple[int, int], tuple[int, int]]]) -> dict:
                         },
                     }
                     for name, lines, regions in files
-                ]
+                ],
+                "functions": functions or [],
             }
         ]
     }
+
+
+def function(name: str, filename: str, regions: list[tuple[int, int]]) -> dict:
+    """One function record, its regions given as `(line, count)` — one line each, which is enough:
+    what identifies a region here is its span, and a span of one line is a span."""
+    return {
+        "name": name,
+        "filenames": [filename],
+        "regions": [[line, 1, line, 40, count, 0, 0, 0] for line, count in regions],
+    }
+
+
+def demangler(table: dict[str, str]):
+    """Swift's demangler as a lookup, so these tests never shell out to a toolchain."""
+    return lambda names: [table[name] for name in names]
 
 
 class TestPathClassification:
@@ -136,6 +160,182 @@ class TestPathClassification:
         # Named per file rather than per directory, so what sits beside the Keychain store is still
         # measured — which is the whole reason the exemption is a list of files.
         assert coverage.is_reachable_path("Server/Identity/Data/LocalAddresses.swift")
+
+
+class TestActionClosures:
+    """Which demangled names name a closure a rendered baseline could never execute.
+
+    The predicate is written as a parser rather than a regular expression, and every case below is a
+    string `xcrun swift-demangle --compact` actually printed for this project.
+    """
+
+    def test_given_a_closure_returning_void_when_classifying_then_it_is_an_action(self):
+        assert coverage.is_action_closure("closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some")
+
+    def test_given_a_closure_taking_arguments_when_classifying_then_the_return_type_decides(self):
+        # An `onChange` handler. It takes the old and the new value and still draws nothing.
+        assert coverage.is_action_closure(
+            "closure #1 (ClientConnectionDomain.PairingState, ClientConnectionDomain.PairingState) -> () "
+            "in ClientConnectionUi.PairedMacHandover.body.getter : some"
+        )
+
+    def test_given_an_attributed_or_asynchronous_closure_when_classifying_then_it_is_still_an_action(self):
+        # `.task { }` and any closure SwiftUI hops to the main actor for. Both are `-> ()`.
+        assert coverage.is_action_closure(
+            "closure #1 @Swift.MainActor () -> () in closure #7 () -> SwiftUI.Button<SwiftUI.Text> "
+            "in ClientViewerPresentation.WorktreeDiffScreen.body.getter : some"
+        )
+        assert coverage.is_action_closure(
+            "closure #17 () async -> () in ClientViewerPresentation.WorktreeDiffScreen.body.getter : some"
+        )
+
+    def test_given_a_closure_returning_a_view_when_classifying_then_it_is_not_an_action(self):
+        # A ViewBuilder. It draws, so a baseline that does not reach it is a state nobody photographed
+        # — which is exactly what the Snapshot row exists to report.
+        assert not coverage.is_action_closure(
+            "closure #2 () -> SwiftUI.Text in ServerMacUi.AddRepositoriesSheet.confirm.getter : some"
+        )
+        assert not coverage.is_action_closure(
+            "closure #1 (ServerMacDomain.RepositoryCandidate) -> Swift.Bool in "
+            "ServerMacUi.AddRepositoriesSheet.confirm.getter : some"
+        )
+
+    def test_given_a_named_method_returning_void_when_classifying_then_it_is_not_an_action(self):
+        # The line the exclusion stops at, and the reason it is drawn there: a method has a name, so
+        # a test can call it. A closure literal has neither a name nor a seam.
+        assert not coverage.is_action_closure("ClientConnectionUi.PairedMacHandover.announceThePairing() -> ()")
+
+    def test_given_a_view_closure_inside_a_void_function_when_classifying_then_it_is_not_an_action(self):
+        # **The case that rules out matching `-> ()` anywhere in the string.** The enclosing context
+        # after ` in ` is a function that returns `()`, and the closure being described returns a
+        # view. A looser predicate excludes a ViewBuilder here, which is the failure that would look
+        # like good news.
+        assert not coverage.is_action_closure(
+            "closure #1 () -> SwiftUI.Text in ServerMacUi.SomeSheet.configure() -> ()"
+        )
+
+    def test_given_a_parameter_list_holding_parentheses_when_classifying_then_the_return_type_still_decides(self):
+        # A closure taking a closure. The parameter list is scanned for its matching bracket rather
+        # than up to the first one, or the arrow found would be the parameter's.
+        assert not coverage.is_action_closure("closure #1 (() -> ()) -> Swift.Bool in ServerMacUi.Sheet.body.getter : some")
+        assert coverage.is_action_closure("closure #1 (() -> Swift.Bool) -> () in ServerMacUi.Sheet.body.getter : some")
+
+    def test_given_a_thunk_or_a_getter_when_classifying_then_it_is_not_an_action(self):
+        assert not coverage.is_action_closure("ClientViewerUi.ReviewCapsule.body.getter : some SwiftUI.View")
+        assert not coverage.is_action_closure("variable initialization expression of ClientViewerUi.ReviewCapsule.count")
+
+
+class TestActionClosureRegions:
+
+    VIEW = "/w/Packages/Granita/Client/Viewer/Ui/ReviewCapsule.swift"
+
+    def read(self, tmp_path, functions: list[dict], table: dict[str, str], regions=(4, 9), scope=None):
+        path = tmp_path / "export.json"
+        path.write_text(json.dumps(export([(self.VIEW, (20, 40), regions)], functions)))
+        return coverage.read_export(
+            path, scope or coverage.VIEWS_SCOPE, demangle=demangler(table)
+        )
+
+    def test_given_a_region_only_an_action_closure_holds_when_reading_then_it_leaves_the_count(self, tmp_path):
+        totals = self.read(
+            tmp_path,
+            [function("$sAction", self.VIEW, [(11, 0), (12, 0)])],
+            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
+        )
+
+        # Two of the nine regions were the closure's alone, and neither was covered.
+        assert totals["regions"] == {"covered": 4, "count": 7}
+
+    def test_given_a_covered_action_closure_when_reading_then_it_leaves_both_sides(self, tmp_path):
+        # The rule is about the kind of code, not about whether a baseline happened to reach it.
+        # Subtracting only the uncovered ones would be a rule that flatters every number it touches.
+        totals = self.read(
+            tmp_path,
+            [function("$sAction", self.VIEW, [(11, 3)])],
+            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
+        )
+
+        assert totals["regions"] == {"covered": 3, "count": 8}
+
+    def test_given_a_region_the_body_also_holds_when_reading_then_it_stays(self, tmp_path):
+        # llvm-cov maps one span into several records. A span the enclosing body reports too is the
+        # body's, and removing it would take drawing code out of the denominator.
+        totals = self.read(
+            tmp_path,
+            [
+                function("$sAction", self.VIEW, [(11, 0), (12, 0)]),
+                function("$sBody", self.VIEW, [(11, 0)]),
+            ],
+            {
+                "$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some",
+                "$sBody": "ClientViewerUi.ReviewCapsule.body.getter : some SwiftUI.View",
+            },
+        )
+
+        assert totals["regions"] == {"covered": 4, "count": 8}
+
+    def test_given_a_view_returning_closure_when_reading_then_nothing_is_subtracted(self, tmp_path):
+        totals = self.read(
+            tmp_path,
+            [function("$sBuilder", self.VIEW, [(11, 0), (12, 0)])],
+            {"$sBuilder": "closure #2 () -> SwiftUI.Text in ClientViewerUi.ReviewCapsule.body.getter : some"},
+        )
+
+        assert totals["regions"] == {"covered": 4, "count": 9}
+
+    def test_given_an_action_closure_when_reading_then_the_line_counter_is_untouched(self, tmp_path):
+        # **Measured, not assumed.** Over the whole views scope on 4 September 2026 the exclusion
+        # moved 200 of 1695 regions and 7 of 5043 lines, because a closure written inline shares its
+        # source lines with the view expression that contains it. The line counter cannot express
+        # this exclusion; the region counter is the unit that can.
+        totals = self.read(
+            tmp_path,
+            [function("$sAction", self.VIEW, [(11, 0), (12, 0)])],
+            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
+        )
+
+        assert totals["lines"] == {"covered": 20, "count": 40}
+
+    def test_given_the_host_reachable_scope_when_reading_then_action_closures_still_count(self, tmp_path):
+        # The exclusion is the Snapshot row's, and only its. A `-> ()` closure in domain or data code
+        # is ordinary code a unit test calls, and dropping it there would hide untested work.
+        path = tmp_path / "export.json"
+        domain = "/w/Packages/Granita/Core/Diff/Domain/Parser.swift"
+        path.write_text(
+            json.dumps(
+                export(
+                    [(domain, (20, 40), (4, 9))],
+                    [function("$sAction", domain, [(11, 0), (12, 0)])],
+                )
+            )
+        )
+
+        totals = coverage.read_export(
+            path,
+            coverage.HOST_REACHABLE_SCOPE,
+            demangle=demangler({"$sAction": "closure #1 () -> () in CoreDiffDomain.Parser.parse() -> ()"}),
+        )
+
+        assert totals["regions"] == {"covered": 4, "count": 9}
+
+    def test_given_a_record_outside_the_scope_when_reading_then_it_is_never_demangled(self, tmp_path):
+        # The demangler is a subprocess, so the export's whole function list — twenty thousand records
+        # on a real run — must not go through it to answer a question about forty files.
+        path = tmp_path / "export.json"
+        other = "/w/Packages/Granita/Core/Diff/Domain/Parser.swift"
+        path.write_text(
+            json.dumps(
+                export(
+                    [(self.VIEW, (20, 40), (4, 9)), (other, (0, 5), (0, 2))],
+                    [function("$sElsewhere", other, [(11, 0)])],
+                )
+            )
+        )
+
+        # The table holds no entry for it, so a demangler asked about it raises rather than answering.
+        totals = coverage.read_export(path, coverage.VIEWS_SCOPE, demangle=demangler({}))
+
+        assert totals["regions"] == {"covered": 4, "count": 9}
 
 
 class TestCollect:
@@ -440,6 +640,14 @@ class TestRender:
         text = self.render(tmp_path, summary({"snapshot": entry((8, 10), (4, 5), scope="views")}), None)
 
         assert "view layers alone" in text
+
+    def test_given_the_regions_column_excludes_action_closures_when_rendering_then_the_report_says_so(self, tmp_path):
+        # A denominator that leaves something out has to say what, in the report itself. The scope
+        # string un-judges the row for a run, but nobody reading the table sees the scope string.
+        text = self.render(tmp_path, summary({"snapshot": entry((8, 10), (4, 5), scope=coverage.VIEWS_SCOPE)}), None)
+
+        assert "action closures" in text
+        assert "its lines stay counted" in text
 
     def test_given_no_module_breakdown_is_wanted_when_rendering_then_none_is_written(self, tmp_path):
         # Coverage is reported per test kind, not per module: the question worth asking is which

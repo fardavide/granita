@@ -15,8 +15,10 @@ Granita is two halves of one product:
   highlighting, a directory-grouped file tree, word-level intra-line diff, mark-as-viewed, and the
   reading ergonomics of a real review tool.
 
-v1 is read-only apart from worktree aliases and pins. You review on the phone, then talk to Claude
-in the mobile app as usual. Inline comments and pushing feedback back into the agent are v2.
+v1 is read-only apart from worktree aliases, pins, and the comments you leave on a change. You
+review on the phone, copy the review out, and paste it to the agent. **Pushing it back into the
+session automatically is still v2**, and so is anything that would put your comments on the Mac —
+today they live on the phone that wrote them.
 
 Nothing is exposed to the phone until you enable it explicitly, and the connection is TLS with a
 pinned certificate — the payload is your private source code.
@@ -71,7 +73,7 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
-### 0.6.2 — 2026-09-02
+### 0.9.0 — 2026-09-04
 - **Your phone wakes your Mac.** A Mac that has gone to sleep used to be a Mac that simply was not
   there — nothing in the list, nothing to tap, and no way to tell it apart from one that was
   switched off. Opening Granita now sends the Macs you have paired with the packet their network
@@ -89,9 +91,53 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 - **One thing you have to switch on yourself, once.** On your Mac, System Settings › Battery ›
   Options › *Wake for network access* has to be **Always**. On battery it usually ships as *Only on
   Power Adapter*, and a Mac on battery will not wake for anything Granita sends.
-- **And one thing Apple has to allow.** Sending the wake needs the multicast networking entitlement,
-  which Apple grants on request. Until it is granted on this app, the packet never leaves the phone
-  and waking does nothing — everything else in this release works regardless.
+
+### 0.8.0 — 2026-09-04
+- **The code is syntax highlighted, in light and in dark.** Keywords, strings, comments, types and
+  numbers are coloured the way Xcode colours them, because the code you are reading on the phone is
+  the code you write on the Mac beside it.
+- **The changed words still stand out.** A word-level change is a background and the highlighter
+  only ever colours text, so the two read together rather than fighting: a renamed argument is a
+  green patch over code that is still coloured.
+- **A file arrives plain and gains its colours a beat later**, and nothing moves when they land. The
+  file you are looking at is coloured before the ones fetched ahead of you.
+- **Files that cannot be coloured stay plain and say nothing about it** — anything over 4,000 lines
+  or 100 KB, and any file whose kind your Mac could not name from its extension.
+- **Conflict markers are never coloured.** `<<<<<<< HEAD` is not code in any language, and a
+  highlighter handed one gets every line after it wrong.
+
+### 0.7.1 — 2026-09-04
+- **The screens you see before you have opened a Mac now use the whole window.** Finding a Mac,
+  choosing between the QR code and the six words, the viewfinder, the six-word field and the receipt
+  were all drawn in a 420pt column down the middle, with the rest of the window empty white either
+  side of it — on an iPad, and most visibly on a Mac. They lay themselves out at whatever width they
+  are given, the way everything else does.
+
+### 0.7.0 — 2026-09-03
+- **You can leave comments on the code now, and send them back to the agent that wrote it.** Tap the
+  line numbers beside a line to write one. Press and hold a line, then tap another, to comment on a
+  run of them.
+- **A comment is a thin indigo bar beside the lines it is about**, as long as the run it covers, and
+  the file's header says how many the file carries. Nothing moves when you write one: the diff you
+  were reading stays exactly where it was.
+- **A *Review* button appears in the corner once you have written something.** It never disappears
+  while you scroll, because that is when you are writing.
+- **The review is one screen**: an optional note for the agent — or Skip — and every comment in the
+  order the diff draws them. *Show text* reveals exactly what will be copied.
+- **Copy it, and only then are you offered a way to clear it.** The comments live on this phone and
+  nowhere else, so the button that throws them away appears after the one that sends them, never
+  before, and it asks first.
+- **Tap a comment's bar to edit it, swipe it in the review to delete it.**
+- **A comment whose lines the agent has since changed says so** rather than disappearing — it moves
+  to a row under the file's name and is still included when you copy.
+- **On iPad the review is a column** that takes the file tree's place, so the code keeps its width.
+
+### 0.6.2 — 2026-09-03
+- **A changed file no longer opens onto nothing.** Some files showed their name and their `+`/`−`
+  counts and then an empty body, however long you left them — and it was the same files every time
+  you opened that worktree, while the files either side of them were fine. The Mac was asking git
+  about a filename with a few stray bytes stuck on the end, which matches no file, so git answered
+  that nothing had changed and said so without complaint. Every file's diff now arrives.
 
 ### 0.6.1 — 2026-09-01
 - **Files are actually separated now.** 0.6.0 put ten points between them and made those ten points

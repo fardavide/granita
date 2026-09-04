@@ -9,7 +9,7 @@ import Testing
 /// Rendered directly rather than presented: a hosted view presents a sheet into a window of its own
 /// and the raster does not include it, so a baseline of the presenting screen would be a picture of
 /// the list with nothing on top of it.
-@Suite("Worktree rename sheet")
+@Suite("Worktree rename sheet", .serialized)
 @MainActor
 struct WorktreeRenameSheetSnapshotTests {
 

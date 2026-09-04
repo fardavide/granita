@@ -13,7 +13,7 @@ import Testing
 ///
 /// Main-actor isolated for the reason every suite here is: Swift Testing runs `@Test` functions off
 /// the main actor, and rendering touches UIKit view properties that trap when it does.
-@Suite("Diff file header")
+@Suite("Diff file header", .serialized)
 @MainActor
 struct DiffFileHeaderSnapshotTests {
 
@@ -24,8 +24,13 @@ struct DiffFileHeaderSnapshotTests {
     ) {
         // given - when - then
         assertScreenSnapshot(
-            DiffFileHeader(file: subject.file, onSetOpen: { _, _ in }, onSetViewed: { _, _ in })
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top),
+            DiffFileHeader(
+                file: subject.file,
+                commentCount: subject.commentCount,
+                onSetOpen: { _, _ in },
+                onSetViewed: { _, _ in }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top),
             layout: layout,
             named: subject.name
         )
@@ -39,6 +44,9 @@ struct FileHeaderCase: Sendable, CustomTestStringConvertible {
 
     let name: String
     let file: FileChange
+
+    /// Zero for every case that predates §7, so none of their baselines moves.
+    var commentCount = 0
 
     var testDescription: String { name }
 
@@ -168,6 +176,21 @@ struct FileHeaderCase: Sendable, CustomTestStringConvertible {
                 deletions: 2,
                 estimatedLineCount: 140
             )
+        ),
+
+        // **Design §7.3's chip, which is what the rail cannot cover.** Two comments a screen apart in
+        // one file are two rails a reader never sees together, so the header carries the count. It
+        // sits before the stats rather than after them, because `2 +95 −3` reads as one figure.
+        FileHeaderCase(
+            name: "carrying-comments",
+            file: aChangedFile(
+                path: "SwiftlyCore/Sources/Common/Test/Turbine.swift",
+                status: .modified,
+                insertions: 95,
+                deletions: 3,
+                estimatedLineCount: 140
+            ),
+            commentCount: 2
         )
     ]
 }

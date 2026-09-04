@@ -4423,8 +4423,14 @@ is pressed, but the same class of defect: something that looks finished and does
 
 The entitlement is **restricted** and Apple must approve a request before a profile can carry it.
 `Apps/GranitaMobile/GranitaMobile.entitlements` and the `entitlements:` key in `project.yml` are in
-place, on Davide's instruction, so that a device build can be tried; if provisioning refuses, that
-refusal is the answer and the request has not been granted yet.
+place, and **Apple assigned the entitlement to the account on 3 September 2026**, so a signed build
+can carry it.
+
+What that grant does *not* settle is whether waking works. `make build` signs nothing
+(`CODE_SIGNING_ALLOWED=NO`), the simulator does not enforce the entitlement at all, and the loopback
+test aims at `127.0.0.1`, which is neither broadcast nor multicast. **The first real evidence is a
+device build against a sleeping Mac**, and until that has been done this feature is believed to work
+rather than known to.
 
 ### Learning to wake a Mac that was paired with first
 
@@ -4826,3 +4832,753 @@ profiles the two snapshot jobs already produce rather than running those suites 
 about thirteen minutes from this job but serialises it behind a twenty-minute one, so the wall clock
 a pull request actually waits through barely moves — and the duplication is deliberate anyway, so a
 stale baseline reddens one job rather than two.
+
+## Inline comments arrive in v1, which `SPEC.md` §11 lists as v2
+
+Davide asked for them on 3 September 2026: a comment on a run of changed lines, a button that
+appears once there are any, one prompt for an overall note or a *Skip*, and the whole thing collected
+into one piece of text he can copy and paste back to the agent that wrote the code.
+
+`SPEC.md` §11 puts *"inline comments, line and range, with threads"* and *"feedback export"* in the
+v2 backlog under **build none of them**, and §1 says v1 *"must not build v2"*. So this is a departure
+rather than a slice, and it is recorded here rather than by editing the specification: the line §11
+drew is what kept v1 finishable, and moving it quietly would lose the reason it was drawn.
+
+**What is taken is narrower than what §11 describes, and deliberately.** No threads — a review is a
+note left for an agent, not a conversation — and no `REVIEW.md`, no share sheet, no injection into a
+live session. The known unknown §11 flags about `claude --resume` is untouched, because the
+pasteboard is the reliable fallback that paragraph names and this builds only that.
+
+**The architecture §11 asked for held.** Nothing on the wire changed, no route was added, the
+contract version did not move, and the Mac does not know this feature exists. That is the *"design so
+these stay cheap"* clause being cashed rather than a claim about it.
+
+## A comment is addressed by the numbers its rows carry, never by where they sit
+
+An anchor has to survive two things: a hunk expansion, which splices twenty lines into the middle of
+a file, and the screen re-appearing, which re-runs `load()` and replaces every hunk. An offset into
+the drawn rows survives neither.
+
+Old line numbers rise monotonically down the old side and new ones down the new side, so the pair
+`(oldNumber, newNumber)` is unique within a file and unmoved by both: a deletion is `(11, nil)` and
+stays `(11, nil)` however much context arrives above it, and spliced context arrives carrying real
+numbers. That pair is `DiffLinePosition`, and a comment stores the pair at each end of its run.
+
+**A row with no number on either side therefore cannot be an end of a selection**, and that costs
+nothing because design §4's gutter draws no figure for such a row — there is nothing to tap. A
+selection still *spans* one and the quote carries it verbatim.
+
+**The first version of this rule named the wrong rows, and a test found it.** It said conflict
+markers were the numberless case, which reads plausibly and is wrong: a conflicted working tree holds
+`<<<<<<< HEAD` as literal content, so git diffs it behind an ordinary `+` and `UnifiedDiffParser`
+numbers it from *that* prefix before re-tagging it by its text. The `.conflictMarker` arm of
+`occupiesOldSide` is unreachable. So the markers stay addressable, which is the outcome worth having
+— a conflict is what a reader most wants to point at — and the one genuinely numberless row is
+`\ No newline at end of file`, of which a hunk holds two whenever a trailing newline is added.
+
+**The same discovery moved the quote's markers off the kind and onto the numbers.** Re-tagging throws
+the prefix away, so a `+`/`-`/space chosen by `DiffLineKind` would put the wrong one on every
+conflict marker. Which sides a row occupies survives the re-tagging and says the same thing.
+*Superseded by §7's return, below: the excerpt carries no diff markers at all.*
+
+## The excerpt is snapshotted when the comment is written, not resolved when it is exported
+
+A comment carries the path, the span and the quoted rows as they were on screen. The obvious
+alternative — hold the anchor and re-read the diff at export time — is wrong for the one reason this
+feature exists: the agent is about to change exactly those lines, so a quote resolved later shows its
+reply rather than the reader's question. It also keeps a comment sendable after its file has left the
+change set, which is what happens when the agent reverts something between the note and the paste.
+
+**A run that is entirely deletions is named on the old side and the document says so.** Everything
+else is named on the new side, because the agent opens the working copy and "line 12" has to mean the
+line it would find; reporting a new-side number for lines that exist nowhere in it would send the
+agent to whatever now sits there. It is said only in the case that needs it, so the ordinary comment
+stays quiet. *The wording and its placement changed with §7's return, below — it is a line under the
+path rather than a suffix on it.*
+
+## The review lives in the phone's user defaults, and #64 is where it should live
+
+Davide's call on 3 September 2026: persisted on the phone now, with an issue to move it to the Mac.
+
+**Persisted rather than held in the model**, because a review is written over as long as it takes to
+read a change set and iOS ends a backgrounded app whenever it likes. Comments lost to a phone call
+are an afternoon lost, and the thing they were written on is the one thing the app cannot re-derive.
+
+**Keyed per worktree**, because that is what a review is of. Two agents in two checkouts of one
+project are two reviews.
+
+The Mac is the right home — it survives a new phone, it is where the worktree is, and `SPEC.md` §9's
+`Store` protocol was written for exactly this growth — and it is a wire change with new routes and a
+contract version, so it is [#64](https://github.com/fardavide/granita/issues/64) rather than this
+slice. **Nothing here has to be rewritten when it moves**: `ReviewCommentStore` is a `Domain`
+protocol, and the Mac's version is a second conformer and one line of the composition root.
+
+## The screens wait for their frames, and only the screens
+
+The composer, the way a line is chosen, the button that appears once a review exists, the overall-note
+prompt with its *Skip*, and the copy are all reader-facing and none of them is drawn, so
+`design-handoff`'s rule applies in full: no pull request touching a screen opens before the frames
+exist. The prompt was written on 3 September 2026.
+
+**What shipped alongside is everything a frame cannot be authoritative about** — the anchor, the
+selection, the document, the store, its conformer, and the model's whole comment half — which is that
+skill's own instruction rather than a way around it. It is the same split 0.5.0's worktree deletion
+used, taken the other way: there Davide chose to ship the screen ahead of its design and pay for it
+in thirteen recorded calls; here he chose to wait.
+
+**The pasteboard is not in this half, and that is a coverage call as much as a scope one.** Copying
+is I/O and belongs behind a seam its `Domain` owns, the way the Mac's `SystemGestures` does — and the
+Mac's conformer had to be added to `UNREACHABLE_FILES` to get there, which is a scope redefinition
+rather than a commit. Adding a seam for a button nobody can press yet would spend that conversation
+early and blind. It lands with the button.
+
+## §7 came back, and the call it turns on is that the gutter is a coordinate rather than a control
+
+The design round trip for inline comments returned on 3 September 2026. Its headline is a single
+structural decision that every other one follows from: **nothing opens in the diff.** No row grows, no
+file re-lays out, no sheet pushes the scroll up. A comment is 3pt of colour at the leading edge and a
+sheet at the bottom of the screen — which is what lets a feature that GitHub builds entirely out of
+reflow live inside `SPEC.md` §10's no-reflow rule without touching it.
+
+**The 44pt question was answered by re-classifying the target, and this is a departure with Davide's
+sentence still owing.** A code row is 18pt at the smallest size a reader can choose. The design's
+argument is that the 44pt minimum governs *discrete* controls — things with a boundary you must land
+inside, where a miss produces nothing — and that one gesture recogniser over the whole gutter strip is
+not one of those: it has no boundaries, no dead space, and no way to fail. A miss cannot produce
+nothing; it can only land one row off. The remedies are paired with it rather than assumed: the
+composer opens showing the code it is about to attach to, and its anchor is a full-size control.
+
+`SPEC.md` treats a sub-44pt control as a defect with no exception, and the only exception ever
+recorded here — 0.6.0's 26pt hunk band with a 44pt-wide control — was reverted in 0.6.1. **So this
+ships as designed and is flagged rather than resolved.** The sentence being asked for is one line: *a
+continuous spatial recogniser with no dead space and no internal boundary is not a discrete control.*
+If Davide declines it, `GutterTarget` and the two gestures on `DiffFileLines` come out and the feature
+needs a different way in — the design says the only one left is picking lines from a list, and argues
+against it.
+
+**Two more numbers came out of the arithmetic, and the code was right where the document was wrong.**
+`design.md` §4 quotes the gutter as 39pt and the code origin as 48pt as though both were constants;
+`DiffGutter.columnWidth` sizes the figures per file, so 39.4 is the four-figure case and the real
+origin is 57.4pt there and 50.8 on a three-figure file. The design read the code rather than the
+document and its measurements match to a tenth of a point. `§4` is corrected.
+
+## The tap strip is per hunk, not per file, and the design's own shape is why
+
+§7 asks for one recogniser over "the gutter column of each file section". A file is not one view:
+`DiffFileContent` lays out one `DiffFileLines` per hunk with 44pt torn expander rows between them, and
+each hunk adds a 3pt scroll indicator one layout pass after its own geometry resolves. A file-level
+`floor(y / rowHeight)` would have to sum hunk heights, expander heights and an indicator that appears
+late.
+
+Per hunk keeps every property the design argued for — one spatial recogniser rather than forty-two
+buttons, `floor(y / rowHeight)`, nearest-numbered-centre resolution — and is the coordinate space
+`GutterTarget` was already written against. Rejected: a 44pt `contentShape` per row, which the design
+also rejects and for the better reason: it overhangs its neighbours by 13pt on each side, so three
+rows claim one point and z-order decides.
+
+## The rail is indigo, it collides with a renamed file, and neither of them is load-bearing
+
+`FileStatusLetter` already returns `.indigo` for a rename, and its own doc says green, red, indigo and
+orange are the four the palette has. There is no fifth hue.
+
+Shipped anyway, and recorded rather than resolved: the two are different shapes in different places —
+a 3pt vertical rail in the gutter's leading inset against a 3pt horizontal status bar in a file header
+— and **neither carries its meaning by colour**. The rail's position and length are what say *a
+comment, this long, here*; the status bar's letter is what says *renamed*. Both survive greyscale,
+which is the test §4's marker column was added to pass.
+
+**The colourblind-safe rail the design specifies is not built, because the palette it belongs to is
+not built.** `SPEC.md` §10 asks for a blue-and-orange toggle and nothing in the repository implements
+one — no setting, no enum, no alternate colour. §7's dark ochre is recorded as waiting on that slice,
+and it would collide with `fileStatusAmber` when it arrives, which is worth knowing before it does.
+
+## The export is plain text, and that reverses what was built two days earlier
+
+The first implementation emitted Markdown — `# Review of <worktree>`, `## path:span`, a fenced `diff`
+block — reasoning that the reader was about to paste it into a chat. §7 overturned it and the argument
+is better: the destination is a terminal on the Mac the phone is lying beside, the audience is an
+agent rather than a renderer, and heading syntax is something that has to be stripped before it can be
+acted on. What replaced it is the shape the text already had.
+
+Four decisions inside it are the design's: full repository-relative paths, document order, the excerpt
+quoted with `> ` from a snapshot taken when the comment was written, and no trace at all of a skipped
+note — because an agent reading a placeholder treats it as an instruction to go and find one.
+
+**The excerpt lost its `+`/`−` markers with it**, which is a straight reversal of the entry above.
+The frame draws none, and the reason holds up: what a comment is about is those lines, which side they
+are on is what the numbers beside the path say, and `+ func awaitItem()` is a string that appears in
+no file — an agent that greps for it finds nothing. The one row that keeps a prefix is
+`\ No newline at end of file`, which is git's own annotation rather than a line of the file and reads
+as a sentence of English in the middle of some code without it.
+
+**One line in the document is ours rather than the design's, and it is flagged as such.** A run named
+on the old side gets `(these lines were removed — the numbers are from before the change)`. §7's own
+example could not surface the case: it quotes four additions and one deletion whose comment text
+happens to say it was deleted. A run that exists nowhere in the working copy sends an agent opening
+the file at those numbers to whatever now sits there. It borrows the idiom the stale line already
+established rather than inventing a second one, and it is one line in the case that needs it.
+
+## Three things §7 drew that are built differently, and one it drew that is not built
+
+**The iPad's review column is 320pt rather than 360.** The design's 360 takes the code pane from 874pt
+to 834 when the review opens. `SPEC.md` §10 caches every measured row height on `availableWidth` and
+requires a `(fileID, lineIndex)` anchor capture across any width change — so 40pt of list costs a
+reflow of the file the reader is looking at, on a control they pressed for a different reason.
+Matching the tree's own 320 moves the code pane by exactly zero, which is the same argument
+`DiffPaneLayout` already makes for keeping the point size off the fold.
+
+**The composer's anchor is a label rather than a `Menu`.** §7 draws a 44pt menu offering extend-up,
+extend-down and shrink-from-either-end, and it is the stated remedy for a one-row miss. The controls
+behind it are not built, and a menu with no items is this project's dead control — so it ships as the
+44pt row saying what the comment is about, and the menu lands with the operations. **This weakens the
+44pt argument above and is the strongest reason to build them next.**
+
+**The composer's refusal state is deliberately not built**, which is the design's own instruction: it
+verified that the screen loads once from its `.task` and that a reader cannot reach the retry with a
+composer over it, so the state is unreachable in 0.6.1. What §7 asks for alongside — that
+`ReviewCommentStore.save` be able to return a refusal so it is not retro-fitted — is **declined**. It
+would add a branch no test kind here can drive, under a coverage ratchet with no slack, for a state
+the design says not to build. `commentFailure` already covers the one refusal that is reachable, and
+it has an alert now: a comment whose lines moved cannot be written against an anchor that no longer
+resolves, and an invented anchor is worse than no comment because the agent acts on it.
+
+**The iPad's third column was promised to focus mode** by `SPEC.md` §10 and `design.md` §5, and §7
+takes it for the review. Recorded as an override rather than a conflict: focus mode is unbuilt, and
+this repository already refused a real three-column split view for reasons that have not changed.
+
+## The stale row inserts 44pt into a file, and it is legal for one reason only
+
+A comment whose anchor no longer resolves has no rows to sit beside, so it cannot keep a rail. §7
+gives it a 44pt amber row under its file's own header — which inserts height into a file, and the
+no-reflow rule forbids exactly that.
+
+It is legal because **staleness can only become true when the diff is re-read**, and a re-read
+re-measures the document from the top. It cannot land under a finger. Today the screen loads once from
+its `.task` and the only other route in is a retry from the failure state, so the row can only appear
+across a relaunch.
+
+**If a refresh is ever added — and `SPEC.md` §10's live updates are exactly that — this row becomes
+illegal and the mark has to move into the review sheet alone.** The design says so itself, and it is
+written into `StaleCommentRow`'s own doc comment so the next person to touch the refresh path finds it.
+
+## Every argument carries its own terminator, and two files reviewed as empty for want of one
+
+Davide photographed a ten-file worktree in which two files drew a header, their counts and then
+nothing. Reproduced against the same worktree through `granita-server --insecure-http`: `/changes`
+named all ten correctly, and `/v1/…/files/<id>/diff` came back with **zero hunks** for exactly those
+two, on every request, while the same `git diff HEAD -U3 -- <path>` run by hand printed 1,494 bytes.
+Same binary, same working directory, same environment, opposite answers — which is the shape of a
+difference in what the child process was actually handed.
+
+**It was the argument vector, and the corruption is in the library boundary rather than in the
+vector.** `Arguments` has a byte-array form, which is what this product uses because a path on disk
+is bytes and decoding one to re-invoke on it addresses a file that does not exist. That form stores
+each element as raw bytes and, when the process is spawned, hands each one to `strdup` — which copies
+until it meets a zero byte. A Swift array carries its length beside it and nothing after it, so an
+element with no terminator is copied out of the array and on into whatever the allocator left next to
+it. Which arguments that happens to depends on the size of the allocation and on what is beside it,
+which is why it was two files out of ten and the same two every time.
+
+**Everything after `--` is a pathspec, which is where this is silent.** A pathspec matching nothing
+makes `git diff` print nothing, write nothing to standard error and **exit 0** — indistinguishable
+from a file with no changes. So a corrupted flag would have failed loudly and a corrupted path failed
+as an empty diff, which the viewer draws as a file with an empty body. The change set was right
+throughout, because every command that builds it — `status`, `diff --raw`, `diff --numstat`,
+`ls-files` — carries no path at all.
+
+**The terminator is added in `ProcessGitClient` and not in `GitInvocation`**, because it is a
+requirement of the library that spawns the process rather than of the way git is spelled. SPEC §5.1
+asks for the argument array of each command family to be asserted, and those assertions read the
+vector as text; a terminator baked into it would put a trailing `\0` through every one of them and
+would also be wrong for a backend that is not a subprocess. `GitInvocation` keeps answering "how is
+this command spelled", `ProcessGitClient.terminated` answers "how is it handed over", and the test
+asserts both halves — one zero byte, at the end, and the vector otherwise unchanged.
+
+**What the regression test can and cannot be.** Whether an unterminated argument is corrupted at all
+depends on the heap, so a test that runs git and asserts a non-empty diff would pass on most runs
+with the defect still in place — a test that cannot fail reliably is worse than none. The invariant
+is what is asserted instead: every element handed to the library ends in exactly one zero. That is
+the property whose violation caused this, stated where it can be checked deterministically.
+
+## What an adversarial read of §7 found, and the four rules that came out of it
+
+Five reviewers went over the slice against the frames and the layer rules, and every finding was put
+to an independent skeptic told to refute it. Nine survived. Four of them are rules rather than
+patches, and each is written into the code it governs.
+
+**The gutter stops being a target while a sheet is up.** The composer's own detent enables background
+interaction — that is design §7.2's whole point, so a reader can scroll the diff behind it and check
+the caller they are about to complain about. It also leaves a live gutter under a sheet. Three
+separate defects came out of that one fact: a tap behind the composer emptied the field the reader
+had been typing into; a long press behind it fired a haptic for a hold that never happened; and the
+toolbar, also live, could replace the composer without cancelling the run, leaving a square-capped
+rail in the gutter, no composer, no instruction bar, and **every further gutter gesture a no-op for
+the life of the screen**. One boolean threaded down to `DiffFileLines` answers all three. The scroll
+still moves; only the aim goes.
+
+**Document order asks the diff, because a line number cannot answer it.** `CommentedLines.first` is an
+old-side number for a run that is entirely deletions and a new-side number otherwise, and the two
+counters diverge the moment a file deletes more than it adds — so a comment on a deletion at old 105,
+drawn near the top, sorted *after* an addition at new 50 drawn below it. Both the review list and the
+exported document read backwards for that file. `ReviewedComment.ordered` resolves each anchor to its
+row index instead, and the model re-orders as batches land, because at `load()` every file is still
+awaiting and nothing can be placed.
+
+**The Files button goes while the review has the column.** There is one sheet, so opening the selector
+closes the review — which freed the slot, so the tree column slid back in *and* the same tree
+presented itself as a drawer on top of it. Two file lists from one press. The same shape stranded the
+review toggle when a reader deleted their last comment from inside the column: the chip was gated on
+there being comments, and the column form has no Close of its own.
+
+**A held row draws its own rail.** The screen passed only the composing run, so §7.1's square-capped
+mark — which the section lists among the rules the held state obeys, and which is what makes a hold
+survive scrolling away to find its other end — was drawn by nothing. The baseline for it was built by
+hand from a `CommentRun` literal, so nothing caught it.
+
+Three smaller ones went with them: `CommentRun`'s identity was its first row, so a hold beginning on
+the first row of an existing comment collided with it in the `ForEach` and one of the two silently
+did not draw; the composer's excerpt read `\.text` straight off the rows while the export went through
+`CommentSelection.quoted`, so a no-newline marker appeared as a line of the reader's own code in the
+one place they could see it; and the bar and the capsule carried `.transition`s with nothing animating
+the state behind them, so both snapped.
+
+**Two of the tests were the kind this repository keeps finding.** One asserted the pasteboard against
+`sut.feedback(...)` — the same mapper on both sides, so deleting the heading or the `> ` prefix would
+have changed them together and stayed green. The other asserted that the Files button *comes back*
+while the review holds the column, which is the defect above written down as a requirement.
+
+## The review panel shipped as a settings screen, and §7 had drawn a panel
+
+Davide's first look at it: *"the comment panel looks awful and doesn't respect design"*. He was right,
+and the gap was not a detail — it was the whole surface.
+
+**What went wrong is a specific failure worth naming: the frames were read for their *content* and not
+for their *treatment*.** Every string was in the right place, every state was covered, and the
+structure came out of `List { Section { … } }` — which is what iOS gives a preferences pane. Stock
+`.insetGrouped` section headers, a full-width card per control, a plain two-line row per comment, and
+*Copy review* as one more line of text among them. The design's own markup was sitting in the
+document the whole time with the numbers in it.
+
+What §7.6 actually draws, and what is built now:
+
+- **A 52pt header of its own**, not a navigation bar: `Close` at the leading edge, `Review` centred,
+  and the count at the trailing edge **in monospace** — which is what keeps the title centred while
+  the number grows. The first build put the count in a `navigationSubtitle`, which stacks it under
+  the title and moves it.
+- **Monospaced, uppercase, letter-spaced section labels** — the app's own caption idiom, the one the
+  design document itself is set in — rather than the system's section headers.
+- **Cards at radius 10 on the grouped page**, which is the same page-and-card pair the diff already
+  uses for its files, so the review reads as belonging to the screen it came from.
+- **Every comment row carries the 3pt indigo rail**, at the same width and corner the gutter draws.
+  That is the single most important thing that was missing: it is what makes a row in this list and a
+  mark in that scroll *the same object* rather than two reports of one. The anchor label is in the
+  rail's own indigo with the separating colon left secondary.
+- **A stale row is tinted amber across its whole width**, with an amber rail and a warning glyph
+  before its label — the one row here that is a warning.
+- **Show text is a centred link with a chevron**, not a disclosure row in a card of its own.
+- **Copy review is a filled indigo button, 50pt, pinned to the bottom** where the thumb is, and it
+  turns green with a checkmark for the two seconds it says *Copied*. It was a list row.
+
+**And the amber the design picked is the app's own.** `#C0821F` in the frames is
+`Color.fileStatusAmber` to the byte — the colour `.modified` has carried since 0.6.0. `.orange` was
+wrong twice over: it is what *conflicted* means, and it is not what was drawn.
+
+## §7.1's row tint was in the prose and in the frames, and it was built as neither
+
+The held state is a rail **and a tint**. §7.1 lists it as the second of the three rules the state
+obeys — *"the tint is drawn on the row's own background, behind the horizontal scroll, so a held run
+stays held while the code slides under it"* — and 2c's caption says it in four words: *"square-capped
+rail, tinted row, one haptic"*. Only the rail was built.
+
+The frames give the numbers: **indigo at 14% in light and 20% in dark**, over the 6% and 10% an added
+or removed row already carries — and **the line numbers of the held run go indigo too**, which is the
+one place the selection reaches a glyph instead of a background.
+
+**This does not contradict §7.3's rejection of a row tint, and reading it as though it did is what
+lost it.** §7.3 rejects a tint for a *saved* comment: a mark that has to sit beside a diff for as long
+as the reader is reading, competing with the `+`/`−` tints and the word-diff background. A selection
+is the opposite kind of thing — it lasts seconds, it has to be unmissable while it does, and 2d
+confirms the distinction by drawing a commented row with **no** tint at all, only its own green.
+
+## The bar and the capsule are one floating pill, at one position
+
+Both were built as what they are not: the instruction bar as a full-width bar flush to the bottom
+with a hairline over it, the capsule as a padded pill in the corner.
+
+§7 draws both as the same object at the same inset — **12pt from the side edges, 38pt from the bottom,
+44pt tall, a capsule of material with a hairline and a soft shadow**. The bar spans both edges and the
+capsule only the trailing one, and that is the whole difference between them. It matters because they
+share a position by design: a bar flush to the bottom reads as chrome the screen has grown, and both
+of these are states that arrive and leave.
+
+The bar also carries **the same 3pt rail** at its leading edge, which is the third place that rail
+appears and the reason a reader can carry their eye from the sentence at the bottom of the screen back
+up to the row it is about. The capsule carries a `bubble.left` and a **monospaced indigo count**, so
+the number reads as counting marks in the gutter rather than files in the change set.
+
+## The composer had the same fault as the panel, and the rail is the thread through all three
+
+Once the review panel was rebuilt against the frames rather than against their prose, the composer was
+obviously the next thing wrong with it: the anchor was a grey monospaced label, the excerpt three
+loose grey lines, and nothing tied either to the rows behind the sheet.
+
+§7.2 draws:
+
+- **A 44pt anchor row carrying the rail**, with the path in the primary colour and only its colon
+  demoted. This is the third surface the rail appears on — the gutter, the instruction bar, and here —
+  and that repetition is the whole reason a reader knows the sheet in front of them belongs to the
+  rows behind it.
+- **The excerpt on a card tinted in the rail's own colour at 12%**, radius 8, rather than three lines
+  of text on the sheet's background.
+- **The gutter's own figures beside the code**, right-aligned in a 34pt column. This is the half that
+  matters: the excerpt exists so a reader who landed one row off finds out *before* they type, and
+  what they would recognise is the number they were aiming at. The text alone reads equally plausibly
+  one row up, which makes the excerpt a sample rather than a receipt.
+
+That last one is a Domain change rather than a styling one — `CommentSelection.excerpt(of:)` returns
+`ExcerptLine`s carrying `DiffGutter.number(of:)` beside the quoted text, so the composer and the
+exported document still come from one place and still spell a no-newline marker the same way.
+
+**The chevron §7.2 draws at the trailing edge of that row is not built**, and deliberately: it is the
+range `Menu`'s affordance, the three operations behind it do not exist yet, and a chevron that opens
+nothing is the dead control this project refuses. It lands with them.
+
+## The Snapshot row falls for §7, and it is the gap `GranitaSettingsScreen` already documented
+
+`make coverage` refuses this slice on two values: **Snapshot lines 97.8% → 97.0% and Snapshot regions
+89.7% → 87.8%.** The other four rows are level or up — Unit gained 0.2 and 0.3, and `All tests` is ±0
+on lines and +0.3 on regions.
+
+The per-file export was read before anything was touched, which is the rule. Every uncovered region in
+the §7 view code is an action closure or a presentation the raster excludes:
+
+| File | Regions | What is uncovered |
+|---|---|---|
+| `WorktreeDiffScreen` | 83/126 | **All 43** — the two alert button builders, three `Binding` setters, the nine callbacks handed to `ContinuousDiffView`, and the sheet builders |
+| `ReviewSheetView` | 94/106 | The alert's buttons, the keyboard toolbar, the swipe action, and the Copy / Clear / *Show text* actions |
+| `DiffFileLines` | 95/111 | The tap and long-press closures, and the `{ _ in }` defaults behind them |
+| `ReviewCapsule`, `CommentInstructionBar`, `StaleCommentRow`, `CommentCountChip` | **100%** | — |
+
+That is verbatim the case the `swift-testing` skill records for `GranitaSettingsScreen`: *"adding a
+control to that screen lowers the Snapshot regions row and no test this project can currently run will
+lift it — only the `Ui` kind would, and that target cannot run without an Accessibility grant. Do not
+respond by restructuring the screen or by widening a scope."* §7 adds nine controls and three
+presentations to one screen, so the row moves further than it has for any previous slice.
+
+**Two things in the residue were not structural and are fixed.** `showsDocument` was `@State` inside
+the review sheet, so *Show text*'s entire effect — the branch that draws the exported text — was
+reachable by no baseline and no test; it is on the model now with a unit test and a subject of its
+own, and it moved Snapshot lines from −0.9 to −0.7. And `CommentSelection.ends` was still carrying the
+unreachable `guard` this file's own earlier entry said would be removed, beside a genuinely reachable
+branch nothing drove: tapping the gutter of a file whose diff has not arrived. Both closed, and
+together they are what took `All tests` lines back to level.
+
+**What is not being done, deliberately.** The scope is not widened and the screen is not restructured.
+`Client/Viewer/Data/UiKitReviewPasteboard.swift` is three permanently-uncovered lines that meet the
+`UNREACHABLE_FILES` bar exactly — every line is a call on the running application, and executing it in
+a test writes into the developer's own pasteboard, which is why `AppKitSystemGestures` is already
+there — but adding it is a scope redefinition and, as it turns out, is **not needed**: `All tests`
+reaches level without it. It is recorded here rather than taken.
+
+## A keyboard nobody could see moved a capsule 387pt, and four wrong fixes are the point of this entry
+
+`a-comment-adrift-iPhone-light` failed on CI and passed here, byte-identically across three runs
+there. Same Xcode 26.6, same iOS 26.5, and it passed locally on CI's own device, so none of the usual
+suspects.
+
+The render differed in three bands and nowhere else: the review capsule 387pt up its screen, one 10pt
+inter-file gap white instead of `#F2F2F7`, and the capsule missing from where it belonged. **Those
+are one fact.** `ContinuousDiffView`'s `ScrollView` both hosts the capsule overlay
+(`WorktreeDiffScreen.swift:233-234`) and paints the page (`ContinuousDiffView.swift:190`), so a frame
+387pt short at the bottom moves the overlay *and* stops the page rect before the gap — which is
+`Color.clear` and has no colour of its own. **No row moved**, because a scroll view absorbs a bottom
+safe area as a content inset rather than by clipping, and that is what made it read as two unrelated
+defects.
+
+### The mechanism, and why it took so long to name
+
+`ReviewSheetView` focuses its note field `.onAppear`, which raises the software keyboard
+**asynchronously**. `drawHierarchyInKeyWindow: true` renders through the host app's one real window,
+and in that mode swift-snapshot-testing ignores the config's declared safe area and lays out against
+the live window's — so the keyboard's inset is in the geometry. It never appears in the raster,
+because a keyboard lives in its own window. **It appears as a shorter screen.**
+
+The part that defeated four attempts: **it does not land on the next render.** It lands on whichever
+render is laying out when it arrives, and that is a different one on every machine and every fix.
+Both machines catch it exactly once per run; only the victim differs. Here it was
+`a-suggestion-exists-iPad-dark`, where the capsule does not exist at regular width and the page
+artefact is black on black — so it corrupted a render that structurally cannot show it, and every
+local run was green. On CI it was a phone-light render, which can.
+
+### Four fixes that were wrong, each refuted by measurement
+
+Recorded because the sequence is the lesson, not the destination:
+
+1. **`.ignoresSafeArea(.keyboard)` on the subject** — byte-identical failure. The subject is wrapped
+   in a `NavigationStack`, so the modifier lands on the wrapper and never reaches the scroll view.
+   Measured later: it moved the inset from 261 to 319 and onto a different render rather than
+   removing it.
+2. **Resign first responder and spin the run loop before the render** — 22 *unrelated* baselines went
+   red. Spinning the main run loop while sixteen suites were unserialised invites another suite's case
+   to take the shared window mid-assertion, which is the hazard rather than the cure.
+3. **`endEditing` after each render** — the rise was already queued and arrived anyway.
+4. **`drawHierarchyInKeyWindow: false`** — it *does* place the capsule correctly, which is what proved
+   the fault was in the live window rather than the view code. Rejected on fidelity: it rasterises
+   through `layer.render`, which does not draw `UIVisualEffectView`, so the "3 files" chip vanishes
+   entirely and the navigation title renders pale grey on grey. Re-recording against that would leave
+   a shipped control invisible to every future baseline.
+
+Each fix removed one route and the keyboard drifted to the next render in line —
+`a-comment-adrift-iPhone-light`, then `the-review-is-open-iPad-dark`, then
+`the-review-is-open-iPad-light`. Whack-a-mole, because closing routes is not closing the window in
+which a keyboard can be up.
+
+### What actually fixed it
+
+Three things, and none works alone:
+
+- **Every suite is `.serialized`.** Sixteen were not, including all four that raise keyboards.
+- **The keyboard is drained on *both* sides of every render**, dismissing on each turn and requiring
+  three consecutive quiet turns. Once is not enough, and one quiet turn cannot tell a keyboard that
+  has gone from one that has not arrived. Draining before the render is what catches a late rise, and
+  it is only safe because of the serialization.
+- **The iPad's review column no longer takes focus** (`ReviewSheetView.swift`). That one is a product
+  call that stands without the test argument: the sheet is summoned and covers what the reader was
+  reading, so §7.5's "type immediately" applies; the column opens *beside* a diff that stays live and
+  readable, and stealing focus there throws a keyboard over half an iPad somebody is still reading.
+
+The local signal went from "exactly one anomalous reading every run" to **zero**, which is the first
+time any of this could be verified without a 30-minute round trip.
+
+### What is left, named rather than fixed
+
+`WorktreeRenameSheet` still focuses its field; `a-suggestion-exists-iPhone-dark` recorded
+`height=511 safeBottom=271` while matching its baseline. It is pre-existing, has never cost a run, and
+the drain plus the serialization now stands between it and the next render.
+
+### The rules this leaves
+
+In the `swift-testing` skill: a shared key window means a test's geometry can be set by any test near
+it; **a green local run is not evidence of absence** when which render catches the fault is luck; and
+**a probe that reports at `onAppear` measures the wrong moment** — that reading said `safeBottom=4`
+for a render that was laid out at 261.
+
+And in the `Makefile`: `IOS_SIM` hardcoded `iPhone 17` while `ci.yml` and `measure-coverage.sh` both
+resolved `iPhone 17 Pro`. Three commands, two devices, and a `make snapshots` that could not give the
+runner's verdict — which is the whole claim that target is made on. It is resolved now, by the same
+expression the other two use.
+
+## An action closure leaves the Snapshot regions column, and the entry above is what it answers
+
+Davide, on reading the row above: *"We should exclude untestable closure from tests coverage."* The
+entry above is the fifth slice to report the same structural gap and the first to be asked to close
+it rather than document it again.
+
+**The rule.** In the views scope, a region that belongs *only* to a closure returning `()` is not
+counted. Such a closure is an action — a `Button`'s, an `onChange`, a `.task`, an `onAppear` — it
+draws nothing, and a baseline presses nothing, so it is outside the question the row asks rather than
+merely untested by it. That is the `UNREACHABLE_FILES` bar, *unrunnable by this kind of test by
+construction*, applied at the only granularity that can express it: an action closure shares a file,
+and usually a line, with the view it sits in, so no file-level predicate reaches it.
+
+**A named method returning `()` is not an action, and that is where the line is drawn.** A method has
+a name, so a test can call it; a closure literal has neither a name nor a seam. Thirty-five of the 186
+partly-uncovered records in the views scope are named methods and all thirty-five stay judged.
+
+### Regions only, and that is a measurement rather than a shortcut
+
+Over the whole views scope the exclusion takes **200 of 1695 regions** out of the denominator and
+**7 of 5043 lines**. A closure written inline is spanned by the view expression containing it, so its
+lines *are* the body's lines and removing them would remove the body. So the line counter is untouched
+and still judged exactly as before; only the region number changes basis, **87.8% → 97.5%**.
+
+That asymmetry is the finding. The row had been read as "lines and regions both say a snapshot cannot
+press a button", and only one of them was ever capable of saying it.
+
+### Three ways this was tried before the one that worked
+
+- **`llvm-cov export --name-allowlist`.** The flag exists and `export` silently ignores it — the same
+  1485 function records come back with and without it, and the file summaries are identical to the
+  byte. `report --show-functions` does honour the name filters, but its totals do not agree with the
+  file summary either (130 regions against 126 for `WorktreeDiffScreen`), so it is not a substitute
+  basis.
+- **Recomputing both counters from the function records.** Regions reproduce the file summaries
+  *exactly* — 1489/1695 across the scope — which is what makes the subtraction below exact rather than
+  approximate. Lines do not: llvm-cov's line summary is per-instantiation, so it counts 430 lines in a
+  394-line file, and a deduplicated recount gives 99.0% where the summary gives 97.0%. Switching that
+  basis would have replaced a judged number with one that has no headroom.
+- **Subtracting from the summaries, which is what shipped.** The base stays the file summary every
+  other row is taken from, and an export carrying no function records subtracts nothing — which is the
+  honest reading of "this run identified no action closure", not a fallback to zero.
+
+### The predicate parses; it does not match `-> ()` anywhere in the string
+
+`xcrun swift-demangle --compact` is the only thing that reads the mangling, because the grammar is an
+implementation detail of the compiler shipped beside it. The parse then anchors on the *first* arrow
+of the *first* closure, and both halves of that are load-bearing:
+
+- A demangled closure carries its enclosing context after ` in `, so
+  `closure #1 () -> SwiftUI.Text in …configure() -> ()` is a **ViewBuilder inside a void method**.
+- A closure taking a closure puts an arrow inside its parameters, so the parameter list is scanned to
+  its own matching bracket rather than to the first one.
+
+Both are tested, and both are cases where the looser predicate fails in the direction that looks like
+good news — a view dropped out of the denominator, raising the number.
+
+### What it costs, recorded rather than discovered later
+
+View code is judged by this row and no other, so **an action closure's body is now judged by nothing**.
+That is bounded by an architecture rule the project already has and review already enforces: a
+screen's action closure is one call into a model, and the model is judged by the Unit row. The
+`swift-testing` skill now carries it as a rule — a closure that grows a branch has outgrown a view,
+and moving it to the model is the fix rather than counting it here.
+
+The scope string is renamed `views-and-screens-no-action-closures`, so the Snapshot row is unjudged
+for exactly one run and rejoins the ratchet on the next `main` run. That is the sixth rename and the
+first that narrows *within* a file rather than by file.
+
+## The 420pt pre-pairing measure is gone, and stock SwiftUI lays those screens out
+
+Design §1 clamped every screen before a paired Mac to a 420pt centred column with the navigation
+container inside the clamp, so the large title came with the rows. §5 extended it to the viewfinder
+and the six words. Both are reversed.
+
+**What it looked like, which is what settled it.** On 4 September 2026 Davide ran the app in a Mac
+window and sent three screenshots: the Mac list, the two credentials, and the six-word field. Each one
+is a 420pt strip down the middle of a 1,300pt window with the rest of it bare white — the large title
+floating at x=362 rather than at any edge, the two credential buttons stacked in the middle of an
+empty room, the disclaimer under the field wrapping at 300pt with a thousand points of nothing beside
+it. His call, verbatim: *no custom weird stuff, just regular SwiftUI components*.
+
+**The argument the measure was made on has not stopped being true.** A 1,150pt row does pull its two
+ends apart, name at one edge and chevron at the other, and that is a worse row than a 420pt one. It
+lost to something the reader sees first: a window that looks like the app failed to lay itself out.
+Between a compromised row and a broken-looking window, the window wins.
+
+Two alternatives were put to Davide and both were refused as more hand-drawn layout rather than less:
+painting the grouped background across the window so the column reads as a card in a room, and
+releasing the measure only in a Mac window. The second would also have been a platform condition
+inside a universal app, which is the shape of thing the design file exists to keep out.
+
+**What went with it.** `ServerDiscoveryView.contentWidth`, `PairingSpineNavigation.contentWidth` and
+the `hasLeftTheSpine` flag it was computed from, the `onAppear` that set the flag on both routes past
+the spine, and the six navigation tests that asserted the measure through a sequence of pushes. The
+navigation object keeps the one rule it still holds — a pairing that worked *replaces* the screens
+that produced it — and the five snapshot suites that clamped their subject to match the app now render
+it unclamped, which is why every pre-pairing baseline moved in one commit.
+
+**The scanner's iPad card survives on its own terms.** §5's rejection of a full-bleed iPad viewfinder
+stands, and nothing about it depended on the clamp: the preview is a 4:3 fit inside a padded column,
+which is a card in any window. It is bigger than 420pt now and that costs nothing, because detection
+reads the whole capture frame rather than the preview.
+
+## Syntax highlighting is built without a design, and the palette is Xcode's
+
+`design.md` §4 had no highlighting section at all — the diff review saw the edge of it, rejecting an
+underline for the changed run because "it collides with whatever the syntax highlighter does", and
+never drew the two together. `design-handoff`'s rule is that no pull request touching a screen opens
+before its frames exist, so the ordinary answer here was to write a prompt and wait.
+
+Davide waived it on 4 September 2026, in one sentence: *"We don't really need design for syntax
+highlighting."* So the calls below are this repository's own rather than a return, and they are
+written into `design.md` §4 for the same reason a return would be — the prose is what survives once
+nobody remembers which of these was argued for.
+
+**Xcode's own stylesheets, `xcode` in light and `xcode-dark` in dark.** The design language is
+Apple's throughout and the phone is lying beside the Mac the diff came from, so the colours that
+already mean *keyword* and *string* to this reader are the ones Xcode gave them. They are also the
+most muted of the credible pairs, which is what the section they sit in depends on: a row already
+carries an add or remove tint and a word-diff background at three times it, and §4's whole argument
+is that those stay the loudest thing in the row.
+
+Rejected: GitHub's pair, which is what a diff normally looks like and is more saturated, so it
+competes with exactly those tints. Rejected: Atom One, Highlightr's own default, which matches
+nothing else the reader sees. Deferred rather than rejected: making it a setting, which is
+[#70](https://github.com/fardavide/granita/issues/70) and needs a Settings surface the phone does not
+have.
+
+**The theme's base colour is kept and its font is dropped.** `.hljs` declares `#000` in light and
+`white` in dark, which are `UIColor.label` to the byte in both — so plain code inside a highlighted
+file and plain code inside a refused one are the same colour, which matters because one screen mixes
+them. The font is Courier at 14pt and every row's height is computed from the code point size, so
+keeping it would break the grid the gutter is aligned to. Per-token background colours are dropped
+with it: three highlight.js classes declare one, and they would sit under the word-diff background
+`SPEC.md` §10 makes the strongest thing in the row.
+
+## `SyntaxHighlighting` was letting every real conflict marker through to the lexer
+
+The domain half of highlighting landed in 0.4.2 and nothing called it until now. Its own doc said
+that reading a line's side off the numbers the parser wrote "is what keeps `<<<<<<<` out of the
+string the lexer reads", on the belief that a conflict marker carries no number on either side.
+
+**It carries both.** A conflicted working tree holds `<<<<<<< HEAD` as literal content, so git diffs
+it behind a `+` and `UnifiedDiffParser` numbers it from that prefix *before* re-tagging it by its
+text — which `status.md` had already recorded from the other direction in 0.7.0, where it made
+`occupiesOldSide`'s `.conflictMarker` arm unreachable. The suite did not catch it because its
+conflict fixture used unnumbered markers, which is the case that cannot occur.
+
+So the string handed to the lexer would have opened with `<<<<<<< HEAD` on exactly the files a reader
+most needs to read, and a lexer handed one mis-lexes everything after it. The kind is now excluded
+alongside the numbers, with a test that uses the marker the parser actually produces. Nothing shipped
+with the defect — it was found by writing the first caller.
+
+## The lexer is asked from the model, and the view is handed the answer
+
+Highlighting could have lived in a `.task` inside `DiffFileContent`, and the lazy stack would then
+have given `SPEC.md` §10's "highlight the visible file first" for free — a section that is not
+materialised is a file that is not lexed.
+
+It is in `ClientViewerModel` instead, and the reason is what a test can reach. `ClientViewerUi` has
+no test target at all, and a `.task` does not settle inside a synchronous snapshot render — so the
+one treatment that changes every row of every file would have been coloured in the app and plain in
+every baseline, which is this project's own dead-control shape with the colours instead of the
+control. Handed in as a value, the view is photographable and the orchestration is a unit test.
+
+What that costs is re-deriving the two rules the lazy stack would have given: the model steps over
+every collapsed file, and it starts from the position the scroll last reported and wraps. Both are
+asserted.
+
+**The cache key gained a seventh part in 0.4.2 and the reason has now been exercised.** `SPEC.md`
+§10's key is six; the seventh is the line numbers, because a hunk expansion grows the string being
+lexed while `contentHash` — a fact about the *file* — does not move. What the entry does on an
+expansion is keep drawing until the wider answer lands, which is the same "upgrade in place" the
+first lex uses and is why nothing flashes back to plain.
+
+**`pointSize` stays in the key and over-invalidates on purpose.** Nothing in what the lexer returns
+is measured at a size, because its font is dropped — but §10 already discards every cached row height
+when the code size changes, so a re-lex rides along with a relayout that was happening anyway.
+
+## Highlightr crashes on a language it does not know, so the set is read before it is asked
+
+`Highlightr.highlight(_:as:)` assigns the result of `hljs.invokeMethod` to a **non-optional**
+`JSValue`, and highlight.js v11 throws for an unregistered language — so the value is nil and the
+assignment traps. The code around it reads `if result.isUndefined`, which is what v10 returned and is
+why the hazard is invisible from the call site.
+
+`supportedLanguages()` is therefore read once and checked before every call. **Nothing reaches it
+today**: this build registers 192 grammars, which covers every name `LanguageHint` can produce. What
+it protects is one more line in that table, or a Highlightr that ships the smaller common bundle.
+
+It is also the only one of the highlighter's three refusals a rendered screen can reach, and it is
+reachable for a real reason rather than a contrived one — the Mac names the language and the phone
+carries the lexer, and the two are updated separately. `a-language-we-cannot-colour` photographs a
+`.zig` file drawn plain beside its tints and markers, which is what puts that branch in the Snapshot
+row's numerator. The other two — a JavaScript context that would not build, and a lexer that answered
+with nothing — are written as one guard with it, because three branches for one outcome would be
+three regions no baseline can enter.
+
+## The lexer reads the drawn string, tabs already expanded
+
+A colour comes back as a range into the string that was lexed and is applied to the string
+`DrawnDiffLine` produces. A tab is one character in the first and two, three or four in the second,
+so every colour after one would have landed partway through the wrong token — the same trap the word
+diff hit in 0.4.2, where a segment's tabs were expanded from column zero of the *segment*.
+
+`HighlightSource` therefore carries `MonospacedGrid.expandingTabs` output rather than the raw line. A
+tab is whitespace to every lexer, so this costs the lexing nothing and saves a second mapping between
+two spellings of one line.
+
+The row still checks the two lengths agree before applying a background, and that guard is not
+belt and braces: highlight.js round-trips through HTML and decodes entities on the way back, so a
+file containing `&amp;` literally can return a line shorter than the one it was given. That row draws
+plain and the rest of the file keeps its colours.

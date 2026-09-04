@@ -37,6 +37,13 @@ public struct WorktreeDiffScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
+    /// Which appearance the code is being lexed for.
+    ///
+    /// **The colours are baked into what the highlighter answers rather than applied over it**, so
+    /// this is part of the question the model asks and not a restyling of one answer. It is an
+    /// environment value, which is why the model is told rather than left to guess.
+    @Environment(\.colorScheme) private var colorScheme
+
     public init(worktreeName: String, model: ClientViewerModel) {
         self.worktreeName = worktreeName
         // Pinned in `@State` rather than held as a plain `let`, the same way every other screen in
@@ -56,30 +63,14 @@ public struct WorktreeDiffScreen: View {
             #endif
             .toolbar { selectorColumnToggle }
             .toolbar { filesButton }
-            // The setter is written out rather than handed `model.showSelector`, which is the
-            // repository's IRGen crash arriving from a new direction: a method reference in a
-            // `Binding`'s setter makes swiftc emit a reabstraction thunk and abort with
-            // `SmallVector unable to grow`. A closure that calls the same method compiles.
-            .sheet(isPresented: Binding(get: { model.isShowingSelector }, set: { model.showSelector($0) })) {
-                // `.presentationBackgroundInteraction` is the one modifier that turns a modal into a
-                // drawer: with it the diff keeps scrolling behind the sheet and the dimming goes,
-                // which is what makes tapping a file *while the list is open* a different tool from
-                // a modal that has to be dismissed between every file.
-                selector
-                    // **The detent is a value the model holds rather than one the sheet keeps to
-                    // itself**, because choosing a file has to be able to move it: at `.large` the
-                    // diff behind the sheet is not on screen and background interaction is off, so
-                    // the jump the tap asked for lands where nobody can see it. `choose` drops this
-                    // back to `.medium`, and the reader's own drag writes it the other way.
-                    //
-                    // **Projected rather than hand-built**, which is the difference between a rule a
-                    // test can drive and one it cannot: a `Binding(get:set:)` here would put "which
-                    // height means what" inside two closures that no baseline renders and no host
-                    // test reaches. `drawerDetent` is on the model, and this is the framework's own
-                    // projection of it — which also avoids the `Binding` setter shape the
-                    // presentation flag above documents a compiler crash for.
-                    .presentationDetents([.medium, .large], selection: $model.drawerDetent)
-                    .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            .toolbar { reviewToggle }
+            // **One sheet for all three, because only one of them can ever present.** The setter is
+            // written out rather than handed `model.dismissSheet`, which is the repository's IRGen
+            // crash arriving from a new direction: a method reference in a `Binding`'s setter makes
+            // swiftc emit a reabstraction thunk and abort with `SmallVector unable to grow`. A
+            // closure that calls the same method compiles.
+            .sheet(item: sheetBinding) { sheet in
+                presented(sheet)
             }
             .alert(
                 "Your Mac would not make that change",
@@ -108,7 +99,89 @@ public struct WorktreeDiffScreen: View {
             } message: {
                 Text("Nothing was added to the diff. Trying again usually works.")
             }
+            // **A third one, and it is what stops Save being a control that did nothing.** A comment
+            // whose lines moved under an open composer cannot be written against an anchor that no
+            // longer resolves — an invented anchor is worse than no comment, because the agent acts
+            // on it — so the reader is told rather than watching a paragraph evaporate.
+            .alert(
+                "Those lines are gone",
+                isPresented: Binding(
+                    get: { model.commentFailure },
+                    set: { if $0 == false { model.dismissCommentFailure() } }
+                )
+            ) {
+                Button("OK") { model.dismissCommentFailure() }
+            } message: {
+                Text("The file changed while you were writing, so the comment was not saved.")
+            }
             .task { await model.load() }
+            // **Keyed on both, and `initial: true` so the first render reports rather than assumes.**
+            // The model starts on light at the phone's 11pt because nothing else is knowable before a
+            // view exists; this is where an iPad at 12pt and a screen already in dark mode say so.
+            // A repeat with the same pair is not wasted — it colours anything opened since.
+            .task(id: drawing) { await model.drawing(in: drawing.appearance, at: drawing.pointSize) }
+    }
+
+    /// The pair the highlighter's answers are keyed on, as one value so one `.task` watches both.
+    private var drawing: DiffDrawing {
+        DiffDrawing(
+            appearance: colorScheme == .dark ? .dark : .light,
+            pointSize: Double(layout.codePointSize)
+        )
+    }
+
+    /// Which sheet is up, with the review taken out of it wherever it is a column instead.
+    ///
+    /// **One model fact, two presentations.** `model.sheet == .review` is what the capsule, the
+    /// toolbar toggle and the column all read; only the phone renders it as a sheet. The setter
+    /// ignores the dismissal SwiftUI sends when the column takes over, because that is the layout
+    /// changing rather than the reader closing anything — without the guard, rotating an iPad with
+    /// the review up would close the review.
+    private var sheetBinding: Binding<ViewerSheet?> {
+        Binding(
+            get: { layout.showsReviewColumn ? nil : model.sheet },
+            set: { presented in
+                if presented == nil, layout.showsReviewColumn == false {
+                    model.dismissSheet()
+                }
+            }
+        )
+    }
+
+    /// Which sheet is up, and the presentation each one needs.
+    ///
+    /// **The composer keeps the diff live behind it and the review does not**, which is design §7.2
+    /// and §7.6 disagreeing on purpose: a composer is a drawer over the thing being commented on, and
+    /// the review is a destination where the diff has stopped being the subject.
+    @ViewBuilder private func presented(_ sheet: ViewerSheet) -> some View {
+        switch sheet {
+        case .selector:
+            // `.presentationBackgroundInteraction` is the one modifier that turns a modal into a
+            // drawer: with it the diff keeps scrolling behind the sheet and the dimming goes, which
+            // is what makes tapping a file *while the list is open* a different tool from a modal
+            // that has to be dismissed between every file.
+            selector
+                // **The detent is a value the model holds rather than one the sheet keeps to
+                // itself**, because choosing a file has to be able to move it: at `.large` the diff
+                // behind the sheet is not on screen and background interaction is off, so the jump
+                // the tap asked for lands where nobody can see it. `choose` drops this back to
+                // `.medium`, and the reader's own drag writes it the other way.
+                //
+                // **Projected rather than hand-built**, which is the difference between a rule a test
+                // can drive and one it cannot: a `Binding(get:set:)` here would put "which height
+                // means what" inside two closures that no baseline renders and no host test reaches.
+                .presentationDetents([.medium, .large], selection: $model.drawerDetent)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+        case .composer:
+            composer
+                // One height, because the keyboard has already decided it. A reader dragging a
+                // composer taller is a reader hiding the code it is about.
+                .presentationDetents([.height(CommentComposerView.detentHeight)])
+                .presentationBackgroundInteraction(.enabled(upThrough: .height(CommentComposerView.detentHeight)))
+        case .review:
+            review(.sheet)
+                .presentationDetents([.large])
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -124,11 +197,28 @@ public struct WorktreeDiffScreen: View {
                     .transition(.opacity)
             }
             diff
+            // **The review takes the tree's place rather than sitting beside it**, which is design
+            // §7.7's call 6 and pure arithmetic: three columns at 1194pt leave the code about 60
+            // characters, which is not a diff viewer. Folding the tree keeps 108 and needs no new
+            // control, because the fold already exists.
+            //
+            // **320pt rather than the 360 the frame draws.** At 360 the code pane goes from 874pt to
+            // 834 when the review opens, and `SPEC.md` §10 caches every measured row height on
+            // `availableWidth` — so a 40pt narrowing reflows the whole file the reader is looking at
+            // in exchange for 40pt of list. Matching the tree's width moves the code by zero.
+            if layout.showsReviewColumn {
+                Divider()
+                    .transition(.opacity)
+                review(.column)
+                    .frame(width: FileSelectorView.widthBesideTheDiff)
+                    .transition(.move(edge: .trailing))
+            }
         }
         // On the container that lays out the movement, which is what 0.5.2 got wrong inside a file
-        // and is the same rule here: the thing that travels when the column goes is the diff beside
+        // and is the same rule here: the thing that travels when a column goes is the diff beside
         // it, and the diff's position belongs to this stack.
         .animation(.disclosure, value: layout.showsSelectorColumn)
+        .animation(.disclosure, value: layout.showsReviewColumn)
     }
 
     private var diff: some View {
@@ -136,13 +226,61 @@ public struct WorktreeDiffScreen: View {
             state: model.state,
             pointSize: layout.codePointSize,
             jumpTarget: model.jumpTarget,
+            comments: model.reviewed,
+            // **The held row draws a rail too, which is the state that most needs one.** Design
+            // §7.1 makes the mark part of holding — square caps, outside the horizontal scroll, and
+            // deliberately surviving a scroll that goes looking for the other end. Passing only the
+            // composing run left a reader holding a row with nothing in the gutter to say which.
+            pending: model.draft.pending ?? model.draft.held,
+            highlighted: model.highlighted,
+            // The strip stops being a target while a sheet is up, because the composer's own detent
+            // keeps the diff behind it live — and a gesture that lands there is one the draft has
+            // nothing to do with. The scroll still moves; only the aim goes.
+            acceptsTargeting: model.sheet == nil,
             onReading: { position in Task { await model.reading(position) } },
             onJumped: model.didJump,
             onSetViewed: { isViewed, file in Task { await model.setViewed(isViewed, on: file) } },
             onSetOpen: { isOpen, file in Task { await model.setOpen(isOpen, on: file) } },
             onExpand: { way, hunk, file in Task { await model.expand(way, hunk: hunk, in: file) } },
+            onTapGutter: { row, file in model.tappedGutter(row, in: file) },
+            onLongPressGutter: { row, file in model.longPressedGutter(row, in: file) },
+            onOpenReview: { model.showReview() },
             onRetry: { Task { await model.load() } }
         )
+        // **Overlaid, never inset.** A `safeAreaInset` shortens the scroll, and a scroll that changes
+        // height is every measured row position invalidated under a reader who pressed nothing —
+        // which is the reflow `SPEC.md` §10 exists to forbid. Floating over the bottom of the diff
+        // costs the layout nothing at all.
+        .overlay(alignment: .bottom) { instructionBar }
+        .overlay(alignment: .bottomTrailing) { capsule }
+        // **On the container, which is the rule the whole screen follows and the reason the two
+        // `.transition`s above were inert.** A transition needs an animated state change to run
+        // against, and nothing was animating these: the bar snapped in on a long press and the
+        // capsule popped the instant a save landed. Keyed on the two facts that make each appear
+        // rather than on the model, so an arriving diff does not restart them.
+        .animation(.disclosure, value: model.draft.heldEnd)
+        .animation(.disclosure, value: model.comments.isEmpty)
+    }
+
+    /// The state a held row leaves the reader in, explained where their thumb already is.
+    ///
+    /// **It and the capsule share this corner and can never both be true**, which is what lets both
+    /// live at the bottom of the screen with nothing arbitrating between them: one is *a run is being
+    /// picked out*, the other is *comments exist and none is being picked*.
+    @ViewBuilder private var instructionBar: some View {
+        if model.draft.heldEnd != nil {
+            CommentInstructionBar(anchorLabel: model.heldRowLabel) { model.cancelDraft() }
+                .transition(.move(edge: .bottom))
+        }
+    }
+
+    /// Design §7.4's way in, and only on the phone: a column already on screen needs no button to
+    /// announce itself, so at regular width the count lives in the toolbar instead.
+    @ViewBuilder private var capsule: some View {
+        if layout.showsReviewCapsule, model.draft.heldEnd == nil {
+            ReviewCapsule(count: model.comments.count) { model.showReview() }
+                .transition(.scale.combined(with: .opacity))
+        }
     }
 
     private var selector: some View {
@@ -151,6 +289,41 @@ public struct WorktreeDiffScreen: View {
             onChoose: model.choose,
             onToggleDirectory: model.toggle,
             onChooseMode: model.show
+        )
+    }
+
+    private var composer: some View {
+        CommentComposerView(
+            anchorLabel: model.composerAnchorLabel,
+            excerpt: model.composerExcerpt,
+            isEditing: model.editingComment != nil,
+            text: $model.composerText,
+            onCancel: { model.dismissSheet() },
+            onSave: { model.saveComment() },
+            onDelete: { model.deleteComposedComment() }
+        )
+    }
+
+    /// The review, as a sheet on the phone and as a column on the iPad.
+    ///
+    /// **The presentation is handed in rather than inferred**, because a column that brought its own
+    /// navigation stack would draw its title and its Close into the *screen's* navigation bar — which
+    /// is what it did, and what the iPad baseline caught.
+    private func review(_ presentation: ReviewSheetView.Presentation) -> some View {
+        ReviewSheetView(
+            presentation: presentation,
+            comments: model.reviewed,
+            note: $model.noteDraft,
+            hasSkippedNote: model.hasSkippedNote,
+            hasCopied: model.hasCopied,
+            document: model.feedback(note: model.noteDraft),
+            showsDocument: model.isShowingDocument,
+            onShowDocument: { model.showDocument($0) },
+            onClose: { model.dismissSheet() },
+            onSkipNote: { model.skipNote() },
+            onCopy: { model.copyReview() },
+            onClear: { model.clearComments() },
+            onDelete: { anchor in model.removeComment(anchor) }
         )
     }
 
@@ -194,6 +367,28 @@ public struct WorktreeDiffScreen: View {
         }
     }
 
+    /// The review, at the width where it is a column rather than a sheet.
+    ///
+    /// **The count lives here at regular width and nowhere else**, which is what the capsule buys
+    /// back: a toolbar that hides on scroll is the wrong home for a count that changes while you
+    /// read, and on the iPad this toolbar does not hide.
+    @ToolbarContentBuilder private var reviewToggle: some ToolbarContent {
+        if layout.showsReviewToggle {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    if model.sheet == .review {
+                        model.dismissSheet()
+                    } else {
+                        model.showReview()
+                    }
+                } label: {
+                    CommentCountChip(count: model.comments.count)
+                }
+                .accessibilityLabel(model.sheet == .review ? "Hide the review" : "Show the review")
+            }
+        }
+    }
+
     /// Every layout answer this screen needs, decided in one place a test can reach.
     ///
     /// The horizontal size class rather than the device, because an iPad in a narrow multitasking
@@ -208,11 +403,25 @@ public struct WorktreeDiffScreen: View {
         return DiffPaneLayout(
             fitsSelectorColumn: fits,
             isSelectorColumnOpen: isSelectorColumnOpen,
-            hasFilesToSelect: hasFilesToSelect
+            hasFilesToSelect: hasFilesToSelect,
+            isReviewOpen: model.sheet == .review,
+            hasComments: model.comments.isEmpty == false
         )
     }
 
     private var hasFilesToSelect: Bool {
         if case .reading = model.state { true } else { false }
     }
+}
+
+// MARK: -
+
+/// The two facts a lexed side is keyed on that only a rendered view knows.
+///
+/// One value rather than two watched separately, because `.task(id:)` takes one identity and two
+/// tasks would race to reset the same cache.
+private struct DiffDrawing: Hashable {
+
+    let appearance: HighlightAppearance
+    let pointSize: Double
 }

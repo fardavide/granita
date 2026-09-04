@@ -19,7 +19,7 @@ import Testing
 /// `_raiseExceptionForBackgroundThreadLayerPropertyModification`. That trap is worse than a plain
 /// failure: the crash restarts the test host, and the retry then reports "0 tests passed", so the
 /// suite goes green having rendered nothing.
-@Suite("Pairing scanner screen")
+@Suite("Pairing scanner screen", .serialized)
 @MainActor
 struct PairingScannerViewSnapshotTests {
 
@@ -30,9 +30,9 @@ struct PairingScannerViewSnapshotTests {
     ) {
         // given - when - then
         //
-        // Clamped outside the navigation container like every screen before a paired Mac, and the
-        // camera is inside it: design §5 asks for a 420pt-wide card on the iPad rather than a
-        // full-bleed preview, so the measure is what produces the card.
+        // Unclamped like every screen before a paired Mac. §5's iPad card survives that on its own
+        // terms rather than on the measure's: the preview is a 4:3 fit in a padded stack, so a
+        // regular width class still gets a card in a room and never a full-bleed preview.
         assertScreenSnapshot(
             NavigationStack {
                 PairingScannerView(
@@ -43,9 +43,7 @@ struct PairingScannerViewSnapshotTests {
                 ) {
                     CameraStill()
                 }
-            }
-            .frame(maxWidth: ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity),
+            },
             layout: layout,
             named: subject.name
         )

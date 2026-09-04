@@ -37,11 +37,11 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
 
-    private let opening: (WorktreeID, String) -> Opened
+    private let opening: (WorktreeID, String, String) -> Opened
 
     public init(
         model: ClientWorktreesModel,
-        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String) -> Opened
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
         // does it: the composition root rebuilds this on every parent re-evaluation, and a plain
@@ -71,7 +71,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         // its destination drifting apart in two modules — the exact way this app came to ship a row
         // that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
         .navigationDestination(for: WorktreeID.self) { worktree in
-            opening(worktree, model.displayName(of: worktree))
+            opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
         }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(

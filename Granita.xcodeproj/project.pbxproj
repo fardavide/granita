@@ -23,11 +23,13 @@
 		5016868BE96A124944176434 /* SettingsWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7E508296916D2C7E1C463F /* SettingsWindowTests.swift */; };
 		50D68552CEBD69037E619E38 /* DiffFileContentSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24FA077A3CD672C62C1DF94 /* DiffFileContentSnapshotTests.swift */; };
 		528A2CEC660A5049C037AD8A /* ServerDiscoveryViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */; };
+		5756F00FD672323A42B636EA /* CommentComposerViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA0C738561E761EBFD8A15FE /* CommentComposerViewSnapshotTests.swift */; };
 		57C90F1B18A97EB554E254D6 /* GeneralSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307603AAB69780B0D3A792B3 /* GeneralSettingsViewSnapshotTests.swift */; };
 		59E20C6AAF4633FCDA78DCB4 /* DiffCollapsedFileBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9FE8487D5575EA3DEA0CFF /* DiffCollapsedFileBarSnapshotTests.swift */; };
 		5D257D034D949A40A9C555F1 /* DiffFileLinesSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046AC56E1048173E87744376 /* DiffFileLinesSnapshotTests.swift */; };
 		6571CB6925C31A657D504ACC /* FakePairingSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682FAD294D9C10F0B38995DD /* FakePairingSource.swift */; };
 		6BC84E04EFB589D9B2DB6949 /* PairingWordsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7376A3169FBA4CAD37D3A846 /* PairingWordsViewSnapshotTests.swift */; };
+		72FF572B047EDB5793845596 /* ReviewSheetViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD1AA38DA7CA468143AC9CA /* ReviewSheetViewSnapshotTests.swift */; };
 		7381A8F9316C881E69E52446 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 8C48D413A221B85C8A6A3993 /* SnapshotTesting */; };
 		8A5AE7E674E3117242BFE682 /* ProjectsSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */; };
 		8CFBBC9DE14C23D70908A986 /* ConnectionLogViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4317F6CE05A15B740CB4D63B /* ConnectionLogViewSnapshotTests.swift */; };
@@ -37,10 +39,12 @@
 		926C7C8715CB3B9C65008973 /* AddRepositoriesSheetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */; };
 		954DA716637FD5784C607B58 /* ProjectsTabUiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564791E76C442C34220B14F8 /* ProjectsTabUiTests.swift */; };
 		962D9FBC6BC3F85B470BF2D3 /* MenuBarContentSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE6425F26947A49618D5421 /* MenuBarContentSnapshotTests.swift */; };
+		995346EDCFE3C27F21791772 /* FakeReviewPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */; };
 		A555327E526815742E23C992 /* GranitaSettingsScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */; };
 		A9C2295445A8583FDDD21E4E /* WorktreeDiffScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1921F6DE07387F2370CD13 /* WorktreeDiffScreenSnapshotTests.swift */; };
 		AA44462D702F910B96524E06 /* FakeDiffSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A38FC197C62671336DD162A /* FakeDiffSource.swift */; };
 		B527EDF5CE66094E01452955 /* WorktreeSidebarViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */; };
+		CB81EE1338580F611CE24CA9 /* CommentAffordancesSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACBBF539AB6124615401F40 /* CommentAffordancesSnapshotTests.swift */; };
 		CE8CC1E144FC145F2D8F226F /* WorktreeSplitScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8C72B250B4997EC1C445BA /* WorktreeSplitScreenSnapshotTests.swift */; };
 		D392DB3CFE446E8426AAA986 /* AdvancedSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B7A80F9019B431F80F87EE /* AdvancedSettingsViewSnapshotTests.swift */; };
 		D3E8A4F63CC80BADB7F1BAD7 /* PairingEntryViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85631EC084E712173149587 /* PairingEntryViewSnapshotTests.swift */; };
@@ -50,6 +54,7 @@
 		E7F6AB9B8358DC951E0EC94E /* GranitaMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */; };
 		F0838C2B10B545CCF67FF561 /* GranitaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */; };
 		F596F8B37214464488DA320A /* SnapshotSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B5A52A78377F68D4732194 /* SnapshotSupport.swift */; };
+		FDB3B8D464BEAF518D2C785F /* FakeReviewCommentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF0BBEF4534DF066084F9A26 /* FakeReviewCommentStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,6 +94,7 @@
 		1FE6425F26947A49618D5421 /* MenuBarContentSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentSnapshotTests.swift; sourceTree = "<group>"; };
 		249BF11BEAE3E0E2B0126269 /* FixedScaleImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixedScaleImage.swift; sourceTree = "<group>"; };
 		2B6704FCA70E8C166E0C3D94 /* DevicesSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
+		2CD1AA38DA7CA468143AC9CA /* ReviewSheetViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewSheetViewSnapshotTests.swift; sourceTree = "<group>"; };
 		2EC8AD3A30C3AAE8640FEC48 /* PairingSpineSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingSpineSnapshotTests.swift; sourceTree = "<group>"; };
 		307603AAB69780B0D3A792B3 /* GeneralSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
 		36B5A52A78377F68D4732194 /* SnapshotSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotSupport.swift; sourceTree = "<group>"; };
@@ -104,6 +110,7 @@
 		5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSidebarViewSnapshotTests.swift; sourceTree = "<group>"; };
 		5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaSettingsScreenSnapshotTests.swift; sourceTree = "<group>"; };
 		60122123568D79059A4AE559 /* GranitaMobileSnapshotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeReviewPasteboard.swift; sourceTree = "<group>"; };
 		682FAD294D9C10F0B38995DD /* FakePairingSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakePairingSource.swift; sourceTree = "<group>"; };
 		7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDiscoveryViewSnapshotTests.swift; sourceTree = "<group>"; };
 		7376A3169FBA4CAD37D3A846 /* PairingWordsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingWordsViewSnapshotTests.swift; sourceTree = "<group>"; };
@@ -113,8 +120,10 @@
 		9F9FE8487D5575EA3DEA0CFF /* DiffCollapsedFileBarSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffCollapsedFileBarSnapshotTests.swift; sourceTree = "<group>"; };
 		A24FA077A3CD672C62C1DF94 /* DiffFileContentSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffFileContentSnapshotTests.swift; sourceTree = "<group>"; };
 		ABDB44F88B738911C79CBB37 /* GranitaMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GranitaMobile.entitlements; sourceTree = "<group>"; };
+		AF0BBEF4534DF066084F9A26 /* FakeReviewCommentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeReviewCommentStore.swift; sourceTree = "<group>"; };
 		B85631EC084E712173149587 /* PairingEntryViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingEntryViewSnapshotTests.swift; sourceTree = "<group>"; };
 		BA1921F6DE07387F2370CD13 /* WorktreeDiffScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeDiffScreenSnapshotTests.swift; sourceTree = "<group>"; };
+		BACBBF539AB6124615401F40 /* CommentAffordancesSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentAffordancesSnapshotTests.swift; sourceTree = "<group>"; };
 		BEF37A723BF53C737C5742F2 /* WorktreeSidebarScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSidebarScreenSnapshotTests.swift; sourceTree = "<group>"; };
 		C11FFC228F9E6F34066874BD /* GranitaMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GranitaMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepositoriesSheetSnapshotTests.swift; sourceTree = "<group>"; };
@@ -123,6 +132,7 @@
 		DEB6CE5128C49CA378339D91 /* PairingScannerViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingScannerViewSnapshotTests.swift; sourceTree = "<group>"; };
 		E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaMacApp.swift; sourceTree = "<group>"; };
 		E9C30A9E302D3F01525EFEEA /* MenuBarLabelSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarLabelSnapshotTests.swift; sourceTree = "<group>"; };
+		EA0C738561E761EBFD8A15FE /* CommentComposerViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentComposerViewSnapshotTests.swift; sourceTree = "<group>"; };
 		F2D8B18860214A29EB15FEA5 /* ContinuousDiffViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuousDiffViewSnapshotTests.swift; sourceTree = "<group>"; };
 		F4BC23246FF9F1BFC805482B /* GranitaMacUiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranitaMacUiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F97E4BC6F28CE4A30011888B /* GranitaMobile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GranitaMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -206,6 +216,8 @@
 		505F0A3D2819DE0E79CFCEBE /* GranitaMobileSnapshotTests */ = {
 			isa = PBXGroup;
 			children = (
+				BACBBF539AB6124615401F40 /* CommentAffordancesSnapshotTests.swift */,
+				EA0C738561E761EBFD8A15FE /* CommentComposerViewSnapshotTests.swift */,
 				F2D8B18860214A29EB15FEA5 /* ContinuousDiffViewSnapshotTests.swift */,
 				9F9FE8487D5575EA3DEA0CFF /* DiffCollapsedFileBarSnapshotTests.swift */,
 				A24FA077A3CD672C62C1DF94 /* DiffFileContentSnapshotTests.swift */,
@@ -213,6 +225,8 @@
 				046AC56E1048173E87744376 /* DiffFileLinesSnapshotTests.swift */,
 				4A38FC197C62671336DD162A /* FakeDiffSource.swift */,
 				682FAD294D9C10F0B38995DD /* FakePairingSource.swift */,
+				AF0BBEF4534DF066084F9A26 /* FakeReviewCommentStore.swift */,
+				671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */,
 				026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */,
 				51403CA6C39240D759A48F28 /* FileSelectorViewSnapshotTests.swift */,
 				B85631EC084E712173149587 /* PairingEntryViewSnapshotTests.swift */,
@@ -220,6 +234,7 @@
 				DEB6CE5128C49CA378339D91 /* PairingScannerViewSnapshotTests.swift */,
 				2EC8AD3A30C3AAE8640FEC48 /* PairingSpineSnapshotTests.swift */,
 				7376A3169FBA4CAD37D3A846 /* PairingWordsViewSnapshotTests.swift */,
+				2CD1AA38DA7CA468143AC9CA /* ReviewSheetViewSnapshotTests.swift */,
 				7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */,
 				36B5A52A78377F68D4732194 /* SnapshotSupport.swift */,
 				BA1921F6DE07387F2370CD13 /* WorktreeDiffScreenSnapshotTests.swift */,
@@ -485,6 +500,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CB81EE1338580F611CE24CA9 /* CommentAffordancesSnapshotTests.swift in Sources */,
+				5756F00FD672323A42B636EA /* CommentComposerViewSnapshotTests.swift in Sources */,
 				DEE42276A0D19926EBDA9D75 /* ContinuousDiffViewSnapshotTests.swift in Sources */,
 				59E20C6AAF4633FCDA78DCB4 /* DiffCollapsedFileBarSnapshotTests.swift in Sources */,
 				50D68552CEBD69037E619E38 /* DiffFileContentSnapshotTests.swift in Sources */,
@@ -492,6 +509,8 @@
 				5D257D034D949A40A9C555F1 /* DiffFileLinesSnapshotTests.swift in Sources */,
 				AA44462D702F910B96524E06 /* FakeDiffSource.swift in Sources */,
 				6571CB6925C31A657D504ACC /* FakePairingSource.swift in Sources */,
+				FDB3B8D464BEAF518D2C785F /* FakeReviewCommentStore.swift in Sources */,
+				995346EDCFE3C27F21791772 /* FakeReviewPasteboard.swift in Sources */,
 				8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */,
 				118220695C6969CCFBE990DF /* FileSelectorViewSnapshotTests.swift in Sources */,
 				D3E8A4F63CC80BADB7F1BAD7 /* PairingEntryViewSnapshotTests.swift in Sources */,
@@ -499,6 +518,7 @@
 				0859E87EE79DFC2310CF8517 /* PairingScannerViewSnapshotTests.swift in Sources */,
 				24D5D3DB223F65450B1C5148 /* PairingSpineSnapshotTests.swift in Sources */,
 				6BC84E04EFB589D9B2DB6949 /* PairingWordsViewSnapshotTests.swift in Sources */,
+				72FF572B047EDB5793845596 /* ReviewSheetViewSnapshotTests.swift in Sources */,
 				528A2CEC660A5049C037AD8A /* ServerDiscoveryViewSnapshotTests.swift in Sources */,
 				F596F8B37214464488DA320A /* SnapshotSupport.swift in Sources */,
 				A9C2295445A8583FDDD21E4E /* WorktreeDiffScreenSnapshotTests.swift in Sources */,
@@ -579,7 +599,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -609,7 +629,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -723,7 +743,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -749,7 +769,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.9.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;

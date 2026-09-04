@@ -37,7 +37,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         // photographed is settled rather than merely likely.
         let model = aModel()
         await model.load()
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -56,7 +56,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         await model.load()
         let subject = try #require(model.state.firstRow?.rename)
         model.beginRenaming(subject)
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -77,7 +77,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         await model.load()
         let subject = try #require(model.state.firstRow?.deletionSubject)
         model.beginDeleting(subject)
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -97,7 +97,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         let subject = try #require(model.state.firstRow?.deletionSubject)
         model.beginDeleting(subject)
         await model.confirmDeletion(of: subject)
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -120,7 +120,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         let subject = try #require(model.state.firstRow?.deletionSubject)
         model.beginDeleting(subject)
         await model.confirmDeletion(of: subject)
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -139,7 +139,7 @@ struct WorktreeSidebarScreenSnapshotTests {
         await model.load()
         let row = try #require(model.state.firstRow)
         await model.setPinned(row.isPinned == false, on: row.id)
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -166,7 +166,7 @@ private func theSidebar(
     in layout: SnapshotLayout
 ) -> some View {
     NavigationStack {
-        WorktreeSidebarScreen(model: model) { _, displayName in
+        WorktreeSidebarScreen(model: model) { _, displayName, _ in
             WorktreeDiffScreen(worktreeName: displayName, model: diff)
         }
     }

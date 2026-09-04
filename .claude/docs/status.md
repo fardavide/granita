@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.6.2 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
+**Version 0.9.0 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
 the app working only while his MacBook was unlocked. A direct test settled what it actually was: a
 Mac that is **locked but awake** serves fine, so the lock was never the variable — `pmset` has system
 sleep at one minute idle and the log shows Maintenance Sleep every 45 seconds all morning, on AC.
@@ -27,11 +27,195 @@ Power Adapter* — `womp 1` on AC, `womp 0` on battery — and a Mac on battery 
 Saying so in the app is a new surface on the Mac's General tab and therefore design-blocked; for now
 it is in the changelog. **If waking is ever reported as still not working, check that first.**
 
-**And one thing Apple has to allow.** iOS gates broadcast behind
-`com.apple.developer.networking.multicast`, a restricted entitlement Apple grants on request. It is
-wired in `project.yml` so a device build can be tried, but until the grant lands the packet does not
-leave the phone — and neither the simulator nor the loopback test can catch its absence, because
-loopback is neither broadcast nor multicast.
+**And one thing Apple had to allow, now granted.** iOS gates broadcast behind
+`com.apple.developer.networking.multicast`, a restricted entitlement. Apple assigned it to the
+account on 3 September 2026, and `project.yml` carries the key. **Neither the simulator nor the
+loopback test can catch its absence**, because loopback is neither broadcast nor multicast — so the
+only proof that waking works is a device build against a sleeping Mac.
+
+**Version 0.8.0 — the code is syntax highlighted, and it is the last of M5's viewer features.** The
+domain half of it landed in 0.4.2 and had no caller for four releases; what arrived now is the lexer
+behind it, the cache, the orchestration and the rendering. Highlightr with Xcode's own stylesheets —
+`xcode` in light, `xcode-dark` in dark — chosen because Granita's design language is Apple's
+throughout and the phone is lying beside the Mac the code was written on.
+
+**It is built without a design and that is Davide's call rather than a lapse.** [`design.md`](design.md)
+§4 had no highlighting section at all, and `design-handoff` says no pull request touching a screen
+opens before its frames exist. He waived it in one sentence — *"We don't really need design for syntax
+highlighting"* — so §4 has one now, written in this repository's voice with the alternatives each call
+beat, which is what a return would have left behind. The palette is filed as a setting for later:
+[#70](https://github.com/fardavide/granita/issues/70).
+
+**Writing the first caller found a defect in the 0.4.2 half, and it was the one thing that section
+exists to prevent.** `SyntaxHighlighting` decided which lines are on which side by reading the numbers
+the parser wrote, and its own comment said that this "is what keeps `<<<<<<<` out of the string the
+lexer reads". A real conflict marker carries both numbers — git diffs it behind a `+` because it is
+literal content, and the parser numbers it from that prefix before re-tagging it by its text — so
+every marker was going through, and a lexer handed one mis-lexes everything after it. The fixture that
+should have caught it used unnumbered markers, which is the case that cannot occur. In
+[`decisions.md`](decisions.md).
+
+**The lexer is asked from the model rather than from a `.task` in the view, and that is a testability
+call with a cost.** The lazy stack would have given `SPEC.md` §10's "highlight the visible file first"
+for free — a section nobody scrolled to is a file nobody lexed — but `ClientViewerUi` has no test
+target and a `.task` does not settle inside a synchronous snapshot render, so the one treatment that
+changes every row of every file would have been coloured in the app and plain in every baseline. Both
+rules are re-derived in the model and asserted: shut files are stepped over, and the walk starts at
+the position the scroll last reported and wraps.
+
+**What holds the real Highlightr to answering at all is the screen baselines.** They run the actual
+lexer, in the appearance each layout is photographed in, so `a-review-in-progress` and its three
+siblings are pictures of highlight.js output rather than of a fixture. Beside them, two hand-built
+`DiffFileLines` cases carry the join with §4: a word-diff background sitting over coloured text, and a
+row that refuses a colouring whose length does not match the string it draws.
+
+**One branch in the highlighter is reachable and two are not, and the reachable one is a real
+scenario rather than a contrived fixture.** `Highlightr.highlight` assigns a JavaScript result to a
+non-optional value and highlight.js v11 *throws* for a language it does not know, so an unknown name
+is a crash inside the dependency; the set of lexable languages is read once and checked first. The
+Mac names a file's language and the phone carries the lexer, and the two are updated separately —
+`a-language-we-cannot-colour` photographs a `.zig` file drawn plain, which is what a phone behind its
+Mac would see.
+
+**What no test kind here can answer is what it costs on a device.** `SPEC.md` §2 asks for a measured
+p95 on a 200-line Swift block, and every number this slice has is from a simulator. It is on the
+device afternoon's list with the gutter's aim.
+
+**Version 0.7.1 — the pre-pairing screens stopped being drawn in a column down the middle of the
+window.** Davide ran the app in a Mac window on 4 September 2026 and sent three screenshots of it:
+the Mac list, the two credentials and the six-word field, each a 420pt strip of content with a
+thousand points of bare white either side. Design §1's measure is reversed and the screens are stock
+SwiftUI at the width they are given; [`decisions.md`](decisions.md) carries the call and what it gives
+up, and every pre-pairing baseline moved with it.
+
+**Two things he saw in the same session are not fixed by it and are not in that release.** The
+worktree split view still draws as a narrow floating sidebar in a wide window, and **tapping a
+worktree there does nothing at all** — the second is a dead control, which is the one defect this
+project treats as worse than a crash. Both point at the same structure: §2's split view is presented
+*inside* the pairing stack, and a `NavigationSplitView` nested in a `NavigationStack` is not a
+composition SwiftUI supports. It is unverified — no test kind that runs here can tap, and the fix
+changes where "back to the Mac list" lives, so it is Davide's call before it is a commit.
+
+**Version 0.7.0 — inline comments, and the design came back before any of the screen was built.**
+Davide asked for them on 3 September 2026 — a note on a run of changed lines, a button once there are
+any, one prompt for an overall note or a *Skip*, and the whole review copied out as one piece of text
+for the agent that wrote the code. `SPEC.md` §11 lists that as v2 under *build none of them*, so the
+departure is recorded rather than quietly taken. The round trip returned the same day and everything
+it drew is built: [`decisions.md`](decisions.md) carries the calls, [`design.md`](design.md) §7 the
+frames.
+
+**Its headline is one structural decision and every other one follows from it: nothing opens in the
+diff.** No row grows, no file re-lays out, no sheet pushes the scroll up. A comment is 3pt of colour
+in the gutter's leading inset — the four points no figure ever reaches — and a sheet at the bottom of
+the screen. That is what lets a feature GitHub builds entirely out of reflow live inside `SPEC.md`
+§10's no-reflow rule without touching it.
+
+**The gutter became a coordinate rather than a column of controls, and that is a departure with
+Davide's sentence still owing.** A code row is 18pt at the smallest size a reader can choose, and
+`SPEC.md` treats a sub-44pt control as a defect with no exception. §7's answer is that the minimum
+governs *discrete* targets — things with a boundary you must land inside, where a miss produces
+nothing — and that one recogniser over the whole 38-to-57pt strip is not one: no boundaries, no dead
+space, no way to fail, and a miss that can only land one row off. It ships as drawn and is flagged;
+if he declines the exception, `GutterTarget` and the two gestures come out.
+
+**Two of §4's stated numbers were wrong and the code was right.** The gutter is quoted there as 39pt
+and the code origin as 48 as though both were constants; `DiffGutter.columnWidth` sizes the figures
+per file, so 39.4 is the four-figure case and the origin is 57.4 there and 50.8 on three figures. The
+design read the code rather than the document and its arithmetic matches to a tenth of a point.
+
+**The export reversed two days after it was written.** It was Markdown — headings and a fenced `diff`
+block — on the reasoning that it was going into a chat. §7 overturned it: the destination is a
+terminal on the Mac the phone is lying beside, the audience is an agent rather than a renderer, and
+heading syntax is something that has to be stripped before it can be acted on. The excerpt lost its
+`+`/`−` markers with it, because `+ func awaitItem()` is a string that appears in no file.
+
+**One line of the document is ours rather than the design's**, and it is the case its own example
+could not surface: a run named on the old side says so, because those lines exist nowhere in the
+working copy and an agent opening the file at those numbers reads whatever now does.
+
+**Three things are built differently from the frames and one they drew is deliberately absent.** The
+iPad's review column is 320pt rather than 360, because 360 narrows the code pane by 40 and every
+measured row height is cached on its width; the composer's anchor is a 44pt label rather than the
+`Menu` §7 draws, because the extend and shrink operations behind it are not built and a menu with no
+items is this project's dead control; the store's `save` does not gain a refusal, because it would be
+a branch no test here can drive for a state the design itself says not to build. What is absent is
+the composer's refusal screen, which §7 verified is unreachable while the diff loads once.
+
+**Where the review lives is still deliberately not where it belongs.** The phone's user defaults,
+keyed per worktree. The Mac is the right home and it is a wire change:
+[#64](https://github.com/fardavide/granita/issues/64).
+
+**A test found the rule this feature turns on written backwards.** The anchor is a row's
+`(oldNumber, newNumber)` pair, which is the one address that survives both a hunk expansion and the
+screen re-appearing — and the first version said conflict markers carry neither number. They carry
+both sides' worth: a conflicted working tree holds `<<<<<<< HEAD` as literal content, so git diffs it
+behind a `+` and the parser numbers it from that prefix *before* re-tagging it by its text, which
+leaves `occupiesOldSide`'s own `.conflictMarker` arm unreachable. The genuinely numberless row is
+`\ No newline at end of file`, and it is the one row a selection can span and never end on.
+
+**A second test found the anchor was not yet an identity.** A reader who holds row 14 and taps row 11
+picks the same run as one who holds 11 and taps 14, and the ends were being stored in the order the
+thumb touched them — so one run filed as two comments, and the *second tap on a commented run is an
+edit* rule silently stopped holding. It cannot be fixed by comparing numbers: a deletion carries only
+an old number and an addition only a new one, so for that pair no arithmetic says which is drawn
+first. `CommentSelection.ends(of:from:to:)` asks the diff.
+
+**An adversarial read of the finished slice found nine things, and four of them were rules.** The
+biggest came out of one fact the design is built on: the composer's detent keeps the diff behind it
+live, so the gutter under a sheet is live too — which meant a tap behind the composer emptied the
+field being typed into, a long press behind it fired a haptic for nothing, and the toolbar could
+replace the composer without cancelling the run, leaving a rail in the gutter and every further
+gesture a no-op for the rest of the screen's life. The gutter stops being a target while a sheet is
+up. Document order stopped being a line number and became a row index, because an old-side 105 sorted
+after a new-side 50. The Files button goes while the review holds the iPad's column, because pressing
+it drew the file tree twice. And a held row draws its own rail, which §7.1 asks for and nothing did.
+All in [`decisions.md`](decisions.md).
+
+**Then Davide looked at it: *"the comment panel looks awful and doesn't respect design"*, and he was
+right about the whole surface.** The review panel had been built as a stock `.insetGrouped` `List` —
+which is what iOS gives a preferences pane — with every string in the right place and none of the
+treatment. The failure is worth naming because it is easy to repeat: **the frames were read for their
+content and not for their measurements**, and the markup with the numbers in it was sitting in the
+document the whole time. It is a panel now: its own 52pt header with a monospaced count at the
+trailing edge, monospaced uppercase section labels, cards at radius 10 on the grouped page, **the
+gutter's own 3pt indigo rail on every comment row**, an amber-tinted stale row, *Show text* as a link,
+and *Copy review* as a filled indigo button pinned to the bottom that turns green for two seconds.
+
+**Two more things were drawn and built as nothing.** §7.1's held state is a rail *and a tint* — its
+own caption says *square-capped rail, tinted row, one haptic* — and only the rail existed; it is
+indigo at 14% in light and 20% in dark now, with the held run's line numbers going indigo too. And
+the instruction bar and the review capsule are one floating pill at one position, 12pt from the sides
+and 38 from the bottom, where they had been a full-width bar and a padded corner button. All in
+[`decisions.md`](decisions.md), with why the tint does not contradict §7.3's rejection of one.
+
+**And the coverage debt that had been on "Waiting on Davide" for five slices is settled**, because §7
+made it cost a fifth pull request: *"We should exclude untestable closure from tests coverage."* The
+Snapshot row's **regions** column no longer counts a region belonging only to a closure that returns
+`()` — an action, an `onChange`, a `.task` — because such a closure draws nothing and a baseline
+presses nothing, which is the `UNREACHABLE_FILES` bar of *unrunnable by construction* applied at the
+one grain that can express it. **Lines are untouched and still judged**, and that asymmetry is the
+finding rather than a shortcut: a closure written inline shares its lines with the view expression
+containing it, so the exclusion moves 200 of 1695 regions and 7 of 5043 lines. The predicate reads
+`swift-demangle` and *parses* it, because a ViewBuilder declared inside a void method also has `-> ()`
+in its name. What it costs is recorded in [`decisions.md`](decisions.md) and answered as a rule in the
+`swift-testing` skill: an action closure's body is now judged by nothing, so it holds one call into
+the model, and a closure that grows a branch has outgrown a view.
+
+**What no test kind here can answer is whether the aim works.** A snapshot renders a gutter and never
+touches it, so *does a tap on 18pt of strip open the composer on the row the reader meant* is a
+question for a thumb. It is the whole feature's premise and it is on the device afternoon's list,
+first.
+
+**Version 0.6.2 — two files in a ten-file worktree drew a header and then nothing, and the Mac was
+asking git about a filename with stray bytes on the end.** `Arguments`' byte-array form hands each
+element to `strdup`, which reads until it meets a zero byte; a Swift array has none after its last
+element, so an argument arrived at git carrying whatever the allocator left beside it. A pathspec
+that matches nothing makes `git diff` print nothing and exit 0, so the file came back as a diff with
+no hunks and the viewer drew it empty — while the change set naming it stayed correct, because
+nothing that builds one carries a path. Reproduced against Davide's own worktree through
+`granita-server --insecure-http` before anything was changed, and the terminator is now added at the
+library boundary rather than in the vector `GitInvocation` builds. In [`decisions.md`](decisions.md),
+with why the regression test asserts the invariant instead of running git.
 
 **Version 0.6.1 — five of 0.6.0's answers were right in the prose and wrong on the glass**, which is
 the release the same review's photographs would have caught if the review had been run against them.
@@ -656,7 +840,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
-| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff, the viewed state, the collapsed bars and hunk expansion are built; **highlighting is not**, and neither is wrap-on |
+| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff, the viewed state, the collapsed bars, hunk expansion and **highlighting** are built; wrap-on is not, and neither is the acceptance, which needs a thumb |
 | M6 | Live updates, accessibility, ship | |
 
 ## What exists
@@ -1045,13 +1229,18 @@ Smaller things still open in these modules:
   removing a declaration to find out which container claims a tap is how this app shipped a row that
   did nothing. In [`decisions.md`](decisions.md).
 
-- **The coverage gate's structural debt, which is now costing pull requests.** An action closure in a
-  view body is uncoverable by every test kind that runs here, so a slice that adds controls lowers
+- ~~**The coverage gate's structural debt, which is now costing pull requests.** An action closure in
+  a view body is uncoverable by every test kind that runs here, so a slice that adds controls lowers
   the Snapshot row whatever else it does — 0.3.1 lost one region to a Copy button and 0.4.0 is short
-  by 4 regions and 3 lines after five. The genuine fallbacks nearby have been found and covered;
-  what is left is either the `ui` target — which needs the Accessibility grant **and** an
-  `Apps/GranitaMobileUiTests` that has never existed — or Davide deciding the row may hold rather
-  than climb. Neither is a call to make from inside a pull request.
+  by 4 regions and 3 lines after five.~~ Answered on 4 September 2026, after §7 made it cost a fifth
+  pull request: *"We should exclude untestable closure from tests coverage."* The Snapshot row's
+  **regions** column no longer counts a region that belongs only to a closure returning `()` — it
+  draws nothing, so a baseline cannot reach it, which is the `UNREACHABLE_FILES` bar at a finer
+  grain. Lines are untouched and still judged, because such a closure shares its lines with the view
+  it sits in: the exclusion moves 200 of 1695 regions and 7 of 5043 lines. The cost is that an action
+  closure's body is now judged by nothing, which the `swift-testing` skill answers with a rule — one
+  call into the model, and a closure that grows a branch has outgrown a view. In
+  [`decisions.md`](decisions.md).
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
   last thing between `make ui-tests-mac` and a green run, and it is now blocking **eleven** shipped

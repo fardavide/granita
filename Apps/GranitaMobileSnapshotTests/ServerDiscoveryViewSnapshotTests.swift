@@ -14,7 +14,7 @@ import Testing
 /// `_raiseExceptionForBackgroundThreadLayerPropertyModification`. That trap is worse than a plain
 /// failure here: the crash restarts the test host, and the retry then reports "0 tests passed",
 /// so the suite goes green having rendered nothing.
-@Suite("Server discovery screen")
+@Suite("Server discovery screen", .serialized)
 @MainActor
 struct ServerDiscoveryViewSnapshotTests {
 
@@ -29,10 +29,9 @@ struct ServerDiscoveryViewSnapshotTests {
         // `.navigationTitle` renders nothing outside a navigation container — an unwrapped baseline
         // would silently stop covering the title bar the reader actually sees.
         //
-        // Clamped to the same measure, on the same side of the stack, for the same reason. The
-        // measure is what makes the iPad read as the phone at rest in a bigger room, and it only
-        // takes the large title with it from outside the navigation container — so a baseline that
-        // applied it inside would assert an alignment the app does not have.
+        // Nothing clamps its width, because nothing in the app does either: through 0.7.0 both sides
+        // held this stack in a 420pt centred column, and the iPad baselines photographed a screen
+        // with white either side of it.
         assertScreenSnapshot(
             NavigationStack {
                 ServerDiscoveryView(
@@ -40,9 +39,7 @@ struct ServerDiscoveryViewSnapshotTests {
                     onSearchAgain: {},
                     onOpenSettings: {}
                 )
-            }
-            .frame(maxWidth: ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity),
+            },
             layout: layout,
             named: subject.name
         )

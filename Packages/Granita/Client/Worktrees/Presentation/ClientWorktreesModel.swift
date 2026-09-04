@@ -228,6 +228,21 @@ public final class ClientWorktreesModel {
         return listing.sections.flatMap(\.rows).first { $0.id == worktree }?.displayName ?? "This worktree"
     }
 
+    /// Which repository this worktree is a checkout of, for the one place the phone has to name it.
+    ///
+    /// **Read off the worktrees rather than off the rows, which is the opposite of `displayName`.**
+    /// A row's `projectName` is deliberately absent whenever the list is grouped by project — the
+    /// section heading is already saying it, and §2 drops the field from the row rather than printing
+    /// it twice. The raw worktree always carries it, and this is a fact about the checkout rather than
+    /// about how the list happens to be arranged.
+    ///
+    /// A word rather than an empty string when the worktree is not in hand, for the reason
+    /// `displayName` has one: an agent removes a worktree every day, so one can stop being in the
+    /// list between the tap and the push.
+    public func projectName(of worktree: WorktreeID) -> String {
+        worktrees.first { $0.id == worktree }?.projectName ?? "this project"
+    }
+
     /// Puts the Mac's own answer back in the list rather than the patch that was sent, because the
     /// display name is resolved over there: a row updated from the request would show the alias
     /// while the Mac had decided something else was the name.

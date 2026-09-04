@@ -168,9 +168,8 @@ struct PairingSpineSnapshotTests {
 /// It used to be a copy — the same stack, rebuilt here, with §5's 420pt measure hardcoded around it.
 /// That is why these baselines went on being green through the release that clamped an iPad's
 /// worktree list to a phone-shaped slot: the replica applied the measure unconditionally, so it
-/// photographed the defect and called it the truth. The condition now lives in
-/// `PairingSpineScreen` and this suite renders that screen, so the width a push lands at is asserted
-/// rather than assumed.
+/// photographed the defect and called it the truth. The measure is gone entirely now, and rendering
+/// the real screen is what makes that visible here rather than assumed.
 ///
 /// Everything the root supplies that reaches the network is replaced; what a Mac leads to is not.
 @MainActor
@@ -219,10 +218,6 @@ private func theSpine(
         // So the destination names itself, the way `PairingStep` is public so a step can be put on
         // the path. It appears in exactly one baseline. In the other four the Mac is not remembered,
         // and this sentence turning up in any of them is the picture saying so.
-        //
-        // **A stand-in still measures the measure.** It is the frame around the stack that changes,
-        // not anything this text does, so where these two lines wrap is what says whether the iPad
-        // is reading through a 420pt slot or through the window.
         readingARememberedMac: { mac in
             Text("The worktrees on \(mac.name), reached without pairing.")
                 .font(.title3)

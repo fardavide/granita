@@ -1,30 +1,28 @@
 import SwiftUI
 
 import ClientConnectionDomain
-import ClientConnectionUi
 
-/// The one navigation container this app has, and design §5's 420pt measure around it.
+/// The one navigation container this app has, and the two ways out of it.
 ///
-/// **It is a screen rather than four lines in the composition root, and that placement is the fix
-/// rather than tidying.** The measure is conditional — everything before a paired Mac lives in a
-/// 420pt centred column, and the worktree list past it is a split view that must have the whole
-/// window — so the container carries a *decision*, and a decision left in a `Main` module is untested
-/// code that no longer looks untested. It was left there, the condition was wrong for the route
-/// every reader actually takes, and it shipped: an iPad opening a Mac it had already paired with drew
-/// a 320pt sidebar and a 100pt detail column inside a 420pt slot, with white either side. See
-/// `.claude/docs/decisions.md`.
+/// **It is a screen rather than three lines in the composition root** because the path it drives
+/// carries a rule — a pairing that worked replaces the screens that produced it — and a rule left in
+/// a `Main` module is untested code that no longer looks untested. The rule itself is not here: it is
+/// `PairingSpineNavigation`, which is where a host test can walk a sequence a rendered baseline can
+/// only photograph one frame of. What is left in this body is declaration: the container and the two
+/// destinations.
 ///
-/// **The rule itself is not here** — it is `PairingSpineNavigation`, which is where a host test can
-/// walk the sequence a rendered baseline can only photograph one frame of. What is left in this body
-/// is declaration: the container, the measure read off that object, and the two destinations.
+/// **Nothing here clamps how wide the app may draw.** Through 0.7.0 everything before a paired Mac
+/// was held in a 420pt centred column, which put the large title and the rows in the middle of an
+/// iPad and left the window white either side of them. The screens use stock SwiftUI at the width
+/// they are given now. See `.claude/docs/decisions.md`.
 ///
 /// The two destinations past the spine are handed in, because both are built over a session pinned
 /// to one Mac and neither may be seen from here: a `Presentation` target sees its own `Ui` and any
 /// `Domain`, never a sibling `Presentation`. What this screen contributes is that they are the *same*
-/// two — the only two ways out of the spine — and that each is marked as such in the same three lines.
+/// two — the only two ways out of the spine — declared within four lines of each other.
 public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
 
-    /// Where the stack is, and how wide it may draw. Pinned here because the container is.
+    /// Where the stack is. Pinned here because the container is.
     @State private var navigation: PairingSpineNavigation
 
     private let model: ClientConnectionModel
@@ -34,7 +32,7 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
 
     /// - Parameter path: where the stack opens. The app opens at the Mac list; the snapshot suite
     ///   opens at whichever push it is photographing, which is what lets a baseline assert that a
-    ///   value put on this path comes back as a screen — and now, at what width.
+    ///   value put on this path comes back as a screen.
     public init(
         model: ClientConnectionModel,
         phone: ThisPhone,
@@ -59,24 +57,11 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
                 // A Mac this phone has paired with before opens its worktrees, and nothing in
                 // between: the Keychain read, the Bonjour lookup and the pinned session all happen
                 // behind the list's own loading state.
-                readingARememberedMac: { pastTheSpine(readingARememberedMac($0)) }
+                readingARememberedMac: readingARememberedMac
             )
             // **The one destination the discovery screen does not declare for itself**, because the
             // value on the path is not one of its rows: it is the Mac a pairing just produced.
-            .navigationDestination(for: PairedMac.self) { pastTheSpine(readingAJustPairedMac($0)) }
+            .navigationDestination(for: PairedMac.self, destination: readingAJustPairedMac)
         }
-        .frame(maxWidth: navigation.contentWidth)
-        .frame(maxWidth: .infinity)
-    }
-
-    /// Marks a destination as the far side of the pairing spine, which is what releases the measure.
-    ///
-    /// **Written once and applied to both destinations in adjacent lines**, which is the only part of
-    /// this that is load-bearing: the defect was not the flag but that one route set it and the other
-    /// did not, in two modules, where nothing made the omission visible. A destination added here
-    /// without this call is a destination in the wrong measure — and it is now a three-word omission
-    /// on the line above its neighbour rather than a missing assignment a module away.
-    private func pastTheSpine(_ screen: some View) -> some View {
-        screen.onAppear(perform: navigation.openedAWorktreeList)
     }
 }
