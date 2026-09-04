@@ -122,19 +122,28 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
 /// `Color.clear` in a `.background` takes no layout part and draws nothing, so the raster is
 /// unchanged; the 86 baselines passing with this in place is the check on that.
 private func probingSafeArea(of view: some View, named subject: String) -> some View {
-    view.background {
-        GeometryReader { proxy in
-            Color.clear.onAppear {
-                record(
-                    "[snapshot]"
-                        + " subject=\(subject)"
-                        + " size=\(Int(proxy.size.width))x\(Int(proxy.size.height))"
-                        + " safeTop=\(Int(proxy.safeAreaInsets.top))"
-                        + " safeBottom=\(Int(proxy.safeAreaInsets.bottom))"
-                )
-            }
-        }
+    view.onGeometryChange(for: Reading.self) { proxy in
+        Reading(height: proxy.size.height, bottom: proxy.safeAreaInsets.bottom)
+    } action: { reading in
+        // **Every layout pass, not just the first.** The first version reported from `onAppear` and
+        // was measuring the wrong moment: it read `the-review-is-open-iPad-dark` at 1194x511 with a
+        // 261pt bottom inset on CI, and that render then *passed* its baseline — so the geometry
+        // `onAppear` sees is a transient the raster does not photograph. A sequence says which
+        // reading was the last one before the shutter; a single reading cannot.
+        record(
+            "[snapshot]"
+                + " subject=\(subject)"
+                + " height=\(Int(reading.height))"
+                + " safeBottom=\(Int(reading.bottom))"
+        )
     }
+}
+
+/// One layout pass's answer to "how tall am I, and how much is spoken for at the bottom".
+private struct Reading: Equatable {
+
+    let height: CGFloat
+    let bottom: CGFloat
 }
 
 /// Where the probe's readings go.
@@ -231,4 +240,22 @@ func assertScreenSnapshot(
         line: line,
         column: column
     )
+
+    // **The keyboard is put away here rather than before the next render, and the difference is how
+    // long it has to withdraw.** Dismissed at the *start* of the next assertion it has nothing;
+    // dismissed here it has that assertion's whole image comparison, which is the slowest thing in
+    // the loop.
+    //
+    // Measured rather than assumed: on CI `the-review-is-open-iPad-dark` lays out at 1194x511 with a
+    // 261pt bottom inset, and on this machine the same render is 1194x738 with 34. A software
+    // keyboard comes up on the runner and does not come up here, which is the one hard difference
+    // between the two machines in this whole failure.
+    //
+    // **No run loop is spun.** Doing that took 22 unrelated baselines down with it: spinning the main
+    // run loop mid-assertion is an invitation for another suite's case to take the shared window,
+    // which is the hazard this is trying to close rather than a way to close it.
+    UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap(\.windows)
+        .forEach { $0.endEditing(true) }
 }
