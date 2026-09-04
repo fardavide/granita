@@ -94,6 +94,19 @@ the instruction bar and the review capsule are one floating pill at one position
 and 38 from the bottom, where they had been a full-width bar and a padded corner button. All in
 [`decisions.md`](decisions.md), with why the tint does not contradict §7.3's rejection of one.
 
+**And the coverage debt that had been on "Waiting on Davide" for five slices is settled**, because §7
+made it cost a fifth pull request: *"We should exclude untestable closure from tests coverage."* The
+Snapshot row's **regions** column no longer counts a region belonging only to a closure that returns
+`()` — an action, an `onChange`, a `.task` — because such a closure draws nothing and a baseline
+presses nothing, which is the `UNREACHABLE_FILES` bar of *unrunnable by construction* applied at the
+one grain that can express it. **Lines are untouched and still judged**, and that asymmetry is the
+finding rather than a shortcut: a closure written inline shares its lines with the view expression
+containing it, so the exclusion moves 200 of 1695 regions and 7 of 5043 lines. The predicate reads
+`swift-demangle` and *parses* it, because a ViewBuilder declared inside a void method also has `-> ()`
+in its name. What it costs is recorded in [`decisions.md`](decisions.md) and answered as a rule in the
+`swift-testing` skill: an action closure's body is now judged by nothing, so it holds one call into
+the model, and a closure that grows a branch has outgrown a view.
+
 **What no test kind here can answer is whether the aim works.** A snapshot renders a gutter and never
 touches it, so *does a tap on 18pt of strip open the composer on the row the reader meant* is a
 question for a thumb. It is the whole feature's premise and it is on the device afternoon's list,
@@ -1122,13 +1135,18 @@ Smaller things still open in these modules:
   removing a declaration to find out which container claims a tap is how this app shipped a row that
   did nothing. In [`decisions.md`](decisions.md).
 
-- **The coverage gate's structural debt, which is now costing pull requests.** An action closure in a
-  view body is uncoverable by every test kind that runs here, so a slice that adds controls lowers
+- ~~**The coverage gate's structural debt, which is now costing pull requests.** An action closure in
+  a view body is uncoverable by every test kind that runs here, so a slice that adds controls lowers
   the Snapshot row whatever else it does — 0.3.1 lost one region to a Copy button and 0.4.0 is short
-  by 4 regions and 3 lines after five. The genuine fallbacks nearby have been found and covered;
-  what is left is either the `ui` target — which needs the Accessibility grant **and** an
-  `Apps/GranitaMobileUiTests` that has never existed — or Davide deciding the row may hold rather
-  than climb. Neither is a call to make from inside a pull request.
+  by 4 regions and 3 lines after five.~~ Answered on 4 September 2026, after §7 made it cost a fifth
+  pull request: *"We should exclude untestable closure from tests coverage."* The Snapshot row's
+  **regions** column no longer counts a region that belongs only to a closure returning `()` — it
+  draws nothing, so a baseline cannot reach it, which is the `UNREACHABLE_FILES` bar at a finer
+  grain. Lines are untouched and still judged, because such a closure shares its lines with the view
+  it sits in: the exclusion moves 200 of 1695 regions and 7 of 5043 lines. The cost is that an action
+  closure's body is now judged by nothing, which the `swift-testing` skill answers with a rule — one
+  call into the model, and a closure that grows a branch has outgrown a view. In
+  [`decisions.md`](decisions.md).
 
 - **The Accessibility grant, under System Settings › Privacy & Security › Accessibility.** It is the
   last thing between `make ui-tests-mac` and a green run, and it is now blocking **eleven** shipped

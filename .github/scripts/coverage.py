@@ -33,6 +33,8 @@ import argparse
 import json
 import os
 import pathlib
+import re
+import subprocess
 import sys
 
 # Order is the report's order, and "all" is last because it is the summary line.
@@ -223,8 +225,29 @@ UNREACHABLE_FILES = {
 # It does not flatter the number, which is the test the four renames above are held to: the row reads
 # 95.978% where the parallel sample it replaces read up to 96.121%. What is lost is coverage that was
 # never the tests' to claim — lines a scheduler reached before something was torn down.
+# The sixth rename, and the first that narrows the views scope *within* a file rather than by file.
+#
+# A closure that returns `()` is an action — a `Button`'s, an `onChange`, a `.task`, an `onAppear`.
+# It draws nothing, and a baseline presses nothing, so it is outside the question this row asks
+# rather than merely untested by it: "of the code that draws screens, how much does a baseline put on
+# screen" has no answer for code that puts nothing on screen. It is the same bar UNREACHABLE_FILES
+# meets — unrunnable by this kind of test *by construction* — applied at the only granularity that
+# can express it, because an action closure shares a file, and usually a line, with the view it sits
+# in.
+#
+# **It is the regions column alone, and that is a measurement rather than a shortcut.** Over the
+# whole views scope on 4 September 2026 the exclusion took 200 of 1695 regions out of the
+# denominator and 7 of 5043 lines: a closure written inline is spanned by the view expression that
+# contains it, so its lines are the body's lines and removing them would remove the body. Lines are
+# therefore untouched and still judged exactly as before — only the region number changes basis.
+#
+# **What it costs, stated rather than discovered later.** View code is judged by this row and no
+# other, so an action closure's body is now judged by nothing. That is bounded by an architecture
+# rule the project already has and review already enforces: a screen's action closure is one call
+# into a model, and the model is judged by the Unit row. A closure that grows a branch has outgrown a
+# view, and moving it is the fix rather than counting it here.
 DEFAULT_SCOPE = "package"
-VIEWS_SCOPE = "views-and-screens-only"
+VIEWS_SCOPE = "views-and-screens-no-action-closures"
 HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-no-camera-serial"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
@@ -294,15 +317,133 @@ def empty() -> dict:
     return {"covered": 0, "count": 0}
 
 
-def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
+# --- action closures -----------------------------------------------------------------------------
+
+# llvm-cov tags each region with what it is. Only a code region carries a counter the summary counts;
+# the rest are expansions, skipped ranges, gaps and branches, and folding them in would subtract
+# regions the file summary never added.
+CODE_REGION = 0
+
+# `closure #3`, `implicit closure #1`, `autoclosure #2` — every form Swift's demangler prints for a
+# closure literal. A named function never matches, which is the line the exclusion stops at: a method
+# has a name, so a test can call it, and a closure literal has neither a name nor a seam.
+CLOSURE = re.compile(r"^(?:implicit )?(?:auto)?closure #\d+ ")
+
+
+def is_action_closure(demangled: str) -> bool:
+    """Whether a demangled name is a closure that returns `()`, and so draws nothing.
+
+    **Parsed rather than matched with a regular expression, and the parameter list is scanned to its
+    own closing bracket.** A demangled closure carries its enclosing context after ` in `, so a name
+    holding `-> ()` anywhere is not the same as a closure returning `()`: a ViewBuilder declared
+    inside a method that returns nothing reads `closure #1 () -> SwiftUI.Text in …configure() -> ()`,
+    and a predicate that looked for the arrow anywhere would drop a view out of the denominator. A
+    closure taking a closure puts an arrow inside its parameters for the same reason.
+    """
+    prefix = CLOSURE.match(demangled)
+    if not prefix:
+        return False
+    rest = demangled[prefix.end():]
+    # `@Swift.MainActor` and friends sit between the closure and its parameter list.
+    while rest.startswith("@"):
+        _, _, rest = rest.partition(" ")
+    if not rest.startswith("("):
+        return False
+    depth = 0
+    for index, character in enumerate(rest):
+        depth += (character == "(") - (character == ")")
+        if depth == 0:
+            rest = rest[index + 1:]
+            break
+    else:
+        return False
+    for effect in (" async", " throws"):
+        if rest.startswith(effect):
+            rest = rest[len(effect):]
+    return rest == " -> ()" or rest.startswith(" -> () in ")
+
+
+def demangle(names: list[str]) -> list[str]:
+    """Swift's own demangler, one process for the whole list.
+
+    Never a hand-written mangling parser: the grammar is an implementation detail of the compiler
+    that ships beside it, and reading it wrongly would silently exclude drawing code. The tool is
+    already a dependency of the job that calls this — it sits beside the `xcrun llvm-cov` that
+    produced the export being read.
+    """
+    if not names:
+        return []
+    result = subprocess.run(
+        ["xcrun", "swift-demangle", "--compact"],
+        input="\n".join(names),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    demangled = result.stdout.splitlines()
+    if len(demangled) != len(names):
+        raise RuntimeError(
+            f"swift-demangle answered {len(demangled)} names for {len(names)} asked."
+        )
+    return demangled
+
+
+def action_closure_regions(data: dict, scoped: set[str], demangle) -> dict[tuple, int]:
+    """The region spans that occur in an action closure and in nothing else, and how often each ran.
+
+    **A span the enclosing body also reports stays.** llvm-cov maps one piece of source into several
+    records, so a region reached through a closure is frequently the body's region as well; taking it
+    out on the closure's word alone would remove drawing code from the denominator.
+
+    Only records that touch a file in scope are demangled. A real export carries around twenty
+    thousand of them and the views scope is some forty files, so the filter is what keeps this one
+    short subprocess rather than a pass over the whole binary.
+    """
+    records = {}
+    for record in data.get("functions", []):
+        if record["name"] in records:
+            continue
+        if any(name in scoped for name in record["filenames"]):
+            records[record["name"]] = record
+    if not records:
+        return {}
+
+    names = list(records)
+    classified = dict(zip(names, demangle(names)))
+    alone, shared = {}, set()
+    for name, record in records.items():
+        is_action = is_action_closure(classified[name])
+        for region in record["regions"]:
+            start_line, start_column, end_line, end_column, count, file_index = region[:6]
+            if region[7] != CODE_REGION:
+                continue
+            filename = record["filenames"][file_index]
+            if filename not in scoped:
+                continue
+            span = (filename, start_line, start_column, end_line, end_column)
+            if is_action:
+                alone[span] = max(alone.get(span, 0), count)
+            else:
+                shared.add(span)
+    return {span: count for span, count in alone.items() if span not in shared}
+
+
+def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE, demangle=demangle) -> dict:
     """Sum one llvm-cov export down to one counter per kind, over shipped package sources only.
 
     SwiftPM writes this format itself and `xcrun llvm-cov export` writes the same one, so a host
     `swift test` pass and a simulator `xcodebuild test` pass fold in through the same code.
+
+    The views scope then takes its action closures back out of the region counter. It is a
+    subtraction from the file summaries rather than a total recomputed from the function records —
+    both because the summary is what every other row is taken from, and because an export carrying no
+    function records must subtract nothing rather than fall back to zero.
     """
     export = json.loads(path.read_text())
+    data = export["data"][0]
     totals = {counter: empty() for counter in COUNTERS}
-    for entry in export["data"][0]["files"]:
+    scoped = set()
+    for entry in data["files"]:
         name = entry["filename"]
         # `.build` holds resolved dependencies and generated sources, both of which sit under the
         # package marker and neither of which is ours.
@@ -315,12 +456,22 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE) -> dict:
             continue
         if scope == HOST_REACHABLE_SCOPE and not is_reachable_path(relative):
             continue
+        scoped.add(name)
         for counter in COUNTERS:
             measured = entry["summary"].get(counter)
             if not measured:
                 continue
             totals[counter]["covered"] += measured["covered"]
             totals[counter]["count"] += measured["count"]
+
+    if scope == VIEWS_SCOPE:
+        for count in action_closure_regions(data, scoped, demangle).values():
+            totals["regions"]["count"] -= 1
+            # Covered or not, it leaves: the rule is about the kind of code, not about whether a
+            # baseline happened to reach it. Dropping only the uncovered ones would be a rule that
+            # flatters every number it touches.
+            if count:
+                totals["regions"]["covered"] -= 1
     return totals
 
 
@@ -553,10 +704,12 @@ def render(args: argparse.Namespace) -> int:
         "<sub>No number in the table may fall below the last `main` run — every row, not just the "
         "total. Regions rather than branches because swiftc emits no branch coverage; a region is "
         "an `if`, a `guard`, a `case`, a ternary or a closure body. The Snapshot row is measured "
-        "over the view layers alone, because a rendered view executes no repository and no parser; "
-        "the Unit and All rows are measured over what a host test can reach, which excludes view "
-        "bodies and the composition roots. Kinds are directories; see the `swift-testing` "
-        "skill.</sub>",
+        "over the view layers alone, because a rendered view executes no repository and no parser, "
+        "and its regions column leaves out the action closures inside them — a closure returning "
+        "`()` draws nothing, so a baseline cannot reach it; its lines stay counted, because such a "
+        "closure shares them with the view it sits in. The Unit and All rows are measured over what "
+        "a host test can reach, which excludes view bodies and the composition roots. Kinds are "
+        "directories; see the `swift-testing` skill.</sub>",
     ]
 
     text = "\n".join(lines) + "\n"

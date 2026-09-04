@@ -11,6 +11,7 @@ section. Read this when a row falls, when a scope looks wrong, or before proposi
 - Why moving snapshot tests into the package would not fix a number
 - What the Unit and All rows are measured over
 - What the Snapshot row is measured over — including the 2026-08-23 measurement
+- Why the Snapshot regions column leaves out action closures
 - The redefinitions, and the one that was wrong
 - Why a redefinition un-judges a row
 - Why the denominators differ
@@ -82,10 +83,39 @@ it is for: of the code that draws screens, how much does a baseline put on scree
 **The Ui kind is not scoped**, because a behavioural test drives the real app and reaching a
 repository is exactly what it does.
 
+## Why the Snapshot regions column leaves out action closures
+
+A closure that returns `()` is an action — a `Button`'s, an `onChange`, a `.task`, an `onAppear`. It
+draws nothing, and a baseline presses nothing, so it is outside the question this row asks rather
+than merely untested by it. Same bar as `UNREACHABLE_FILES`: unrunnable by this kind of test *by
+construction*, applied at the only granularity that can express it, because an action closure shares
+a file — and usually a line — with the view it sits in.
+
+**A named method returning `()` is not an action, and that is where the line is drawn.** A method has
+a name, so a test can call it; a closure literal has neither a name nor a seam.
+
+**Regions only, and that is measured rather than assumed.** Over the whole views scope on
+2026-09-04, the exclusion took **200 of 1695 regions** out of the denominator and **7 of 5043
+lines**. A closure written inline is spanned by the view expression containing it, so its lines are
+the body's lines and removing them would remove the body. Lines stay counted and stay judged; only
+the region number changed basis, 87.8% → 97.5%.
+
+The predicate reads `xcrun swift-demangle --compact` and **parses** the result — it does not match
+`-> ()` anywhere in the string. A demangled closure carries its enclosing context after ` in `, so
+`closure #1 () -> SwiftUI.Text in …configure() -> ()` is a ViewBuilder inside a void method, and a
+looser test would drop a view out of the denominator. The parameter list is scanned to its own
+closing bracket for the same reason: a closure taking a closure puts an arrow inside its parameters.
+
+**What it costs, and why that is acceptable.** View code is judged by this row and no other, so an
+action closure's body is now judged by nothing. That is bounded by an architecture rule the project
+already has: a screen's action closure is one call into a model, and the model is judged by the Unit
+row. **A closure that grows a branch has outgrown a view** — move it to the model, where it is
+judged, rather than arguing it back into this denominator.
+
 ## The redefinitions, and the one that was wrong
 
-Three of the four redefinitions recorded in `decisions.md` were corrections and one proposal was
-not — it would have excluded models to fix a number while a screen was doing its own I/O.
+Every redefinition recorded in `decisions.md` so far was a correction, and one *proposal* was not —
+it would have excluded models to fix a number while a screen was doing its own I/O.
 
 The tell is whether the code the row cannot reach is code that *should not be there*: fix that
 first, then ask whether the predicate is still wrong. Often it is, and the case for it is far

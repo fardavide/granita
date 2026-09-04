@@ -26,7 +26,7 @@ rule it supports.
   [references/golden-fixtures.md](references/golden-fixtures.md)
 - Snapshot tolerance values, the drift measurements, and the recording procedure per platform: see
   [references/snapshots.md](references/snapshots.md)
-- What each coverage row is measured over, and the four recorded redefinitions: see
+- What each coverage row is measured over, and the recorded redefinitions: see
   [references/coverage-report.md](references/coverage-report.md)
 
 ## Framework — Swift Testing, never XCTest
@@ -152,13 +152,22 @@ ternary, **or a closure body**. So write the test as you write the code, for eac
   subject of its own** — the states you photograph are the states you cover, and a state you argued
   for in a comment but never rendered is a state nothing holds you to.
 
-**The one you cannot fix with a test: an action closure in a screen.** `GranitaSettingsScreen`'s
-uncovered regions are, every one of them, closures like `onRestart: { Task { await model.restart() } }`.
-A snapshot renders a view and never invokes its actions, so adding a control to that screen lowers
-the Snapshot regions row and no test this project can currently run will lift it — only the `Ui`
-kind would, and that target cannot run without an Accessibility grant. **Do not respond by
-restructuring the screen or by widening a scope**: read the export, confirm that is what you are
-looking at, and say so to Davide. It is a known structural gap, not a thing you did wrong.
+**An action closure in a view is no longer counted, and that has a rule attached.** A snapshot
+renders a view and never presses its controls, so a closure like
+`onRestart: { Task { await model.restart() } }` was uncovered by construction and every control added
+to a screen lowered the Snapshot regions row. Since 2026-09-04 the regions column leaves those out:
+a closure returning `()` draws nothing, so it is outside what that row asks. Its **lines are still
+counted**, because a closure written inline shares them with the view it sits in.
+
+So the rule that replaces "read the export and say so to Davide":
+
+- **Keep an action closure to one call into the model.** Its body is now judged by nothing — the
+  views scope is the only row that sees view code, and this takes it out of that row.
+- **A closure that grows a branch has outgrown a view.** Move it to the model, where the Unit row
+  judges it. Do not argue it back into the denominator, and do not leave a `guard` or a `??` inside a
+  `Button`'s action where nothing will ever hold you to it.
+- The exclusion is closures, not methods: a named method in a `Ui` file **is** still counted, because
+  it has a name and a test can call it.
 
 ## Test kinds, and the coverage gate
 
@@ -185,12 +194,13 @@ for the first time is not judged — it joins on the next `main` run.
   code the row cannot reach is code that *should not be there*: fix that first, then ask whether the
   predicate is still wrong.
 - **The bar for `UNREACHABLE_FILES` is "unrunnable by construction", never "hard to test".** Adding
-  a name there is a redefinition, so it comes with a rename of the scope string.
+  a name there is a redefinition, so it comes with a rename of the scope string. The Snapshot row's
+  action-closure exclusion meets the same bar at a finer grain, and paid the same price.
 - **The rows have different denominators, so do not subtract them.** Only `All tests` spans the
   project. Coverage rising after tests are deleted is the signature of this, not of an improvement.
 - **Changing what a row measures un-judges it for one run.** Redefine deliberately, and expect one
   run with that row unenforced.
 
 What each row is measured over and why, the 2026-08-23 measurement behind the Snapshot row's scope,
-the denominator hazard in full, and the four recorded redefinitions including the one that was
+the denominator hazard in full, and the recorded redefinitions including the one that was
 wrong: [coverage-report.md](references/coverage-report.md).
