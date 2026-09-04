@@ -367,13 +367,13 @@ struct ClientViewerModelTests {
         scenario.sut.choose(scenario.fileIds[5])
 
         // then
-        #expect(scenario.sut.isShowingSelector)
+        #expect(scenario.sut.sheet == .selector)
 
         // and when — the reader pulls it back down themselves, which is the only thing that shuts it
         scenario.sut.showSelector(false)
 
         // then
-        #expect(scenario.sut.isShowingSelector == false)
+        #expect(scenario.sut.sheet == nil)
     }
 
     @Test
@@ -390,7 +390,7 @@ struct ClientViewerModelTests {
 
         // then — halved rather than dismissed: the list is still up, which is what §3 keeps it for.
         #expect(scenario.sut.drawer == .half)
-        #expect(scenario.sut.isShowingSelector)
+        #expect(scenario.sut.sheet == .selector)
     }
 
     @Test
@@ -908,7 +908,16 @@ private struct Scenario {
             refusesTheFirstRead: refusesTheFirstRead,
             alsoAnswering: stranger
         )
-        sut = ClientViewerModel(worktree: aWorktree, repository: repository)
+        // The review is beside the point in every test here and is asserted in
+        // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
+        sut = ClientViewerModel(
+            worktree: aWorktree,
+            worktreeName: "TLS pinning",
+            projectName: "granita",
+            repository: repository,
+            commentStore: FakeReviewCommentStore(),
+            pasteboard: FakeReviewPasteboard()
+        )
     }
 }
 

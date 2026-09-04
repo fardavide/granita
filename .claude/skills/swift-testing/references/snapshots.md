@@ -17,6 +17,59 @@ A SwiftPM test target is hostless: there is no key window, so a SwiftUI view lay
 nothing and renders blank. `drawHierarchyInKeyWindow: true` needs a real host, which is why the
 target sets `TEST_HOST`.
 
+## A keyboard is geometry, and it lands on a render nobody can predict
+
+`drawHierarchyInKeyWindow: true` renders through the host app's **one real window**, and in that mode
+swift-snapshot-testing ignores the layout config's declared safe area entirely — it resizes the live
+window and lays out against whatever safe area that window reports. A software keyboard is therefore
+in the layout. It never appears in the raster, because it lives in its own window. **It appears as a
+shorter screen.**
+
+Any view that takes focus raises one: `ReviewSheetView`, `PairingWordsView`, `CommentComposerView`,
+`WorktreeRenameSheet`. The rise is **asynchronous**, and this is the part that matters: it does not
+land on the next render, it lands on **whichever render is laying out when it arrives**. That is a
+different one on every machine and after every change.
+
+It cost five CI round trips on 2026-09-04. `a-comment-adrift-iPhone-light` failed on CI byte-identically
+across three runs while every local run was green — because locally the keyboard landed on
+`a-suggestion-exists-iPad-dark`, where the capsule does not exist at regular width and the page
+artefact is black on black, so it corrupted a render that structurally cannot show it.
+
+One short frame produced two symptoms that read as unrelated defects: the review capsule is an
+`.overlay` on `ContinuousDiffView`'s frame so it drew 387pt up its screen; the page colour is one
+`.background` on that same frame so it stopped before the 10pt inter-file gap, which is `Color.clear`
+and has no colour of its own; and **no row moved**, because a scroll view absorbs a bottom safe area
+as a *content* inset rather than by clipping.
+
+### What the harness does now
+
+- **Every suite is `.serialized`** — sixteen were not, including all four that raise keyboards.
+- **The keyboard is drained on both sides of every render**, dismissing on each turn and requiring
+  three consecutive quiet turns. Draining before the render is what catches a late rise; draining
+  after cannot. It is only safe because of the serialization.
+- **A probe logs any render laid out against a bottom inset past 40pt**, which no real safe area
+  reaches. The local run should print nothing.
+
+### Four fixes that were wrong, and what each one teaches
+
+- `.ignoresSafeArea(.keyboard)` on the subject — the subject is wrapped in a `NavigationStack`, so it
+  lands on the wrapper and never reaches the scroll view. It moved the inset from 261 to 319 and onto
+  a different render.
+- Draining *before* the render while suites were unserialised — 22 unrelated baselines went red,
+  because spinning the main run loop lets another suite take the shared window mid-assertion.
+- `endEditing` after each render — the rise was already queued and arrived anyway.
+- `drawHierarchyInKeyWindow: false` — places the capsule correctly, and is still wrong: it rasterises
+  through `layer.render`, which does not draw `UIVisualEffectView`, so the "3 files" chip vanishes and
+  the navigation title renders pale grey on grey.
+
+### Three rules worth more than the fix
+
+- **A green local run is not evidence of absence** when which render catches the fault is luck.
+- **A probe that reports from `onAppear` measures the wrong moment.** It read `safeBottom=4` for a
+  render that was laid out at 261. Report from `onGeometryChange` — every pass, not the first.
+- **A dark baseline cannot catch a missing page.** `systemBackground` and `systemGroupedBackground`
+  are *both* black in dark mode. Only the light renders witness it.
+
 ## Why the suite must be `@MainActor`
 
 Swift Testing runs `@Test` functions off the main actor, and rendering touches UIKit view

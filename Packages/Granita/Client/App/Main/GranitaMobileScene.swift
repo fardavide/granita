@@ -7,6 +7,7 @@ import UIKit
 import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
+import ClientViewerData
 import ClientViewerPresentation
 import ClientWorktreesData
 import ClientWorktreesPresentation
@@ -131,7 +132,7 @@ public struct GranitaMobileScene: Scene {
                 preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
                 now: Date.init
             )
-        ) { worktree, displayName in
+        ) { worktree, displayName, projectName in
             // **The second link in this app whose destination is a module away**, and it is here for
             // the same reason the first is: `ClientWorktreesPresentation` may see any `Domain` and
             // its own `Ui`, never a sibling `Presentation`. The sidebar declares the destination — it
@@ -145,7 +146,17 @@ public struct GranitaMobileScene: Scene {
             // model resolves it.
             WorktreeDiffScreen(
                 worktreeName: displayName,
-                model: ClientViewerModel(worktree: worktree, repository: repository)
+                model: ClientViewerModel(
+                    worktree: worktree,
+                    worktreeName: displayName,
+                    // Resolved beside the display name for the same reason: this closure runs on
+                    // every evaluation over a worktrees model that has read nothing, so a name looked
+                    // up here would be the fallback word on every worktree there is.
+                    projectName: projectName,
+                    repository: repository,
+                    commentStore: UserDefaultsReviewCommentStore(defaults: .standard),
+                    pasteboard: UiKitReviewPasteboard()
+                )
             )
         }
     }

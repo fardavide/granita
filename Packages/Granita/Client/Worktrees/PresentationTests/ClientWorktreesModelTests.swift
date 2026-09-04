@@ -669,6 +669,51 @@ struct ClientWorktreesModelTests {
         #expect(name == "This worktree")
     }
 
+    @Test
+    func `given a worktree in the list when its project is asked for then it is the repository's name`() async {
+        // given — the one thing the exported review's first line names that nothing else on the diff
+        // screen has: which repository this checkout is of.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+
+        // when
+        let project = scenario.sut.projectName(of: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then
+        #expect(project == "granita")
+    }
+
+    @Test
+    func `given the list is grouped by project when a project is asked for then the row's blank does not win`() async {
+        // given — **the reason this reads the worktrees rather than the rows.** In grouped mode the
+        // section heading is already saying the project, so §2 drops the field from the row and
+        // `WorktreeListRow.projectName` is deliberately nil there. Read off the row, every review
+        // exported from a grouped list would name no repository at all.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        scenario.sut.show(.groupedByProject)
+
+        // when
+        let project = scenario.sut.projectName(of: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then
+        #expect(project == "granita")
+    }
+
+    @Test
+    func `given a worktree that left the list when its project is asked for then a word still comes back`() async {
+        // given — read, chosen, and gone from the next read before the screen it opened was drawn.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+
+        // when
+        let project = scenario.sut.projectName(of: WorktreeID(rawValue: "w-vanished"))
+
+        // then — it lands in the first line of a document a reader pastes to an agent, so absence has
+        // to be a word rather than an empty gap after a comma.
+        #expect(project == "this project")
+    }
+
     // MARK: -
 
     private struct Scenario {

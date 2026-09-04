@@ -15,7 +15,7 @@ import Testing
 /// Main-actor isolated, and it must be. Rendering off the main actor traps in a way that restarts the
 /// test host, and the retry then reports "0 tests passed" — a suite that goes green having rendered
 /// nothing.
-@Suite("File selector")
+@Suite("File selector", .serialized)
 @MainActor
 struct FileSelectorViewSnapshotTests {
 

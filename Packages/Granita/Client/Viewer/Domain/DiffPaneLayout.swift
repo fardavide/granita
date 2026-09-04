@@ -33,18 +33,69 @@ public struct DiffPaneLayout: Hashable, Sendable {
     /// The fold itself, offered only where a column could exist and there is something to put in it.
     public let showsSelectorColumnToggle: Bool
 
+    /// The review beside the code, which is design §7.7's call 6.
+    ///
+    /// **It takes the tree's place rather than sitting next to it, and the arithmetic is the whole
+    /// argument.** The tree is 320pt and an iPad Pro 11″ in landscape is 1194: two columns leave the
+    /// code about 108 characters at 12pt, and three leave it about 60, which is not a diff viewer.
+    /// Folding the tree when the review opens costs nothing and needs no new control, because the
+    /// fold already exists.
+    public let showsReviewColumn: Bool
+
+    /// The floating capsule, which is the phone's only way in.
+    ///
+    /// **Absent wherever a column could be**, because a review already on screen does not need a
+    /// button announcing it — and at regular width the count lives in the toolbar instead, which is
+    /// the one place folding cannot take it away from.
+    public let showsReviewCapsule: Bool
+
+    /// The toolbar's bubble-and-count, which is what replaces the capsule at regular width.
+    public let showsReviewToggle: Bool
+
     public let codePointSize: CGFloat
 
-    public init(fitsSelectorColumn: Bool, isSelectorColumnOpen: Bool, hasFilesToSelect: Bool) {
-        let showsColumn = fitsSelectorColumn && isSelectorColumnOpen
+    public init(
+        fitsSelectorColumn: Bool,
+        isSelectorColumnOpen: Bool,
+        hasFilesToSelect: Bool,
+        isReviewOpen: Bool,
+        hasComments: Bool
+    ) {
+        // **The review wins the slot while it is open**, which is what makes "opening the review
+        // folds the tree" one rule rather than two pieces of state that can disagree about which
+        // column is there.
+        let showsReview = fitsSelectorColumn && isReviewOpen
+        showsReviewColumn = showsReview
+        // A capsule where no column can be, a toolbar toggle where one can. Never both — and neither
+        // until something has been written, which is design §7.4's "a button will appear" taken
+        // literally. **The count belongs here rather than in an `if` on the screen**, because whether
+        // a control is offered is this type's whole job and a rule that lives at a call site is one
+        // only a photograph can be asked about.
+        showsReviewCapsule = fitsSelectorColumn == false && hasComments
+        // **`|| isReviewOpen`, and that clause is the way out of a column that has emptied.** The
+        // column form carries no Close of its own — the toggle is the way back — so gating the toggle
+        // on `hasComments` alone stranded a reader who deleted their last comment from inside it: the
+        // chip went, the column stayed, and nothing on screen could shut it.
+        showsReviewToggle = fitsSelectorColumn && (hasComments || isReviewOpen)
+        let showsColumn = fitsSelectorColumn && isSelectorColumnOpen && showsReview == false
         showsSelectorColumn = showsColumn
         // **Never both, and never neither while there are files.** The button opens what the column
         // already shows, so offering both is two controls for one job; and withholding both while a
         // width could show the tree would make the fold a one-way door.
-        showsFilesButton = hasFilesToSelect && showsColumn == false
+        //
+        // **It also goes while the review has the column, and that is not tidiness.** There is one
+        // sheet, so opening the selector closes the review — which frees the slot, so the tree column
+        // slid back in *and* the same tree presented itself as a drawer on top of it. Two file lists,
+        // from one press. Shutting the review is the way to the tree here, and it is one tap.
+        showsFilesButton = hasFilesToSelect && showsColumn == false && showsReview == false
         // A toggle for a layout that cannot exist, or for a list with no rows, is a control that
         // does nothing — which is the one thing this project will not ship.
-        showsSelectorColumnToggle = fitsSelectorColumn && hasFilesToSelect
+        //
+        // **And that is why it goes while the review has the column.** Folding a tree that the review
+        // is already standing in front of changes nothing a reader can see: the button flipped its
+        // own label and the screen did not move. Absent rather than dead — and nothing is lost,
+        // because shutting the review brings the tree back by itself.
+        showsSelectorColumnToggle = fitsSelectorColumn && hasFilesToSelect && showsReview == false
         // **Taken from the room, not from the fold.** Folding the tree gives the code more space;
         // taking the point size down with the column would reflow every row of the file the reader
         // is looking at in exchange for nothing.
