@@ -34,7 +34,7 @@ struct HealthRouteTests {
         let health = try await scenario.health()
 
         // then
-        #expect(health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2"))
+        #expect(health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2", wakeAddresses: []))
     }
 
     @Test
@@ -46,6 +46,34 @@ struct HealthRouteTests {
         #expect(health.name == Branding.productName)
         #expect(health.apiVersion == Branding.apiVersion)
     }
+
+    // MARK: - Waking
+
+    @Test
+    func `given a Mac that knows its hardware addresses when getting health then the answer carries them`() async throws {
+        // given — two, and deliberately unalike, so an implementation that reported only the first
+        // or sorted them would fail here rather than pass by coincidence.
+        let scenario = Scenario(serverVersion: "0.5.0", wakeAddresses: ["3e:2d:c6:c3:4b:fe", "a4:83:e7:11:22:33"])
+
+        // when
+        let health = try await scenario.health()
+
+        // then
+        #expect(health.wakeAddresses == ["3e:2d:c6:c3:4b:fe", "a4:83:e7:11:22:33"])
+    }
+
+    @Test
+    func `given a Mac that knows no hardware address when getting health then the answer carries an empty list`() async throws {
+        // given
+        let scenario = Scenario(serverVersion: "0.5.0", wakeAddresses: [])
+
+        // when
+        let health = try await scenario.health()
+
+        // then — empty rather than absent. A phone reads absent as "this Mac is too old to say" and
+        // empty as "this Mac has nothing that can be woken", and it does different things about each.
+        #expect(health.wakeAddresses == [])
+    }
 }
 
 // MARK: -
@@ -54,8 +82,12 @@ private struct Scenario {
 
     let sut: any ApplicationProtocol
 
-    init(serverVersion: String) {
-        sut = Application(router: GranitaRouter.build(ApiScenario.healthOnlyDependencies(serverVersion: serverVersion)))
+    init(serverVersion: String, wakeAddresses: [String] = []) {
+        sut = Application(
+            router: GranitaRouter.build(
+                ApiScenario.healthOnlyDependencies(serverVersion: serverVersion, wakeAddresses: wakeAddresses)
+            )
+        )
     }
 
     /// Decodes the health payload, so a test asserts on the model rather than on a JSON string and

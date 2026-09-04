@@ -18,9 +18,20 @@ public struct RememberedMac: Hashable, Sendable {
     /// refuses to reach anywhere else without.
     public let fingerprint: SpkiFingerprint
 
-    public init(device: PairedDevice, fingerprint: SpkiFingerprint) {
+    /// What to send a magic packet to when this Mac is asleep.
+    ///
+    /// **The one thing stored here that is about *where* the Mac is**, which the doc comment above
+    /// otherwise rules out — and the exception is deliberate. A hardware address is not a location
+    /// that goes stale on restart the way a port is; it is a property of the machine, and it is the
+    /// only thing that can be used while the Mac is asleep, which is exactly when Bonjour has
+    /// nothing to say about it. Stored rather than re-read, because reading it means reaching the
+    /// Mac, and a Mac that can be reached does not need waking.
+    public let wakeAddresses: [HardwareAddress]
+
+    public init(device: PairedDevice, fingerprint: SpkiFingerprint, wakeAddresses: [HardwareAddress]) {
         self.device = device
         self.fingerprint = fingerprint
+        self.wakeAddresses = wakeAddresses
     }
 }
 
@@ -58,6 +69,16 @@ public protocol RememberedMacStore: Sendable {
     /// worktrees. The names only, because nothing that merely wants to route a tap should be
     /// handling tokens.
     func rememberedMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName>
+
+    /// Every hardware address this phone knows, across every Mac it has paired with.
+    ///
+    /// **Addresses only, for the same reason the call above is names only**: waking a Mac takes no
+    /// credential, so nothing that merely broadcasts a datagram should be holding a token to do it.
+    ///
+    /// Flattened across Macs rather than grouped by one, because the caller cannot tell which of
+    /// them is asleep — the whole point is that a sleeping Mac is not on the network to be asked —
+    /// so it wakes all of them and lets the browse report whichever answers.
+    func wakeAddresses() async throws(RememberedMacStoreFailure) -> [HardwareAddress]
 }
 
 public enum RememberedMacStoreFailure: Error, Hashable, Sendable {

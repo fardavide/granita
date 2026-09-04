@@ -69,6 +69,8 @@ struct ApiScenario {
             connectionLog: connectionLog,
             diagnostics: diagnostics,
             serverVersion: "0.0.4",
+            // A runner's interface list is not ours to assert on, and no test here reads this.
+            wakeAddresses: [],
             requiresAuthentication: requiresAuthentication
         )
         application = Application(router: GranitaRouter.build(dependencies))
@@ -256,7 +258,7 @@ extension ApiScenario {
     /// Health is the one endpoint that answers before anything is set up — before pairing, before a
     /// project is enabled, before there is anything to read — so a fixture for it should not need
     /// any of that either.
-    static func healthOnlyDependencies(serverVersion: String) -> ApiDependencies {
+    static func healthOnlyDependencies(serverVersion: String, wakeAddresses: [String] = []) -> ApiDependencies {
         let store = JsonDocumentStore(
             fileUrl: URL.temporaryDirectory
                 .appending(path: "granita-health-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -279,6 +281,7 @@ extension ApiScenario {
             connectionLog: InMemoryConnectionLog(now: { Date() }),
             diagnostics: FakeDiagnostics(),
             serverVersion: serverVersion,
+            wakeAddresses: wakeAddresses,
             requiresAuthentication: false
         )
     }

@@ -27,9 +27,59 @@ struct MacPairingTests {
         // alone, because a token without the key beside it could not pin the session that spends it.
         #expect(
             await scenario.macs.saved == [
-                theMacTheReaderOpened.id: RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint)
+                theMacTheReaderOpened.id: RememberedMac(
+                    device: aPairedDevice,
+                    fingerprint: aLink.fingerprint,
+                    wakeAddresses: []
+                )
             ]
         )
+    }
+
+    @Test
+    func `given a Mac that reports hardware addresses when pairing then they are written down beside the token`() async {
+        // given — **the only moment a wake address ever enters this phone.** Nothing else writes a
+        // pairing, so if this line stops working no Mac is ever wakeable and no other test notices.
+        let scenario = Scenario(servingWakeAddresses: ["3e:2d:c6:c3:4b:fe", "a4:83:e7:11:22:33"])
+
+        // when
+        _ = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        #expect(
+            await scenario.macs.saved[theMacTheReaderOpened.id]?.wakeAddresses.map(\.text)
+                == ["3e:2d:c6:c3:4b:fe", "a4:83:e7:11:22:33"]
+        )
+    }
+
+    @Test
+    func `given a Mac reporting one address that is not one when pairing then it is dropped and the pairing stands`() async {
+        // given — a Mac of some other version, or a corrupted answer. One bad entry must cost that
+        // entry rather than the pairing, which would send the reader back for another code.
+        let scenario = Scenario(servingWakeAddresses: ["nonsense", "3e:2d:c6:c3:4b:fe"])
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        #expect(outcome == .paired(aPairedMac(wakingAt: ["3e:2d:c6:c3:4b:fe"])))
+        #expect(
+            await scenario.macs.saved[theMacTheReaderOpened.id]?.wakeAddresses.map(\.text)
+                == ["3e:2d:c6:c3:4b:fe"]
+        )
+    }
+
+    @Test
+    func `given a Mac too old to report a hardware address when pairing then it is remembered and simply not wakeable`() async {
+        // given — every Mac running a version from before health carried this.
+        let scenario = Scenario(servingWakeAddresses: nil)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then — paired, which is the point: an absent field is an ordinary answer and not a refusal.
+        #expect(outcome == .paired(aPairedMac))
+        #expect(await scenario.macs.saved[theMacTheReaderOpened.id]?.wakeAddresses.isEmpty == true)
     }
 
     @Test
@@ -139,7 +189,8 @@ struct MacPairingTests {
                     name: theMacTheReaderOpened.name,
                     device: aPairedDevice,
                     address: anAddress,
-                    fingerprint: anObservedKey
+                    fingerprint: anObservedKey,
+                    wakeAddresses: []
                 )
             )
         )
@@ -207,7 +258,11 @@ struct MacPairingTests {
         #expect(outcome == .paired(aPairedMac))
         #expect(
             await scenario.macs.saved == [
-                theMacTheReaderOpened.id: RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint)
+                theMacTheReaderOpened.id: RememberedMac(
+                    device: aPairedDevice,
+                    fingerprint: aLink.fingerprint,
+                    wakeAddresses: []
+                )
             ]
         )
         #expect(await scenario.server.codesOffered == [aLink.code])
@@ -316,9 +371,9 @@ struct MacPairingTests {
         // to say after the question has already been asked.
         let scenario = Scenario(remembering: [
             BonjourInstanceName(rawValue: "Davide's MacBook Pro"):
-                RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint),
+                RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint, wakeAddresses: []),
             BonjourInstanceName(rawValue: "Mac Studio"):
-                RememberedMac(device: aPairedDevice, fingerprint: anObservedKey)
+                RememberedMac(device: aPairedDevice, fingerprint: anObservedKey, wakeAddresses: [])
         ])
 
         // when
@@ -413,7 +468,8 @@ private struct Scenario {
         remembering held: [BonjourInstanceName: RememberedMac] = [:],
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         keychainNeverAnswering isKeychainSilent: Bool = false,
-        silentOn: FakeServerPairing.SilentStep? = nil
+        silentOn: FakeServerPairing.SilentStep? = nil,
+        servingWakeAddresses wakeAddresses: [String]? = nil
     ) {
         if isKeychainSilent {
             macs = FakeRememberedMacStore(neverAnswering: ())
@@ -423,7 +479,14 @@ private struct Scenario {
         let health: Result<HealthResponse, ApiFailure> = if let healthRefusal {
             .failure(healthRefusal)
         } else {
-            .success(HealthResponse(name: "Granita", apiVersion: apiVersion, serverVersion: "0.0.9"))
+            .success(
+                HealthResponse(
+                    name: "Granita",
+                    apiVersion: apiVersion,
+                    serverVersion: "0.0.9",
+                    wakeAddresses: wakeAddresses
+                )
+            )
         }
         server = FakeServerPairing(
             answeringHealth: health,
@@ -476,8 +539,22 @@ private let aPairedMac = PairedMac(
     name: theMacTheReaderOpened.name,
     device: aPairedDevice,
     address: anAddress,
-    fingerprint: aLink.fingerprint
+    fingerprint: aLink.fingerprint,
+    wakeAddresses: []
 )
+
+/// The same pairing, wakeable. A function rather than a second constant, because what these tests
+/// vary is only the addresses health reported.
+private func aPairedMac(wakingAt addresses: [String]) -> PairedMac {
+    PairedMac(
+        instance: theMacTheReaderOpened.id,
+        name: theMacTheReaderOpened.name,
+        device: aPairedDevice,
+        address: anAddress,
+        fingerprint: aLink.fingerprint,
+        wakeAddresses: HardwareAddress.all(in: addresses)
+    )
+}
 
 /// A key nothing told the phone about in advance, which is the whole of the spoken path.
 private let anObservedKey = SpkiFingerprint(rawValue: "9f86d081884c7d659a2feaa0c55ad015")

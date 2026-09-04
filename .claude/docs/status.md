@@ -2,6 +2,37 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.9.0 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
+the app working only while his MacBook was unlocked. A direct test settled what it actually was: a
+Mac that is **locked but awake** serves fine, so the lock was never the variable — `pmset` has system
+sleep at one minute idle and the log shows Maintenance Sleep every 45 seconds all morning, on AC.
+
+The reason a sleeping Mac used to be reachable, and is not now, is a platform change rather than
+anything here: **Sequoia compiled the Bonjour Sleep Proxy client out of mDNSResponder**, so a
+sleeping Mac withdraws its advertisement instead of leaving it with the Apple TV that would have
+woken it. It is therefore not in the browse at all, and no amount of client patience helps a Mac with
+no row. So the phone sends the magic packet itself — health reports the Mac's hardware addresses, the
+pairing stores them, and two decorators wake before the browse and before a retried resolve. Full
+account, including what was rejected, in [`decisions.md`](decisions.md).
+
+**No screen changed**, which is the reason it could ship without a design round trip: a woken Mac
+appears through `searching` and `found`, states §1 already draws.
+
+**It also fixed a defect that predates it.** The just-paired destination built its repository
+straight over the address pairing returned, so `lostContact` never ran and *Try Again* re-dialled a
+dead port for the life of that screen.
+
+**One thing no code here can do:** *Wake for network access* must be **Always**. It ships as *Only on
+Power Adapter* — `womp 1` on AC, `womp 0` on battery — and a Mac on battery ignores the packet.
+Saying so in the app is a new surface on the Mac's General tab and therefore design-blocked; for now
+it is in the changelog. **If waking is ever reported as still not working, check that first.**
+
+**And one thing Apple had to allow, now granted.** iOS gates broadcast behind
+`com.apple.developer.networking.multicast`, a restricted entitlement. Apple assigned it to the
+account on 3 September 2026, and `project.yml` carries the key. **Neither the simulator nor the
+loopback test can catch its absence**, because loopback is neither broadcast nor multicast — so the
+only proof that waking works is a device build against a sleeping Mac.
+
 **Version 0.8.0 — the code is syntax highlighted, and it is the last of M5's viewer features.** The
 domain half of it landed in 0.4.2 and had no caller for four releases; what arrived now is the lexer
 behind it, the cache, the orchestration and the rendering. Highlightr with Xcode's own stylesheets —

@@ -145,7 +145,11 @@ public struct MacPairing: MacJoining {
                 name: mac.name,
                 device: paired,
                 address: attempt.address,
-                fingerprint: fingerprint
+                fingerprint: fingerprint,
+                // From the health read above, which is the only moment this phone is guaranteed to
+                // be talking to a Mac that is awake. A Mac too old to report any leaves this empty
+                // and is simply never woken.
+                wakeAddresses: HardwareAddress.all(in: health.wakeAddresses ?? [])
             )
         )
     }

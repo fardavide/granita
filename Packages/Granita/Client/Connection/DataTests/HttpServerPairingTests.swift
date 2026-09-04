@@ -26,10 +26,34 @@ struct HttpServerPairingTests {
         let health = try await scenario.sut.health()
 
         // then
-        #expect(health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2"))
+        #expect(
+            health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2", wakeAddresses: nil)
+        )
         let request = try #require(await scenario.transport.sent.first)
         #expect(request.method == .get)
         #expect(request.url.path() == "/v1/health")
+    }
+
+    @Test
+    func `given a resolved address when health is read through it then the request goes to that Mac over https`() async throws {
+        // given — the backfill's own path: it holds an address rather than a link or an attempt,
+        // and the scheme is this layer's to know rather than the composition root's.
+        let scenario = Scenario(
+            macReachableAt: ServerAddress(host: "macbook-pro.local", port: 59_144),
+            status: 200,
+            json: #"{"name":"Granita","apiVersion":1,"serverVersion":"0.6.0","wakeAddresses":["3e:2d:c6:c3:4b:fe"]}"#
+        )
+
+        // when
+        let health = try await scenario.sut.health()
+
+        // then — the address it was handed, under https, and the addresses it went there to learn.
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.scheme == "https")
+        #expect(request.url.host() == "macbook-pro.local")
+        #expect(request.url.port == 59_144)
+        #expect(request.url.path() == "/v1/health")
+        #expect(health.wakeAddresses == ["3e:2d:c6:c3:4b:fe"])
     }
 
     @Test
@@ -363,6 +387,13 @@ private struct Scenario {
     init(mac attempt: PairingAttempt, status: Int, json: String) {
         transport = FakeHttpTransport(status: status, json: json)
         sut = HttpServerPairing(mac: attempt, transport: transport)
+    }
+
+    /// From a resolved address alone, which is how the wake backfill reaches a Mac it is already
+    /// paired with and needs no credential to ask.
+    init(macReachableAt address: ServerAddress, status: Int, json: String) {
+        transport = FakeHttpTransport(status: status, json: json)
+        sut = HttpServerPairing(macReachableAt: address, transport: transport)
     }
 
     init(failing failure: ApiFailure) {

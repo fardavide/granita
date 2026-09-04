@@ -29,6 +29,13 @@ public struct ApiDependencies: Sendable {
 
     public let serverVersion: String
 
+    /// The hardware addresses health reports, so a phone can wake this Mac when it next sleeps.
+    ///
+    /// Read once at composition rather than per request: an interface list is a syscall, health is
+    /// the route a browsing phone hits most often, and an address that changed since launch is one
+    /// the phone re-reads on its next session anyway.
+    public let wakeAddresses: [String]
+
     /// Whether a request has to prove who it is.
     ///
     /// Off only under `--insecure-http`, which exists so a TLS problem can never leave code
@@ -44,6 +51,7 @@ public struct ApiDependencies: Sendable {
         connectionLog: any ConnectionLog,
         diagnostics: any Diagnostics,
         serverVersion: String,
+        wakeAddresses: [String],
         requiresAuthentication: Bool
     ) {
         self.registry = registry
@@ -54,6 +62,7 @@ public struct ApiDependencies: Sendable {
         self.connectionLog = connectionLog
         self.diagnostics = diagnostics
         self.serverVersion = serverVersion
+        self.wakeAddresses = wakeAddresses
         self.requiresAuthentication = requiresAuthentication
     }
 }
@@ -90,7 +99,10 @@ public enum GranitaRouter {
         // is still has to be able to find out whether it is talking to a Granita of a version it
         // understands.
         router.get("/v1/health") { _, _ in
-            HealthResponse(serverVersion: dependencies.serverVersion)
+            HealthResponse(
+                serverVersion: dependencies.serverVersion,
+                wakeAddresses: dependencies.wakeAddresses
+            )
         }
 
         // Unauthenticated by necessity and therefore rate limited by necessity: this is the one

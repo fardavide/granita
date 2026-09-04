@@ -11,7 +11,7 @@ import CorePairingDomain
 /// is this one, because a shape that changed silently would read as a Mac that was never paired with
 /// and send the reader back through the pairing screens with no way to tell why.
 ///
-/// Four strings rather than the domain types they become. The wrappers exist to stop a token being
+/// Strings rather than the domain types they become. The wrappers exist to stop a token being
 /// passed where a device identifier was expected, which is a rule about this app's own code; what
 /// goes on disk is text either way, and re-deriving the typing at the boundary is where a boundary
 /// is supposed to do its work.
@@ -22,11 +22,21 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
     let serverInstanceId: String
     let fingerprint: String
 
+    /// What to send a magic packet to when this Mac is asleep.
+    ///
+    /// **Optional so that a record written before it existed still decodes.** Every Mac already
+    /// paired with when this shipped has no such field, and a non-optional one would make every one
+    /// of those pairings unreadable — which reads to the reader as a Mac they must pair with again,
+    /// for no reason they could see. Absent and empty both mean "cannot be woken", and nothing here
+    /// needs to tell them apart.
+    let wakeAddresses: [String]?
+
     init(of pairing: PairedMac) {
         token = pairing.device.token.rawValue
         deviceId = pairing.device.deviceId.rawValue
         serverInstanceId = pairing.device.serverInstanceId.rawValue
         fingerprint = pairing.fingerprint.rawValue
+        wakeAddresses = pairing.wakeAddresses.map(\.text)
     }
 
     var remembered: RememberedMac {
@@ -36,7 +46,10 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
                 deviceId: DeviceId(rawValue: deviceId),
                 serverInstanceId: ServerInstanceId(rawValue: serverInstanceId)
             ),
-            fingerprint: SpkiFingerprint(rawValue: fingerprint)
+            fingerprint: SpkiFingerprint(rawValue: fingerprint),
+            // Re-parsed rather than trusted: what is on disk was written by some other version, and
+            // one entry that is not an address must cost that entry rather than the pairing.
+            wakeAddresses: HardwareAddress.all(in: wakeAddresses ?? [])
         )
     }
 

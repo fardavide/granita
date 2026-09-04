@@ -124,6 +124,37 @@ public struct KeychainRememberedMacStore: RememberedMacStore {
         }
     }
 
+    public func wakeAddresses() async throws(RememberedMacStoreFailure) -> [HardwareAddress] {
+        // **This one does read the data**, unlike the enumeration above, because a hardware address
+        // is stored inside the same item as the token — so there is no attribute-only query that
+        // answers it. What comes back is narrowed to the addresses before it leaves this method, so
+        // no credential crosses the boundary even though one was read to get here.
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll
+        ]
+
+        var found: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &found)
+        switch status {
+        case errSecSuccess:
+            guard let items = found as? [Data] else {
+                throw .unreadable
+            }
+            // A record this version cannot read is skipped rather than thrown on: one unreadable
+            // pairing must not cost the wake of every other Mac.
+            return items
+                .compactMap(RememberedMacRecord.decoded(from:))
+                .flatMap(\.remembered.wakeAddresses)
+        case errSecItemNotFound:
+            return []
+        default:
+            throw .refused(status: status)
+        }
+    }
+
     /// Removes every item the superseded format wrote, and reports nothing.
     ///
     /// It runs after a successful write rather than at launch, because that is the point at which

@@ -22,7 +22,52 @@ struct RememberedMacRecordTests {
         let read = bytes.flatMap(RememberedMacRecord.decoded(from:))
 
         // then
-        #expect(read?.remembered == RememberedMac(device: aPairedDevice, fingerprint: aFingerprint))
+        #expect(
+            read?.remembered == RememberedMac(
+                device: aPairedDevice,
+                fingerprint: aFingerprint,
+                wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
+            )
+        )
+    }
+
+    @Test
+    func `given a record written before wake addresses existed when it is read then the Mac is still remembered`() async {
+        // given — every pairing already in a reader's Keychain when this shipped, verbatim. A field
+        // that was not optional would make all of them unreadable, which reads on the phone as a Mac
+        // that must be paired with again for no reason anybody could see.
+        let bytes = Data(
+            """
+            {"token":"1f0e4d7c6b5a49382736251403f2e1d0","deviceId":"device-1",\
+            "serverInstanceId":"server-1","fingerprint":"cf83e1357eefb8bdf1542850d66d8007"}
+            """.utf8
+        )
+
+        // when
+        let read = RememberedMacRecord.decoded(from: bytes)
+
+        // then — remembered, and simply not wakeable.
+        #expect(read?.remembered.fingerprint == aFingerprint)
+        #expect(read?.remembered.wakeAddresses.isEmpty == true)
+    }
+
+    @Test
+    func `given a stored address that is not six bytes when it is read then it is dropped rather than failing the pairing`() async {
+        // given — written by some other version, or corrupted. One bad entry must cost that entry
+        // and not the Mac.
+        let bytes = Data(
+            """
+            {"token":"1f0e4d7c6b5a49382736251403f2e1d0","deviceId":"device-1",\
+            "serverInstanceId":"server-1","fingerprint":"cf83e1357eefb8bdf1542850d66d8007",\
+            "wakeAddresses":["nonsense","3e:2d:c6:c3:4b:fe"]}
+            """.utf8
+        )
+
+        // when
+        let read = RememberedMacRecord.decoded(from: bytes)
+
+        // then
+        #expect(read?.remembered.wakeAddresses.map(\.text) == ["3e:2d:c6:c3:4b:fe"])
     }
 
     @Test
@@ -67,5 +112,6 @@ private let aPairedMac = PairedMac(
     name: "Davide's MacBook Pro",
     device: aPairedDevice,
     address: ServerAddress(host: "davides-macbook-pro.local", port: 59_144),
-    fingerprint: aFingerprint
+    fingerprint: aFingerprint,
+    wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
 )

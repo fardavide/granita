@@ -25,16 +25,29 @@ public actor RememberedMacs {
     /// naming a session pinned to that Mac's key, which is `Data`'s to know and not this layer's.
     private let connect: @Sendable (PairedMac) -> any GranitaRepository
 
+    /// What that Mac says about itself, asked of a Mac that is demonstrably awake.
+    ///
+    /// **Only for the backfill below**, and a closure for the same reason `connect` is one: reading
+    /// health means an HTTP client, which is `Data`'s to build. Answers nothing when the Mac cannot
+    /// be reached or is too old to say, which are the same thing to the caller.
+    private let wakeAddressesOf: @Sendable (ServerAddress) async -> [HardwareAddress]
+
     private var reached: [BonjourInstanceName: any GranitaRepository] = [:]
+
+    /// Macs already backfilled this run, so a Mac with genuinely no addresses is asked once rather
+    /// than on every reconnection.
+    private var backfilled: Set<BonjourInstanceName> = []
 
     public init(
         store: any RememberedMacStore,
         addresses: any ServerAddressResolving,
-        connect: @escaping @Sendable (PairedMac) -> any GranitaRepository
+        connect: @escaping @Sendable (PairedMac) -> any GranitaRepository,
+        wakeAddressesOf: @escaping @Sendable (ServerAddress) async -> [HardwareAddress]
     ) {
         self.store = store
         self.addresses = addresses
         self.connect = connect
+        self.wakeAddressesOf = wakeAddressesOf
     }
 
     /// Something that can read that Mac, opening a connection to it if there is not one already.
@@ -87,17 +100,47 @@ public actor RememberedMacs {
             }
         }
 
-        let connection = connect(
+        let paired = PairedMac(
+            instance: server.id,
+            name: server.name,
+            device: remembered.device,
+            address: address,
+            fingerprint: remembered.fingerprint,
+            wakeAddresses: remembered.wakeAddresses
+        )
+        let connection = connect(paired)
+        reached[server.id] = connection
+        await backfillWakeAddresses(of: paired)
+        return connection
+    }
+
+    /// Learns how to wake a Mac that was paired with before this phone knew how to ask.
+    ///
+    /// **Every Mac already in the Keychain when 0.6.0 arrived has no address stored**, because the
+    /// only thing that ever wrote one was pairing — so without this the first release that can wake
+    /// a Mac cannot wake the Mac its reader already uses, and the remedy would be to walk over and
+    /// pair again. This is that walk, done by the app, at the one moment it is guaranteed to be
+    /// talking to a Mac that is awake: it just reached it.
+    ///
+    /// **Silent throughout, and deliberately.** A Mac too old to report an address, one that will
+    /// not answer health, and a Keychain that refuses the write all end the same way — a Mac that is
+    /// simply not wakeable, which is the state this arrived in. None of them is worth a sentence on
+    /// a screen whose job is to show worktrees.
+    private func backfillWakeAddresses(of paired: PairedMac) async {
+        guard paired.wakeAddresses.isEmpty, backfilled.contains(paired.instance) == false else { return }
+        backfilled.insert(paired.instance)
+        let learned = await wakeAddressesOf(paired.address)
+        guard learned.isEmpty == false else { return }
+        try? await store.remember(
             PairedMac(
-                instance: server.id,
-                name: server.name,
-                device: remembered.device,
-                address: address,
-                fingerprint: remembered.fingerprint
+                instance: paired.instance,
+                name: paired.name,
+                device: paired.device,
+                address: paired.address,
+                fingerprint: paired.fingerprint,
+                wakeAddresses: learned
             )
         )
-        reached[server.id] = connection
-        return connection
     }
 
     /// Throws away where that Mac was, so the next read asks Bonjour again.

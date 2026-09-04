@@ -33,7 +33,7 @@ packages:
 # .claude/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.8.0
+    MARKETING_VERSION: 0.9.0
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -102,6 +102,17 @@ targets:
     dependencies:
       - package: Granita
         product: ClientAppMain
+    # **A restricted entitlement, and the app is inert without it.** Since iOS 14 sending UDP
+    # broadcast — not only multicast — needs `com.apple.developer.networking.multicast`, and the
+    # check is in the network stack, so a raw BSD socket is no way around it. Without this the magic
+    # packet that wakes a sleeping Mac never leaves the phone and nothing reports why. Apple must
+    # approve the request before a profile can carry it; see `.claude/docs/decisions.md`.
+    # **The file is generated from here**, so the key lives in this block and not in the plist —
+    # XcodeGen rewrites that file on every `make project` and a hand-edited one comes back empty.
+    entitlements:
+      path: Apps/GranitaMobile/GranitaMobile.entitlements
+      properties:
+        com.apple.developer.networking.multicast: true
     info:
       path: Apps/GranitaMobile/Info.plist
       properties:

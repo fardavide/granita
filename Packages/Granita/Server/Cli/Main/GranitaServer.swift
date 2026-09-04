@@ -99,6 +99,9 @@ struct GranitaServer {
                 verbosity: UserDefaultsVerboseLogging(defaults: .standard)
             ),
             serverVersion: Branding.serverVersion,
+            // None, and that is not an oversight. Waking is for a Mac nobody is sitting at; this
+            // one is running in a terminal in front of somebody, and it exits when they close it.
+            wakeAddresses: [],
             // Plaintext means every token on the wire is already everyone's, so demanding one would
             // be theatre. The flag exists so a TLS problem can never leave code unreviewable, and
             // it is never reachable from the Mac app's UI.

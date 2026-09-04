@@ -98,17 +98,26 @@ public struct PairedMac: Hashable, Sendable {
     /// not observe.
     public let fingerprint: SpkiFingerprint
 
+    /// What to send a magic packet to when this Mac is next asleep, learned from its health.
+    ///
+    /// **Empty is the ordinary case for a Mac that predates this**, not a failure, and nothing here
+    /// treats it as one: the phone simply cannot wake that Mac and falls back to what it did before,
+    /// which is to wait for the reader to wake it themselves.
+    public let wakeAddresses: [HardwareAddress]
+
     public init(
         instance: BonjourInstanceName,
         name: String,
         device: PairedDevice,
         address: ServerAddress,
-        fingerprint: SpkiFingerprint
+        fingerprint: SpkiFingerprint,
+        wakeAddresses: [HardwareAddress]
     ) {
         self.instance = instance
         self.name = name
         self.device = device
         self.address = address
         self.fingerprint = fingerprint
+        self.wakeAddresses = wakeAddresses
     }
 }
