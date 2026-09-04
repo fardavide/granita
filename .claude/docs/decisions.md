@@ -4969,3 +4969,183 @@ depends on the heap, so a test that runs git and asserts a non-empty diff would 
 with the defect still in place — a test that cannot fail reliably is worse than none. The invariant
 is what is asserted instead: every element handed to the library ends in exactly one zero. That is
 the property whose violation caused this, stated where it can be checked deterministically.
+
+## What an adversarial read of §7 found, and the four rules that came out of it
+
+Five reviewers went over the slice against the frames and the layer rules, and every finding was put
+to an independent skeptic told to refute it. Nine survived. Four of them are rules rather than
+patches, and each is written into the code it governs.
+
+**The gutter stops being a target while a sheet is up.** The composer's own detent enables background
+interaction — that is design §7.2's whole point, so a reader can scroll the diff behind it and check
+the caller they are about to complain about. It also leaves a live gutter under a sheet. Three
+separate defects came out of that one fact: a tap behind the composer emptied the field the reader
+had been typing into; a long press behind it fired a haptic for a hold that never happened; and the
+toolbar, also live, could replace the composer without cancelling the run, leaving a square-capped
+rail in the gutter, no composer, no instruction bar, and **every further gutter gesture a no-op for
+the life of the screen**. One boolean threaded down to `DiffFileLines` answers all three. The scroll
+still moves; only the aim goes.
+
+**Document order asks the diff, because a line number cannot answer it.** `CommentedLines.first` is an
+old-side number for a run that is entirely deletions and a new-side number otherwise, and the two
+counters diverge the moment a file deletes more than it adds — so a comment on a deletion at old 105,
+drawn near the top, sorted *after* an addition at new 50 drawn below it. Both the review list and the
+exported document read backwards for that file. `ReviewedComment.ordered` resolves each anchor to its
+row index instead, and the model re-orders as batches land, because at `load()` every file is still
+awaiting and nothing can be placed.
+
+**The Files button goes while the review has the column.** There is one sheet, so opening the selector
+closes the review — which freed the slot, so the tree column slid back in *and* the same tree
+presented itself as a drawer on top of it. Two file lists from one press. The same shape stranded the
+review toggle when a reader deleted their last comment from inside the column: the chip was gated on
+there being comments, and the column form has no Close of its own.
+
+**A held row draws its own rail.** The screen passed only the composing run, so §7.1's square-capped
+mark — which the section lists among the rules the held state obeys, and which is what makes a hold
+survive scrolling away to find its other end — was drawn by nothing. The baseline for it was built by
+hand from a `CommentRun` literal, so nothing caught it.
+
+Three smaller ones went with them: `CommentRun`'s identity was its first row, so a hold beginning on
+the first row of an existing comment collided with it in the `ForEach` and one of the two silently
+did not draw; the composer's excerpt read `\.text` straight off the rows while the export went through
+`CommentSelection.quoted`, so a no-newline marker appeared as a line of the reader's own code in the
+one place they could see it; and the bar and the capsule carried `.transition`s with nothing animating
+the state behind them, so both snapped.
+
+**Two of the tests were the kind this repository keeps finding.** One asserted the pasteboard against
+`sut.feedback(...)` — the same mapper on both sides, so deleting the heading or the `> ` prefix would
+have changed them together and stayed green. The other asserted that the Files button *comes back*
+while the review holds the column, which is the defect above written down as a requirement.
+
+## The review panel shipped as a settings screen, and §7 had drawn a panel
+
+Davide's first look at it: *"the comment panel looks awful and doesn't respect design"*. He was right,
+and the gap was not a detail — it was the whole surface.
+
+**What went wrong is a specific failure worth naming: the frames were read for their *content* and not
+for their *treatment*.** Every string was in the right place, every state was covered, and the
+structure came out of `List { Section { … } }` — which is what iOS gives a preferences pane. Stock
+`.insetGrouped` section headers, a full-width card per control, a plain two-line row per comment, and
+*Copy review* as one more line of text among them. The design's own markup was sitting in the
+document the whole time with the numbers in it.
+
+What §7.6 actually draws, and what is built now:
+
+- **A 52pt header of its own**, not a navigation bar: `Close` at the leading edge, `Review` centred,
+  and the count at the trailing edge **in monospace** — which is what keeps the title centred while
+  the number grows. The first build put the count in a `navigationSubtitle`, which stacks it under
+  the title and moves it.
+- **Monospaced, uppercase, letter-spaced section labels** — the app's own caption idiom, the one the
+  design document itself is set in — rather than the system's section headers.
+- **Cards at radius 10 on the grouped page**, which is the same page-and-card pair the diff already
+  uses for its files, so the review reads as belonging to the screen it came from.
+- **Every comment row carries the 3pt indigo rail**, at the same width and corner the gutter draws.
+  That is the single most important thing that was missing: it is what makes a row in this list and a
+  mark in that scroll *the same object* rather than two reports of one. The anchor label is in the
+  rail's own indigo with the separating colon left secondary.
+- **A stale row is tinted amber across its whole width**, with an amber rail and a warning glyph
+  before its label — the one row here that is a warning.
+- **Show text is a centred link with a chevron**, not a disclosure row in a card of its own.
+- **Copy review is a filled indigo button, 50pt, pinned to the bottom** where the thumb is, and it
+  turns green with a checkmark for the two seconds it says *Copied*. It was a list row.
+
+**And the amber the design picked is the app's own.** `#C0821F` in the frames is
+`Color.fileStatusAmber` to the byte — the colour `.modified` has carried since 0.6.0. `.orange` was
+wrong twice over: it is what *conflicted* means, and it is not what was drawn.
+
+## §7.1's row tint was in the prose and in the frames, and it was built as neither
+
+The held state is a rail **and a tint**. §7.1 lists it as the second of the three rules the state
+obeys — *"the tint is drawn on the row's own background, behind the horizontal scroll, so a held run
+stays held while the code slides under it"* — and 2c's caption says it in four words: *"square-capped
+rail, tinted row, one haptic"*. Only the rail was built.
+
+The frames give the numbers: **indigo at 14% in light and 20% in dark**, over the 6% and 10% an added
+or removed row already carries — and **the line numbers of the held run go indigo too**, which is the
+one place the selection reaches a glyph instead of a background.
+
+**This does not contradict §7.3's rejection of a row tint, and reading it as though it did is what
+lost it.** §7.3 rejects a tint for a *saved* comment: a mark that has to sit beside a diff for as long
+as the reader is reading, competing with the `+`/`−` tints and the word-diff background. A selection
+is the opposite kind of thing — it lasts seconds, it has to be unmissable while it does, and 2d
+confirms the distinction by drawing a commented row with **no** tint at all, only its own green.
+
+## The bar and the capsule are one floating pill, at one position
+
+Both were built as what they are not: the instruction bar as a full-width bar flush to the bottom
+with a hairline over it, the capsule as a padded pill in the corner.
+
+§7 draws both as the same object at the same inset — **12pt from the side edges, 38pt from the bottom,
+44pt tall, a capsule of material with a hairline and a soft shadow**. The bar spans both edges and the
+capsule only the trailing one, and that is the whole difference between them. It matters because they
+share a position by design: a bar flush to the bottom reads as chrome the screen has grown, and both
+of these are states that arrive and leave.
+
+The bar also carries **the same 3pt rail** at its leading edge, which is the third place that rail
+appears and the reason a reader can carry their eye from the sentence at the bottom of the screen back
+up to the row it is about. The capsule carries a `bubble.left` and a **monospaced indigo count**, so
+the number reads as counting marks in the gutter rather than files in the change set.
+
+## The composer had the same fault as the panel, and the rail is the thread through all three
+
+Once the review panel was rebuilt against the frames rather than against their prose, the composer was
+obviously the next thing wrong with it: the anchor was a grey monospaced label, the excerpt three
+loose grey lines, and nothing tied either to the rows behind the sheet.
+
+§7.2 draws:
+
+- **A 44pt anchor row carrying the rail**, with the path in the primary colour and only its colon
+  demoted. This is the third surface the rail appears on — the gutter, the instruction bar, and here —
+  and that repetition is the whole reason a reader knows the sheet in front of them belongs to the
+  rows behind it.
+- **The excerpt on a card tinted in the rail's own colour at 12%**, radius 8, rather than three lines
+  of text on the sheet's background.
+- **The gutter's own figures beside the code**, right-aligned in a 34pt column. This is the half that
+  matters: the excerpt exists so a reader who landed one row off finds out *before* they type, and
+  what they would recognise is the number they were aiming at. The text alone reads equally plausibly
+  one row up, which makes the excerpt a sample rather than a receipt.
+
+That last one is a Domain change rather than a styling one — `CommentSelection.excerpt(of:)` returns
+`ExcerptLine`s carrying `DiffGutter.number(of:)` beside the quoted text, so the composer and the
+exported document still come from one place and still spell a no-newline marker the same way.
+
+**The chevron §7.2 draws at the trailing edge of that row is not built**, and deliberately: it is the
+range `Menu`'s affordance, the three operations behind it do not exist yet, and a chevron that opens
+nothing is the dead control this project refuses. It lands with them.
+
+## The Snapshot row falls for §7, and it is the gap `GranitaSettingsScreen` already documented
+
+`make coverage` refuses this slice on two values: **Snapshot lines 97.8% → 97.0% and Snapshot regions
+89.7% → 87.8%.** The other four rows are level or up — Unit gained 0.2 and 0.3, and `All tests` is ±0
+on lines and +0.3 on regions.
+
+The per-file export was read before anything was touched, which is the rule. Every uncovered region in
+the §7 view code is an action closure or a presentation the raster excludes:
+
+| File | Regions | What is uncovered |
+|---|---|---|
+| `WorktreeDiffScreen` | 83/126 | **All 43** — the two alert button builders, three `Binding` setters, the nine callbacks handed to `ContinuousDiffView`, and the sheet builders |
+| `ReviewSheetView` | 94/106 | The alert's buttons, the keyboard toolbar, the swipe action, and the Copy / Clear / *Show text* actions |
+| `DiffFileLines` | 95/111 | The tap and long-press closures, and the `{ _ in }` defaults behind them |
+| `ReviewCapsule`, `CommentInstructionBar`, `StaleCommentRow`, `CommentCountChip` | **100%** | — |
+
+That is verbatim the case the `swift-testing` skill records for `GranitaSettingsScreen`: *"adding a
+control to that screen lowers the Snapshot regions row and no test this project can currently run will
+lift it — only the `Ui` kind would, and that target cannot run without an Accessibility grant. Do not
+respond by restructuring the screen or by widening a scope."* §7 adds nine controls and three
+presentations to one screen, so the row moves further than it has for any previous slice.
+
+**Two things in the residue were not structural and are fixed.** `showsDocument` was `@State` inside
+the review sheet, so *Show text*'s entire effect — the branch that draws the exported text — was
+reachable by no baseline and no test; it is on the model now with a unit test and a subject of its
+own, and it moved Snapshot lines from −0.9 to −0.7. And `CommentSelection.ends` was still carrying the
+unreachable `guard` this file's own earlier entry said would be removed, beside a genuinely reachable
+branch nothing drove: tapping the gutter of a file whose diff has not arrived. Both closed, and
+together they are what took `All tests` lines back to level.
+
+**What is not being done, deliberately.** The scope is not widened and the screen is not restructured.
+`Client/Viewer/Data/UiKitReviewPasteboard.swift` is three permanently-uncovered lines that meet the
+`UNREACHABLE_FILES` bar exactly — every line is a call on the running application, and executing it in
+a test writes into the developer's own pasteboard, which is why `AppKitSystemGestures` is already
+there — but adding it is a scope redefinition and, as it turns out, is **not needed**: `All tests`
+reaches level without it. It is recorded here rather than taken.

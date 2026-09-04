@@ -7,6 +7,21 @@ import CoreDiffDomain
 /// hunk expansion has moved everything around it. The run does not: it is whatever the diff draws
 /// between the two, the no-newline marker included, and dropping that from the quote would hand the
 /// agent an excerpt that is not what was on the screen.
+/// One row of the excerpt the composer quotes.
+///
+/// The figure is optional for the row that has none — `\ No newline at end of file`, which can sit
+/// inside a run and is not a line of the file.
+public struct ExcerptLine: Hashable, Sendable {
+
+    public let number: Int?
+    public let text: String
+
+    public init(number: Int?, text: String) {
+        self.number = number
+        self.text = text
+    }
+}
+
 public enum CommentSelection {
 
     /// The rows between two ends, in the order the diff draws them.
@@ -37,12 +52,12 @@ public enum CommentSelection {
         to: DiffLinePosition
     ) -> (first: DiffLinePosition, last: DiffLinePosition)? {
         guard let run = run(of: diff, from: from, to: to) else { return nil }
+        // **The ends are the two positions that were handed in, in the order the run found them.**
+        // `run(of:from:to:)` located each by matching `DiffLinePosition.of($0)` against them, so
+        // reading the addresses back off the rows would be asking the diff a question it has just
+        // answered — and the `guard` that unwrapping needs is a branch nothing can enter.
         let all = diff.hunks.flatMap(\.lines)
-        guard let first = DiffLinePosition.of(all[run.lowerBound]),
-              let last = DiffLinePosition.of(all[run.upperBound - 1]) else {
-            return nil
-        }
-        return (first, last)
+        return DiffLinePosition.of(all[run.lowerBound]) == from ? (from, to) : (to, from)
     }
 
     /// The span the two ends cover, as indices into the file's drawn rows.
@@ -76,7 +91,7 @@ public enum CommentSelection {
             anchor: CommentAnchor(file: diff.file.id, first: ends.first, last: ends.last),
             path: diff.file.path,
             lines: lines,
-            quotedLines: rows.map(quoted(_:)),
+            quotedLines: quotation(of: rows),
             text: text
         )
     }
@@ -95,6 +110,27 @@ public enum CommentSelection {
     /// `\ No newline at end of file` is git's own annotation, and the parser strips the two
     /// characters it arrives behind — so quoted bare it reads as a line of English in the middle of
     /// some code. It goes back the way git wrote it.
+    /// The rows the composer quotes, each still carrying the figure the gutter drew beside it.
+    ///
+    /// **The numbers come with the code, which is what makes the quotation a receipt rather than a
+    /// sample.** §7.2's excerpt is there so a reader who landed one row off can see it *before* they
+    /// type, and the thing they would recognise is the number they were aiming at — the text alone
+    /// looks equally plausible one row up.
+    public static func excerpt(of rows: [DiffLine]) -> [ExcerptLine] {
+        rows.map { ExcerptLine(number: DiffGutter.number(of: $0), text: quoted($0)) }
+    }
+
+    /// The rows as the excerpt carries them, for the composer as well as the document.
+    ///
+    /// **Public because the composer draws the same excerpt**, and it drew it differently: reading
+    /// `\.text` straight off the rows put `No newline at end of file` into the quotation as though it
+    /// were a line of the reader's code, while the exported document — which the composer's own doc
+    /// comment calls "the same snapshot" — spelled it `\ No newline at end of file`. One run, two
+    /// spellings, and only the one the reader could not see was right.
+    public static func quotation(of rows: [DiffLine]) -> [String] {
+        rows.map(quoted(_:))
+    }
+
     private static func quoted(_ line: DiffLine) -> String {
         line.kind == .noNewlineMarker ? "\\ \(line.text)" : line.text
     }

@@ -66,6 +66,34 @@ edit* rule silently stopped holding. It cannot be fixed by comparing numbers: a 
 an old number and an addition only a new one, so for that pair no arithmetic says which is drawn
 first. `CommentSelection.ends(of:from:to:)` asks the diff.
 
+**An adversarial read of the finished slice found nine things, and four of them were rules.** The
+biggest came out of one fact the design is built on: the composer's detent keeps the diff behind it
+live, so the gutter under a sheet is live too — which meant a tap behind the composer emptied the
+field being typed into, a long press behind it fired a haptic for nothing, and the toolbar could
+replace the composer without cancelling the run, leaving a rail in the gutter and every further
+gesture a no-op for the rest of the screen's life. The gutter stops being a target while a sheet is
+up. Document order stopped being a line number and became a row index, because an old-side 105 sorted
+after a new-side 50. The Files button goes while the review holds the iPad's column, because pressing
+it drew the file tree twice. And a held row draws its own rail, which §7.1 asks for and nothing did.
+All in [`decisions.md`](decisions.md).
+
+**Then Davide looked at it: *"the comment panel looks awful and doesn't respect design"*, and he was
+right about the whole surface.** The review panel had been built as a stock `.insetGrouped` `List` —
+which is what iOS gives a preferences pane — with every string in the right place and none of the
+treatment. The failure is worth naming because it is easy to repeat: **the frames were read for their
+content and not for their measurements**, and the markup with the numbers in it was sitting in the
+document the whole time. It is a panel now: its own 52pt header with a monospaced count at the
+trailing edge, monospaced uppercase section labels, cards at radius 10 on the grouped page, **the
+gutter's own 3pt indigo rail on every comment row**, an amber-tinted stale row, *Show text* as a link,
+and *Copy review* as a filled indigo button pinned to the bottom that turns green for two seconds.
+
+**Two more things were drawn and built as nothing.** §7.1's held state is a rail *and a tint* — its
+own caption says *square-capped rail, tinted row, one haptic* — and only the rail existed; it is
+indigo at 14% in light and 20% in dark now, with the held run's line numbers going indigo too. And
+the instruction bar and the review capsule are one floating pill at one position, 12pt from the sides
+and 38 from the bottom, where they had been a full-width bar and a padded corner button. All in
+[`decisions.md`](decisions.md), with why the tint does not contradict §7.3's rejection of one.
+
 **What no test kind here can answer is whether the aim works.** A snapshot renders a gutter and never
 touches it, so *does a tap on 18pt of strip open the composer on the row the reader meant* is a
 question for a thumb. It is the whole feature's premise and it is on the device afternoon's list,

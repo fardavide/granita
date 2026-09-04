@@ -105,6 +105,15 @@ public final class ClientViewerModel {
         }
     }
 
+    /// Whether the review is showing the text it is about to copy.
+    ///
+    /// **On the model rather than in the sheet, for the reason every other presentation flag here
+    /// is**: a `@State` inside the view is a state no baseline can set and no test can ask about, so
+    /// *Show text* would be a control whose entire effect is invisible to everything this repository
+    /// can run. The Snapshot row said so before this moved — the branch that draws the document was
+    /// the one thing on that screen no picture reached.
+    public private(set) var isShowingDocument = false
+
     /// Whether the reader pressed *Skip* rather than leaving the note field alone.
     ///
     /// **The two look identical and mean the same thing to the document**, which says nothing either
@@ -261,12 +270,20 @@ public final class ClientViewerModel {
         await fetch(wanted)
     }
 
+    /// **Both of these drop the draft, and that is the fix for a screen that could get stuck.** The
+    /// toolbar is live behind the composer's detent, so *12 files* and the review chip can each
+    /// replace the composer without going through `dismissSheet` — and the run stayed `.composing`
+    /// with no composer over it, a square-capped rail in the gutter, no instruction bar, and every
+    /// further gutter gesture a no-op for the life of the screen, because a composing draft ignores
+    /// them all.
     public func showSelector(_ isShowing: Bool) {
+        draft = draft.cancelled()
         sheet = isShowing ? .selector : nil
     }
 
     /// Opens the review, which is design §7.4's capsule and the iPad's toolbar toggle.
     public func showReview() {
+        draft = draft.cancelled()
         sheet = .review
     }
 
@@ -512,13 +529,16 @@ public final class ClientViewerModel {
     ///
     /// Design §7.2: three rows of the anchored code, so a reader never types a paragraph against the
     /// wrong line and finds out on the Mac.
-    public var composerExcerpt: [String] {
+    public var composerExcerpt: [ExcerptLine] {
         guard let pending = draft.pending,
               case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
               let rows = CommentSelection.rows(of: diff, from: pending.from, to: pending.to) else {
             return []
         }
-        return rows.map(\.text)
+        // The same spelling the export uses, which is the whole claim the excerpt makes: what the
+        // reader is looking at here is what the agent will be handed. With the gutter's own figures
+        // beside it, because the number is what a reader who aimed one row off would recognise.
+        return CommentSelection.excerpt(of: rows)
     }
 
     /// What the composer's own header says the comment is about — `Turbine.swift:41-44`.
@@ -530,6 +550,11 @@ public final class ClientViewerModel {
     /// away by the time they go looking for it and scrolling deliberately does not cancel the hold.
     public var heldRowLabel: String {
         draft.held.map(label(of:)) ?? ""
+    }
+
+    /// The review's *Show text*, which reveals exactly what the copy will put on the pasteboard.
+    public func showDocument(_ isShowing: Bool) {
+        isShowingDocument = isShowing
     }
 
     /// The review sheet's *Skip*, which is one of the two answers §7.5 offers for the note.
@@ -644,6 +669,12 @@ public final class ClientViewerModel {
             entries[position] = entries[position].arrived(diff)
         }
         state = .reading(entries)
+        // **A batch landing is the moment a comment on that file becomes placeable.** `load()` orders
+        // a restored review while every file is still awaiting, so the only key available there is
+        // the reported line — the one `ReviewedComment.ordered` documents as wrong across the two
+        // sides. Re-ordering here is what settles it, and it costs nothing on the ordinary screen
+        // because a review is a handful of comments.
+        comments = ReviewedComment.ordered(comments, against: entries)
     }
 
     /// `Turbine.swift:41-44` — the file's name and the span, resolved against the diff.

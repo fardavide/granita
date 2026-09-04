@@ -151,9 +151,14 @@ struct DiffPaneLayoutTests {
     }
 
     @Test
-    func `given the review took the column when the toolbar is built then the files button comes back`() {
-        // given — the tree is folded, which is the phone's situation exactly. Leaving no way to the
-        // list would make opening the review a one-way door out of it.
+    func `given the review took the column when the toolbar is built then the files button is absent`() {
+        // given — **this test asserted the opposite until the review found what that produced.**
+        // There is one sheet, so pressing *Files* while the review holds the column closes the
+        // review; the slot frees, the tree column slides back in, and the drawer presents the same
+        // tree on top of it. Two file lists from one press.
+        //
+        // Absent, then. The way to the tree here is to shut the review, which is one tap on the chip
+        // that opened it — and shutting it brings the tree back by itself.
         // when
         let layout = DiffPaneLayout(
             fitsSelectorColumn: true,
@@ -164,7 +169,8 @@ struct DiffPaneLayoutTests {
         )
 
         // then
-        #expect(layout.showsFilesButton)
+        #expect(layout.showsFilesButton == false)
+        #expect(layout.showsReviewToggle)
     }
 
     @Test
@@ -198,6 +204,25 @@ struct DiffPaneLayoutTests {
         // changes, which is design §7.4's whole argument for a floating control on the phone.
         #expect(layout.showsReviewCapsule)
         #expect(layout.showsReviewToggle == false)
+    }
+
+    @Test
+    func `given nothing has been written when the phone is drawn then there is no capsule`() {
+        // given — design §7.4's "a button will appear", literally: absent at zero rather than
+        // disabled, because there is nothing to explain. **It is answered here rather than by an
+        // `if` on the screen**, which is this type's whole job — a rule that lives at a call site is
+        // one only a photograph can be asked about.
+        // when
+        let layout = DiffPaneLayout(
+            fitsSelectorColumn: false,
+            isSelectorColumnOpen: false,
+            hasFilesToSelect: true,
+            isReviewOpen: false,
+            hasComments: false
+        )
+
+        // then
+        #expect(layout.showsReviewCapsule == false)
     }
 
     @Test

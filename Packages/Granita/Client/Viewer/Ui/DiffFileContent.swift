@@ -33,6 +33,9 @@ public struct DiffFileContent: View {
     /// The run being picked out, wherever it is. `CommentRail` drops it if it is not this file's.
     private let pending: PendingComment?
 
+    /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
+    private let acceptsTargeting: Bool
+
     private let onExpand: (ContextDirection, Int, FileID) -> Void
     private let onTapGutter: (DiffLinePosition, FileID) -> Void
     private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
@@ -45,6 +48,7 @@ public struct DiffFileContent: View {
         pointSize: CGFloat,
         comments: [ReviewComment] = [],
         pending: PendingComment? = nil,
+        acceptsTargeting: Bool = true,
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
         onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in }
@@ -53,6 +57,7 @@ public struct DiffFileContent: View {
         self.pointSize = pointSize
         self.comments = comments
         self.pending = pending
+        self.acceptsTargeting = acceptsTargeting
         self.onExpand = onExpand
         self.onTapGutter = onTapGutter
         self.onLongPressGutter = onLongPressGutter
@@ -75,6 +80,7 @@ public struct DiffFileContent: View {
                         // possible at all.** A file is several views with torn rows between them, so
                         // there is no coordinate space a single rail could span.
                         runs: CommentRail.runs(of: hunk, in: diff, comments: comments, pending: pending),
+                        acceptsTargeting: acceptsTargeting,
                         onTap: { onTapGutter($0, diff.file.id) },
                         onLongPress: { onLongPressGutter($0, diff.file.id) }
                     )

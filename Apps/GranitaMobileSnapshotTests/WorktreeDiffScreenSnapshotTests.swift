@@ -164,6 +164,25 @@ struct WorktreeDiffScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "the-review-is-open")
     }
+
+    /// **The amber row, in the scroll it actually belongs to.** Design §7.3 gives a comment whose
+    /// anchor no longer resolves a 44pt row under its file's header, and every other baseline that
+    /// holds a review anchors to rows the diff still has — so the branch that draws it ran in no test
+    /// at all, and inverting the filter or unwiring the button would have left everything green.
+    ///
+    /// It is also where the chip and the rail are seen disagreeing on purpose: the header counts
+    /// three comments, only two of which have rails, and the row under it is what accounts for the
+    /// third.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a comment whose lines are gone when the screen is rendered then its file says so`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewWithOneCommentAdrift)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-comment-adrift")
+    }
 }
 
 // MARK: -

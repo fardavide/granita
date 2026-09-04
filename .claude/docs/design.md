@@ -1365,6 +1365,18 @@ Three rules the held state obeys:
 - **A row with no figure is not a target.** `\ No newline at end of file` is the only one, and
   nearest-centre resolution skips it: it can sit inside a run and can never end one.
 
+> **The tint is a rule of this section and was built as nothing at all.** 2c's caption says it in four
+> words — *square-capped rail, tinted row, one haptic* — and the first build drew only the rail. The
+> frames give the numbers: **indigo at 14% in light and 20% in dark**, over the 6% and 10% an added or
+> removed row already carries, and **the held run's line numbers go indigo too**, which is the one
+> place the selection reaches a glyph rather than a background.
+>
+> **It does not contradict §7.3's rejection of a row tint, and reading it as though it did is what
+> lost it.** §7.3 rejects a tint for a *saved* comment — a mark that has to sit beside a diff for as
+> long as the reader is reading, competing with the `+`/`−` tints and the word-diff background. A
+> selection is the opposite kind of thing: it lasts seconds and has to be unmissable while it does.
+> 2d settles it by drawing a commented row with no tint at all, only its own green.
+
 > **Built with one recogniser per hunk rather than per file**, which the review's own shape requires:
 > `DiffFileContent` lays out one `DiffFileLines` per hunk with 44pt torn rows between them, so there is
 > no single coordinate space a file-level `floor(y / rowHeight)` could use. Every property the section
@@ -1387,6 +1399,13 @@ than bookkeeping.
 **The excerpt is the receipt for an 18pt aim** — three rows of the anchored code at 10.5pt, and a
 count for the rest. It is the same snapshot that gets exported, which is why it is drawn from the diff
 rather than re-fetched.
+
+**And it keeps the gutter's own figures**, right-aligned in a column of their own, over a card tinted
+in the rail's colour at 12%. Both were missed in the first build, and the numbers are the half that
+matters: a reader who landed one row off recognises the *number* they were aiming at, and the text
+alone looks equally plausible one row up — which makes the excerpt a sample rather than a receipt.
+The anchor above it carries the rail too, which is the third surface it appears on after the gutter
+and the instruction bar.
 
 > Rejected: an alert with a text field. It cannot show the excerpt, cannot scroll a long comment, and
 > cannot carry the anchor control — which would make the 18pt answer above untrue.
@@ -1441,6 +1460,18 @@ read is.
 It **shares its position with §7.1's bar** and the two can never both be true, which is what lets both
 live in the bottom of the screen with nothing arbitrating between them.
 
+> **They are one pill at one position, and both were first built as something else** — the bar
+> full-width and flush to the bottom with a hairline over it, the capsule a padded pill in the corner.
+> §7 draws both as **44pt capsules of material, 12pt from the side edges and 38pt from the bottom**,
+> with a hairline and a soft shadow; the bar spans both edges and the capsule only the trailing one,
+> and that is the whole difference. A bar flush to the bottom reads as chrome the screen has grown,
+> and both of these are states that arrive and leave.
+>
+> The bar carries **the same 3pt rail** at its leading edge — the third place that rail appears, and
+> what lets a reader carry their eye from the sentence at the bottom back up to the row it is about.
+> The capsule carries a `bubble.left` and a **monospaced indigo count**, so the number reads as
+> counting marks in the gutter rather than files in the change set.
+
 > Rejected: shrinking it to a glyph and a badge. A count with no word beside it reads as a status, and
 > a status is not something a reader presses.
 
@@ -1453,6 +1484,29 @@ is not the subject any more.
 list is the only place a typo gets fixed before it is sent and the only place a stale comment can be
 deleted; the document stays one tap away, because what lands on the pasteboard should never be a
 surprise.
+
+**It is a panel, and the first build made it a settings screen.** Davide's note on it was *"the
+comment panel looks awful and doesn't respect design"*, and the cause is worth stating because it is
+easy to repeat: the frames were read for their content and not for their treatment. Every string was
+in the right place and the shape came out of a stock `.insetGrouped` `List`. What is drawn, and what
+is built now:
+
+| | |
+|---|---|
+| Header | Its own 52pt row — `Close`, `Review` centred, and the count at the trailing edge **in monospace**, which is what keeps the title centred while the number grows. Not a navigation bar, and not a subtitle |
+| Section labels | Monospaced, uppercase, letter-spaced — this document's own idiom — not system section headers |
+| Cards | Radius 10 on the grouped page, which is the same page-and-card pair the files already use |
+| A comment row | **The 3pt indigo rail**, at the gutter's own width and corner, then the anchor label in that same indigo with its colon left secondary, then the text |
+| A stale row | Tinted amber across its width, an amber rail, and a warning glyph before its label |
+| Show text | A centred link with a chevron, not a disclosure row in a card |
+| Copy review | A filled indigo button, 50pt, **pinned to the bottom**, turning green with a checkmark for the two seconds it says *Copied* |
+
+**The rail in the list is the load-bearing one.** It is what makes a row here and a mark in the gutter
+the same object rather than two reports of one, and it was the thing most conspicuously missing.
+
+**The amber is the app's own.** `#C0821F` in the frames is `Color.fileStatusAmber` to the byte — what
+`.modified` has carried since 0.6.0. `.orange` was wrong twice: it is what *conflicted* means, and it
+is not what was drawn.
 
 **Call 1, answered: a Copy button, not a `ShareLink`.** The destination is a terminal on the Mac the
 reader is holding a phone next to. A share sheet's first item is Copy, so the free version is the same

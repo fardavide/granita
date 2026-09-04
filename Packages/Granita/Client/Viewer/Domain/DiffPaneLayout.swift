@@ -66,8 +66,12 @@ public struct DiffPaneLayout: Hashable, Sendable {
         // column is there.
         let showsReview = fitsSelectorColumn && isReviewOpen
         showsReviewColumn = showsReview
-        // A capsule where no column can be, a toolbar toggle where one can. Never both.
-        showsReviewCapsule = fitsSelectorColumn == false
+        // A capsule where no column can be, a toolbar toggle where one can. Never both — and neither
+        // until something has been written, which is design §7.4's "a button will appear" taken
+        // literally. **The count belongs here rather than in an `if` on the screen**, because whether
+        // a control is offered is this type's whole job and a rule that lives at a call site is one
+        // only a photograph can be asked about.
+        showsReviewCapsule = fitsSelectorColumn == false && hasComments
         // **`|| isReviewOpen`, and that clause is the way out of a column that has emptied.** The
         // column form carries no Close of its own — the toggle is the way back — so gating the toggle
         // on `hasComments` alone stranded a reader who deleted their last comment from inside it: the
@@ -78,7 +82,12 @@ public struct DiffPaneLayout: Hashable, Sendable {
         // **Never both, and never neither while there are files.** The button opens what the column
         // already shows, so offering both is two controls for one job; and withholding both while a
         // width could show the tree would make the fold a one-way door.
-        showsFilesButton = hasFilesToSelect && showsColumn == false
+        //
+        // **It also goes while the review has the column, and that is not tidiness.** There is one
+        // sheet, so opening the selector closes the review — which frees the slot, so the tree column
+        // slid back in *and* the same tree presented itself as a drawer on top of it. Two file lists,
+        // from one press. Shutting the review is the way to the tree here, and it is one tap.
+        showsFilesButton = hasFilesToSelect && showsColumn == false && showsReview == false
         // A toggle for a layout that cannot exist, or for a list with no rows, is a control that
         // does nothing — which is the one thing this project will not ship.
         //

@@ -833,6 +833,26 @@ nonisolated let aReviewOfTheFirstFile: [ReviewComment] = [
 /// A row of the first file that really exists, so the instruction bar names something.
 nonisolated let aRowOfTheFirstFile = DiffLinePosition(oldNumber: 140, newNumber: 140)
 
+/// The same review with a comment the diff can no longer place.
+///
+/// **Without this, the amber row was asserted only as a detached component.** Every screen baseline
+/// holding a review anchored to rows that resolve, so `ContinuousDiffView`'s own stale branch ran in
+/// no test at all — invert the filter or unwire the button and everything stayed green, which is the
+/// shape of the defect this repository shipped for eight releases.
+nonisolated let aReviewWithOneCommentAdrift: [ReviewComment] = aReviewOfTheFirstFile + [
+    ReviewComment(
+        anchor: CommentAnchor(
+            file: FileID(repositoryRelativePath: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift"),
+            first: DiffLinePosition(oldNumber: nil, newNumber: 906),
+            last: DiffLinePosition(oldNumber: nil, newNumber: 906)
+        ),
+        path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
+        lines: CommentedLines(side: .new, first: 906, last: 906),
+        quotedLines: ["    private let session: URLSession"],
+        text: "This wants to be injected rather than built here."
+    )
+]
+
 /// The change set above with every file still on its way, which is what the selector reads from —
 /// the file list arrives whole and the diffs follow.
 nonisolated let aChangeSetToSelectFrom: [ContinuousDiffEntry] = aChangeSetWorthATree.map(

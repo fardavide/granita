@@ -55,6 +55,15 @@ public struct DiffFileLines: View {
     /// The stretches of comment rail this hunk draws, decided by `CommentRail` in `Domain`.
     private let runs: [CommentRun]
 
+    /// Whether the gutter takes gestures at all.
+    ///
+    /// **False while any sheet is up, and that is not belt and braces.** The composer's own detent
+    /// enables background interaction so the reader can scroll the diff behind it — which also puts a
+    /// live gutter under a sheet. Every gesture that lands there is discarded by the draft's state
+    /// machine, so what reached the reader was a haptic for a hold that did not happen. The scroll
+    /// still moves; only the target goes.
+    private let acceptsTargeting: Bool
+
     private let onTap: (DiffLinePosition) -> Void
     private let onLongPress: (DiffLinePosition) -> Void
 
@@ -84,6 +93,7 @@ public struct DiffFileLines: View {
         highestNumber: Int,
         pointSize: CGFloat,
         runs: [CommentRun] = [],
+        acceptsTargeting: Bool = true,
         onTap: @escaping (DiffLinePosition) -> Void = { _ in },
         onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
     ) {
@@ -91,6 +101,7 @@ public struct DiffFileLines: View {
         self.highestNumber = highestNumber
         self.pointSize = pointSize
         self.runs = runs
+        self.acceptsTargeting = acceptsTargeting
         self.onTap = onTap
         self.onLongPress = onLongPress
     }
@@ -99,6 +110,7 @@ public struct DiffFileLines: View {
         VStack(spacing: 0) {
             ZStack(alignment: .topLeading) {
                 tints
+                selection
                 columns
             }
             .font(.system(size: pointSize, design: .monospaced))
@@ -142,7 +154,13 @@ public struct DiffFileLines: View {
     /// — a `contentShape` per row — needs 44pt to be a legal target, which overhangs its neighbours
     /// by 13pt on each side and leaves three rows claiming one point with z-order deciding. This has
     /// one answer everywhere in it.
-    private var tapStrip: some View {
+    @ViewBuilder private var tapStrip: some View {
+        if acceptsTargeting {
+            targetableStrip
+        }
+    }
+
+    private var targetableStrip: some View {
         Color.clear
             .frame(
                 width: DiffGutter.tapStripWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize),
@@ -204,6 +222,27 @@ public struct DiffFileLines: View {
         }
     }
 
+    /// The run being picked out, tinted across the whole row.
+    ///
+    /// **Only the pending run, and that is design §7 disagreeing with itself on purpose.** §7.3
+    /// rejects a row tint for a *saved* comment — it would need a third colour reading as both itself
+    /// and the `+`/`−` beneath it, and the word-diff background is already the loudest thing in the
+    /// row. §7.1 asks for one for the *held* state, which is a different job: it is not a mark that
+    /// has to live beside a diff for as long as the reader is reading, it is a selection that lasts a
+    /// few seconds and has to be unmissable while it does.
+    ///
+    /// Outside the horizontal scroll with the tints, so a held run stays held while the code slides
+    /// under it — §7.1's second rule.
+    private var selection: some View {
+        VStack(spacing: 0) {
+            ForEach(numbered, id: \.offset) { offset, _ in
+                (isPending(offset) ? Color.diffCommentRail.opacity(selectionAlpha) : .clear)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: rowHeight)
+            }
+        }
+    }
+
     private var columns: some View {
         HStack(alignment: .top, spacing: 0) {
             numbers
@@ -214,11 +253,23 @@ public struct DiffFileLines: View {
 
     private var numbers: some View {
         VStack(spacing: 0) {
-            ForEach(numbered, id: \.offset) { _, line in
-                figure(of: line)
+            ForEach(numbered, id: \.offset) { offset, line in
+                figure(of: line, isPending: isPending(offset))
                     .frame(height: rowHeight)
             }
         }
+    }
+
+    /// Whether this row is inside the run being picked out.
+    private func isPending(_ row: Int) -> Bool {
+        runs.contains { $0.isPending && row >= $0.firstRow && row < $0.firstRow + $0.rowCount }
+    }
+
+    /// **Two thirds again over the row tints**, which is what §7's frames measure: 14% in light and
+    /// 20% in dark, against the 6% and 10% an added or removed row carries. A selection has to win
+    /// against the tint it is drawn over, and it is the only thing on screen that has to.
+    private var selectionAlpha: Double {
+        colorScheme == .dark ? 0.20 : 0.14
     }
 
     /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
@@ -321,9 +372,13 @@ public struct DiffFileLines: View {
     /// Never blank now, which is the review's first fault answered: a deletion shows the old side's
     /// number and everything else the new side's, so a reader who wants to say "line 6 is wrong" has
     /// something to point at on every row.
-    private func figure(of line: DiffLine) -> some View {
+    /// **The figure goes indigo while its row is held**, which is §7.1's frames and the one place the
+    /// selection reaches a glyph rather than a background. It is what makes the run readable when the
+    /// tint under it is competing with an added row's green — and it is the gutter's own column
+    /// saying which rows the comment will be about, which is the question the reader is answering.
+    private func figure(of line: DiffLine, isPending: Bool) -> some View {
         Text(DiffGutter.number(of: line).map(String.init) ?? "")
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(isPending ? AnyShapeStyle(Color.diffCommentRail) : AnyShapeStyle(.tertiary))
             .monospacedDigit()
             .frame(width: numberColumnWidth - DiffGutter.trailingSpace, alignment: .trailing)
             .padding(.trailing, DiffGutter.trailingSpace)

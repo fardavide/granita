@@ -47,6 +47,9 @@ public struct ContinuousDiffView: View {
     /// The run being picked out, if one is.
     private let pending: PendingComment?
 
+    /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
+    private let acceptsTargeting: Bool
+
     private let onReading: (Int) -> Void
     private let onJumped: () -> Void
     private let onSetViewed: (Bool, FileID) -> Void
@@ -63,6 +66,7 @@ public struct ContinuousDiffView: View {
         jumpTarget: FileID?,
         comments: [ReviewedComment] = [],
         pending: PendingComment? = nil,
+        acceptsTargeting: Bool = true,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void,
@@ -78,6 +82,7 @@ public struct ContinuousDiffView: View {
         self.jumpTarget = jumpTarget
         self.comments = comments
         self.pending = pending
+        self.acceptsTargeting = acceptsTargeting
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
         _scrolledTo = State(initialValue: jumpTarget ?? state.firstFile)
@@ -216,9 +221,12 @@ public struct ContinuousDiffView: View {
         comments.count { $0.comment.anchor.file == file }
     }
 
-    /// The ones this file can no longer draw a rail for.
-    private func stale(of entry: ContinuousDiffEntry) -> [ReviewedComment] {
-        comments.filter { $0.isStale && $0.comment.anchor.file == entry.id }
+    /// How many comments this file can no longer draw a rail for, and the earliest line one of them
+    /// named — or nothing at all, which is every file in an ordinary change set.
+    private func stale(of entry: ContinuousDiffEntry) -> (count: Int, firstLine: Int)? {
+        let gone = comments.filter { $0.isStale && $0.comment.anchor.file == entry.id }
+        guard let first = gone.map(\.comment.lines.first).min() else { return nil }
+        return (gone.count, first)
     }
 
     /// **The gap between two files, and the review's seventh fault.** Without it a collapsed bar
@@ -253,12 +261,12 @@ public struct ContinuousDiffView: View {
             // **Under the header and above the code**, which is the only place left for a comment
             // whose rows are gone. See `StaleCommentRow` for why inserting 44pt here does not break
             // the no-reflow rule, and for what would make it start breaking it.
-            ForEach(stale(of: entry), id: \.id) { reviewed in
-                StaleCommentRow(
-                    count: 1,
-                    line: reviewed.comment.lines.first,
-                    onOpenReview: onOpenReview
-                )
+            //
+            // **One row for the file rather than one per comment.** Two of them stacked would be 88pt
+            // of chrome saying the same sentence twice, and the second one's line number is a handle
+            // on something the reader has to open the review to see anyway.
+            if let stale = stale(of: entry) {
+                StaleCommentRow(count: stale.count, line: stale.firstLine, onOpenReview: onOpenReview)
             }
             switch entry.content {
             case .awaiting:
@@ -277,6 +285,7 @@ public struct ContinuousDiffView: View {
                     // decides which of them this file's hunks can place.
                     comments: comments.filter { $0.isStale == false }.map(\.comment),
                     pending: pending,
+                    acceptsTargeting: acceptsTargeting,
                     onExpand: onExpand,
                     onTapGutter: onTapGutter,
                     onLongPressGutter: onLongPressGutter

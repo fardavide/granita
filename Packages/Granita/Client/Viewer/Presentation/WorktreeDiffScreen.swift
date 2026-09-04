@@ -207,7 +207,15 @@ public struct WorktreeDiffScreen: View {
             pointSize: layout.codePointSize,
             jumpTarget: model.jumpTarget,
             comments: model.reviewed,
-            pending: model.draft.pending,
+            // **The held row draws a rail too, which is the state that most needs one.** Design
+            // §7.1 makes the mark part of holding — square caps, outside the horizontal scroll, and
+            // deliberately surviving a scroll that goes looking for the other end. Passing only the
+            // composing run left a reader holding a row with nothing in the gutter to say which.
+            pending: model.draft.pending ?? model.draft.held,
+            // The strip stops being a target while a sheet is up, because the composer's own detent
+            // keeps the diff behind it live — and a gesture that lands there is one the draft has
+            // nothing to do with. The scroll still moves; only the aim goes.
+            acceptsTargeting: model.sheet == nil,
             onReading: { position in Task { await model.reading(position) } },
             onJumped: model.didJump,
             onSetViewed: { isViewed, file in Task { await model.setViewed(isViewed, on: file) } },
@@ -224,6 +232,13 @@ public struct WorktreeDiffScreen: View {
         // costs the layout nothing at all.
         .overlay(alignment: .bottom) { instructionBar }
         .overlay(alignment: .bottomTrailing) { capsule }
+        // **On the container, which is the rule the whole screen follows and the reason the two
+        // `.transition`s above were inert.** A transition needs an animated state change to run
+        // against, and nothing was animating these: the bar snapped in on a long press and the
+        // capsule popped the instant a save landed. Keyed on the two facts that make each appear
+        // rather than on the model, so an arriving diff does not restart them.
+        .animation(.disclosure, value: model.draft.heldEnd)
+        .animation(.disclosure, value: model.comments.isEmpty)
     }
 
     /// The state a held row leaves the reader in, explained where their thumb already is.
@@ -241,10 +256,8 @@ public struct WorktreeDiffScreen: View {
     /// Design §7.4's way in, and only on the phone: a column already on screen needs no button to
     /// announce itself, so at regular width the count lives in the toolbar instead.
     @ViewBuilder private var capsule: some View {
-        if layout.showsReviewCapsule, model.comments.isEmpty == false, model.draft.heldEnd == nil {
+        if layout.showsReviewCapsule, model.draft.heldEnd == nil {
             ReviewCapsule(count: model.comments.count) { model.showReview() }
-                .padding(.trailing, 16)
-                .padding(.bottom, 16)
                 .transition(.scale.combined(with: .opacity))
         }
     }
@@ -283,6 +296,8 @@ public struct WorktreeDiffScreen: View {
             hasSkippedNote: model.hasSkippedNote,
             hasCopied: model.hasCopied,
             document: model.feedback(note: model.noteDraft),
+            showsDocument: model.isShowingDocument,
+            onShowDocument: { model.showDocument($0) },
             onClose: { model.dismissSheet() },
             onSkipNote: { model.skipNote() },
             onCopy: { model.copyReview() },

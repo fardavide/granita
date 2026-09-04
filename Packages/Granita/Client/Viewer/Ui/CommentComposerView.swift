@@ -1,5 +1,7 @@
 import SwiftUI
 
+import ClientViewerDomain
+
 /// Where the reader writes what they have to say about a run of lines.
 ///
 /// **A sheet at one fixed height, with the diff still live behind it.** Design §7.2 keeps the file
@@ -31,8 +33,15 @@ public struct CommentComposerView: View {
     /// How many rows of the excerpt are drawn before the rest becomes a count.
     public static let excerptRows = 3
 
+    /// The excerpt's own card, which is the rail's colour at the weight a background can carry.
+    static let excerptTint: Double = 0.12
+
+    /// The width the excerpt's figures are right-aligned in. Its own column rather than the diff's,
+    /// because nothing in a sheet has to line up with the gutter.
+    static let excerptNumberWidth: CGFloat = 34
+
     private let anchorLabel: String
-    private let excerpt: [String]
+    private let excerpt: [ExcerptLine]
     private let isEditing: Bool
     private let text: Binding<String>
     private let onCancel: () -> Void
@@ -41,7 +50,7 @@ public struct CommentComposerView: View {
 
     public init(
         anchorLabel: String,
-        excerpt: [String],
+        excerpt: [ExcerptLine],
         isEditing: Bool,
         text: Binding<String>,
         onCancel: @escaping () -> Void,
@@ -60,7 +69,6 @@ public struct CommentComposerView: View {
     public var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
             // **The anchor is pinned above the field and the field scrolls inside its own frame**,
             // which is design §7.2's answer to a comment longer than the sheet. The one thing a
             // reader must never lose sight of while writing is which lines they are writing about.
@@ -98,32 +106,53 @@ public struct CommentComposerView: View {
     /// extend-up / extend-down / shrink lands; a menu with no items would be this project's dead
     /// control, so it is a label that says what the comment is about and nothing more.
     private var anchor: some View {
-        Text(anchorLabel)
-            .font(.subheadline.monospaced())
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.head)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(.horizontal, 16)
+        HStack(spacing: 10) {
+            // **The same rail again**, which is the third surface it appears on: the gutter, the
+            // instruction bar, and here. It is what tells a reader that the sheet in front of them
+            // belongs to the rows behind it.
+            RoundedRectangle(cornerRadius: DiffGutter.railWidth / 2, style: .continuous)
+                .fill(Color.diffCommentRail)
+                .frame(width: DiffGutter.railWidth, height: 18)
+            Text(anchorLabel)
+                .font(.footnote.monospaced())
+                .lineLimit(1)
+                .truncationMode(.head)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .padding(.horizontal, 16)
+        .overlay(alignment: .top) { Divider() }
     }
 
+    /// **A tinted card rather than three loose lines**, which is what §7.2 draws and what makes the
+    /// quotation read as a thing lifted out of the diff rather than as chrome the sheet grew. The
+    /// tint is the rail's colour at the weight a background can carry.
+    ///
+    /// **With the figures beside it**, right-aligned in a column of their own: the number is what a
+    /// reader who aimed one row off would recognise, and the text alone looks equally plausible one
+    /// row up.
     private var quotation: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(excerpt.prefix(Self.excerptRows).enumerated()), id: \.offset) { _, line in
-                Text(verbatim: line)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                quotedRow(line)
             }
             if excerpt.count > Self.excerptRows {
                 let rest = excerpt.count - Self.excerptRows
                 Text(rest == 1 ? "+1 more line" : "+\(rest) more lines")
                     .foregroundStyle(.tertiary)
+                    // Aligned with the code rather than with the figures, because it counts lines
+                    // and is not one.
+                    .padding(.leading, Self.excerptNumberWidth + 8)
+                    .padding(.top, 2)
             }
         }
         .font(.system(size: Self.excerptPointSize, design: .monospaced))
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 7)
+        .background(Color.diffCommentRail.opacity(Self.excerptTint), in: .rect(cornerRadius: 8))
         .padding(.horizontal, 16)
+        .padding(.top, 8)
         .padding(.bottom, 10)
     }
 
@@ -134,6 +163,19 @@ public struct CommentComposerView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func quotedRow(_ line: ExcerptLine) -> some View {
+        HStack(spacing: 0) {
+            Text(line.number.map(String.init) ?? "")
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+                .frame(width: Self.excerptNumberWidth, alignment: .trailing)
+                .padding(.trailing, 8)
+            Text(verbatim: line.text)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
     }
 
     /// **The only place a single comment can be destroyed from the diff**, and it exists only for one

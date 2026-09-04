@@ -1,3 +1,4 @@
+import ClientViewerDomain
 import ClientViewerUi
 import SwiftUI
 import Testing
@@ -48,11 +49,16 @@ struct ComposerCase: Sendable, CustomTestStringConvertible {
 
     let name: String
     let anchorLabel: String
-    let excerpt: [String]
+    let quoted: [(Int, String)]
     let isEditing: Bool
     let text: String
 
     var testDescription: String { name }
+
+    /// The rows as the composer takes them, numbers and all.
+    var excerpt: [ExcerptLine] {
+        quoted.map { ExcerptLine(number: $0.0, text: $0.1) }
+    }
 
     static let all: [ComposerCase] = [
         // A new comment on a run of four. The excerpt is three rows and a count, which is the
@@ -61,11 +67,11 @@ struct ComposerCase: Sendable, CustomTestStringConvertible {
         ComposerCase(
             name: "a-new-comment",
             anchorLabel: "Turbine.swift:41-44",
-            excerpt: [
-                "func awaitItem() async throws -> Element {",
-                "  try await withTimeout(.seconds(1)) {",
-                "    try await self.awaitNext()",
-                "  }"
+            quoted: [
+                (41, "func awaitItem() async throws -> Element {"),
+                (42, "  try await withTimeout(.seconds(1)) {"),
+                (43, "    try await self.awaitNext()"),
+                (44, "  }")
             ],
             isEditing: false,
             text: ""
@@ -77,7 +83,7 @@ struct ComposerCase: Sendable, CustomTestStringConvertible {
         ComposerCase(
             name: "an-existing-comment",
             anchorLabel: "Lce.swift:8",
-            excerpt: ["extension Lce: Sendable where C: Sendable, E: Sendable {}"],
+            quoted: [(8, "extension Lce: Sendable where C: Sendable, E: Sendable {}")],
             isEditing: true,
             text: "This is unconditional. C and E are already constrained, so drop the where clause."
         ),
@@ -88,11 +94,11 @@ struct ComposerCase: Sendable, CustomTestStringConvertible {
         ComposerCase(
             name: "a-comment-longer-than-the-sheet",
             anchorLabel: "Turbine.swift:41-44",
-            excerpt: [
-                "func awaitItem() async throws -> Element {",
-                "  try await withTimeout(.seconds(1)) {",
-                "    try await self.awaitNext()",
-                "  }"
+            quoted: [
+                (41, "func awaitItem() async throws -> Element {"),
+                (42, "  try await withTimeout(.seconds(1)) {"),
+                (43, "    try await self.awaitNext()"),
+                (44, "  }")
             ],
             isEditing: true,
             text: """
@@ -101,6 +107,26 @@ struct ComposerCase: Sendable, CustomTestStringConvertible {
                 While you are here: awaitNext() swallows cancellation, which is why the timeout looks \
                 like it works.
                 """
+        ),
+
+        // **A run of seven, which is the only subject that draws the plural.** Three rows and a
+        // count is the shape §7.2 specifies, and the count was `+1 more line` in every other case
+        // here — so `+N more lines` was a string this app had never rendered on any screen or in any
+        // baseline, on an ordinary selection the design names by hand.
+        ComposerCase(
+            name: "a-run-longer-than-the-excerpt",
+            anchorLabel: "Turbine.swift:41-47",
+            quoted: [
+                (41, "func awaitItem() async throws -> Element {"),
+                (42, "  try await withTimeout(.seconds(1)) {"),
+                (43, "    try await self.awaitNext()"),
+                (44, "  }"),
+                (45, "}"),
+                (46, ""),
+                (47, "func expectNoItems() async throws {")
+            ],
+            isEditing: false,
+            text: ""
         )
     ]
 }

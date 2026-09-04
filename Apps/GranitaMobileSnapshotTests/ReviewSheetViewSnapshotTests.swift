@@ -27,6 +27,8 @@ struct ReviewSheetViewSnapshotTests {
                 hasSkippedNote: subject.hasSkippedNote,
                 hasCopied: subject.hasCopied,
                 document: subject.document,
+                showsDocument: subject.showsDocument,
+                onShowDocument: { _ in },
                 onClose: {},
                 onSkipNote: {},
                 onCopy: {},
@@ -49,6 +51,7 @@ struct ReviewCase: Sendable, CustomTestStringConvertible {
     var hasSkippedNote = false
     var hasCopied = false
     var presentation: ReviewSheetView.Presentation = .sheet
+    var showsDocument = false
     let document: String
 
     var testDescription: String { name }
@@ -106,6 +109,18 @@ struct ReviewCase: Sendable, CustomTestStringConvertible {
             comments: aReview,
             note: "",
             presentation: .column,
+            document: aDocument
+        ),
+
+        // **What *Show text* reveals, which is the whole point of offering it**: the reader gets to
+        // see the exact bytes before they go on the pasteboard. It was drawn by nothing until the
+        // flag moved onto the model — a `@State` inside the sheet is a state no baseline can set,
+        // and the Snapshot row is what said so.
+        ReviewCase(
+            name: "the-text-shown",
+            comments: [aReview[0]],
+            note: "",
+            showsDocument: true,
             document: aDocument
         )
     ]

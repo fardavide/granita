@@ -40,18 +40,39 @@ struct CommentAffordancesSnapshotTests {
         )
     }
 
-    @Test(arguments: SnapshotLayout.all)
-    func `given a comment whose lines are gone when its row renders then it matches its baseline`(
+    @Test(arguments: StaleCase.all, SnapshotLayout.all)
+    func `given comments whose lines are gone when the row renders then it matches its baseline`(
+        subject: StaleCase,
         layout: SnapshotLayout
     ) {
         // given - when - then
         assertScreenSnapshot(
-            StaleCommentRow(count: 1, line: 6, onOpenReview: {})
+            StaleCommentRow(count: subject.count, line: 6, onOpenReview: {})
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top),
             layout: layout,
-            named: "a-stale-comment"
+            named: subject.name
         )
     }
+}
+
+// MARK: -
+
+struct StaleCase: Sendable, CustomTestStringConvertible {
+
+    let name: String
+    let count: Int
+
+    var testDescription: String { name }
+
+    static let all: [StaleCase] = [
+        // One, which names the line it used to be on — the only handle the reader has left.
+        StaleCase(name: "a-stale-comment", count: 1),
+        // **Several, which is one row rather than several.** Two of these stacked would be 88pt of
+        // chrome saying one sentence twice, so the file gets one row and the second line drops the
+        // number: with more than one there is no single line to name, and the review is where the
+        // list is. Until this subject existed the plural was a string nothing drew.
+        StaleCase(name: "several-stale-comments", count: 3)
+    ]
 }
 
 // MARK: -

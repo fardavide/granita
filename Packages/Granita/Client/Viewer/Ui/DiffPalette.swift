@@ -62,7 +62,13 @@ extension Color {
     ///
     /// Amber rather than red: nothing is broken and nothing was lost — the comment is still in the
     /// review and still goes in the document. What it has lost is somewhere to sit.
-    static var diffCommentStale: Color { .orange }
+    ///
+    /// **The status palette's own amber rather than `.orange`, and the design chose it independently
+    /// — `#C0821F` in the returned frames is `fileStatusAmber` to the byte.** Orange already means
+    /// *conflicted*, which is the one status that means *you must look at this*; a stale comment is
+    /// the opposite kind of news, and two things a reader cannot tell apart is worse than one of them
+    /// having no colour.
+    static var diffCommentStale: Color { .fileStatusAmber }
 
     /// The hunk band's fill, and the review's fourth fault finished.
     ///

@@ -314,7 +314,9 @@ struct ClientViewerCommentsTests {
         // then
         #expect(scenario.sut.sheet == .composer)
         #expect(scenario.sut.composerAnchorLabel == "File0.swift:2")
-        #expect(scenario.sut.composerExcerpt == ["let question = 6 * 9"])
+        // The figure comes with the code, because a reader who aimed one row off recognises the
+        // number rather than the text.
+        #expect(scenario.sut.composerExcerpt == [ExcerptLine(number: 2, text: "let question = 6 * 9")])
         #expect(scenario.sut.composerText.isEmpty)
         #expect(scenario.sut.editingComment == nil)
     }
@@ -361,7 +363,10 @@ struct ClientViewerCommentsTests {
 
         // then
         #expect(scenario.sut.composerAnchorLabel == "File0.swift:1-2")
-        #expect(scenario.sut.composerExcerpt == ["let answer = 42", "let question = 6 * 9"])
+        #expect(scenario.sut.composerExcerpt == [
+            ExcerptLine(number: 1, text: "let answer = 42"),
+            ExcerptLine(number: 2, text: "let question = 6 * 9")
+        ])
     }
 
     @Test
@@ -382,6 +387,68 @@ struct ClientViewerCommentsTests {
         // then — the run does not move and the words do not go.
         #expect(scenario.sut.composerText == "Three sentences about this line.")
         #expect(scenario.sut.composerAnchorLabel == "File0.swift:2")
+    }
+
+    @Test
+    func `given the composer is open when the file list is asked for instead then the run is let go`() async {
+        // given — **the toolbar is live behind the composer's detent**, so *12 files* and the review
+        // chip can each replace the composer without going through the sheet's own dismissal. Before
+        // this, the run stayed composing with no composer over it: a square-capped rail in the
+        // gutter, no instruction bar, and every further gutter gesture a no-op for the life of the
+        // screen, because a composing draft ignores them all.
+        let scenario = Scenario()
+        await scenario.load()
+        scenario.sut.tappedGutter(anAddition, in: FileID(rawValue: "file-0"))
+
+        // when
+        scenario.sut.showSelector(true)
+
+        // then
+        #expect(scenario.sut.draft == .idle)
+        #expect(scenario.sut.sheet == .selector)
+    }
+
+    @Test
+    func `given the composer is open when the review is asked for instead then the run is let go`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.load()
+        scenario.sut.tappedGutter(anAddition, in: FileID(rawValue: "file-0"))
+
+        // when
+        scenario.sut.showReview()
+
+        // then
+        #expect(scenario.sut.draft == .idle)
+        #expect(scenario.sut.sheet == .review)
+    }
+
+    @Test
+    func `given a file with no diff in hand when its gutter is tapped then the composer has nothing to quote`() async {
+        // given — **unreachable from the screen and reachable through the model**, which is the shape
+        // this repository answers rather than assumes away: a file still on its way draws no rows, so
+        // there is no gutter to touch — but nothing in `tappedGutter` asks, and every accessor the
+        // composer reads has to have an answer for it.
+        let scenario = Scenario()
+        await scenario.load()
+
+        // when — the eighth file, which the batch of five never reached.
+        scenario.sut.tappedGutter(anAddition, in: FileID(rawValue: "file-7"))
+
+        // then — an empty composer rather than a wrong one, and Save refuses with the alert the
+        // screen puts up.
+        #expect(scenario.sut.composerExcerpt.isEmpty)
+        #expect(scenario.sut.composerAnchorLabel.isEmpty)
+        #expect(scenario.sut.heldRowLabel.isEmpty)
+        #expect(scenario.sut.editingComment == nil)
+
+        // and when
+        scenario.sut.composerText = "Against a file that has not arrived."
+        scenario.sut.saveComment()
+
+        // then
+        #expect(scenario.sut.comments.isEmpty)
+        #expect(scenario.sut.commentFailure)
     }
 
     @Test
@@ -541,6 +608,27 @@ struct ClientViewerCommentsTests {
     // MARK: - The review, the copy, and the clear
 
     @Test
+    func `given the review is open when the text is asked for then it is shown and can be hidden`() async {
+        // given — **on the model rather than in the sheet**, which is what makes it a control this
+        // repository can ask about: a `@State` inside the view is a state no baseline can set, so the
+        // branch that draws the document was reached by nothing at all.
+        let scenario = Scenario()
+        await scenario.load()
+
+        // when
+        scenario.sut.showDocument(true)
+
+        // then
+        #expect(scenario.sut.isShowingDocument)
+
+        // and when
+        scenario.sut.showDocument(false)
+
+        // then
+        #expect(scenario.sut.isShowingDocument == false)
+    }
+
+    @Test
     func `given comments exist when the review is opened then that is the sheet`() async {
         // given
         let scenario = Scenario()
@@ -566,10 +654,19 @@ struct ClientViewerCommentsTests {
         // when
         scenario.sut.copyReview()
 
-        // then — the string the reader is about to paste, built by the one function asserted to the
-        // byte and handed to the one seam that leaves this app.
-        #expect(scenario.pasteboard.copied == scenario.sut.feedback(note: "Two small things."))
-        #expect(scenario.pasteboard.copied?.contains("This wants a name.") == true)
+        // then — **a literal rather than `sut.feedback(...)`.** Asserting against the model's own
+        // call runs `ReviewFeedback.document` on both sides of the comparison, so deleting the
+        // heading, the path line or the `> ` prefix would change them together and leave this green:
+        // a test that mirrors the mapper instead of catching it.
+        #expect(scenario.pasteboard.copied == """
+            Review of uncommitted changes — granita, worktree TLS pinning, 8 files
+
+            Two small things.
+
+            Sources/File0.swift:2
+            > let question = 6 * 9
+            This wants a name.
+            """)
     }
 
     @Test

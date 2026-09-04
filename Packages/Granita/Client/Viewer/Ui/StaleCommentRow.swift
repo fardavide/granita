@@ -48,8 +48,10 @@ public struct StaleCommentRow: View {
                         .font(.footnote)
                         .lineLimit(1)
                     // What it *was* about, because the reader wrote it against something and the
-                    // number is the only handle they have left on which something.
-                    Text("was line \(line) · still in the review")
+                    // number is the only handle they have left on which something. Only for one:
+                    // several lines in a row of this height would be a list, and the review is where
+                    // the list is.
+                    Text(count == 1 ? "was line \(line) · still in the review" : "still in the review")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
