@@ -128,7 +128,31 @@ func assertScreenSnapshot(
         // explains. The environment's locale is the right source for what a reader sees and the
         // wrong one for a golden image, so this asserts one layout deliberately rather than
         // whichever the simulator happened to be set to.
-        of: view.environment(\.locale, Locale(identifier: "en_US")),
+        of: view
+            .environment(\.locale, Locale(identifier: "en_US"))
+            // **The keyboard belongs to the process, not to the view being photographed, and this is
+            // where that stops mattering.** `drawHierarchyInKeyWindow` renders through the host app's
+            // one real window, so the safe area SwiftUI lays out against is the live window's — and a
+            // keyboard raised by whatever rendered *before* this call is still contributing to it. It
+            // never appears in the raster, because it lives in its own window; it appears as geometry.
+            //
+            // It cost a baseline. On 4 September 2026 `a-comment-adrift-iPhone-light` failed on CI,
+            // byte-identically on two runs and green on this machine every time, because the case
+            // before it in the same serialised suite opens `ReviewSheetView`, which focuses its note
+            // field `.onAppear` and carries a `placement: .keyboard` toolbar. The next render got a
+            // ~387pt bottom inset: `ContinuousDiffView`'s frame ended at 457pt instead of 844, which
+            // moved the review capsule — an overlay on that frame — 387pt up its own screen, and
+            // stopped the one `.background(Color.diffPage)` rect before the 10pt gap between two
+            // files, which then showed the window's white. **The rows did not move**, because a
+            // scroll view absorbs a bottom safe area as a content inset rather than by clipping, and
+            // that is what made it read as two unrelated defects instead of one short frame.
+            //
+            // Removing the region is right rather than convenient: no baseline in this suite contains
+            // a keyboard or intends to avoid one, so the keyboard's contribution here can only ever be
+            // state one test left behind for the next. Dismissing the responder instead would trade a
+            // deterministic modifier for a wait on an animation, which is the thing this harness has
+            // none of and should not gain.
+            .ignoresSafeArea(.keyboard, edges: .bottom),
         as: .image(
             drawHierarchyInKeyWindow: true,
             precision: 0.999,

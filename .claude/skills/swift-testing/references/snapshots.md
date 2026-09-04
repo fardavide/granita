@@ -17,6 +17,39 @@ A SwiftPM test target is hostless: there is no key window, so a SwiftUI view lay
 nothing and renders blank. `drawHierarchyInKeyWindow: true` needs a real host, which is why the
 target sets `TEST_HOST`.
 
+## The window is shared, so one case's keyboard is the next case's geometry
+
+`drawHierarchyInKeyWindow: true` renders through the host app's **one real window**, and in that mode
+swift-snapshot-testing ignores the layout config's declared safe area entirely — it resizes the live
+window and uses whatever safe area the window reports. A keyboard raised by whatever rendered *before*
+is therefore still in the layout, and it never appears in the raster, because it lives in its own
+window. **It appears as geometry.**
+
+It cost a baseline on 2026-09-04. `a-comment-adrift-iPhone-light` failed on CI, byte-identically on two
+runs and green on this machine every time. The case before it in the same `.serialized` suite opens
+`ReviewSheetView`, which focuses its note field `.onAppear` and carries a `placement: .keyboard`
+toolbar. The next render got a **387.00pt bottom inset**, and one short frame produced two symptoms
+that read as unrelated defects:
+
+- the review capsule is an `.overlay` on `ContinuousDiffView`'s frame, so it drew 387pt up its screen;
+- the page colour is one `.background(Color.diffPage)` on that same frame, so it stopped before the
+  10pt gap between two files — which is `Color.clear` and has no colour of its own — and the gap showed
+  the window's white;
+- **and no row moved**, because a scroll view absorbs a bottom safe area as a *content* inset rather
+  than by clipping. That is what made it look like two bugs instead of one.
+
+The harness now applies `.ignoresSafeArea(.keyboard, edges: .bottom)` to every subject. No baseline in
+this suite contains a keyboard or intends to avoid one, so the keyboard's contribution here can only
+ever be state one test left behind. Dismissing the responder instead would trade a deterministic
+modifier for a wait on an animation, and this harness has no waits by design.
+
+Two things this teaches beyond the fix:
+
+- **A dark baseline cannot catch a missing page.** `systemBackground` and `systemGroupedBackground` are
+  *both* black in dark mode, so the same defect is invisible there. Only the light renders witness it.
+- **Reproducing locally is not evidence of absence** when the mechanism is a leak between cases: the
+  interleaving is deterministic per machine and differs between this Mac and the runner.
+
 ## Why the suite must be `@MainActor`
 
 Swift Testing runs `@Test` functions off the main actor, and rendering touches UIKit view

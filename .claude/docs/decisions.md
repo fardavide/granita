@@ -5150,6 +5150,42 @@ a test writes into the developer's own pasteboard, which is why `AppKitSystemGes
 there — but adding it is a scope redefinition and, as it turns out, is **not needed**: `All tests`
 reaches level without it. It is recorded here rather than taken.
 
+## A keyboard from the previous test moved a capsule 387pt, and the snapshot harness now ignores one
+
+`a-comment-adrift-iPhone-light` failed on CI and passed here — byte-identically on two runs there,
+green on every local run including one on CI's own device. Same Xcode 26.6, same iOS 26.5, so none of
+the usual suspects.
+
+The render differed in exactly three bands and nowhere else: the review capsule 387pt up its screen,
+one 10pt inter-file gap white instead of `#F2F2F7`, and the capsule missing from where it belonged.
+**Those are one fact, not two.** `ContinuousDiffView`'s `ScrollView` both hosts the capsule overlay
+(`WorktreeDiffScreen.swift:233-234`) and paints the page (`ContinuousDiffView.swift:190`), so a frame
+387pt short at the bottom moves the overlay *and* stops the page rect before the gap — which is
+`Color.clear` and has no colour of its own. **No row moved**, because a scroll view absorbs a bottom
+safe area as a content inset rather than by clipping, and that is precisely what made it read as two
+unrelated defects.
+
+The 387pt is a keyboard. `drawHierarchyInKeyWindow: true` renders through the host app's one real
+window, and in that mode swift-snapshot-testing ignores the config's declared safe area and uses the
+live window's. CI's own log names the culprit without inference: the case immediately before, in the
+same `.serialized` suite, is `given the review is open…`, which opens `ReviewSheetView` — focused
+`.onAppear`, with a `placement: .keyboard` toolbar. Only the very next render is short; by the second
+case the responder is gone.
+
+**Two things made it invisible until now.** A dark baseline cannot witness it, because
+`DiffPalette.swift` records that `systemBackground` and `systemGroupedBackground` are *both* black in
+dark; and the capsule exists only at compact width, so neither iPad layout carries the evidence. One
+of four renderings could see it, and it was the first one.
+
+The fix is one modifier in the harness — `.ignoresSafeArea(.keyboard, edges: .bottom)` on every
+subject — rather than dismissing the responder, which would trade a deterministic modifier for a wait
+on an animation in a harness that has no waits by design. It moved no baseline: all 86 still pass
+here, which is what a fix that only removes leaked geometry should do.
+
+**The general rule this leaves**, in the `swift-testing` skill: a shared key window means a test's
+geometry can be set by the test before it, and reproducing locally is not evidence of absence when the
+interleaving is deterministic per machine and differs between this Mac and the runner.
+
 ## An action closure leaves the Snapshot regions column, and the entry above is what it answers
 
 Davide, on reading the row above: *"We should exclude untestable closure from tests coverage."* The
