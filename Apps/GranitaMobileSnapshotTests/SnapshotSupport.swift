@@ -241,21 +241,47 @@ func assertScreenSnapshot(
         column: column
     )
 
-    // **The keyboard is put away here rather than before the next render, and the difference is how
-    // long it has to withdraw.** Dismissed at the *start* of the next assertion it has nothing;
-    // dismissed here it has that assertion's whole image comparison, which is the slowest thing in
-    // the loop.
-    //
-    // Measured rather than assumed: on CI `the-review-is-open-iPad-dark` lays out at 1194x511 with a
-    // 261pt bottom inset, and on this machine the same render is 1194x738 with 34. A software
-    // keyboard comes up on the runner and does not come up here, which is the one hard difference
-    // between the two machines in this whole failure.
-    //
-    // **No run loop is spun.** Doing that took 22 unrelated baselines down with it: spinning the main
-    // run loop mid-assertion is an invitation for another suite's case to take the shared window,
-    // which is the hazard this is trying to close rather than a way to close it.
-    UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .flatMap(\.windows)
-        .forEach { $0.endEditing(true) }
+    drainTheKeyboard()
+}
+
+/// Waits out the keyboard a render may have raised, so the next render does not inherit its geometry.
+///
+/// **The race, measured rather than reasoned about.** `ReviewSheetView` focuses its note field
+/// `.onAppear` (`ReviewSheetView.swift:125`), which raises the software keyboard **asynchronously**.
+/// It does not land on the next render — it lands on whichever render is laying out when it arrives,
+/// and `drawHierarchyInKeyWindow` means that render is laid out against the live window's safe area.
+/// Both machines catch it exactly once per run and only the victim differs: on CI it was
+/// `a-comment-adrift-iPhone-light` at a 261pt bottom inset, which is a phone-light render and shows
+/// the damage; here it was `a-suggestion-exists-iPad-dark`, where the capsule does not exist at
+/// regular width and the page artefact is black on black. That is the whole reason this was green
+/// locally and red on the runner for three consecutive runs.
+///
+/// **`endEditing` alone does not do it, and neither does `.ignoresSafeArea(.keyboard)`.** Dismissing
+/// once leaves a rise that was already queued; the modifier, applied to the subject, moved the inset
+/// from 261 to 319 and onto a different render rather than removing it. Both were measured, and both
+/// are why this loop dismisses on *every* turn rather than once: whenever the queued rise
+/// materialises, it is put back down.
+///
+/// **Spinning the run loop is only safe because every suite is now `.serialized`.** An earlier
+/// version spun it *before* the render while sixteen suites were unserialised, and another suite's
+/// case took the window mid-assertion — 22 unrelated baselines went red. Spinning after the render,
+/// with nothing else able to run, is the same tool with the hazard removed.
+@MainActor
+private func drainTheKeyboard() {
+    var quiet = 0
+    let deadline = Date().addingTimeInterval(1)
+    while Date() < deadline, quiet < 3 {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        windows.forEach { $0.endEditing(true) }
+        let settled = windows.contains {
+            "\(type(of: $0))".contains("Keyboard") && $0.isHidden == false
+        } == false
+        // Three consecutive quiet turns rather than one, because one turn cannot tell a keyboard that
+        // has gone from a keyboard that has not arrived yet — and the arrival is the case that costs a
+        // baseline.
+        quiet = settled ? quiet + 1 : 0
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+    }
 }

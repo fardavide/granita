@@ -9,7 +9,7 @@ import Testing
 /// **The bar and the capsule share one position and can never both be true**, which is why they are
 /// photographed apart: what a baseline can hold about them is what each looks like in the corner they
 /// take turns in, and the screen's own suite is where the turn-taking is asserted.
-@Suite("Comment affordances")
+@Suite("Comment affordances", .serialized)
 @MainActor
 struct CommentAffordancesSnapshotTests {
 

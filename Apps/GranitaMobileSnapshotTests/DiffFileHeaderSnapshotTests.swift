@@ -13,7 +13,7 @@ import Testing
 ///
 /// Main-actor isolated for the reason every suite here is: Swift Testing runs `@Test` functions off
 /// the main actor, and rendering touches UIKit view properties that trap when it does.
-@Suite("Diff file header")
+@Suite("Diff file header", .serialized)
 @MainActor
 struct DiffFileHeaderSnapshotTests {
 

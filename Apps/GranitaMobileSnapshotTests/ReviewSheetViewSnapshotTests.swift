@@ -9,7 +9,7 @@ import Testing
 /// **The state that matters most here is the one that is absent.** `before-the-copy` has no Clear on
 /// it anywhere, and `after-the-copy` does: that is the sequencing Davide asked for, drawn literally,
 /// and a baseline is the only thing that can hold "this control is not on this screen".
-@Suite("Review sheet")
+@Suite("Review sheet", .serialized)
 @MainActor
 struct ReviewSheetViewSnapshotTests {
 

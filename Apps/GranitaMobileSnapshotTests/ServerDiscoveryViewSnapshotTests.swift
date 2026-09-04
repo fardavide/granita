@@ -14,7 +14,7 @@ import Testing
 /// `_raiseExceptionForBackgroundThreadLayerPropertyModification`. That trap is worse than a plain
 /// failure here: the crash restarts the test host, and the retry then reports "0 tests passed",
 /// so the suite goes green having rendered nothing.
-@Suite("Server discovery screen")
+@Suite("Server discovery screen", .serialized)
 @MainActor
 struct ServerDiscoveryViewSnapshotTests {
 

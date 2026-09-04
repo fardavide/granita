@@ -18,7 +18,7 @@ import Testing
 /// `_raiseExceptionForBackgroundThreadLayerPropertyModification`. That trap is worse than a plain
 /// failure: the crash restarts the test host, and the retry then reports "0 tests passed", so the
 /// suite goes green having rendered nothing.
-@Suite("Continuous diff")
+@Suite("Continuous diff", .serialized)
 @MainActor
 struct ContinuousDiffViewSnapshotTests {
 

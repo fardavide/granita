@@ -13,7 +13,7 @@ import Testing
 ///
 /// Main-actor isolated, and it must be: rendering touches UIKit view properties, and doing that off
 /// the main actor traps in a way that restarts the test host and reports "0 tests passed".
-@Suite("Comment composer")
+@Suite("Comment composer", .serialized)
 @MainActor
 struct CommentComposerViewSnapshotTests {
 
