@@ -32,9 +32,9 @@ struct PairingOutcomeViewSnapshotTests {
     ) {
         // given - when - then
         //
-        // Clamped outside the navigation container like every screen before a paired Mac: this is
-        // the last of the four, and a receipt that spread across an iPad would be the one screen in
-        // the flow that left the column.
+        // Unclamped like every screen before a paired Mac, which is the whole of what 0.7.1 changed
+        // about them: the receipt spreads across an iPad rather than sitting in a 420pt column with
+        // white either side of it.
         assertScreenSnapshot(
             NavigationStack {
                 PairingOutcomeView(
@@ -46,9 +46,7 @@ struct PairingOutcomeViewSnapshotTests {
                     onOpenTestFlight: {},
                     onOpenSettings: {}
                 )
-            }
-            .frame(maxWidth: ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity),
+            },
             layout: layout,
             named: subject.name
         )

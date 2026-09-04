@@ -32,9 +32,9 @@ struct PairingWordsViewSnapshotTests {
     ) {
         // given - when - then
         //
-        // Clamped outside the navigation container like every screen before a paired Mac. §5 gives
-        // this one no iPad drawing of its own for exactly that reason: the same measure, the field at
-        // the top, and the keyboard taking the bottom third.
+        // Unclamped like every screen before a paired Mac. §5 gives this one no iPad drawing of its
+        // own: the field at the top and the keyboard taking the bottom third, at whatever width the
+        // window is — through 0.7.0 that width was a 420pt column in the middle of it.
         assertScreenSnapshot(
             NavigationStack {
                 PairingWordsView(
@@ -44,9 +44,7 @@ struct PairingWordsViewSnapshotTests {
                     unknownWord: subject.unknownWord,
                     onPair: {}
                 )
-            }
-            .frame(maxWidth: ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity),
+            },
             layout: layout,
             named: subject.name
         )

@@ -73,6 +73,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.7.1 — 2026-09-04
+- **The screens you see before you have opened a Mac now use the whole window.** Finding a Mac,
+  choosing between the QR code and the six words, the viewfinder, the six-word field and the receipt
+  were all drawn in a 420pt column down the middle, with the rest of the window empty white either
+  side of it — on an iPad, and most visibly on a Mac. They lay themselves out at whatever width they
+  are given, the way everything else does.
+
 ### 0.7.0 — 2026-09-03
 - **You can leave comments on the code now, and send them back to the agent that wrote it.** Tap the
   line numbers beside a line to write one. Press and hold a line, then tap another, to comment on a

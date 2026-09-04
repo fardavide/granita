@@ -147,31 +147,33 @@ direction costs the reader one tap; being wrong the other way costs them the app
 *Should feel like* the app taking responsibility. The words are ours; the diagnostic is in small
 print at the bottom where diagnostics go.
 
-### The iPad is constrained, not stretched
+### The iPad draws these screens the way SwiftUI draws them *(revised in 0.7.1)*
 
-A 1,150pt row pulls its two ends apart: the name at x=150 and its chevron at x=1,140, with nothing on
-screen saying they belong to the same tap target. A row that wide stops reading as a row. The empty
-space is the smaller problem.
+**The 420pt centred measure is gone.** Every screen before a paired Mac used to be clamped to it —
+discovery, a Mac's two credentials, the viewfinder, the six words and the receipt — with the
+navigation container inside the clamp so the large title came with it. What that produced on anything
+wider than a phone was a 420pt strip of content down the middle of the window with the rest of it
+bare white: the large title floating at x=362 rather than at a leading edge, and a run in a Mac
+window reading as an app that had failed to lay itself out. Davide called it on 4 September 2026,
+looking at all three of those screens.
 
-One constraint, applied to the **whole screen** rather than to the list: a maximum content width of
-420pt, centred, with the large title inside the same measure so the title's leading edge lines up
-with the rows. Every state gets it, so the empty states stop being small things in a large room and
-become a centred card. It is the iPad setup idiom — Apple TV pairing, Home hub setup, Migration
-Assistant — and the phone layout is then literally the same layout at its natural width.
+So these screens are stock SwiftUI at the width they are given: a `List`, a `ContentUnavailableView`,
+a `.navigationTitle`, and nothing around any of them. What the room does with them is the framework's
+call rather than ours.
 
-**The measure goes around the navigation container, not around the screen.** iOS draws a large title
-in the navigation bar rather than in the content, so a frame applied inside centres the rows and
-leaves the title pinned to the window's leading edge — the exact misalignment the measure exists to
-remove. Whoever owns the navigation container applies it, and the snapshot suite clamps on the same
-side so the baselines assert the alignment that ships. The one thing to watch: the navigation bar's
-own background is clamped too, so a future screen whose content scrolls under it will show a 420pt
-frosted strip. None of the six discovery states scroll.
+> Rejected: keeping the measure and painting the grouped background across the window, so the column
+> reads as a card in a room. It answers the white, and it is one more hand-rolled layer around a
+> stack that had two already. Rejected: releasing the measure only in a Mac window — a size-class
+> condition written for one platform, which is the shape of thing this file exists to keep out.
+> Rejected, still: rendering discovery as the sidebar of the eventual split view with a placeholder
+> detail column, and a form-sheet presentation with nothing behind it to dismiss to.
 
-> Rejected: rendering discovery as the sidebar of the eventual split view with a placeholder detail
-> column — more code, and it shows a two-column shell for a product the reader has not connected to
-> yet. Rejected: a form-sheet presentation. There is nothing behind it to dismiss to.
+**What this gives up, said plainly**, because it is what the measure was for: a 1,150pt row pulls its
+two ends apart, the name at one edge and its chevron at the other, with nothing on screen saying they
+belong to the same tap target. That argument has not stopped being true. It lost to the thing a
+reader actually sees, which is a window that looks broken.
 
-*Should feel like* the same screen as the phone, at rest in the middle of a bigger display.
+*Should feel like* the same screen as the phone, in a room the size of the window.
 
 ### No second line on the row. A section instead. *(M4 — needs pairing history)*
 
@@ -1114,25 +1116,25 @@ is the step with no deadline of its own. See [`decisions.md`](decisions.md).
 *Should feel like* a receipt. It tells you what happened, whether it cost you anything, and the one
 thing left to do.
 
-### iPad: 420pt, camera included
+### iPad: a card, not a room painted black *(revised in 0.7.1)*
 
-The clamp holds, and it holds for the viewfinder. The preview is a 420pt-wide 4:3 rounded card
-inside the measure, on the ordinary grouped background — **the iPad scanner does not go dark.** Dark
-is right on the phone because the camera fills the screen and the app disappears behind it; on iPad
-the camera is one element among several, and blacking out 1194pt to host a 420pt card makes a modal
-out of a pushed screen.
+**The iPad scanner does not go dark**, and that call survives the measure that used to carry it. Dark
+is right on the phone because the camera fills the screen and the app disappears behind it; at a
+regular width the camera is one element among several, and blacking out the window to host a card
+makes a modal out of a pushed screen.
 
-Detection does not suffer: the metadata output reads the whole capture frame rather than the
-preview, so a smaller preview costs aim and nothing else — and aim is easier at arm's length on a
-stand than with the whole slab raised. Nobody lifts an 11-inch iPad to point it at a Mac.
+What produces the card now is the screen's own layout rather than a clamp around the stack: a 4:3 fit
+in a padded column, which is a card in any window and never a full-bleed preview. It is larger than
+the 420pt it used to be, and that costs nothing — detection reads the whole capture frame rather than
+the preview, so preview size buys aim and only aim.
 
-The six-word screen needs no iPad drawing of its own: the same measure, the field at the top, the
-keyboard taking the bottom third. It is also the path most iPad readers will take, because an iPad
-on a stand beside a Mac is exactly the geometry that makes scanning tedious.
+The six-word screen needs no iPad drawing of its own: the field at the top, the keyboard taking the
+bottom third, at the width of the window. It is also the path most iPad readers will take, because an
+iPad on a stand beside a Mac is exactly the geometry that makes scanning tedious.
 
 > Rejected: a full-bleed iPad viewfinder with the controls floating over it. It is the phone layout
-> scaled onto a surface nobody holds that way, and it breaks the rule every pre-pairing screen
-> shares — everything before a paired Mac lives in a 420pt column, title included.
+> scaled onto a surface nobody holds that way, and the compact branch already draws it for the
+> surface people do hold that way.
 
 *Should feel like* the same screen you used on the phone, sitting still in a bigger room.
 

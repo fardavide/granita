@@ -13,16 +13,6 @@ import ClientConnectionDomain
 /// all once this list becomes a split-view sidebar. The destination arrives with pairing.
 public struct ServerDiscoveryView: View {
 
-    /// Wide enough for the longest row this screen has, narrow enough that the iPad reads as the
-    /// phone at rest in a bigger room rather than as a phone stretched across it.
-    ///
-    /// Applied by whoever owns the navigation container, not here, and that is the whole point: iOS
-    /// draws a large title in the navigation bar rather than in the content, so a frame around this
-    /// view centres the rows and leaves the title at the window's leading edge — which is the
-    /// misalignment the measure exists to remove. The composition root and the snapshot suite both
-    /// clamp the stack, so the baselines assert what ships.
-    public static let contentWidth: CGFloat = 420
-
     private let state: DiscoveryState
     private let onSearchAgain: () -> Void
     private let onOpenSettings: () -> Void
