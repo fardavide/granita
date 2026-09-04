@@ -104,53 +104,67 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
 /// showed the window's white. **No row moved**, because a scroll view absorbs a bottom safe area as a
 /// content inset rather than by clipping.
 ///
-/// **This reports and changes nothing, deliberately.** Two repairs were tried ahead of it and both
-/// were guesses. Asking the subject to `.ignoresSafeArea(.keyboard)` produced a byte-identical
-/// failure — the subject is wrapped in a `NavigationStack`, so the modifier lands on the wrapper and
-/// never reaches the scroll view inside it. Resigning first responder here and spinning the run loop
-/// until the keyboard withdrew took 22 *other* baselines down with it, because spinning the main run
-/// loop is an invitation for another suite's case to take the window mid-assertion — the very hazard
-/// this file is trying to close.
+/// Reports the safe area the subject was actually laid out against, for every render.
 ///
-/// So: measure first. The leak is invisible in the failure it causes, because the keyboard is never
-/// in the picture, and a run that cannot say whether a keyboard window was even present cannot tell a
-/// wrong fix from a wrong diagnosis. This prints what each render inherited and leaves it there.
+/// **Three repairs were attempted ahead of this and all three were guesses**, so it measures the one
+/// quantity the failure is a function of instead of a proxy for it. `.ignoresSafeArea(.keyboard)` on
+/// the subject produced a byte-identical failure — the subject is wrapped in a `NavigationStack`, so
+/// the modifier lands on the wrapper and never reaches the scroll view inside it. Resigning first
+/// responder and spinning the run loop took 22 *other* baselines down, because spinning the main run
+/// loop invites another suite's case to take the shared window mid-assertion. And a probe for an
+/// inherited responder or keyboard window printed nothing at all for the failing render, which is
+/// what ruled the keyboard out rather than confirming it.
 ///
-/// What it has already established, on this machine: a first responder **does** survive between
-/// cases here. There is simply no software keyboard behind it locally, so it costs nothing — which is
-/// exactly why every local run is green while CI is not.
-@MainActor
-private func reportInheritedState(before subject: String) {
-    let windows = UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .flatMap(\.windows)
-
-    let responder = windows.first { $0.findFirstResponder() != nil }
-    let keyboards = windows.filter { "\(type(of: $0))".contains("Keyboard") && $0.isHidden == false }
-    guard responder != nil || keyboards.isEmpty == false else { return }
-
-    let insets = windows.first { $0.isKeyWindow }?.safeAreaInsets ?? .zero
-    print(
-        "::warning::[snapshot] \(subject) inherited"
-            + " responder=\(responder != nil)"
-            + " keyboards=\(keyboards.count)\(keyboards.map { Int($0.frame.height) })"
-            + " keyWindowSafeAreaBottom=\(Int(insets.bottom))"
-    )
-}
-
-private extension UIView {
-
-    /// The first responder in this view's tree, if the tree holds one.
-    func findFirstResponder() -> UIView? {
-        if isFirstResponder {
-            return self
-        }
-        for subview in subviews {
-            if let found = subview.findFirstResponder() {
-                return found
+/// What is established: with `drawHierarchyInKeyWindow: false` — a synthetic window carrying the
+/// config's declared 47/34 — the subject renders correctly. So the difference is entirely in what the
+/// **live** window reports, and this is the number that says what.
+///
+/// `Color.clear` in a `.background` takes no layout part and draws nothing, so the raster is
+/// unchanged; the 86 baselines passing with this in place is the check on that.
+private func probingSafeArea(of view: some View, named subject: String) -> some View {
+    view.background {
+        GeometryReader { proxy in
+            Color.clear.onAppear {
+                record(
+                    "[snapshot]"
+                        + " subject=\(subject)"
+                        + " size=\(Int(proxy.size.width))x\(Int(proxy.size.height))"
+                        + " safeTop=\(Int(proxy.safeAreaInsets.top))"
+                        + " safeBottom=\(Int(proxy.safeAreaInsets.bottom))"
+                )
             }
         }
-        return nil
+    }
+}
+
+/// Where the probe's readings go.
+///
+/// **Printed *and* written to a file, because neither alone covers both machines.** CI runs
+/// `xcodebuild` without `-quiet` so it gets the log; `make snapshots` passes `-quiet` and swallows
+/// test stdout, so the only reading this machine can produce is a file. Comparing the two is the
+/// whole point of the probe, and a diagnostic that can only be read on one of them answers half the
+/// question.
+///
+/// Beside the failure artefacts, for the same reason they are there: a test runner's working
+/// directory is the simulator's, not the repository's.
+private let probeLog = URL(filePath: #filePath)
+    .deletingLastPathComponent()
+    .appending(path: "__SnapshotFailures__/safe-area-probe.txt")
+
+private func record(_ line: String) {
+    print("::warning::\(line)")
+    let text = line + "\n"
+    guard let data = text.data(using: .utf8) else { return }
+    try? FileManager.default.createDirectory(
+        at: probeLog.deletingLastPathComponent(),
+        withIntermediateDirectories: true
+    )
+    if let handle = try? FileHandle(forWritingTo: probeLog) {
+        defer { try? handle.close() }
+        try? handle.seekToEnd()
+        try? handle.write(contentsOf: data)
+    } else {
+        try? data.write(to: probeLog)
     }
 }
 
@@ -191,7 +205,6 @@ func assertScreenSnapshot(
     column: UInt = #column
 ) {
     _ = redirectFailureArtifacts
-    reportInheritedState(before: "\(name)-\(layout.name)")
 
     assertSnapshot(
         // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first
@@ -200,7 +213,10 @@ func assertScreenSnapshot(
         // explains. The environment's locale is the right source for what a reader sees and the
         // wrong one for a golden image, so this asserts one layout deliberately rather than
         // whichever the simulator happened to be set to.
-        of: view.environment(\.locale, Locale(identifier: "en_US")),
+        of: probingSafeArea(
+            of: view.environment(\.locale, Locale(identifier: "en_US")),
+            named: "\(name)-\(layout.name)"
+        ),
         as: .image(
             drawHierarchyInKeyWindow: true,
             precision: 0.999,
