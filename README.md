@@ -73,6 +73,20 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.8.0 — 2026-09-04
+- **The code is syntax highlighted, in light and in dark.** Keywords, strings, comments, types and
+  numbers are coloured the way Xcode colours them, because the code you are reading on the phone is
+  the code you write on the Mac beside it.
+- **The changed words still stand out.** A word-level change is a background and the highlighter
+  only ever colours text, so the two read together rather than fighting: a renamed argument is a
+  green patch over code that is still coloured.
+- **A file arrives plain and gains its colours a beat later**, and nothing moves when they land. The
+  file you are looking at is coloured before the ones fetched ahead of you.
+- **Files that cannot be coloured stay plain and say nothing about it** — anything over 4,000 lines
+  or 100 KB, and any file whose kind your Mac could not name from its extension.
+- **Conflict markers are never coloured.** `<<<<<<< HEAD` is not code in any language, and a
+  highlighter handed one gets every line after it wrong.
+
 ### 0.7.1 — 2026-09-04
 - **The screens you see before you have opened a Mac now use the whole window.** Finding a Mac,
   choosing between the QR code and the six words, the viewfinder, the six-word field and the receipt

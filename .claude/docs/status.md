@@ -2,6 +2,54 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.8.0 — the code is syntax highlighted, and it is the last of M5's viewer features.** The
+domain half of it landed in 0.4.2 and had no caller for four releases; what arrived now is the lexer
+behind it, the cache, the orchestration and the rendering. Highlightr with Xcode's own stylesheets —
+`xcode` in light, `xcode-dark` in dark — chosen because Granita's design language is Apple's
+throughout and the phone is lying beside the Mac the code was written on.
+
+**It is built without a design and that is Davide's call rather than a lapse.** [`design.md`](design.md)
+§4 had no highlighting section at all, and `design-handoff` says no pull request touching a screen
+opens before its frames exist. He waived it in one sentence — *"We don't really need design for syntax
+highlighting"* — so §4 has one now, written in this repository's voice with the alternatives each call
+beat, which is what a return would have left behind. The palette is filed as a setting for later:
+[#70](https://github.com/fardavide/granita/issues/70).
+
+**Writing the first caller found a defect in the 0.4.2 half, and it was the one thing that section
+exists to prevent.** `SyntaxHighlighting` decided which lines are on which side by reading the numbers
+the parser wrote, and its own comment said that this "is what keeps `<<<<<<<` out of the string the
+lexer reads". A real conflict marker carries both numbers — git diffs it behind a `+` because it is
+literal content, and the parser numbers it from that prefix before re-tagging it by its text — so
+every marker was going through, and a lexer handed one mis-lexes everything after it. The fixture that
+should have caught it used unnumbered markers, which is the case that cannot occur. In
+[`decisions.md`](decisions.md).
+
+**The lexer is asked from the model rather than from a `.task` in the view, and that is a testability
+call with a cost.** The lazy stack would have given `SPEC.md` §10's "highlight the visible file first"
+for free — a section nobody scrolled to is a file nobody lexed — but `ClientViewerUi` has no test
+target and a `.task` does not settle inside a synchronous snapshot render, so the one treatment that
+changes every row of every file would have been coloured in the app and plain in every baseline. Both
+rules are re-derived in the model and asserted: shut files are stepped over, and the walk starts at
+the position the scroll last reported and wraps.
+
+**What holds the real Highlightr to answering at all is the screen baselines.** They run the actual
+lexer, in the appearance each layout is photographed in, so `a-review-in-progress` and its three
+siblings are pictures of highlight.js output rather than of a fixture. Beside them, two hand-built
+`DiffFileLines` cases carry the join with §4: a word-diff background sitting over coloured text, and a
+row that refuses a colouring whose length does not match the string it draws.
+
+**One branch in the highlighter is reachable and two are not, and the reachable one is a real
+scenario rather than a contrived fixture.** `Highlightr.highlight` assigns a JavaScript result to a
+non-optional value and highlight.js v11 *throws* for a language it does not know, so an unknown name
+is a crash inside the dependency; the set of lexable languages is read once and checked first. The
+Mac names a file's language and the phone carries the lexer, and the two are updated separately —
+`a-language-we-cannot-colour` photographs a `.zig` file drawn plain, which is what a phone behind its
+Mac would see.
+
+**What no test kind here can answer is what it costs on a device.** `SPEC.md` §2 asks for a measured
+p95 on a 200-line Swift block, and every number this slice has is from a simulator. It is on the
+device afternoon's list with the gutter's aim.
+
 **Version 0.7.1 — the pre-pairing screens stopped being drawn in a column down the middle of the
 window.** Davide ran the app in a Mac window on 4 September 2026 and sent three screenshots of it:
 the Mac list, the two credentials and the six-word field, each a 420pt strip of content with a
@@ -761,7 +809,7 @@ The spec's milestones, each ending in something runnable and a green suite, with
 | M2 | Git layer, worktree services, JSON store, session index, HTTP API, CLI | **done** |
 | M3 | Menu bar app — settings, Bonjour, pairing, login item, connection log | **in progress** |
 | M4 | Phone — pairing with pinning, discovery, worktree list, aliases, pinning | **in progress** |
-| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff, the viewed state, the collapsed bars and hunk expansion are built; **highlighting is not**, and neither is wrap-on |
+| M5 | Phone — file selector, continuous scroll, highlighting, word diff, viewed state | **in progress** — the selector, the scroll, the word diff, the viewed state, the collapsed bars, hunk expansion and **highlighting** are built; wrap-on is not, and neither is the acceptance, which needs a thumb |
 | M6 | Live updates, accessibility, ship | |
 
 ## What exists

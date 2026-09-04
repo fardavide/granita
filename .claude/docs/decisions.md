@@ -5341,3 +5341,114 @@ it unclamped, which is why every pre-pairing baseline moved in one commit.
 stands, and nothing about it depended on the clamp: the preview is a 4:3 fit inside a padded column,
 which is a card in any window. It is bigger than 420pt now and that costs nothing, because detection
 reads the whole capture frame rather than the preview.
+
+## Syntax highlighting is built without a design, and the palette is Xcode's
+
+`design.md` §4 had no highlighting section at all — the diff review saw the edge of it, rejecting an
+underline for the changed run because "it collides with whatever the syntax highlighter does", and
+never drew the two together. `design-handoff`'s rule is that no pull request touching a screen opens
+before its frames exist, so the ordinary answer here was to write a prompt and wait.
+
+Davide waived it on 4 September 2026, in one sentence: *"We don't really need design for syntax
+highlighting."* So the calls below are this repository's own rather than a return, and they are
+written into `design.md` §4 for the same reason a return would be — the prose is what survives once
+nobody remembers which of these was argued for.
+
+**Xcode's own stylesheets, `xcode` in light and `xcode-dark` in dark.** The design language is
+Apple's throughout and the phone is lying beside the Mac the diff came from, so the colours that
+already mean *keyword* and *string* to this reader are the ones Xcode gave them. They are also the
+most muted of the credible pairs, which is what the section they sit in depends on: a row already
+carries an add or remove tint and a word-diff background at three times it, and §4's whole argument
+is that those stay the loudest thing in the row.
+
+Rejected: GitHub's pair, which is what a diff normally looks like and is more saturated, so it
+competes with exactly those tints. Rejected: Atom One, Highlightr's own default, which matches
+nothing else the reader sees. Deferred rather than rejected: making it a setting, which is
+[#70](https://github.com/fardavide/granita/issues/70) and needs a Settings surface the phone does not
+have.
+
+**The theme's base colour is kept and its font is dropped.** `.hljs` declares `#000` in light and
+`white` in dark, which are `UIColor.label` to the byte in both — so plain code inside a highlighted
+file and plain code inside a refused one are the same colour, which matters because one screen mixes
+them. The font is Courier at 14pt and every row's height is computed from the code point size, so
+keeping it would break the grid the gutter is aligned to. Per-token background colours are dropped
+with it: three highlight.js classes declare one, and they would sit under the word-diff background
+`SPEC.md` §10 makes the strongest thing in the row.
+
+## `SyntaxHighlighting` was letting every real conflict marker through to the lexer
+
+The domain half of highlighting landed in 0.4.2 and nothing called it until now. Its own doc said
+that reading a line's side off the numbers the parser wrote "is what keeps `<<<<<<<` out of the
+string the lexer reads", on the belief that a conflict marker carries no number on either side.
+
+**It carries both.** A conflicted working tree holds `<<<<<<< HEAD` as literal content, so git diffs
+it behind a `+` and `UnifiedDiffParser` numbers it from that prefix *before* re-tagging it by its
+text — which `status.md` had already recorded from the other direction in 0.7.0, where it made
+`occupiesOldSide`'s `.conflictMarker` arm unreachable. The suite did not catch it because its
+conflict fixture used unnumbered markers, which is the case that cannot occur.
+
+So the string handed to the lexer would have opened with `<<<<<<< HEAD` on exactly the files a reader
+most needs to read, and a lexer handed one mis-lexes everything after it. The kind is now excluded
+alongside the numbers, with a test that uses the marker the parser actually produces. Nothing shipped
+with the defect — it was found by writing the first caller.
+
+## The lexer is asked from the model, and the view is handed the answer
+
+Highlighting could have lived in a `.task` inside `DiffFileContent`, and the lazy stack would then
+have given `SPEC.md` §10's "highlight the visible file first" for free — a section that is not
+materialised is a file that is not lexed.
+
+It is in `ClientViewerModel` instead, and the reason is what a test can reach. `ClientViewerUi` has
+no test target at all, and a `.task` does not settle inside a synchronous snapshot render — so the
+one treatment that changes every row of every file would have been coloured in the app and plain in
+every baseline, which is this project's own dead-control shape with the colours instead of the
+control. Handed in as a value, the view is photographable and the orchestration is a unit test.
+
+What that costs is re-deriving the two rules the lazy stack would have given: the model steps over
+every collapsed file, and it starts from the position the scroll last reported and wraps. Both are
+asserted.
+
+**The cache key gained a seventh part in 0.4.2 and the reason has now been exercised.** `SPEC.md`
+§10's key is six; the seventh is the line numbers, because a hunk expansion grows the string being
+lexed while `contentHash` — a fact about the *file* — does not move. What the entry does on an
+expansion is keep drawing until the wider answer lands, which is the same "upgrade in place" the
+first lex uses and is why nothing flashes back to plain.
+
+**`pointSize` stays in the key and over-invalidates on purpose.** Nothing in what the lexer returns
+is measured at a size, because its font is dropped — but §10 already discards every cached row height
+when the code size changes, so a re-lex rides along with a relayout that was happening anyway.
+
+## Highlightr crashes on a language it does not know, so the set is read before it is asked
+
+`Highlightr.highlight(_:as:)` assigns the result of `hljs.invokeMethod` to a **non-optional**
+`JSValue`, and highlight.js v11 throws for an unregistered language — so the value is nil and the
+assignment traps. The code around it reads `if result.isUndefined`, which is what v10 returned and is
+why the hazard is invisible from the call site.
+
+`supportedLanguages()` is therefore read once and checked before every call. **Nothing reaches it
+today**: this build registers 192 grammars, which covers every name `LanguageHint` can produce. What
+it protects is one more line in that table, or a Highlightr that ships the smaller common bundle.
+
+It is also the only one of the highlighter's three refusals a rendered screen can reach, and it is
+reachable for a real reason rather than a contrived one — the Mac names the language and the phone
+carries the lexer, and the two are updated separately. `a-language-we-cannot-colour` photographs a
+`.zig` file drawn plain beside its tints and markers, which is what puts that branch in the Snapshot
+row's numerator. The other two — a JavaScript context that would not build, and a lexer that answered
+with nothing — are written as one guard with it, because three branches for one outcome would be
+three regions no baseline can enter.
+
+## The lexer reads the drawn string, tabs already expanded
+
+A colour comes back as a range into the string that was lexed and is applied to the string
+`DrawnDiffLine` produces. A tab is one character in the first and two, three or four in the second,
+so every colour after one would have landed partway through the wrong token — the same trap the word
+diff hit in 0.4.2, where a segment's tabs were expanded from column zero of the *segment*.
+
+`HighlightSource` therefore carries `MonospacedGrid.expandingTabs` output rather than the raw line. A
+tab is whitespace to every lexer, so this costs the lexing nothing and saves a second mapping between
+two spellings of one line.
+
+The row still checks the two lengths agree before applying a background, and that guard is not
+belt and braces: highlight.js round-trips through HTML and decodes entities on the way back, so a
+file containing `&amp;` literally can return a line shorter than the one it was given. That row draws
+plain and the rest of the file keeps its colours.

@@ -916,7 +916,10 @@ private struct Scenario {
             projectName: "granita",
             repository: repository,
             commentStore: FakeReviewCommentStore(),
-            pasteboard: FakeReviewPasteboard()
+            pasteboard: FakeReviewPasteboard(),
+            // Highlighting is beside the point in every test here and is asserted in
+            // `ClientViewerHighlightingTests`, so the lexer is built inline and never inspected.
+            highlighter: FakeSyntaxHighlighter()
         )
     }
 }

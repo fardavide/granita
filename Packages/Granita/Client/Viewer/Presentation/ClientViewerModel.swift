@@ -39,6 +39,14 @@ public final class ClientViewerModel {
     /// The refusal the Mac gave the last time a mark was written, if it gave one.
     public private(set) var viewedFailure: ApiFailure?
 
+    /// What each open file's code has been lexed as, filed by the file it belongs to.
+    ///
+    /// **Empty is the ordinary first state rather than a failure.** `SPEC.md` §10 says to render
+    /// unhighlighted and upgrade in place, so every file is drawn plain the moment its diff lands and
+    /// gains its colours a beat later — which is also exactly what a file the lexer refused keeps
+    /// drawing forever.
+    public private(set) var highlighted: [FileID: HighlightedFile] = [:]
+
     /// Everything the reader has said about this worktree, in the order the scroll draws it.
     ///
     /// **Read from the store when the model is built rather than when the screen loads**, because a
@@ -179,6 +187,32 @@ public final class ClientViewerModel {
     /// so without this the same five files would be re-requested on every one of them.
     private var inFlight: Set<FileID> = []
 
+    /// Every question already put to the lexer.
+    ///
+    /// **A question rather than an answer**, which is what makes one entry do two jobs: a side
+    /// already coloured is not lexed twice, and a side the lexer *refused* is not asked again either
+    /// — a refusal is a property of the text and the language, so asking a second time spends a
+    /// hundred milliseconds to be told the same thing.
+    ///
+    /// It is also the guard on a late answer. Changing appearance empties this, so a result that was
+    /// in flight when the screen went dark arrives holding a key nothing is waiting for and is
+    /// dropped rather than drawn in the wrong colours.
+    private var asked: Set<HighlightKey> = []
+
+    /// The appearance the screen is drawing in, which is an environment value and therefore reported
+    /// rather than known.
+    ///
+    /// Light until the screen says otherwise. That is a guess for exactly one frame and it costs
+    /// nothing, because nothing has been fetched to colour yet when it is made.
+    private var appearance: HighlightAppearance = .light
+
+    /// The code size the screen is drawing at, which `DiffPaneLayout` decides from the room.
+    private var codePointSize = Double(DiffPaneLayout.codePointSize)
+
+    /// Which file the reader has reached, so the one under their thumb is lexed before the ones
+    /// fetched ahead of them — `SPEC.md` §10's "highlight the visible file first".
+    private var readingPosition = 0
+
     private let worktree: WorktreeID
 
     /// What the review calls the worktree it is of, which is the only thing in the exported document
@@ -201,6 +235,7 @@ public final class ClientViewerModel {
     private let repository: any GranitaRepository
     private let commentStore: any ReviewCommentStore
     private let pasteboard: any ReviewPasteboard
+    private let highlighter: any SyntaxHighlighter
 
     public init(
         worktree: WorktreeID,
@@ -208,7 +243,8 @@ public final class ClientViewerModel {
         projectName: String,
         repository: any GranitaRepository,
         commentStore: any ReviewCommentStore,
-        pasteboard: any ReviewPasteboard
+        pasteboard: any ReviewPasteboard,
+        highlighter: any SyntaxHighlighter
     ) {
         self.worktree = worktree
         self.worktreeName = worktreeName
@@ -216,6 +252,7 @@ public final class ClientViewerModel {
         self.repository = repository
         self.commentStore = commentStore
         self.pasteboard = pasteboard
+        self.highlighter = highlighter
         comments = commentStore.comments(in: worktree)
     }
 
@@ -237,6 +274,11 @@ public final class ClientViewerModel {
         do {
             let changes = try await repository.changes(in: worktree)
             entries = changes.files.map(ContinuousDiffEntry.awaiting)
+            // A new change set is a new set of files, so nothing lexed against the last one addresses
+            // anything here. Held rather than dropped, they would be entries under identifiers this
+            // screen no longer draws — memory nothing can reach.
+            highlighted = [:]
+            asked = []
             isTruncated = changes.isTruncated
             collapsed = FileSelector.initiallyCollapsed(in: changes.files)
             state = entries.isEmpty ? .nothingChanged : .reading(entries)
@@ -257,6 +299,7 @@ public final class ClientViewerModel {
     /// whole of §10's no-reflow trap: a file whose placeholder becomes real content above the
     /// viewport moves everything below it, the reader's own screen included.
     public func reading(_ position: Int) async {
+        readingPosition = position
         let wanted = ContinuousDiffLoading.next(
             from: position,
             of: entries.map(\.id),
@@ -268,6 +311,29 @@ public final class ClientViewerModel {
             deferred: Set(entries.filter { $0.collapse.isCollapsed }.map(\.id))
         )
         await fetch(wanted)
+    }
+
+    /// Reports what the screen is drawing with, and re-colours everything when either changes.
+    ///
+    /// **The appearance cannot be the model's own**, because it is an environment value: a model that
+    /// guessed would keep a dark screen coloured for light until something else happened to
+    /// invalidate it. The code size is the same fact, arriving from `DiffPaneLayout` rather than from
+    /// the system.
+    ///
+    /// Safe to call on every appearance, which is what the screen does: an unchanged pair colours
+    /// whatever is open and not yet coloured, and there is usually nothing.
+    public func drawing(in appearance: HighlightAppearance, at pointSize: Double) async {
+        if appearance != self.appearance || pointSize != codePointSize {
+            self.appearance = appearance
+            codePointSize = pointSize
+            // **Thrown away rather than restyled.** The colours are baked into what the lexer
+            // answered, so an entry made for the other appearance is the *wrong* colours rather than
+            // stale ones — black tokens on a black card. One frame of plain text is what every file
+            // starts as anyway.
+            highlighted = [:]
+            asked = []
+        }
+        await highlight()
     }
 
     /// **Both of these drop the draft, and that is the fix for a screen that could get stuck.** The
@@ -386,8 +452,15 @@ public final class ClientViewerModel {
         guard entries[position].collapse.isCollapsible else { return }
         entries[position] = entries[position].opened(isOpen)
         state = .reading(entries)
-        guard isOpen, entries[position].isReady == false else { return }
-        await fetch([file])
+        guard isOpen else { return }
+        // **Opening a file is the moment it becomes something to colour.** `SPEC.md` §10 forbids
+        // lexing a file nobody has opened, so `highlight` steps over every shut one — which means a
+        // file whose diff was already in hand when it was shut has never been offered to the lexer.
+        guard entries[position].isReady else {
+            await fetch([file])
+            return
+        }
+        await highlight()
     }
 
     /// Shows the lines a hunk skipped, on the side the reader pressed.
@@ -450,6 +523,10 @@ public final class ClientViewerModel {
                 )
             )
             state = .reading(entries)
+            // **A wider side is a different question, and the key says so.** The spliced lines were
+            // never lexed, and the entry already on screen keeps drawing until the new answer lands —
+            // which is what makes an expansion upgrade in place rather than flash back to plain.
+            await highlight()
         } catch {
             expansionFailure = error
         }
@@ -675,6 +752,55 @@ public final class ClientViewerModel {
         // sides. Re-ordering here is what settles it, and it costs nothing on the ordinary screen
         // because a review is a handful of comments.
         comments = ReviewedComment.ordered(comments, against: entries)
+        await highlight()
+    }
+
+    /// Colours every file the reader has open, starting from the one they are looking at.
+    ///
+    /// **Two rules of `SPEC.md` §10 live here and nowhere else**: never lex a file that has not been
+    /// opened, and lex the visible one first. The first is why a shut file is stepped over even when
+    /// its diff is in hand; the second is why this starts at the reader's own position and wraps,
+    /// rather than walking the change set from the top — files are fetched five *ahead*, so from the
+    /// top means colouring the file they left before the one they are on.
+    private func highlight() async {
+        guard entries.isEmpty == false else { return }
+        let first = min(max(0, readingPosition), entries.count - 1)
+        // Taken as values before the first await rather than walked by index, so a batch landing
+        // partway through cannot leave this indexing a list that has since become shorter.
+        for entry in Array(entries[first...]) + Array(entries[..<first]) {
+            guard entry.collapse.isCollapsed == false, case .ready(let diff) = entry.content else { continue }
+            for side in DiffSide.allCases {
+                await highlight(diff, side: side)
+            }
+        }
+    }
+
+    /// One side of one file, asked once and filed under the numbers the gutter draws.
+    private func highlight(_ diff: FileDiff, side: DiffSide) async {
+        guard let key = SyntaxHighlighting.key(
+            for: diff,
+            side: side,
+            appearance: appearance,
+            pointSize: codePointSize
+        ) else {
+            return
+        }
+        guard asked.contains(key) == false,
+              case .highlight(let source) = SyntaxHighlighting.plan(for: diff, side: side) else { return }
+        // Recorded before the await rather than after it, so two passes over one file — a batch
+        // landing while the reader opens something — do not both put the same question.
+        asked.insert(key)
+        guard let lines = await highlighter.highlight(source.text, as: key.language, for: appearance) else {
+            return
+        }
+        let indexed = source.indexed(lines)
+        // Two refusals with one outcome, which is the file carrying on plain. **The key is no longer
+        // in the set** when the screen changed appearance or size while this was in flight, so what
+        // came back is the wrong colours rather than late ones. **`indexed` is empty** when the lexer
+        // answered with a different number of lines than it was given, which `HighlightSource`
+        // discards whole rather than shifting every colour after the gap onto the wrong row.
+        guard asked.contains(key), indexed.isEmpty == false else { return }
+        highlighted[key.fileId] = (highlighted[key.fileId] ?? .none).replacing(side, with: indexed)
     }
 
     /// `Turbine.swift:41-44` — the file's name and the span, resolved against the diff.

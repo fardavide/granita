@@ -72,9 +72,19 @@ target under complete strict concurrency with no warnings.
 ## 3. Highlightr — 2.3.0, current
 
 Still maintained, contrary to the abandonment risk that made the spec argue against the alternative.
-**Throughput is unmeasured**: the spec asks for a p95 over a 200-line Swift block on device, and
-there is no device build to measure on yet. Deferred to M5, where the number decides whether
-highlighting needs a file-size cap.
+**Throughput is still unmeasured on a device**, and 0.8.0 shipped highlighting without the number.
+The spec asks for a p95 over a 200-line Swift block; everything measured so far is a simulator on
+this Mac, which says nothing about a phone. The caps that number was meant to decide are in place at
+`SPEC.md` §10's own values — 4,000 lines and 100 KB per side — so what the measurement can still
+change is whether they are the right ones, rather than whether there are any.
+
+Two other things about this dependency were established by building on it, and both are in
+[`decisions.md`](decisions.md). Its `highlight(_:as:)` assigns the result of a JavaScript call to a
+**non-optional** `JSValue`, so an unregistered language traps rather than falling back the way the
+code around it appears to intend — this build registers 192 grammars and the set is read once and
+checked before every call. And the attributed string it returns carries a font (Courier at 14pt) and
+per-token background colours, both of which are dropped: the row height is computed from the code
+point size, and the background is spoken for by the word diff.
 
 ## 4. git — every layout confirmed, twice
 

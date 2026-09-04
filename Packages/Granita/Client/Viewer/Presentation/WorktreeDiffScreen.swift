@@ -37,6 +37,13 @@ public struct WorktreeDiffScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
+    /// Which appearance the code is being lexed for.
+    ///
+    /// **The colours are baked into what the highlighter answers rather than applied over it**, so
+    /// this is part of the question the model asks and not a restyling of one answer. It is an
+    /// environment value, which is why the model is told rather than left to guess.
+    @Environment(\.colorScheme) private var colorScheme
+
     public init(worktreeName: String, model: ClientViewerModel) {
         self.worktreeName = worktreeName
         // Pinned in `@State` rather than held as a plain `let`, the same way every other screen in
@@ -108,6 +115,19 @@ public struct WorktreeDiffScreen: View {
                 Text("The file changed while you were writing, so the comment was not saved.")
             }
             .task { await model.load() }
+            // **Keyed on both, and `initial: true` so the first render reports rather than assumes.**
+            // The model starts on light at the phone's 11pt because nothing else is knowable before a
+            // view exists; this is where an iPad at 12pt and a screen already in dark mode say so.
+            // A repeat with the same pair is not wasted — it colours anything opened since.
+            .task(id: drawing) { await model.drawing(in: drawing.appearance, at: drawing.pointSize) }
+    }
+
+    /// The pair the highlighter's answers are keyed on, as one value so one `.task` watches both.
+    private var drawing: DiffDrawing {
+        DiffDrawing(
+            appearance: colorScheme == .dark ? .dark : .light,
+            pointSize: Double(layout.codePointSize)
+        )
     }
 
     /// Which sheet is up, with the review taken out of it wherever it is a column instead.
@@ -212,6 +232,7 @@ public struct WorktreeDiffScreen: View {
             // deliberately surviving a scroll that goes looking for the other end. Passing only the
             // composing run left a reader holding a row with nothing in the gutter to say which.
             pending: model.draft.pending ?? model.draft.held,
+            highlighted: model.highlighted,
             // The strip stops being a target while a sheet is up, because the composer's own detent
             // keeps the diff behind it live — and a gesture that lands there is one the draft has
             // nothing to do with. The scroll still moves; only the aim goes.
@@ -391,4 +412,16 @@ public struct WorktreeDiffScreen: View {
     private var hasFilesToSelect: Bool {
         if case .reading = model.state { true } else { false }
     }
+}
+
+// MARK: -
+
+/// The two facts a lexed side is keyed on that only a rendered view knows.
+///
+/// One value rather than two watched separately, because `.task(id:)` takes one identity and two
+/// tasks would race to reset the same cache.
+private struct DiffDrawing: Hashable {
+
+    let appearance: HighlightAppearance
+    let pointSize: Double
 }

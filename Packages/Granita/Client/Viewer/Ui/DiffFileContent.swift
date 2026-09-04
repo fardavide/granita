@@ -33,6 +33,10 @@ public struct DiffFileContent: View {
     /// The run being picked out, wherever it is. `CommentRail` drops it if it is not this file's.
     private let pending: PendingComment?
 
+    /// This file's lexed code, which every hunk of it draws from. One value for the file rather than
+    /// one per hunk, because `SPEC.md` §10 lexes a file per side and never a hunk.
+    private let highlighted: HighlightedFile
+
     /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
     private let acceptsTargeting: Bool
 
@@ -48,6 +52,7 @@ public struct DiffFileContent: View {
         pointSize: CGFloat,
         comments: [ReviewComment] = [],
         pending: PendingComment? = nil,
+        highlighted: HighlightedFile = .none,
         acceptsTargeting: Bool = true,
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
@@ -57,6 +62,7 @@ public struct DiffFileContent: View {
         self.pointSize = pointSize
         self.comments = comments
         self.pending = pending
+        self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
         self.onExpand = onExpand
         self.onTapGutter = onTapGutter
@@ -80,6 +86,10 @@ public struct DiffFileContent: View {
                         // possible at all.** A file is several views with torn rows between them, so
                         // there is no coordinate space a single rail could span.
                         runs: CommentRail.runs(of: hunk, in: diff, comments: comments, pending: pending),
+                        // Whole rather than clipped to this hunk, unlike the rails: a highlighted
+                        // line is filed under the number the gutter draws, so a hunk takes what it
+                        // needs by asking rather than by being handed a slice.
+                        highlighted: highlighted,
                         acceptsTargeting: acceptsTargeting,
                         onTap: { onTapGutter($0, diff.file.id) },
                         onLongPress: { onLongPressGutter($0, diff.file.id) }
