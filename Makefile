@@ -6,7 +6,14 @@
 
 PACKAGE      := Packages/Granita
 PROJECT      := Granita.xcodeproj
-IOS_SIM      := platform=iOS Simulator,name=iPhone 17,OS=latest
+# **Resolved, never hardcoded**, and the same expression `ci.yml` and `measure-coverage.sh` already
+# use. This said `iPhone 17` while both of those resolved `iPhone 17 Pro`, so three commands in one
+# repository rendered the same baselines on two different devices — and `make snapshots` could not
+# give the runner's verdict, which is the whole claim the target is made on. It cost five CI round
+# trips on 4 September 2026: nothing reproduced locally, and the device was one of the reasons ruled
+# out by hand each time rather than never being in question.
+IOS_SIM_NAME := $(shell xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$$//')
+IOS_SIM      := platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
 UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO

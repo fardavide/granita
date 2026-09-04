@@ -120,10 +120,25 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
   and `.claude/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill. Review every changed PNG by eye before committing.
+- **Every `@Suite` here carries `.serialized`**, all twenty of them. The suites share one real window,
+  so anything a render leaves behind is the next render's input, and waiting for it to clear means
+  spinning the run loop — which lets another suite take the window mid-assertion unless nothing else
+  can run. That cost 22 baselines in a single run.
+- **A view that takes focus raises a software keyboard, and a keyboard is geometry.** It never appears
+  in a raster and it still shortens the screen the layout is measured against. The rise is
+  asynchronous and lands on **whichever render is laying out when it arrives**, not the next one, so
+  the harness drains on both sides of every render.
+- **A clean run prints nothing from the probe.** A `[snapshot] … safeBottom=` line means a render was
+  laid out against an inset past 40pt, which no real safe area reaches — that baseline cannot be
+  trusted whether it passed or not.
+- **A green local run is not evidence of absence** when which render catches a fault is luck. This one
+  was green here and red on CI three times running, because locally the keyboard landed on an
+  iPad-dark render that structurally cannot show the damage.
 
 Why each of these bites — the hostless-render mechanism, the trap that restarts the test host,
 tolerance values and the drift measurements behind them, the recording commands for each platform,
-and how to read a failure: [snapshots.md](references/snapshots.md).
+how to read a failure, and the four wrong fixes behind the keyboard rules:
+[snapshots.md](references/snapshots.md).
 
 ## Cover it as you write it, and run the gate before the pull request
 

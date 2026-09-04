@@ -125,16 +125,18 @@ private func probingSafeArea(of view: some View, named subject: String) -> some 
     view.onGeometryChange(for: Reading.self) { proxy in
         Reading(height: proxy.size.height, bottom: proxy.safeAreaInsets.bottom)
     } action: { reading in
-        // **Every layout pass, not just the first.** The first version reported from `onAppear` and
-        // was measuring the wrong moment: it read `the-review-is-open-iPad-dark` at 1194x511 with a
-        // 261pt bottom inset on CI, and that render then *passed* its baseline — so the geometry
-        // `onAppear` sees is a transient the raster does not photograph. A sequence says which
-        // reading was the last one before the shutter; a single reading cannot.
+        // **Only a reading no safe area explains.** The device's own bottom inset is 4 on the phone
+        // and 34 on the iPad; anything past 40 is a keyboard, and a keyboard is the only thing this
+        // has ever needed to report. Logging every layout pass instead — which is what found the bug
+        // — put twelve hundred `::warning::` annotations on every CI run, and a diagnostic nobody can
+        // read past is not a diagnostic.
+        guard reading.bottom > 40 else { return }
         record(
             "[snapshot]"
                 + " subject=\(subject)"
                 + " height=\(Int(reading.height))"
                 + " safeBottom=\(Int(reading.bottom))"
+                + " — a keyboard is up while this render is being laid out"
         )
     }
 }
@@ -214,6 +216,15 @@ func assertScreenSnapshot(
     column: UInt = #column
 ) {
     _ = redirectFailureArtifacts
+    // **Both sides of the render, and the one before it is the one that matters.** Draining after a
+    // render cannot catch a rise that happens later, and the rise is late by nature: focus queues it
+    // and it arrives whenever the keyboard process gets to it. `the-review-is-open-iPad-light` failed
+    // exactly that way — the phone sheet rendered before it raised a keyboard that was still coming
+    // up when the iPad column was photographed.
+    //
+    // Draining here is only safe because every suite is `.serialized` now. The version that did this
+    // while sixteen suites were unserialised took 22 unrelated baselines down.
+    drainTheKeyboard()
 
     assertSnapshot(
         // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first
