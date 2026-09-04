@@ -9,6 +9,7 @@ import ClientConnectionDomain
 import ClientConnectionPresentation
 import ClientViewerData
 import ClientViewerPresentation
+import ClientViewerUi
 import ClientWorktreesData
 import ClientWorktreesPresentation
 
@@ -64,6 +65,14 @@ public struct GranitaMobileScene: Scene {
     /// preview over a camera nobody is reading. The model pins its own copy in `@State`, so a
     /// second scanner would be exactly that.
     private static let scanner = CaptureSessionCodeScanner()
+
+    /// The one lexer, made once for the life of the app.
+    ///
+    /// A `static let` for a stronger reason than the camera's: building it evaluates the whole
+    /// highlight.js bundle — about 100ms — and its `JSContext` cannot be shared across threads, so
+    /// `SPEC.md` §2 asks for exactly one instance per background actor for the app's lifetime. A
+    /// second one per worktree would pay that cost every time a reader opened a diff.
+    private static let highlighter = HighlightrSyntaxHighlighter()
 
     /// What only this machine can answer, read once for the same reason.
     private static let phone = ThisPhone(device: thisDevice, cameraSession: scanner.session)
@@ -155,7 +164,12 @@ public struct GranitaMobileScene: Scene {
                     projectName: projectName,
                     repository: repository,
                     commentStore: UserDefaultsReviewCommentStore(defaults: .standard),
-                    pasteboard: UiKitReviewPasteboard()
+                    pasteboard: UiKitReviewPasteboard(),
+                    // **One lexer for the app, not one per worktree.** Building it loads and
+                    // evaluates the whole highlight.js bundle, and its `JSContext` cannot be shared
+                    // across threads — so it is an actor held here for the process's lifetime, the
+                    // way `SPEC.md` §2's trap paragraph requires.
+                    highlighter: highlighter
                 )
             )
         }

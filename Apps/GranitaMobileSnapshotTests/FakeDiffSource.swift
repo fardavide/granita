@@ -1,6 +1,7 @@
 import ClientConnectionDomain
 import ClientViewerDomain
 import ClientViewerPresentation
+import ClientViewerUi
 import ClientWorktreesPresentation
 import CoreDiffDomain
 import Foundation
@@ -766,18 +767,27 @@ struct FakeDiffRepository: GranitaRepository {
 /// the spinner. Awaiting here settles the raster, and it is why the two suites that use this are
 /// `async`.
 @MainActor
-func aLoadedViewerModel() async -> ClientViewerModel {
-    await aLoadedViewerModel(of: aChangeSetPartlyArrived)
+func aLoadedViewerModel(in layout: SnapshotLayout) async -> ClientViewerModel {
+    await aLoadedViewerModel(of: aChangeSetPartlyArrived, in: layout)
 }
 
 @MainActor
-func aLoadedViewerModel(of entries: [ContinuousDiffEntry]) async -> ClientViewerModel {
-    await aLoadedViewerModel(of: entries, holding: [])
+func aLoadedViewerModel(of entries: [ContinuousDiffEntry], in layout: SnapshotLayout) async -> ClientViewerModel {
+    await aLoadedViewerModel(of: entries, holding: [], in: layout)
 }
 
 /// The same model with a review already written against it, for the states §7 draws.
+///
+/// **The layout is here for the highlighter and for nothing else.** The lexer bakes an appearance
+/// into what it answers, and `WorktreeDiffScreen` reports the one it is drawing in from a `.task`
+/// that a synchronous render never lets finish — so the model is told here instead, and every
+/// baseline photographs the palette its own appearance asks for.
 @MainActor
-func aLoadedViewerModel(of entries: [ContinuousDiffEntry], holding comments: [ReviewComment]) async -> ClientViewerModel {
+func aLoadedViewerModel(
+    of entries: [ContinuousDiffEntry],
+    holding comments: [ReviewComment],
+    in layout: SnapshotLayout
+) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
         worktreeName: "TLS pinning",
@@ -787,12 +797,23 @@ func aLoadedViewerModel(of entries: [ContinuousDiffEntry], holding comments: [Re
         // screen on the tenth run as on the first, and a store that persists would carry whatever
         // the last recording wrote into the next one.
         commentStore: FakeReviewCommentStore(holding: comments),
-        pasteboard: FakeReviewPasteboard()
+        pasteboard: FakeReviewPasteboard(),
+        // **The real lexer, not a fake, which is the only thing that holds highlight.js to
+        // answering at all.** `ClientViewerUi` has no unit test target, so without this the one
+        // dependency that turns every line of every file a different colour would be exercised by
+        // nothing — the shape of a control that looks finished in every layer and does nothing.
+        highlighter: theHighlighter
     )
     await model.load()
     await model.reading(0)
+    await model.drawing(in: layout.appearance, at: Double(layout.codePointSize))
     return model
 }
+
+/// One lexer for the whole suite, for the reason the app holds one: building it evaluates the whole
+/// highlight.js bundle, and eighty-odd renders would each pay that.
+@MainActor
+private let theHighlighter = HighlightrSyntaxHighlighter()
 
 /// A review of the first file in `aChangeSetPartlyArrived`, anchored to rows that file really has.
 ///
@@ -850,6 +871,55 @@ nonisolated let aReviewWithOneCommentAdrift: [ReviewComment] = aReviewOfTheFirst
         lines: CommentedLines(side: .new, first: 906, last: 906),
         quotedLines: ["    private let session: URLSession"],
         text: "This wants to be injected rather than built here."
+    )
+]
+
+/// One file in a language the phone's copy of highlight.js does not carry.
+///
+/// **Not contrived: the two halves are updated separately.** The Mac names a file's language from its
+/// extension and the phone lexes with whatever bundle shipped in the app, so a Mac that learned a new
+/// extension before the phone did sends a name this build has never heard of. It is also the only one
+/// of the highlighter's three refusals a rendered screen can reach — the other two are a JavaScript
+/// context that would not build and a lexer that answered with nothing.
+nonisolated let aChangeSetTheLexerCannotRead: [ContinuousDiffEntry] = [
+    .ready(
+        FileDiff(
+            file: FileChange(
+                id: FileID(repositoryRelativePath: "Sources/render.zig"),
+                path: "Sources/render.zig",
+                oldPath: nil,
+                status: .modified,
+                isBinary: false,
+                isSubmodule: false,
+                stats: ChangeStats(filesChanged: 1, insertions: 1, deletions: 1),
+                contentHash: String(repeating: "c", count: 64),
+                estimatedLineCount: 4,
+                isViewed: false,
+                isTruncated: false,
+                // What a newer Mac would send, and what this bundle cannot lex.
+                language: "zig"
+            ),
+            hunks: [
+                Hunk(
+                    index: 0,
+                    oldStart: 1,
+                    oldCount: 3,
+                    newStart: 1,
+                    newCount: 3,
+                    sectionHeading: "pub fn draw",
+                    lines: [
+                        context(old: 1, new: 1, "pub fn draw(frame: *Frame) void {"),
+                        deletion(old: 2, "    frame.clear();"),
+                        addition(new: 2, "    frame.clear(.transparent);"),
+                        context(old: 3, new: 3, "}")
+                    ]
+                )
+            ],
+            oldLineCount: 3,
+            newLineCount: 3,
+            isTruncated: false,
+            truncationReason: nil
+        )
     )
 ]
 

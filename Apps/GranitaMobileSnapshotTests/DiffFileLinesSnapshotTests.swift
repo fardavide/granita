@@ -35,7 +35,8 @@ struct DiffFileLinesSnapshotTests {
                     subject.lines.compactMap(\.newNumber).max() ?? 0
                 ),
                 pointSize: subject.pointSize,
-                runs: subject.runs
+                runs: subject.runs,
+                highlighted: subject.highlighted
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
             layout: layout,
@@ -60,6 +61,10 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
     /// The comment rails this hunk draws. Empty for every case that predates §7, so none of their
     /// baselines moves.
     var runs: [CommentRun] = []
+
+    /// The lexer's answer for these lines. Nothing for every case that predates highlighting, so
+    /// none of their baselines moves.
+    var highlighted: HighlightedFile = .none
 
     var testDescription: String { name }
 
@@ -156,8 +161,115 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
             lines: aShortFile,
             pointSize: 11,
             runs: [CommentRun(firstRow: 1, rowCount: 2, isPending: false)]
+        ),
+
+        // MARK: - The lexer's colours
+
+        // **The two treatments in one row, which is the only place they can be checked against each
+        // other.** The word diff is a *background* and the lexer owns the *text* colour — that is
+        // why design §4's inverted emphasis was reverted to `SPEC.md` §10 on 28 August 2026 — so
+        // what this holds is `certificate` sitting under a green background while `let` stays
+        // Xcode's magenta and the string beside it stays its red. Compare against
+        // `a-changed-function`, which is the same lines with no lexer: every tint, every figure and
+        // every marker is identical and only the text colour moves.
+        DiffLinesCase(
+            name: "a-changed-function-highlighted",
+            lines: aChangedFunction,
+            pointSize: 11,
+            highlighted: aLexedChangedFunction
+        ),
+
+        // **A colouring the row cannot line up with, which draws plain rather than wrongly.**
+        // highlight.js decodes HTML entities on its way back, so a file with `&amp;` written in it
+        // literally can return a line shorter than the one it was given — and a background applied
+        // at an offset into a shorter string paints the wrong word. The third row here is the
+        // refusal; every other row in the same file keeps its colours, which is the half worth
+        // photographing.
+        DiffLinesCase(
+            name: "a-highlight-that-does-not-fit",
+            lines: aChangedFunction,
+            pointSize: 11,
+            highlighted: aLexedChangedFunctionWithOneLineShort
         )
     ]
+}
+
+// MARK: - The lexer's answers, hand-built
+
+/// Xcode's own light palette, as `xcode.min.css` declares it.
+///
+/// **Hand-built rather than lexed, and the screen suites are where highlight.js is held to
+/// account.** What this pair of cases is for is the *merge* — a word-diff background over coloured
+/// text, and a row refusing a colouring it cannot line up with — so the answer wants to be one a
+/// reader can check against the drawn string by eye.
+private enum XcodeLight {
+
+    static let keyword = Color(red: 0.667, green: 0.051, blue: 0.569)
+    static let string = Color(red: 0.769, green: 0.102, blue: 0.086)
+    static let comment = Color(red: 0, green: 0.455, blue: 0)
+    static let type = Color(red: 0.361, green: 0.149, blue: 0.600)
+}
+
+private let aLexedChangedFunction = HighlightedFile(old: lexedChangedFunction.old, new: lexedChangedFunction.new)
+
+/// The same answer with one line replaced by a shorter one, which is what the row has to refuse.
+///
+/// Line 140 rather than a line of the changed pair, so the picture shows a row falling back to plain
+/// *while its neighbours keep their colours* — a case where every row lost them would look like a
+/// highlighter that had not run.
+private let aLexedChangedFunctionWithOneLineShort = HighlightedFile(
+    old: lexedChangedFunction.old,
+    new: lexedChangedFunction.new.merging([140: AttributedString("let request")]) { _, shortened in shortened }
+)
+
+private let lexedChangedFunction = lexing(
+    aChangedFunction,
+    colouring: [
+        ("///", XcodeLight.comment),
+        ("func", XcodeLight.keyword),
+        ("let", XcodeLight.keyword),
+        ("try", XcodeLight.keyword),
+        ("await", XcodeLight.keyword),
+        ("guard", XcodeLight.keyword),
+        ("else", XcodeLight.keyword),
+        ("throw", XcodeLight.keyword),
+        ("async", XcodeLight.keyword),
+        ("throws", XcodeLight.keyword),
+        ("Request", XcodeLight.type),
+        ("HealthResponse", XcodeLight.type),
+        ("ApiFailure", XcodeLight.type),
+        ("\"/v1/health\"", XcodeLight.string)
+    ]
+)
+
+/// Colours every occurrence of each token, on the string the row actually draws.
+///
+/// Built from `MonospacedGrid.expandingTabs` rather than from the raw line, because that is the
+/// string the offsets have to line up with — one of these lines is tab-indented precisely so a
+/// colouring measured against the raw text would be visibly wrong here.
+private func lexing(
+    _ lines: [DiffLine],
+    colouring tokens: [(String, Color)]
+) -> (old: [Int: AttributedString], new: [Int: AttributedString]) {
+    var old: [Int: AttributedString] = [:]
+    var new: [Int: AttributedString] = [:]
+    for line in lines {
+        var text = AttributedString(MonospacedGrid.expandingTabs(in: line.text))
+        for (token, colour) in tokens {
+            var searched = text.startIndex
+            while let found = text[searched...].range(of: token) {
+                text[found].foregroundColor = colour
+                searched = found.upperBound
+            }
+        }
+        if let number = line.oldNumber {
+            old[number] = text
+        }
+        if let number = line.newNumber {
+            new[number] = text
+        }
+    }
+    return (old, new)
 }
 
 // MARK: -

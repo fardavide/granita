@@ -47,6 +47,14 @@ public struct ContinuousDiffView: View {
     /// The run being picked out, if one is.
     private let pending: PendingComment?
 
+    /// Every file's lexed code, filed by the file it belongs to.
+    ///
+    /// **Handed in rather than fetched here, and that is what makes highlighting photographable.**
+    /// A `.task` inside this view would colour the screen in the app and nothing at all in a
+    /// baseline, so the one treatment that changes every row of every file would be the one thing
+    /// the snapshot suite could not see.
+    private let highlighted: [FileID: HighlightedFile]
+
     /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
     private let acceptsTargeting: Bool
 
@@ -66,6 +74,7 @@ public struct ContinuousDiffView: View {
         jumpTarget: FileID?,
         comments: [ReviewedComment] = [],
         pending: PendingComment? = nil,
+        highlighted: [FileID: HighlightedFile] = [:],
         acceptsTargeting: Bool = true,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
@@ -82,6 +91,7 @@ public struct ContinuousDiffView: View {
         self.jumpTarget = jumpTarget
         self.comments = comments
         self.pending = pending
+        self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
@@ -285,6 +295,9 @@ public struct ContinuousDiffView: View {
                     // decides which of them this file's hunks can place.
                     comments: comments.filter { $0.isStale == false }.map(\.comment),
                     pending: pending,
+                    // Nothing at all until this file's first side lands, which is every file for the
+                    // first beat and a refused one forever.
+                    highlighted: highlighted[entry.id] ?? .none,
                     acceptsTargeting: acceptsTargeting,
                     onExpand: onExpand,
                     onTapGutter: onTapGutter,

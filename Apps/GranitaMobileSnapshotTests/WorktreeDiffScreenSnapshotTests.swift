@@ -26,7 +26,7 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — loaded before rendering, so the raster is settled rather than a race between the
         // screen's own `.task` and the shutter.
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
 
         // when - then — the phone gets the toolbar's *7 files*; the iPad gets the column instead,
         // which is why that button is absent there rather than duplicated.
@@ -49,11 +49,33 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
         model.showSelector(true)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "the-drawer-is-up")
+    }
+
+    /// **A file this phone cannot colour, drawn plain beside one it can.**
+    ///
+    /// The Mac names a file's language from its extension and the phone's copy of highlight.js is
+    /// whatever shipped with the app, so a Mac updated ahead of the phone can name a language this
+    /// bundle has never heard of — which is the one refusal in `HighlightrSyntaxHighlighter` that a
+    /// rendered screen can reach, and the reason it is a check rather than a hope: the library
+    /// assigns the result of a JavaScript call to a non-optional value, and highlight.js v11 throws
+    /// for a language it does not know.
+    ///
+    /// What the picture holds is that the outcome is *plain code* rather than a blank, an error or a
+    /// file drawn in some other language's colours.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a language this phone cannot colour when the screen is rendered then the code is drawn plain`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetTheLexerCannotRead, in: layout)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-language-we-cannot-colour")
     }
 
     /// **The count has two spellings and only one of them is the plural.** Left unphotographed it
@@ -63,7 +85,7 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: Array(aChangeSetToSelectFrom.prefix(1)))
+        let model = await aLoadedViewerModel(of: Array(aChangeSetToSelectFrom.prefix(1)), in: layout)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "one-changed-file")
@@ -81,7 +103,7 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — reached on purpose: the sidebar's *Show them anyway* is how a reader opens a
         // worktree they were told was clean.
-        let model = await aLoadedViewerModel(of: [])
+        let model = await aLoadedViewerModel(of: [], in: layout)
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-clean-worktree")
@@ -96,7 +118,7 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — the fake refuses every write, which is what this Mac does when the file has moved
         // under the hash the mark was written against.
-        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom)
+        let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
         if let file = aChangeSetToSelectFrom.first?.id {
             await model.setViewed(true, on: file)
         }
@@ -121,7 +143,11 @@ struct WorktreeDiffScreenSnapshotTests {
     ) async {
         // given — the entries have to be `ready`, because a comment cannot attach to a file whose
         // diff has not arrived and a rail cannot be drawn beside rows that are not there.
-        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-review-in-progress")
@@ -139,7 +165,11 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
         if let file = aChangeSetPartlyArrived.first?.id {
             model.longPressedGutter(aRowOfTheFirstFile, in: file)
         }
@@ -158,7 +188,11 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewOfTheFirstFile)
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewOfTheFirstFile,
+            in: layout
+        )
         model.showReview()
 
         // when - then
@@ -178,7 +212,11 @@ struct WorktreeDiffScreenSnapshotTests {
         layout: SnapshotLayout
     ) async {
         // given
-        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, holding: aReviewWithOneCommentAdrift)
+        let model = await aLoadedViewerModel(
+            of: aChangeSetPartlyArrived,
+            holding: aReviewWithOneCommentAdrift,
+            in: layout
+        )
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-comment-adrift")

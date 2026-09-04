@@ -55,6 +55,9 @@ public struct DiffFileLines: View {
     /// The stretches of comment rail this hunk draws, decided by `CommentRail` in `Domain`.
     private let runs: [CommentRun]
 
+    /// The file's lexed code, if any of it has arrived. Empty is the ordinary first state.
+    private let highlighted: HighlightedFile
+
     /// Whether the gutter takes gestures at all.
     ///
     /// **False while any sheet is up, and that is not belt and braces.** The composer's own detent
@@ -93,6 +96,7 @@ public struct DiffFileLines: View {
         highestNumber: Int,
         pointSize: CGFloat,
         runs: [CommentRun] = [],
+        highlighted: HighlightedFile = .none,
         acceptsTargeting: Bool = true,
         onTap: @escaping (DiffLinePosition) -> Void = { _ in },
         onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
@@ -101,6 +105,7 @@ public struct DiffFileLines: View {
         self.highestNumber = highestNumber
         self.pointSize = pointSize
         self.runs = runs
+        self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
         self.onTap = onTap
         self.onLongPress = onLongPress
@@ -410,14 +415,14 @@ public struct DiffFileLines: View {
     /// over what it composites onto rather than a number picked per appearance.
     private func segmented(_ line: DiffLine) -> Text {
         let drawn = DrawnDiffLine.of(line)
+        var attributed = lexed(drawn, of: line) ?? AttributedString(drawn.text)
         guard drawn.changed.isEmpty == false else {
             // A line the parser paired with nothing, or paired as one whole run — either way there
             // is no *unchanged* part to tell it apart from, and a background over the whole line
             // would be a second, stronger copy of the row tint drawn on top of the row tint.
-            return Text(verbatim: drawn.text)
+            return Text(attributed)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
         }
-        var attributed = AttributedString(drawn.text)
         let characters = attributed.characters
         for range in drawn.changed {
             let start = characters.index(characters.startIndex, offsetBy: range.lowerBound)
@@ -425,6 +430,26 @@ public struct DiffFileLines: View {
             attributed[start..<end].backgroundColor = segmentTint(of: line)
         }
         return Text(attributed)
+    }
+
+    /// The row's code as the lexer coloured it, or nothing when it is to be drawn plain.
+    ///
+    /// **The two treatments compose because they use different properties**, which is the whole of
+    /// why design §4's word diff was reverted to `SPEC.md` §10's background on 28 August 2026: a lexer
+    /// owns the text colour, so the changed run has to be a background or the two cannot both be on
+    /// screen. The order here is that order — colours first, the word-diff background over them.
+    ///
+    /// **The lengths are checked, and that is a guard on a JavaScript engine behind a bridge.** The
+    /// lexer is handed the same expansion `DrawnDiffLine` produces, so the two agree by construction
+    /// — except where highlight.js's own HTML round trip decodes something that was literal text in
+    /// the file, which shortens the line. Applying a background at an offset into a shorter string
+    /// either traps or paints the wrong word, and neither is worth a colour: this row draws plain and
+    /// the rest of the file keeps its highlighting.
+    private func lexed(_ drawn: DrawnDiffLine, of line: DiffLine) -> AttributedString? {
+        guard let text = highlighted.text(of: line), text.characters.count == drawn.text.count else {
+            return nil
+        }
+        return text
     }
 
     /// The changed run's own background, chosen so that what lands on screen is three times the row

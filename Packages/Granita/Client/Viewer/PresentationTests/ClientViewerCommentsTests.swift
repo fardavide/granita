@@ -842,7 +842,10 @@ private struct Scenario {
                 alsoAnswering: nil
             ),
             commentStore: store,
-            pasteboard: pasteboard
+            pasteboard: pasteboard,
+            // Highlighting is beside the point here and is asserted in
+            // `ClientViewerHighlightingTests`, so the lexer is built inline and never inspected.
+            highlighter: FakeSyntaxHighlighter()
         )
     }
 

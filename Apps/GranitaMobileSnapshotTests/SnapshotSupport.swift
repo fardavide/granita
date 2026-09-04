@@ -54,6 +54,17 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
         configuration.traits.horizontalSizeClass == .regular
     }
 
+    /// Which stylesheet the code in this layout is lexed against.
+    ///
+    /// **It has to be asked, because a lexed answer carries baked colours.** A model highlighted for
+    /// light and photographed dark would draw Xcode's light palette on a dark card — black tokens on
+    /// `#1C1C1E` — and the raster would be a picture of a bug rather than of a screen. The app cannot
+    /// reach that state, because changing appearance empties the model's cache; a baseline can,
+    /// because the screen's own `.task` does not settle inside a synchronous render.
+    var appearance: HighlightAppearance {
+        style == .dark ? .dark : .light
+    }
+
     /// The code size this layout draws at — 11pt on the phone, 12pt beside the selector column.
     ///
     /// The same question `WorktreeDiffScreen` asks, answered the same way, so a baseline photographs

@@ -35,7 +35,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // screen's own `.task` and the shutter.
         let model = aLoadableModel()
         await model.load()
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
 
         // when - then
         assertScreenSnapshot(
@@ -72,7 +72,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // given
         let model = aLoadableModel()
         await model.load()
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
         let chosen = try #require(aBusyMac.first).id
 
         // when - then
@@ -106,7 +106,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // given — a row read, tapped, and gone from the Mac by the time the push happened.
         let model = aLoadableModel()
         await model.load()
-        let diff = await aLoadedViewerModel()
+        let diff = await aLoadedViewerModel(in: layout)
         let removed = WorktreeID(rawValue: "w-an-agent-deleted-this-one")
 
         // when - then

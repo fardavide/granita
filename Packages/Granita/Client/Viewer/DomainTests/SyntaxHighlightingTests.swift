@@ -92,6 +92,43 @@ struct SyntaxHighlightingTests {
     }
 
     @Test
+    func `given a conflicted file whose markers are numbered when a side is assembled then they still reach the lexer on neither`() {
+        // given — **this is the conflict the parser actually produces, and the one above is not.** A
+        // conflicted working tree holds `<<<<<<< HEAD` as literal content, so git diffs it behind a
+        // `+` and the parser numbers it from that prefix *before* re-tagging it by its text. Reading
+        // the numbers alone therefore let every real marker through.
+        let diff = aDiff(hunks: [
+            Hunk(
+                index: 0,
+                oldStart: 61,
+                oldCount: 3,
+                newStart: 61,
+                newCount: 3,
+                sectionHeading: nil,
+                lines: [
+                    aLine(kind: .context, old: 61, new: 61, text: "let segments = pair(old, new)"),
+                    aLine(kind: .conflictMarker, old: 62, new: 62, text: "<<<<<<< HEAD"),
+                    aLine(kind: .context, old: 63, new: 63, text: "return segments.merged()")
+                ]
+            )
+        ])
+
+        // when
+        let plan = SyntaxHighlighting.plan(for: diff, side: .new)
+
+        // then — the kind decides as well as the numbers, because `<<<<<<< HEAD` is not Swift and a
+        // lexer handed it mis-lexes every line after it. §4 draws a marker in its own tint and at
+        // semibold, so it loses nothing by being left plain.
+        #expect(plan == .highlight(
+            HighlightSource(
+                side: .new,
+                text: "let segments = pair(old, new)\nreturn segments.merged()",
+                lineNumbers: [61, 63]
+            )
+        ))
+    }
+
+    @Test
     func `given a file with no trailing newline when a side is assembled then git's annotation is not one of its lines`() {
         // given — `\ No newline at end of file` is git talking about the file rather than a line of
         // it, and the parser gives it no number on either side.
@@ -151,6 +188,22 @@ struct SyntaxHighlightingTests {
         #expect(plan == .highlight(
             HighlightSource(side: .new, text: "struct A {\nstruct B {", lineNumbers: [10, 50])
         ))
+    }
+
+    @Test
+    func `given a tab-indented line when a side is assembled then it is on the grid the row draws`() {
+        // given — `if` is two columns, so the tab reaches column four and is two spaces rather than
+        // four. Expanding from zero instead would put every character after it in the wrong place.
+        let diff = aDiff(hunks: [aHunk(lines: [aLine(kind: .context, old: 1, new: 1, text: "if\ttrue {")])])
+
+        // when
+        let plan = SyntaxHighlighting.plan(for: diff, side: .new)
+
+        // then — **the lexer reads the drawn string and not the raw one**, which is what lets the
+        // colours it answers with be applied at the offsets `DrawnDiffLine` produces. A tab is
+        // whitespace to every lexer, so nothing is lost by expanding it first, and the alternative is
+        // a second mapping between two spellings of one line.
+        #expect(plan == .highlight(HighlightSource(side: .new, text: "if  true {", lineNumbers: [1])))
     }
 
     // MARK: - What is refused, and why
@@ -281,8 +334,10 @@ struct SyntaxHighlightingTests {
 
     @Test
     func `given one side at two point sizes when the keys are made then they differ`() {
-        // given — the font is an attribute of what comes back, so the code size is part of the
-        // question. `SPEC.md` §10 makes it a setting of its own.
+        // given — the code size is part of the question, and it over-invalidates on purpose: what
+        // comes back carries colours and no font, so nothing in it is measured at either size.
+        // `SPEC.md` §10 already discards every cached row height when the size changes, so a re-lex
+        // rides along with a relayout that was happening anyway.
         let diff = aDiff(hunks: [aHunk()])
 
         // when

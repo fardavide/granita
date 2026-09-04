@@ -25,7 +25,7 @@ says so and shows the measurement.
 | §1 | Server discovery | built | **applied** — the code matches this document |
 | §2 | The worktree sidebar | M4 | built |
 | §3 | The file selector | M5 | built |
-| §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. The header's second form and wrap-on are not, and **syntax highlighting was never drawn at all** |
+| §4 | The continuous diff | M5 | **everything drawn is built** — the scroll, the viewed toggle, the collapsed bars and hunk expansion. Syntax highlighting was never drawn and is built anyway, with its calls recorded below; the header's second form and wrap-on are still not |
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 | §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
 | §7 | Inline comments — choosing the lines, the composer, the mark, the review, the copy, the iPad | 0.7.0 | **drawn and built.** Returned 3 September 2026. Three calls are built differently from the frames and one they draw is deliberately absent; all four are below and in [`decisions.md`](decisions.md). One departure — the 18pt target — is **flagged and waiting on Davide** |
@@ -487,13 +487,14 @@ The states:
 
 *Should feel like* the Xcode navigator, minus the parts of the Xcode navigator nobody uses on a phone.
 
-## §4 — The continuous diff *(M5 — everything but highlighting, wrap-on and the header's second form)*
+## §4 — The continuous diff *(M5 — everything but wrap-on and the header's second form)*
 
 **What is built, and what deliberately is not.** The one continuous scroll, the gutter, the line
 tints and the word segments, the hunk bands and a sticky file header landed in 0.2.0; the viewed
-toggle in 0.3.0; **the collapsed bars and hunk expansion in 0.4.0**. What is left is syntax
-highlighting, the wrap-on mode and the header's second form, and each is absent rather than disabled
-— nothing on that screen is a control that does not work.
+toggle in 0.3.0; **the collapsed bars and hunk expansion in 0.4.0**; **syntax highlighting in
+0.8.0**, which no frame ever drew and whose calls are written down below instead. What is left is
+the wrap-on mode and the header's second form, and each is absent rather than disabled — nothing on
+that screen is a control that does not work.
 
 Five calls below were changed by building them, and each says so where it is made: the row splits
 into two view trees, the file header ships in one form, a shut file's bar replaces its header rather
@@ -728,6 +729,51 @@ could not, and the baselines are what say so.
 > a descender. Rejected: bold — SF Mono keeps its advance when bold, so it is technically safe, but
 > bold already means "keyword" to anyone who reads code. Rejected: one alpha for both appearances,
 > which is the version of this the review measured and correctly refused.
+
+### The lexer colours text, and it is Xcode's palette
+
+> **Built without a design, on Davide's instruction** *(4 September 2026, 0.8.0)*. This section had
+> no highlighting in it at all — the review saw the edge of the collision above and never drew the
+> two together — and the `design-handoff` rule says no pull request touching a screen opens before
+> its frames exist. Davide waived it in one sentence: *"We don't really need design for syntax
+> highlighting."* What follows is therefore this repository's own calls rather than a return, and
+> they are written down here for the same reason a return would be.
+
+**Xcode's own stylesheets, `xcode` in light and `xcode-dark` in dark.** Granita's design language is
+Apple's throughout and the phone is lying beside the Mac the diff came from, so the colours that
+already mean *keyword* and *string* to this reader are the ones Xcode gave them. They are also the
+most muted of the credible pairs, which matters more here than in an editor: a row already carries an
+add or remove tint and a word-diff background at three times it, and the section above rests entirely
+on those staying the loudest thing in the row.
+
+> Rejected: GitHub's pair, which is what a diff normally looks like and is more saturated than
+> Xcode's, so it competes with the row tints the argument above depends on. Rejected: Atom One, which
+> is Highlightr's own default and matches nothing else the reader sees. **Not rejected, deferred:**
+> making it a setting, which is [#70](https://github.com/fardavide/granita/issues/70) and needs a
+> Settings surface the phone does not have yet.
+
+**The text colour is the lexer's and the background is the diff's**, which is what makes the two
+treatments compose rather than collide. It is also why the paragraph above was reverted to `SPEC.md`
+§10 on 28 August 2026: a lexer colours text, so a line already using its text colour to mean *this
+part changed* has nothing left to say `keyword` with. Order on the row is colours first, the changed
+run's background over them.
+
+**The theme's own base colour is kept**, so unhighlighted code inside a highlighted file is `#000000`
+in light and `#FFFFFF` in dark. Those are `UIColor.label` to the byte in both appearances, so a file
+the lexer refused and a file it accepted draw their plain text identically — which is the whole
+requirement, since a change set mixes the two on one screen. **Its font is dropped**, because every
+row's height is computed from the code point size and a stylesheet asking for Courier at 14pt would
+break the grid the gutter is aligned to.
+
+**A file arrives plain and gains its colours in place.** `SPEC.md` §10's own instruction, and it is
+what keeps the treatment inside §10's no-reflow rule for free: a colour changes no measurement, so
+nothing moves when one lands. The file the reader is looking at is lexed before the ones fetched
+ahead of them, and a file drawn shut is not lexed at all.
+
+**A conflict marker is never coloured, and neither is git's no-newline annotation.** `<<<<<<< HEAD`
+is not source in any language and a lexer handed one mis-lexes every line after it — which would have
+been the one row that announces a conflict taking the rest of the file down with it. The marker keeps
+its own amber tint and its semibold, which is what §4 already gives it.
 
 ### A collapsed bar must say why it is shut
 
