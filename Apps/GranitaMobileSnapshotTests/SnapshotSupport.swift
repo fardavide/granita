@@ -83,6 +83,77 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
     ]
 }
 
+// MARK: - What the previous case left behind
+
+/// Puts the shared window back to a state this render can be photographed in, and says so when it
+/// had to.
+///
+/// **`drawHierarchyInKeyWindow` renders through the host app's one real window**, and in that mode
+/// swift-snapshot-testing ignores the layout config's declared safe area entirely: it resizes the
+/// live window and lays out against whatever safe area that window reports. So a keyboard raised by
+/// whatever rendered *before* this call is still in the geometry. It never appears in the raster,
+/// because a keyboard lives in its own window — **it appears as a shorter screen.**
+///
+/// It cost a baseline. On 4 September 2026 `a-comment-adrift-iPhone-light` failed on CI, byte for
+/// byte across three runs and green on this machine every time. The case before it in the same
+/// serialised suite opens `ReviewSheetView`, which focuses its note field `.onAppear` and carries a
+/// `placement: .keyboard` toolbar. The next render came out with a 387pt bottom inset, and one short
+/// frame produced two symptoms that read as unrelated defects: the review capsule is an `.overlay`
+/// on `ContinuousDiffView`'s frame so it drew 387pt up its own screen, and the page colour is one
+/// `.background` on that same frame so it stopped before the 10pt gap between two files, which then
+/// showed the window's white. **No row moved**, because a scroll view absorbs a bottom safe area as a
+/// content inset rather than by clipping.
+///
+/// **This reports and changes nothing, deliberately.** Two repairs were tried ahead of it and both
+/// were guesses. Asking the subject to `.ignoresSafeArea(.keyboard)` produced a byte-identical
+/// failure — the subject is wrapped in a `NavigationStack`, so the modifier lands on the wrapper and
+/// never reaches the scroll view inside it. Resigning first responder here and spinning the run loop
+/// until the keyboard withdrew took 22 *other* baselines down with it, because spinning the main run
+/// loop is an invitation for another suite's case to take the window mid-assertion — the very hazard
+/// this file is trying to close.
+///
+/// So: measure first. The leak is invisible in the failure it causes, because the keyboard is never
+/// in the picture, and a run that cannot say whether a keyboard window was even present cannot tell a
+/// wrong fix from a wrong diagnosis. This prints what each render inherited and leaves it there.
+///
+/// What it has already established, on this machine: a first responder **does** survive between
+/// cases here. There is simply no software keyboard behind it locally, so it costs nothing — which is
+/// exactly why every local run is green while CI is not.
+@MainActor
+private func reportInheritedState(before subject: String) {
+    let windows = UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap(\.windows)
+
+    let responder = windows.first { $0.findFirstResponder() != nil }
+    let keyboards = windows.filter { "\(type(of: $0))".contains("Keyboard") && $0.isHidden == false }
+    guard responder != nil || keyboards.isEmpty == false else { return }
+
+    let insets = windows.first { $0.isKeyWindow }?.safeAreaInsets ?? .zero
+    print(
+        "::warning::[snapshot] \(subject) inherited"
+            + " responder=\(responder != nil)"
+            + " keyboards=\(keyboards.count)\(keyboards.map { Int($0.frame.height) })"
+            + " keyWindowSafeAreaBottom=\(Int(insets.bottom))"
+    )
+}
+
+private extension UIView {
+
+    /// The first responder in this view's tree, if the tree holds one.
+    func findFirstResponder() -> UIView? {
+        if isFirstResponder {
+            return self
+        }
+        for subview in subviews {
+            if let found = subview.findFirstResponder() {
+                return found
+            }
+        }
+        return nil
+    }
+}
+
 // MARK: - The assertion
 
 /// Renders a view in one layout and compares it against its committed baseline.
@@ -120,6 +191,7 @@ func assertScreenSnapshot(
     column: UInt = #column
 ) {
     _ = redirectFailureArtifacts
+    reportInheritedState(before: "\(name)-\(layout.name)")
 
     assertSnapshot(
         // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first
@@ -128,31 +200,7 @@ func assertScreenSnapshot(
         // explains. The environment's locale is the right source for what a reader sees and the
         // wrong one for a golden image, so this asserts one layout deliberately rather than
         // whichever the simulator happened to be set to.
-        of: view
-            .environment(\.locale, Locale(identifier: "en_US"))
-            // **The keyboard belongs to the process, not to the view being photographed, and this is
-            // where that stops mattering.** `drawHierarchyInKeyWindow` renders through the host app's
-            // one real window, so the safe area SwiftUI lays out against is the live window's — and a
-            // keyboard raised by whatever rendered *before* this call is still contributing to it. It
-            // never appears in the raster, because it lives in its own window; it appears as geometry.
-            //
-            // It cost a baseline. On 4 September 2026 `a-comment-adrift-iPhone-light` failed on CI,
-            // byte-identically on two runs and green on this machine every time, because the case
-            // before it in the same serialised suite opens `ReviewSheetView`, which focuses its note
-            // field `.onAppear` and carries a `placement: .keyboard` toolbar. The next render got a
-            // ~387pt bottom inset: `ContinuousDiffView`'s frame ended at 457pt instead of 844, which
-            // moved the review capsule — an overlay on that frame — 387pt up its own screen, and
-            // stopped the one `.background(Color.diffPage)` rect before the 10pt gap between two
-            // files, which then showed the window's white. **The rows did not move**, because a
-            // scroll view absorbs a bottom safe area as a content inset rather than by clipping, and
-            // that is what made it read as two unrelated defects instead of one short frame.
-            //
-            // Removing the region is right rather than convenient: no baseline in this suite contains
-            // a keyboard or intends to avoid one, so the keyboard's contribution here can only ever be
-            // state one test left behind for the next. Dismissing the responder instead would trade a
-            // deterministic modifier for a wait on an animation, which is the thing this harness has
-            // none of and should not gain.
-            .ignoresSafeArea(.keyboard, edges: .bottom),
+        of: view.environment(\.locale, Locale(identifier: "en_US")),
         as: .image(
             drawHierarchyInKeyWindow: true,
             precision: 0.999,
