@@ -121,8 +121,25 @@ public struct ReviewSheetView: View {
             // the Mac changes what the reader does next.
             Text("The note and \(countLabel) will be deleted from this phone. They are not stored on the Mac.")
         }
-        // Focused on open, so the reader who has something to say types it immediately.
-        .onAppear { isWritingNote = true }
+        // **Focused on open when it is a sheet, and never when it is the iPad's column.**
+        //
+        // The sheet is a thing the reader summoned and that covers what they were reading, so it has
+        // their attention and typing straight into it is what §7.5 asks for. The column is not: it
+        // opens beside the diff, the diff stays live and readable, and nothing about putting it on
+        // screen says the next thing the reader wants is the keyboard. Stealing focus there throws a
+        // keyboard over half an iPad the reader is still reading, and takes the review's own list —
+        // the thing they opened it to see — down to a few rows.
+        //
+        // It also removes a rendering hazard that cost four CI runs to find. Focus raises the
+        // software keyboard asynchronously; whichever render is laying out when it arrives is laid
+        // out against a bottom inset it should not have, and `drawHierarchyInKeyWindow` means that
+        // is the live window's inset rather than the one the layout declared. The column's own
+        // baseline was the last casualty, at `height=511 safeBottom=261` where 738/34 was expected.
+        .onAppear {
+            if presentation == .sheet {
+                isWritingNote = true
+            }
+        }
     }
 
     // MARK: - The header
