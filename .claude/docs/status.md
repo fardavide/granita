@@ -2,6 +2,21 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.7.1 — the pre-pairing screens stopped being drawn in a column down the middle of the
+window.** Davide ran the app in a Mac window on 4 September 2026 and sent three screenshots of it:
+the Mac list, the two credentials and the six-word field, each a 420pt strip of content with a
+thousand points of bare white either side. Design §1's measure is reversed and the screens are stock
+SwiftUI at the width they are given; [`decisions.md`](decisions.md) carries the call and what it gives
+up, and every pre-pairing baseline moved with it.
+
+**Two things he saw in the same session are not fixed by it and are not in that release.** The
+worktree split view still draws as a narrow floating sidebar in a wide window, and **tapping a
+worktree there does nothing at all** — the second is a dead control, which is the one defect this
+project treats as worse than a crash. Both point at the same structure: §2's split view is presented
+*inside* the pairing stack, and a `NavigationSplitView` nested in a `NavigationStack` is not a
+composition SwiftUI supports. It is unverified — no test kind that runs here can tap, and the fix
+changes where "back to the Mac list" lives, so it is Davide's call before it is a commit.
+
 **Version 0.7.0 — inline comments, and the design came back before any of the screen was built.**
 Davide asked for them on 3 September 2026 — a note on a run of changed lines, a button once there are
 any, one prompt for an overall note or a *Skip*, and the whole review copied out as one piece of text

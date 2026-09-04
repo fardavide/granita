@@ -27,11 +27,9 @@ struct PairingEntryViewSnapshotTests {
     ) {
         // given - when - then
         //
-        // Wrapped and clamped the way the composition root wraps it, on the same side of the stack
-        // as design §1's screens: this is one of the four that live before a paired Mac, and §5 puts
-        // every one of them in a 420pt column, title included. Applied inside the navigation
-        // container it would assert an alignment the app does not have, because iOS draws the title
-        // in the bar rather than in the content.
+        // Wrapped the way the composition root wraps it, and no wider: through 0.7.0 both sides held
+        // this stack in a 420pt centred column, which drew the two credential buttons in the middle
+        // of an iPad with the window empty around them.
         assertScreenSnapshot(
             NavigationStack {
                 PairingEntryView(
@@ -40,9 +38,7 @@ struct PairingEntryViewSnapshotTests {
                     onScanCode: {},
                     onEnterWords: {}
                 )
-            }
-            .frame(maxWidth: ServerDiscoveryView.contentWidth)
-            .frame(maxWidth: .infinity),
+            },
             layout: layout,
             named: subject.name
         )

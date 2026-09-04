@@ -11,9 +11,10 @@ import ClientConnectionDomain
 ///
 /// **Dark, and the camera decides that rather than the app.** This is the one screen in Granita that
 /// is dark in light mode, and only where the preview fills the screen: on the phone the camera is the
-/// screen and the app disappears behind it, while on the iPad it is a card in a 420pt column and
-/// blacking out 1194pt to host it would make a modal out of a pushed screen. The refusal is not dark
-/// either — there is no camera image behind it, so there is nothing to be dark for.
+/// screen and the app disappears behind it, while at a regular width it is a 4:3 card in a padded
+/// stack and blacking out the window to host it would make a modal out of a pushed screen. The
+/// refusal is not dark either — there is no camera image behind it, so there is nothing to be dark
+/// for.
 ///
 /// **The navigation bar stays over the preview.** It is translucent, and once the camera fills the
 /// screen the title is the only place *which Mac this is* appears.
