@@ -82,35 +82,80 @@ public struct WorktreeRegistry: Sendable {
         var worktrees: [Worktree] = []
         for (index, entry) in records.enumerated() {
             let (project, record) = entry
-            let id = WorktreeID(canonicalPath: record.location.path)
-            let stored = state.worktrees[id]
-            let branch = record.branch.map(Self.shortBranch)
-            let suggested = suggestions[record.location.path]
-            let directoryName = (record.location.path as NSString).lastPathComponent
-            let changes = try? await service.changeSet(in: record.location, viewed: [:])
-
-            worktrees.append(Worktree(
-                id: id,
-                projectId: project.id,
-                projectName: project.name,
-                branch: branch,
+            worktrees.append(await described(
+                record,
+                of: project,
                 // The primary checkout is the one git lists first, which is the repository root
                 // itself; everything after it is a linked worktree.
                 isPrimary: index == 0 || record.location.path == project.path,
-                isDetached: record.isDetached,
-                isLocked: record.isLocked,
-                hasUnbornHead: record.head == nil,
-                alias: stored?.alias,
-                suggestedAlias: suggested,
-                displayName: stored?.alias ?? suggested ?? branch ?? directoryName,
-                directoryName: directoryName,
-                isPinned: stored?.isPinned ?? false,
-                stats: changes?.stats ?? .zero,
-                lastModified: modificationDate(of: record.location),
-                revision: changes?.revision ?? ""
+                suggestedAlias: suggestions[record.location.path],
+                stored: state.worktrees[WorktreeID(canonicalPath: record.location.path)]
             ))
         }
         return worktrees
+    }
+
+    /// One worktree, described the way the list describes every worktree.
+    ///
+    /// **This exists so the route that writes an alias does not have to read the whole Mac to answer.**
+    /// It used to call `worktrees(inProject: nil)` and pick its own row out of the result, which
+    /// costs a change set — a `status`, a `diff` and a batched `hash-object` — for every worktree of
+    /// every enabled project. On ten real repositories that is over two minutes, and it was the
+    /// latency of renaming a worktree from a phone.
+    ///
+    /// It takes the `Resolved` the route already has rather than an identifier, so the enumeration
+    /// that resolved it is not run a second time.
+    public func worktree(_ resolved: Resolved) async -> Worktree {
+        let state = await store.state()
+        let suggestions = await suggestedAliases([
+            (resolved.record.location.path, resolved.record.branch.map(Self.shortBranch))
+        ])
+        return await described(
+            resolved.record,
+            of: resolved.project,
+            isPrimary: resolved.isPrimary,
+            suggestedAlias: suggestions[resolved.record.location.path],
+            stored: state.worktrees[WorktreeID(canonicalPath: resolved.record.location.path)]
+        )
+    }
+
+    /// Everything the phone is told about one checkout, from what has already been read about it.
+    ///
+    /// **Whether it is the primary checkout is a parameter rather than a question asked here**,
+    /// because the two callers answer it in ways neither can borrow: the list reads git's ordering
+    /// across a whole project, and a single resolution already knows, having enumerated that project
+    /// to find this record at all. The stored row and the suggested name come in for the cheaper
+    /// reason — the list reads the document once and batches the suggestions for every checkout it is
+    /// describing, and doing either per worktree would put the cost back that this exists to remove.
+    private func described(
+        _ record: WorktreeRecord,
+        of project: StoredProject,
+        isPrimary: Bool,
+        suggestedAlias suggested: String?,
+        stored: StoredWorktree?
+    ) async -> Worktree {
+        let branch = record.branch.map(Self.shortBranch)
+        let directoryName = (record.location.path as NSString).lastPathComponent
+        let changes = try? await service.changeSet(in: record.location, viewed: [:])
+
+        return Worktree(
+            id: WorktreeID(canonicalPath: record.location.path),
+            projectId: project.id,
+            projectName: project.name,
+            branch: branch,
+            isPrimary: isPrimary,
+            isDetached: record.isDetached,
+            isLocked: record.isLocked,
+            hasUnbornHead: record.head == nil,
+            alias: stored?.alias,
+            suggestedAlias: suggested,
+            displayName: stored?.alias ?? suggested ?? branch ?? directoryName,
+            directoryName: directoryName,
+            isPinned: stored?.isPinned ?? false,
+            stats: changes?.stats ?? .zero,
+            lastModified: modificationDate(of: record.location),
+            revision: changes?.revision ?? ""
+        )
     }
 
     /// Where a worktree is, or why it cannot be served.

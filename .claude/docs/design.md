@@ -262,8 +262,11 @@ Of the four git flags, one and a half earn pixels:
 - **An unborn head earns the stats slot**, not a flag: "no commits yet" where `+n −m` would be.
   Everything compares against the empty tree, so the real numbers are the whole repository and they
   are a lie about what changed.
-- **Locked earns nothing, ever.** Git plumbing with no bearing on reading a diff, and v1 cannot prune
-  worktrees, which is the only operation it would block.
+- **Locked earns nothing, ever.** Git plumbing with no bearing on reading a diff, and it blocks no
+  operation this app offers — the original wording said *v1 cannot prune worktrees, which is the only
+  operation it would block*, which stopped being true in 0.5.0; the conclusion survived it, because
+  since 0.9.1 the deletion overrides a lock rather than refusing on one. The confirmation says so
+  (§6, call 14); the row still does not.
 
 > Rejected: floating a pin to the top of its own project section — you still have to find the project,
 > which is the work the pin exists to skip. Rejected: duplicating the row in both places — a row that
@@ -1254,17 +1257,23 @@ branches on, the row's own rule about which worktrees may offer the control at a
 whole confirmation flow. What does not: the affordance on the row, and the confirmation.
 
 **What the deletion is, so the drawing is not about a safer operation than the real one.** It is
-`git worktree remove --force`: the directory goes and the uncommitted work in it goes with it. The
+`git worktree remove --force --force`: the directory goes, the uncommitted work in it goes with it,
+and a lock on it is overridden rather than obeyed. The
 unforced form refuses whenever anything is uncommitted, and *every worktree this list shows* has
 uncommitted work — the quiet ones are hidden by default and the product exists to show the loud
 ones. So the confirmation is not ceremony around a reversible operation; it is the whole safeguard,
 and there is no undo behind it. The branch survives. Nothing else does.
 
-**Two rows must never offer it, and the row already knows which.** The primary checkout is the
-repository rather than a checkout of it, and a locked worktree is a person at that Mac saying do not
-remove this. `WorktreeListRow` carries a reason rather than a boolean precisely so the drawing can
-choose between **absent** and **disabled and says why** — a boolean would have decided that here, by
-accident, and the wrong way round.
+**One row must never offer it, and the row already knows which.** The primary checkout is the
+repository rather than a checkout of it. `WorktreeListRow` carries a reason rather than a boolean
+precisely so the drawing can choose between **absent** and **disabled and says why** — a boolean
+would have decided that here, by accident, and the wrong way round.
+
+> **A locked worktree used to be the second, and stopped being one in 0.9.1.** Claude Code locks
+> every worktree it creates, so that rule refused the control on nearly every row in this list —
+> which is the outcome forcing the removal was chosen to avoid. The deletion sends `-f -f` and the
+> confirmation states the lock instead. See [`decisions.md`](decisions.md); the sentence it added is
+> provisional call 14 below.
 
 **The open questions this section exists to answer**, and none of them is settled:
 
@@ -1314,7 +1323,9 @@ design overrules any of them without argument.
 7. **§2's stated reason for `locked` earning nothing has expired, and this deliberately does not act
    on it.** The document says *"v1 cannot prune worktrees, which is the only operation it would
    block."* v1 can now, so the premise is void and the conclusion is unargued. Spending the row's
-   budget is not implementation's to do. **Design should be told the premise moved.**
+   budget is not implementation's to do. **Design should be told the premise moved.** *(0.9.1: the
+   premise moved again and the flag now earns nothing on the row for a new reason — it no longer
+   blocks anything. See 14.)*
 8. **The Mac's own refusal sentence is dropped on the floor.** An alert has no caption2, monospaced,
    tertiary slot, and this design's rule is that a machine's words go there — so pasting git's
    standard error into an alert body on a phone was refused. The cost is that the reader is not told
@@ -1337,6 +1348,13 @@ design overrules any of them without argument.
     content rather than a dead control, and only on iPad, where both columns are visible at once.
     Closing it means binding the detail column's path in the split screen, which is beyond a
     provisional treatment — **and it should not ship unanswered past this review.**
+14. **The confirmation states the lock in a paragraph of its own, added in 0.9.1** — *Your Mac has
+    this worktree locked — Claude Code locks the ones it makes. Deleting it here goes ahead anyway.*
+    After the cost rather than before it, because the cost is what the reader is deciding on and the
+    lock is what the deletion has to get past to do it. It exists because the lock stopped being a
+    refusal: it is the reader who overrides it now, and a reader cannot override something nobody
+    told them about. Naming Claude Code by name is the call most open to being overruled — it is
+    true of every worktree this app is for, and it is still a tool's name in a warning.
 
 **What no baseline can reach, whatever the treatment.** A `.contextMenu`'s content closure is not
 evaluated until it opens, so the delete item and the two disabled explanations have no picture; and

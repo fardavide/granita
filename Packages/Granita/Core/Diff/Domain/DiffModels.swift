@@ -365,8 +365,11 @@ public struct Worktree: Hashable, Codable, Sendable {
     /// Derived from the agent's own session transcript, best effort and never blocking.
     public let suggestedAlias: String?
 
-    /// Resolved once on the server so both apps and every list agree on what this worktree is
-    /// called: `alias`, else `suggestedAlias`, else the branch, else the directory.
+    /// Resolved on the server so both apps and every list agree on what this worktree is called:
+    /// `alias`, else `suggestedAlias`, else the branch, else the directory.
+    ///
+    /// The phone resolves it a second time, and only for a rename it has not had answered yet —
+    /// ``applying(_:)`` is that rule and is the only place the phone is allowed to spell it.
     public let displayName: String
 
     public let directoryName: String
@@ -411,5 +414,44 @@ public struct Worktree: Hashable, Codable, Sendable {
         self.stats = stats
         self.lastModified = lastModified
         self.revision = revision
+    }
+}
+
+extension Worktree {
+
+    /// This worktree with a patch applied, resolving the display name the way the Mac resolves it.
+    ///
+    /// **Shared rather than spelled once per side**, because the phone now needs the answer before
+    /// the Mac has given it: a rename is applied to the row as the sheet goes down, and a second copy
+    /// of `alias ?? suggestedAlias ?? branch ?? directoryName` is a row that reads one name until the
+    /// next read and a different one afterwards.
+    ///
+    /// It resolves only what a patch can change. Everything else is the Mac's to answer — the stats
+    /// and the revision are what a request is *for*, and inventing either here would be the phone
+    /// telling itself the worktree changed.
+    public func applying(_ patch: WorktreePatch) -> Worktree {
+        let alias: String? = switch patch.alias {
+        case .unchanged: self.alias
+        case .cleared: nil
+        case .set(let alias): alias
+        }
+        return Worktree(
+            id: id,
+            projectId: projectId,
+            projectName: projectName,
+            branch: branch,
+            isPrimary: isPrimary,
+            isDetached: isDetached,
+            isLocked: isLocked,
+            hasUnbornHead: hasUnbornHead,
+            alias: alias,
+            suggestedAlias: suggestedAlias,
+            displayName: alias ?? suggestedAlias ?? branch ?? directoryName,
+            directoryName: directoryName,
+            isPinned: patch.isPinned ?? isPinned,
+            stats: stats,
+            lastModified: lastModified,
+            revision: revision
+        )
     }
 }

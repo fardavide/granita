@@ -135,9 +135,10 @@ public struct WorktreeService: Sendable {
     /// from inside the directory it is about to delete — measured on 2.52.0 — and there is no reason
     /// to ask it to.
     ///
-    /// It refuses on its own for the two cases worth refusing: the primary checkout is the
-    /// repository rather than a checkout of it, and a locked worktree needs `-f -f`, which is not
-    /// what is sent. Both come back carrying git's own sentence.
+    /// It refuses on its own for the one case worth refusing: the primary checkout is the repository
+    /// rather than a checkout of it, and comes back carrying git's own sentence. A lock is not that
+    /// case — `-f -f` is what is sent, because Claude Code locks every worktree it creates and a
+    /// refusal there is a refusal on every row.
     public func remove(
         _ worktree: RepositoryLocation,
         ofProjectAt project: RepositoryLocation

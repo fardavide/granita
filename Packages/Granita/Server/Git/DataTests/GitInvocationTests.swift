@@ -227,25 +227,26 @@ struct GitInvocationTests {
         // then — `worktree remove` rejects the diff-family flags outright rather than ignoring them:
         // `--no-ext-diff` exits 129 with `error: unknown option`, measured on git 2.52.0. So this
         // family carries the global prefix and nothing else.
-        #expect(vector.suffix(5) == [
-            "worktree", "remove", "--force", "--",
+        #expect(vector.suffix(6) == [
+            "worktree", "remove", "--force", "--force", "--",
             "/Users/davide/code/.claude/worktrees/fix-the-thing"
         ])
         #expect(vector.contains("--no-ext-diff") == false)
     }
 
     @Test
-    func `when a worktree is removed then it is forced once rather than twice`() {
+    func `when a worktree is removed then it is forced twice rather than once`() {
         // given - when
         let vector = arguments(of: .removeWorktree(at: RepositoryLocation(path: "/checkouts/one")))
 
-        // then — the two spellings mean different things and only one of them was asked for. One
-        // `--force` discards uncommitted work, which is the whole point: this list is worktrees that
-        // *have* uncommitted work, so the unforced form would refuse on nearly every row it is
-        // offered on. A second one additionally overrides a lock, and a lock is a person saying do
-        // not remove this — git refuses that case with `use 'remove -f -f' to override or unlock
-        // first`, measured on git 2.52.0, and refusing is the answer we want.
-        #expect(vector.filter { $0 == "--force" }.count == 1)
+        // then — the two spellings mean different things and both are asked for. One `--force`
+        // discards uncommitted work, which is the whole point: this list is worktrees that *have*
+        // uncommitted work, so the unforced form would refuse on nearly every row it is offered on.
+        // The second overrides a lock — and **Claude Code locks every worktree it creates**, with the
+        // reason `claude agent <session> (pid …)`, so a single `--force` was refused on nearly every
+        // row too. Git says so in as many words: `fatal: cannot remove a locked working tree … use
+        // 'remove -f -f' to override or unlock first`, measured on git 2.52.0.
+        #expect(vector.filter { $0 == "--force" }.count == 2)
     }
 
     @Test

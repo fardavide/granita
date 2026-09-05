@@ -142,7 +142,14 @@ enum GitInvocation {
             // No diff-family flags: `worktree remove --no-ext-diff` exits 129 with `error: unknown
             // option`, which is the loud half of the pair — `rev-parse` takes the same flag and
             // prints it back as an output line.
-            encoded(["worktree", "remove", "--force", "--"]) + [Array(worktree.path.utf8)]
+            //
+            // **`--force` twice, and the second one is the whole reason deletion works at all.** Once
+            // overrides a dirty worktree, which is every worktree this app lists. Twice overrides a
+            // *locked* one — and Claude Code locks every worktree it creates, with the reason
+            // `claude agent <session> (pid …)`, so a single `--force` refused on essentially every
+            // row the phone offered the control on. Measured on 2.52.0: `fatal: cannot remove a
+            // locked working tree … use 'remove -f -f' to override or unlock first`.
+            encoded(["worktree", "remove", "--force", "--force", "--"]) + [Array(worktree.path.utf8)]
 
         case .hashWorktreeFiles:
             encoded(["hash-object", "--stdin-paths"])

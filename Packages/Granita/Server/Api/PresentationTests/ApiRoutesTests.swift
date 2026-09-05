@@ -226,11 +226,14 @@ struct ApiRoutesTests {
     }
 
     @Test
-    func `given a locked worktree when it is deleted then it is refused and left where it is`(
+    func `given a locked worktree when it is deleted then the lock is overridden and it goes`(
     ) async throws {
-        // given — a lock is a person on this Mac saying do not remove this, and one `--force` does
-        // not override it: git answers `use 'remove -f -f' to override or unlock first`. Sending the
-        // second one would make the lock mean nothing, so this refuses instead.
+        // given — **this is the worktree the whole feature is about.** Claude Code locks every
+        // worktree it creates, with the reason `claude agent <session> (pid …)`, so a route that
+        // refused a locked one refused nearly every row the phone offered the control on. One
+        // `--force` is not enough on its own: git answers `cannot remove a locked working tree …
+        // use 'remove -f -f' to override or unlock first`, measured on 2.52.0. Both are sent, and
+        // the confirmation on the phone is where the lock is stated.
         let repository = try DisposableRepository()
         defer { repository.cleanUp() }
         try repository.lockTheWorktree()
@@ -239,14 +242,16 @@ struct ApiRoutesTests {
         try await scenario.enableProject()
         let doomed = WorktreeID(canonicalPath: repository.worktree.path)
 
-        // when - then
+        // when
         try await scenario.application.test(.router) { client in
             try await client.execute(uri: "/v1/worktrees/\(doomed.rawValue)", method: .delete) { response in
-                #expect(response.status == .conflict)
-                #expect(errorCode(in: response) == "worktreeNotDeletable")
+                #expect(response.status == .noContent)
             }
         }
-        #expect(FileManager.default.fileExists(atPath: repository.worktree.path))
+
+        // then
+        #expect(FileManager.default.fileExists(atPath: repository.worktree.path) == false)
+        #expect(try repository.worktreePaths() == [repository.location.path])
     }
 
     @Test
@@ -475,6 +480,42 @@ struct ApiRoutesTests {
                 #expect(updated.isPinned)
             }
         }
+    }
+
+    @Test
+    func `given two enabled projects when one worktree is renamed then no other checkout is read`(
+    ) async throws {
+        // given — **the latency of renaming, and nothing on the wire can see it.** This route wrote
+        // one line to a JSON document and then rebuilt the whole list to find its own row in it,
+        // which is a change set — `status`, `diff`, a batched `hash-object` — per worktree per
+        // enabled project. The response was right and it took minutes on a real Mac.
+        let first = try DisposableRepository()
+        defer { first.cleanUp() }
+        let second = try DisposableRepository()
+        defer { second.cleanUp() }
+        let scenario = try ApiScenario(at: first.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        try await scenario.enableProject(at: second.location)
+        let renamed = WorktreeID(canonicalPath: first.worktree.path)
+        await scenario.git.forget()
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(renamed.rawValue)",
+                method: .patch,
+                body: json(#"{"alias":"the parser"}"#)
+            ) { response in
+                let updated = try decoded(Worktree.self, from: response)
+                #expect(updated.displayName == "the parser")
+            }
+        }
+
+        // then — one change set, for the worktree that was renamed. The projects are still
+        // enumerated, because that is how an opaque identifier is resolved into somewhere on this
+        // Mac at all, and `worktree list` is one invocation that reads no file.
+        #expect(await scenario.git.checkoutsAChangeSetWasBuiltFor.map(\.path) == [first.worktree.path])
     }
 
     @Test

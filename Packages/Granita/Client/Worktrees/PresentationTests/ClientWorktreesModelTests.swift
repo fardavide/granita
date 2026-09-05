@@ -238,9 +238,80 @@ struct ClientWorktreesModelTests {
     }
 
     @Test
+    func `given a rename in flight when the screen is read then the sheet is down and the row renamed`(
+    ) async throws {
+        // given — **the defect this is the regression test for.** Save used to await the whole round
+        // trip before putting the sheet down, so the sheet sat there over a list the reader could not
+        // see, for as long as the Mac took to answer — which was a change-set rebuild of every
+        // worktree of every project. A rename writes an alias in this Mac's own JSON document and
+        // touches no git state, so there is nothing here worth making a reader wait on.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let row = try #require(scenario.rows.first)
+        scenario.sut.beginRenaming(row.rename)
+        await scenario.repository.holdTheNext(.update)
+
+        // when
+        let rename = Task { await scenario.sut.rename(WorktreeID(rawValue: "w-diff scroll"), to: "Scroll rewrite") }
+        await scenario.repository.waitForOneToArrive(.update)
+
+        // then
+        #expect(scenario.sut.renaming == nil)
+        #expect(scenario.rows.map(\.displayName) == ["Scroll rewrite"])
+
+        // and then — the Mac's own answer replaces the phone's guess, and reads the same.
+        await scenario.repository.releaseHeld(.update)
+        await rename.value
+        #expect(scenario.rows.map(\.displayName) == ["Scroll rewrite"])
+    }
+
+    @Test
+    func `given an alias cleared while the Mac is answering then the row already reads the fallback`(
+    ) async throws {
+        // given — the half of the optimistic name that is not the alias. Clearing sends the row back
+        // to what the Mac would derive, and the phone has to resolve that by the same rule or the
+        // sheet's footer promised something the row does not do.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita", alias: "Scroll")])
+        await scenario.sut.load()
+        await scenario.repository.holdTheNext(.update)
+
+        // when
+        let rename = Task { await scenario.sut.rename(WorktreeID(rawValue: "w-diff scroll"), to: "  ") }
+        await scenario.repository.waitForOneToArrive(.update)
+
+        // then — the branch, which is what this worktree's derived name is.
+        #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
+
+        await scenario.repository.releaseHeld(.update)
+        await rename.value
+    }
+
+    @Test
+    func `given a rename in flight when the worktree is deleted then the answer does not bring it back`(
+    ) async throws {
+        // given — reachable at LAN speed, and the one case where putting the row back would undo
+        // something the reader confirmed: rename, then long-press the same row and delete it while
+        // the rename is still out. The row is optimistic, so it is in the list to be deleted.
+        let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
+        await scenario.sut.load()
+        let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
+        await scenario.repository.holdTheNext(.update)
+        let rename = Task { await scenario.sut.rename(WorktreeID(rawValue: "w-diff scroll"), to: "Scroll rewrite") }
+        await scenario.repository.waitForOneToArrive(.update)
+
+        // when
+        await scenario.sut.confirmDeletion(of: subject)
+        await scenario.repository.releaseHeld(.update)
+        await rename.value
+
+        // then — neither the Mac's answer nor the phone's own revert puts a deleted row back.
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
     func `given a rename the Mac refused when it is saved then the reader is told`() async {
-        // given — the row would otherwise snap back to its old name with no explanation, which
-        // reads as the app having ignored the tap.
+        // given — the row would otherwise keep the name the phone put on it optimistically, which is
+        // a rename that appears to have worked and has not.
         let scenario = Scenario(
             worktrees: [aWorktree(named: "diff scroll", project: "granita")],
             writeFailure: .worktreeGone
@@ -359,9 +430,53 @@ struct ClientWorktreesModelTests {
     }
 
     @Test
+    func `given a pin the Mac refused when it is set then the row goes back to where it was`() async {
+        // given — the pin moves the row into a section of its own, so a refusal that left it there
+        // would be a list arranged around something that never happened.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "diff scroll", project: "granita")],
+            writeFailure: .unauthorized
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-diff scroll"))
+
+        // then
+        #expect(scenario.sections.map(\.id) == [.project(ProjectID(rawValue: "granita"), name: "granita")])
+        #expect(scenario.rows.map(\.isPinned) == [false])
+    }
+
+    @Test
+    func `given a pin in flight when the list is read then the row has already moved`() async {
+        // given — the pin's whole effect is where the row sits, and a round trip before it moves is
+        // a control that does nothing for as long as the Mac takes to answer.
+        let scenario = Scenario(worktrees: [
+            aWorktree(named: "diff scroll", project: "granita"),
+            aWorktree(named: "session index", project: "granita", minutesAgo: 1)
+        ])
+        await scenario.sut.load()
+        await scenario.repository.holdTheNext(.update)
+
+        // when
+        let pinning = Task { await scenario.sut.setPinned(true, on: WorktreeID(rawValue: "w-diff scroll")) }
+        await scenario.repository.waitForOneToArrive(.update)
+
+        // then
+        #expect(scenario.sections.map(\.id) == [
+            .pinned, .project(ProjectID(rawValue: "granita"), name: "granita")
+        ])
+
+        await scenario.repository.releaseHeld(.update)
+        await pinning.value
+    }
+
+    @Test
     func `given a worktree the Mac no longer serves when writing then the list is not corrupted`() async {
         // given — an agent removes a worktree every day, and the answer arriving about one that is
-        // gone must not put a row in the list that is not in the list.
+        // gone must not put a row in the list that is not in the list. Now that the row is written
+        // before the request rather than after the answer, there is no row to write and nothing to
+        // ask about, so the refusal comes without a round trip.
         let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
         await scenario.sut.load()
 
@@ -371,6 +486,7 @@ struct ClientWorktreesModelTests {
         // then
         #expect(scenario.sut.writeFailure == .edit(.worktreeGone))
         #expect(scenario.rows.map(\.displayName) == ["diff scroll"])
+        #expect(await scenario.repository.patches.isEmpty)
     }
 
     // MARK: - Deleting
@@ -444,17 +560,17 @@ struct ClientWorktreesModelTests {
         let scenario = Scenario(worktrees: [aWorktree(named: "diff scroll", project: "granita")])
         await scenario.sut.load()
         let subject = try #require(scenario.deletionSubject(of: "w-diff scroll"))
-        await scenario.repository.holdTheNextDeletion()
+        await scenario.repository.holdTheNext(.deletion)
 
         // when
         let deletion = Task { await scenario.sut.confirmDeletion(of: subject) }
-        await scenario.repository.waitForADeletionToArrive()
+        await scenario.repository.waitForOneToArrive(.deletion)
 
         // then
         #expect(scenario.sut.removing == [WorktreeID(rawValue: "w-diff scroll")])
 
         // and then — the mark is cleared when the answer lands, on every path.
-        await scenario.repository.releaseHeldDeletions()
+        await scenario.repository.releaseHeld(.deletion)
         await deletion.value
         #expect(scenario.sut.removing.isEmpty)
     }
@@ -472,7 +588,7 @@ struct ClientWorktreesModelTests {
         await scenario.sut.load()
         let first = try #require(scenario.deletionSubject(of: "w-diff scroll"))
         let second = try #require(scenario.deletionSubject(of: "w-session index"))
-        await scenario.repository.holdTheNextDeletion()
+        await scenario.repository.holdTheNext(.deletion)
 
         // when
         let deletions = Task {
@@ -480,7 +596,7 @@ struct ClientWorktreesModelTests {
             async let two: Void = scenario.sut.confirmDeletion(of: second)
             _ = await (one, two)
         }
-        await scenario.repository.waitForADeletionToArrive(count: 2)
+        await scenario.repository.waitForOneToArrive(.deletion, count: 2)
 
         // then
         #expect(scenario.sut.removing == [
@@ -489,7 +605,7 @@ struct ClientWorktreesModelTests {
         ])
 
         // and then
-        await scenario.repository.releaseHeldDeletions()
+        await scenario.repository.releaseHeld(.deletion)
         await deletions.value
         #expect(scenario.sut.removing.isEmpty)
         #expect(scenario.sut.state == .noProjects)

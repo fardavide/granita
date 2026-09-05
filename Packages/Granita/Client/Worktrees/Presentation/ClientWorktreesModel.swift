@@ -137,10 +137,17 @@ public final class ClientWorktreesModel {
     /// Whitespace alone clears it rather than storing it. An alias of three spaces would draw a row
     /// with no name at all, and the patch has a case for absence precisely so it need not be faked
     /// with an empty string.
+    ///
+    /// **The sheet goes down before the request goes out, not after the answer comes back.** It used
+    /// to await the round trip first, which left a modal sitting over a list the reader could not see
+    /// for however long the Mac took — and the Mac's answer to a rename used to be a rebuild of every
+    /// worktree of every enabled project. Saving is the reader's last word on this sheet either way:
+    /// there is no second question it could ask, so nothing is gained by keeping it up, and what a
+    /// refusal has to say is said by the alert underneath rather than by the sheet.
     public func rename(_ worktree: WorktreeID, to alias: String) async {
         let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
-        await write(WorktreePatch(alias: trimmed.isEmpty ? .cleared : .set(trimmed), isPinned: nil), to: worktree)
         renaming = nil
+        await write(WorktreePatch(alias: trimmed.isEmpty ? .cleared : .set(trimmed), isPinned: nil), to: worktree)
     }
 
     public func setPinned(_ pinned: Bool, on worktree: WorktreeID) async {
@@ -243,24 +250,48 @@ public final class ClientWorktreesModel {
         worktrees.first { $0.id == worktree }?.projectName ?? "this project"
     }
 
-    /// Puts the Mac's own answer back in the list rather than the patch that was sent, because the
-    /// display name is resolved over there: a row updated from the request would show the alias
-    /// while the Mac had decided something else was the name.
+    /// Puts the change in the list at once, then replaces it with the Mac's own answer.
+    ///
+    /// **Optimistic, and it is the two writes that touch no git state that get to be.** An alias and
+    /// a pin are entries in the Mac's own JSON document, so the only question a request can answer is
+    /// whether it was written down — and holding a row still until it comes back makes both controls
+    /// do nothing for the length of a round trip. Deleting is the opposite case and stays pessimistic
+    /// for the reason recorded on `confirmDeletion(of:)`.
+    ///
+    /// **The Mac's answer still replaces the phone's guess**, because the display name is resolved
+    /// over there and this side resolves it by the same rule rather than by the same code. A row left
+    /// on the guess would be a row that agrees with the Mac only for as long as the two spellings do.
+    ///
+    /// **A refusal puts back exactly what was there**, which is what the refusal alert already
+    /// promises in as many words — *the row is still as it was*.
     private func write(_ patch: WorktreePatch, to worktree: WorktreeID) async {
+        guard let index = worktrees.firstIndex(where: { $0.id == worktree }) else {
+            // The row was read, swiped, and written to after it stopped being in the list — an agent
+            // removes a worktree every day. There is nothing to draw the change on, and nothing this
+            // phone could do with the answer that would not put a row on screen that the last read
+            // said is gone.
+            writeFailure = .edit(.worktreeGone)
+            return
+        }
+        let before = worktrees[index]
+        worktrees[index] = before.applying(patch)
+        rearrange()
+
         do {
             let updated = try await repository.update(worktree, with: patch)
-            guard let index = worktrees.firstIndex(where: { $0.id == worktree }) else {
-                // The row was read, swiped, and answered for after it stopped being in the list —
-                // an agent removes a worktree every day. Appending the answer would put a row on
-                // screen that the last read said is gone.
-                writeFailure = .edit(.worktreeGone)
-                return
-            }
-            worktrees[index] = updated
-            rearrange()
+            replace(worktree, with: updated)
         } catch {
+            replace(worktree, with: before)
             writeFailure = .edit(error)
         }
+    }
+
+    /// Puts a worktree back in the list under its own identifier, and does nothing where it has since
+    /// left — a deletion confirmed while this was in flight, which appending to would undo.
+    private func replace(_ worktree: WorktreeID, with value: Worktree) {
+        guard let index = worktrees.firstIndex(where: { $0.id == worktree }) else { return }
+        worktrees[index] = value
+        rearrange()
     }
 
     /// Rearranges a list that is on screen and leaves every other state alone.

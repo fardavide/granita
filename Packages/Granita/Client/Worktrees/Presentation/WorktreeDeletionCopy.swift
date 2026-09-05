@@ -50,7 +50,7 @@ extension WorktreeAlertPrompt {
             if case .worktreeNotDeletable = failure {
                 """
                 Nothing was deleted and the worktree is still there. Your Mac will not remove this \
-                one: it is the project’s own checkout, or somebody at that Mac locked it.
+                one: it is the project’s own checkout rather than one of its worktrees.
                 """
             } else {
                 // **The honest sentence rather than the reassuring one.** A request that did not
@@ -75,7 +75,8 @@ extension WorktreeAlertPrompt {
 /// with the words it wants.
 extension WorktreeDeletionSubject {
 
-    /// The three sentences the reader is agreeing to, branched on what the row is showing.
+    /// The three sentences the reader is agreeing to, branched on what the row is showing, and a
+    /// fourth where the Mac is holding a lock this deletion will override.
     ///
     /// The `+n −m` spelling is the row's own, so the alert reads as being about the row that was
     /// pressed rather than about worktrees in general.
@@ -85,6 +86,20 @@ extension WorktreeDeletionSubject {
     /// host test with no locale pinned. The visible cost is that the alert reads `+1204` where the
     /// row reads `+1,204`, and only above 999.
     var cost: String {
+        guard isLocked else { return costOfTheWork }
+        // **Last rather than first**, because the cost is what the reader is deciding on and the lock
+        // is a fact about what the deletion has to get past to do it. It is stated at all because a
+        // lock used to refuse the deletion outright: the reader is now the one overriding it, and a
+        // reader cannot override something nobody told them about.
+        return """
+        \(costOfTheWork)
+
+        Your Mac has this worktree locked — Claude Code locks the ones it makes. Deleting it here \
+        goes ahead anyway.
+        """
+    }
+
+    private var costOfTheWork: String {
         switch stats {
         // No branch sentence: an unborn head has no commits for a branch to keep.
         case .noCommitsYet:

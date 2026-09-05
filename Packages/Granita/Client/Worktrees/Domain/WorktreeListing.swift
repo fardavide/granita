@@ -144,10 +144,19 @@ public struct WorktreeDeletionSubject: Identifiable, Hashable, Sendable {
     /// only named the worktree would be asking the reader to agree to something it had not said.
     public let stats: WorktreeRowStats
 
-    public init(worktree: WorktreeID, displayName: String, stats: WorktreeRowStats) {
+    /// Whether the Mac holds a lock on this checkout, which the deletion overrides.
+    ///
+    /// **Carried so the confirmation can say it, which is the whole of what a lock now does.** It
+    /// used to refuse the deletion outright. It does not, because Claude Code locks every worktree it
+    /// creates and refusing there is refusing on every row — so what is left is telling the reader
+    /// before they agree, in the one dialog that states everything else this destroys.
+    public let isLocked: Bool
+
+    public init(worktree: WorktreeID, displayName: String, stats: WorktreeRowStats, isLocked: Bool) {
         self.worktree = worktree
         self.displayName = displayName
         self.stats = stats
+        self.isLocked = isLocked
     }
 }
 
@@ -161,11 +170,14 @@ public enum WorktreeDeletability: Hashable, Sendable {
     case deletable(WorktreeDeletionSubject)
 
     /// The repository itself rather than a checkout of it. Git refuses outright and so does the Mac.
+    ///
+    /// **The only one of these left, and it was two.** A locked worktree used to be the other, on the
+    /// grounds that a lock a phone can wave through is not a lock. Nobody sets one by hand and Claude
+    /// Code sets one on every worktree it creates, so that rule refused the control on essentially
+    /// every row in the list — and a control refused everywhere it is offered is the thing forcing
+    /// the removal was chosen to avoid. A lock is now said in the confirmation instead of enforced
+    /// here.
     case primaryCheckout
-
-    /// Somebody on that Mac marked this one as not to be removed. Overriding it needs `-f -f`, which
-    /// is not what gets sent — a lock that a phone can wave through is not a lock.
-    case locked
 
     /// Why this worktree cannot be deleted, said to the reader asking, and `nil` where it can be.
     ///
@@ -182,7 +194,6 @@ public enum WorktreeDeletability: Hashable, Sendable {
         switch self {
         case .deletable: nil
         case .primaryCheckout: ("The project’s own checkout can’t be deleted", "house")
-        case .locked: ("Locked on your Mac, so it can’t be deleted", "lock.fill")
         }
     }
 }
@@ -224,13 +235,14 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
     /// does.
     ///
     /// Decided here rather than in a view body for the reason every other rule on this row is: the
-    /// two worktrees that must never be offered are the two a rendered screen would not tell you
-    /// about, and design §2's row draws neither of them differently.
+    /// worktree that must never be offered is one a rendered screen would not tell you about, and
+    /// design §2's row does not draw it differently.
     public let deletion: WorktreeDeletability
 
     public init(of worktree: Worktree, mode: WorktreeListMode, now: Date) {
         // `isLocked` was read nowhere for a recorded reason: v1 could not prune worktrees, which was
-        // the only operation the flag blocked. It can now, so the flag has its one job below.
+        // the only operation the flag blocked. It can now, so the flag travels into the confirmation
+        // below — it says what the deletion is overriding, and no longer refuses it.
         let isNamed = worktree.alias != nil || worktree.suggestedAlias != nil || worktree.branch != nil
         id = worktree.id
         displayName = worktree.displayName
@@ -269,18 +281,16 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
             derivedName: derived.name,
             derivedNameSource: derived.source
         )
-        // Primary first where both are true: it is a fact about the repository rather than a
-        // setting somebody can undo, so it is the sentence that does not send a reader off to
-        // unlock something that would still refuse afterwards.
+        // A lock no longer decides this — it travels into the confirmation instead, so the reader is
+        // told rather than refused.
         deletion = if worktree.isPrimary {
             .primaryCheckout
-        } else if worktree.isLocked {
-            .locked
         } else {
             .deletable(WorktreeDeletionSubject(
                 worktree: worktree.id,
                 displayName: worktree.displayName,
-                stats: stats
+                stats: stats,
+                isLocked: worktree.isLocked
             ))
         }
     }
