@@ -4209,10 +4209,12 @@ confirmation is not ceremony around a safe operation; it is the entire safeguard
 dialog is the one place the cost is stated and why the subject it is handed carries the row's stats
 rather than only its name.
 
-**A second `--force` was available and is not sent.** `-f -f` overrides a lock, and a lock is a
-person at that Mac saying do not remove this. A lock a phone can wave through is not a lock, so a
-locked worktree is refused. That is what put `isLocked` to work for the first time — the flag design
-§2 filed as plumbing, on the grounds that the only operation it blocked did not exist.
+**A second `--force` was available and was not sent** — see the entry below, which reverses that on
+5 September 2026 after it turned out to refuse the deletion on nearly every row. The reasoning as it
+stood: `-f -f` overrides a lock, and a lock is a person at that Mac saying do not remove this. A lock
+a phone can wave through is not a lock, so a locked worktree is refused. That is what put `isLocked`
+to work for the first time — the flag design §2 filed as plumbing, on the grounds that the only
+operation it blocked did not exist.
 
 **The branch survives.** What an agent leaves behind is a directory and some uncommitted work; the
 branch is cheap, is not in the way, and `git branch -D` would take unmerged commits with it — a much
@@ -5582,3 +5584,84 @@ The row still checks the two lengths agree before applying a background, and tha
 belt and braces: highlight.js round-trips through HTML and decodes entities on the way back, so a
 file containing `&amp;` literally can return a line shorter than the one it was given. That row draws
 plain and the rest of the file keeps its colours.
+
+---
+
+## The lock rule refused deletion on nearly every row, and is reversed
+
+**Deleting a worktree never worked once**, from 0.5.0 to 0.9.0, on any worktree an agent made — which
+is the only kind this product is for. Davide reported it on 5 September 2026 as *deleting a worktree
+doesn't work, I think it needs to force*, and the force was already there. What was missing was the
+second one.
+
+**Claude Code locks every worktree it creates.** `git worktree list --porcelain` on this repository's
+own agent worktree reports `locked claude agent bridge-cse_018cS7UJh8GG6nvTm4YTtCsK (pid 68607 …)`.
+The entry above reasoned that a lock is a person at that Mac saying do not remove this, and refused
+it — a rule with exactly one true instance in the wild, and it is not a person, it is the agent whose
+leftovers the reader opened Granita to clear up. So the guard fired on essentially every row, which
+is precisely the outcome the same entry gave as the reason for forcing at all: *a control that
+refuses on nearly every row it is offered on, which is worse than not having one*. The argument was
+right and it was applied to the wrong flag.
+
+**Both `--force`s are sent now**, and the lock is stated rather than enforced. Verified on git 2.52.0
+against a scratch repository: `worktree remove --force --` on a worktree locked with
+`--reason "claude agent test"` exits 128 with `fatal: cannot remove a locked working tree, lock
+reason: … use 'remove -f -f' to override or unlock first`; the same command with `--force --force`
+exits 0 and takes the directory with it, dirty and locked. That is the whole defect and the whole
+fix.
+
+**Which leaves `WorktreeDeletability` with one refusal instead of two.** The primary checkout is
+still absolute — git refuses it however many times it is forced. `WorktreeDeletionSubject` gained
+`isLocked` in exchange, and the confirmation gained a paragraph after the cost: *Your Mac has this
+worktree locked — Claude Code locks the ones it makes. Deleting it here goes ahead anyway.* Last
+rather than first, because the cost is what is being decided and the lock is what the deletion has to
+get past to do it. A reader cannot override something nobody told them about, and that sentence is
+now the only thing the flag does.
+
+**A hand-set lock goes with it, and that is the cost.** Somebody who runs `git worktree lock` by hand
+gets a sentence rather than a refusal. It is the same trade the forced removal already makes with
+uncommitted work: the confirmation is the safeguard, and this adds a line to it rather than a second
+kind of veto.
+
+This overrules design §6's provisional call 7, which noted the premise had moved and deliberately did
+not act on it. Issue [#52](https://github.com/fardavide/granita/issues/52) still has not been sent,
+so the sentence is one more provisional call for Design to overrule, listed there with the rest.
+
+---
+
+## Renaming a worktree waited on a request that read the whole Mac
+
+Reported in the same message: *the rename works very weirdly, the bottom sheet doesn't close and the
+rename takes a while*. Two defects compounding, one on each side.
+
+**The Mac answered a one-line write by rebuilding everything.** `PATCH /v1/worktrees/:id` wrote the
+alias to the JSON document and then called `registry.worktrees(inProject: nil)` to find its own row
+in the result — which builds a change set (`status`, `diff`, a batched `hash-object`) for every
+worktree of every enabled project. That is the same work `/v1/worktrees` does, and the model's own
+comment already put it at over two minutes on ten real repositories. The registry now has a
+`worktree(_:)` that describes one checkout from the `Resolved` the route already holds, so a rename
+costs one change set instead of N.
+
+**And the phone waited for it before doing anything at all.** `rename(_:to:)` awaited the round trip
+and only then put the sheet down, so a modal sat over a list the reader could not see for the length
+of that request — and a refusal could not present its alert, because the sheet was still up in front
+of it.
+
+**Renaming and pinning are optimistic now; deleting stays pessimistic.** The asymmetry is the one
+this repository already recorded and never implemented: an alias and a pin are entries in the Mac's
+own document, so a failed write shows the wrong name until the next read, which a reader notices and
+can repeat — while a failed deletion shows a worktree that still exists as destroyed, which nobody
+goes looking for. `write(_:to:)` applies the patch, rearranges, and then replaces the row with the
+Mac's answer or puts back exactly what was there. The refusal alert's existing words hold either way:
+*the row is still as it was*.
+
+**Which makes the phone resolve a display name for the first time.** It was resolved once, on the
+server, so both apps agreed — and a second spelling of `alias ?? suggestedAlias ?? branch ??
+directoryName` is a row that reads one thing until the next read and another afterwards. So the rule
+is `Worktree.applying(_:)` in `CoreDiffDomain`, and the answer still replaces the guess when it lands
+rather than being assumed to match it. The suite's fake Mac keeps its own separate spelling on
+purpose: a fake that called the production rule would be asserting it against itself.
+
+**The row is written before the request rather than after the answer**, so a worktree that has left
+the list is refused without a round trip, and one that leaves *while* a write is in flight is left
+alone — putting the answer back would undo a deletion the reader confirmed in the meantime.

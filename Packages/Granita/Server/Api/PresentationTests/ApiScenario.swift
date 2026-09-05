@@ -29,6 +29,10 @@ struct ApiScenario {
     let diagnostics: FakeDiagnostics
     let location: RepositoryLocation
 
+    /// Which checkouts git has been run in, for the one question a response body cannot answer:
+    /// how much of this Mac a request read before it answered.
+    let git: RecordingGitClient
+
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
         try self.init(at: try repository.location(), requiresAuthentication: requiresAuthentication)
     }
@@ -41,11 +45,11 @@ struct ApiScenario {
             fileUrl: storeDirectory.appending(path: "granita.json", directoryHint: .notDirectory)
         )
 
-        let git = ProcessGitClient(
+        git = RecordingGitClient(ProcessGitClient(
             executablePath: "/usr/bin/git",
             outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
             timeout: ProcessGitClient.defaultTimeout
-        )
+        ))
         let service = WorktreeService(git: git, limits: .standard)
 
         pairing = Pairing(store: store, now: { Date() })
@@ -85,6 +89,12 @@ struct ApiScenario {
 
     /// Enables the fixture repository, the way `--add-project` does.
     func enableProject() async throws {
+        try await enableProject(at: location)
+    }
+
+    /// Enables a second repository, for the questions that only have an answer when this Mac is
+    /// serving more than one — which is what a Mac Granita is worth running on looks like.
+    func enableProject(at location: RepositoryLocation) async throws {
         try await store.add(project: StoredProject(
             id: ProjectID(canonicalPath: location.path),
             path: location.path,
@@ -181,7 +191,8 @@ struct DisposableRepository {
         worktree = RepositoryLocation(path: listed[1])
     }
 
-    /// Marks the worktree as one not to be removed, which is a person on this Mac saying so.
+    /// Marks the worktree as one git will not remove under a single `--force`, which is what Claude
+    /// Code does to every worktree it creates.
     func lockTheWorktree() throws {
         try Self.git(["worktree", "lock", worktree.path], in: URL(filePath: location.path))
     }
@@ -189,8 +200,8 @@ struct DisposableRepository {
     /// Takes write permission off the directory holding the worktree, so git can see it and cannot
     /// unlink it.
     ///
-    /// The one way found to make `worktree remove --force` fail for a reason that is **neither** of
-    /// the two the route predicts — which is the arm that hands git's own sentence to the phone, and
+    /// The one way found to make `worktree remove --force --force` fail for a reason that is **not**
+    /// the one the route predicts — which is the arm that hands git's own sentence to the phone, and
     /// the only kind of removal failure a reader could be told anything useful about.
     func makeTheWorktreeUndeletable() throws {
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: root.path())

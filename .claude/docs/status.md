@@ -2,6 +2,27 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.9.1 — the two worktree writes work, and one of them never had.** Davide reported both on
+5 September 2026: deleting a worktree did nothing, and renaming one left the sheet up for what felt
+like forever.
+
+**Deletion had been broken since it shipped in 0.5.0, on every worktree this product is for.** Claude
+Code locks every worktree it creates; the route read a lock as a person at the Mac forbidding the
+removal and refused. So the control was refused on nearly every row — which is exactly the outcome
+the decision to force the removal at all was taken to avoid. `-f -f` is sent now and the confirmation
+states the lock instead. That reverses a recorded call and is written up in
+[`decisions.md`](decisions.md).
+
+**Renaming was slow for a reason on the server and blocking for a reason on the phone.** `PATCH`
+answered a one-line write by rebuilding a change set for every worktree of every enabled project, and
+the phone waited for that before it would even put the sheet down. The registry now describes one
+worktree, and renaming and pinning are applied to the row at once and corrected by the Mac's answer —
+the asymmetry with deletion, which stays pessimistic, is the one this repository recorded in 0.5.0
+and had not implemented.
+
+**No screen was drawn for either.** The confirmation gained a paragraph; it is provisional call 14 in
+[`design.md`](design.md) §6, behind the same outstanding prompt as the other thirteen.
+
 **Version 0.9.0 — the phone wakes a sleeping Mac, because macOS stopped doing it.** Davide reported
 the app working only while his MacBook was unlocked. A direct test settled what it actually was: a
 Mac that is **locked but awake** serves fine, so the lock was never the variable — `pmset` has system

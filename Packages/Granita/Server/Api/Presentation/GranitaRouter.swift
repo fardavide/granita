@@ -144,10 +144,16 @@ public enum GranitaRouter {
             return try await dependencies.registry.worktrees(inProject: filter)
         }
 
+        // **It answers about the one worktree it wrote to, and that is the difference between a
+        // rename taking a moment and taking minutes.** This used to read `worktrees(inProject: nil)`
+        // and pick its own row out of it, which builds a change set — `status`, `diff`, a batched
+        // `hash-object` — for every worktree of every enabled project. The phone applies a rename
+        // optimistically now, so this reply is a correction rather than the thing the reader is
+        // waiting on; it still has to arrive before they have moved on.
         authenticated.patch("/v1/worktrees/:worktreeId") { request, context -> Worktree in
             let id = try worktreeId(from: context)
             let patch = try await decoded(WorktreePatch.self, from: request, context: context)
-            _ = try await dependencies.registry.resolve(id)
+            let resolved = try await dependencies.registry.resolve(id)
 
             do {
                 switch patch.alias {
@@ -162,17 +168,19 @@ public enum GranitaRouter {
                 throw ApiError(.badRequest, message: "could not save that: \(error)")
             }
 
-            let worktrees = try await dependencies.registry.worktrees(inProject: nil)
-            guard let updated = worktrees.first(where: { $0.id == id }) else {
-                throw ApiError(.worktreeGone, message: "that worktree is no longer there")
-            }
-            return updated
+            return await dependencies.registry.worktree(resolved)
         }
 
         // **The only route that destroys anything**, and the only one that writes to a repository
-        // rather than to this Mac's own document. It is `worktree remove --force`, so the
+        // rather than to this Mac's own document. It is `worktree remove --force --force`, so the
         // uncommitted work the rest of this API exists to show is what goes with it — the phone's
         // confirmation is where that is said, and there is nothing further to undo it with here.
+        //
+        // **A lock does not refuse it, which reverses the call this route shipped with.** That call
+        // read a lock as a person at the Mac saying do not remove this. In practice nobody sets one
+        // by hand and Claude Code sets one on every worktree it creates, so the effect was a control
+        // refused on essentially every row the phone offered it on — which is the outcome forcing was
+        // chosen to avoid. The confirmation says the worktree is locked instead.
         //
         // The branch is left alone. What an agent leaves behind is a directory; a branch is cheap
         // and taking it would take unmerged commits with it.
@@ -180,20 +188,14 @@ public enum GranitaRouter {
             let id = try worktreeId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
 
-            // Refused here rather than by git, for the two cases this Mac can see coming. Git
-            // refuses both as well — exit 128, `is a main working tree` and `cannot remove a locked
-            // working tree` — so this is a better sentence rather than the only guard, and the
-            // phone gets a code it can branch on instead of a git message it can only print.
+            // Refused here rather than by git, for the one case this Mac can see coming. Git refuses
+            // it as well — exit 128, `is a main working tree` — so this is a better sentence rather
+            // than the only guard, and the phone gets a code it can branch on instead of a git
+            // message it can only print.
             guard resolved.isPrimary == false else {
                 throw ApiError(
                     .worktreeNotDeletable,
                     message: "that is the project's own checkout rather than one of its worktrees"
-                )
-            }
-            guard resolved.record.isLocked == false else {
-                throw ApiError(
-                    .worktreeNotDeletable,
-                    message: "that worktree is locked; unlock it on this Mac first"
                 )
             }
 

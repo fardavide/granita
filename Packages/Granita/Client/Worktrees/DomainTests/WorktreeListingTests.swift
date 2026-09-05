@@ -540,7 +540,8 @@ struct WorktreeListingTests {
         #expect(row.deletion == .deletable(WorktreeDeletionSubject(
             worktree: WorktreeID(rawValue: "w-tls-pinning"),
             displayName: "tls-pinning",
-            stats: .changed(filesChanged: 34, insertions: 1_204, deletions: 318)
+            stats: .changed(filesChanged: 34, insertions: 1_204, deletions: 318),
+            isLocked: false
         )))
     }
 
@@ -552,7 +553,8 @@ struct WorktreeListingTests {
         let subject = WorktreeDeletionSubject(
             worktree: WorktreeID(rawValue: "w-tls-pinning"),
             displayName: "tls-pinning",
-            stats: .noChanges
+            stats: .noChanges,
+            isLocked: false
         )
 
         // given - when - then
@@ -576,17 +578,24 @@ struct WorktreeListingTests {
     }
 
     @Test
-    func `given a locked worktree when its row is built then it cannot be deleted`() {
-        // given — until now `isLocked` was read nowhere, on the recorded grounds that v1 could not
-        // prune worktrees. It can, so the flag has the one job it always had: a lock is a person on
-        // that Mac saying do not remove this, and one `--force` does not override it.
+    func `given a locked worktree when its row is built then it can still be deleted and says so`() {
+        // given — **the row this list is nearly all of.** A lock used to refuse the control, on the
+        // grounds that a lock is a person on that Mac saying do not remove this. Nobody sets one by
+        // hand; Claude Code sets one on every worktree it creates, so the rule refused deletion on
+        // essentially every row Granita shows. The flag now travels into the confirmation instead, so
+        // the reader is the one overriding the lock and is told they are.
         let scenario = Scenario(worktrees: [locked(named: "held", project: "granita")])
 
         // when
         let row = scenario.listing(mode: .mostRecentFirst).sections[0].rows[0]
 
         // then
-        #expect(row.deletion == .locked)
+        #expect(row.deletion == .deletable(WorktreeDeletionSubject(
+            worktree: WorktreeID(rawValue: "w-held"),
+            displayName: "held",
+            stats: .changed(filesChanged: 34, insertions: 1_204, deletions: 318),
+            isLocked: true
+        )))
     }
 
     @Test
@@ -595,7 +604,8 @@ struct WorktreeListingTests {
         let subject = WorktreeDeletionSubject(
             worktree: WorktreeID(rawValue: "w-tls-pinning"),
             displayName: "tls-pinning",
-            stats: .noChanges
+            stats: .noChanges,
+            isLocked: false
         )
         #expect(WorktreeDeletability.deletable(subject).refusal == nil)
     }
@@ -611,19 +621,10 @@ struct WorktreeListingTests {
     }
 
     @Test
-    func `given a locked worktree when its refusal is read then it says where the lock is`() {
-        // given - when - then — "on your Mac" rather than "locked", because the remedy is on the
-        // other machine and a reader holding a phone can do nothing about it here.
-        let refusal = WorktreeDeletability.locked.refusal
-        #expect(refusal?.sentence == "Locked on your Mac, so it can’t be deleted")
-        #expect(refusal?.symbol == "lock.fill")
-    }
-
-    @Test
     func `given a worktree that is both primary and locked when its row is built then it says primary`() {
-        // given — two reasons at once, and the row states one. Primary is the one that is true of
-        // the repository rather than of a setting somebody can undo, so it is the more useful
-        // sentence and the one that does not send a reader off to unlock something pointlessly.
+        // given — the lock no longer refuses anything, so the primary checkout is the only reason
+        // left and it is the one that is true of the repository rather than of a setting somebody
+        // can undo. Git refuses this one however many times it is forced.
         let scenario = Scenario(worktrees: [primaryAndLocked(named: "main", project: "granita")])
 
         // when
@@ -647,7 +648,8 @@ struct WorktreeListingTests {
         #expect(row.deletion == .deletable(WorktreeDeletionSubject(
             worktree: WorktreeID(rawValue: "w-day-one"),
             displayName: "day-one",
-            stats: .noCommitsYet
+            stats: .noCommitsYet,
+            isLocked: false
         )))
     }
 

@@ -23,10 +23,23 @@ actor FakeGranitaRepository: GranitaRepository {
     private let readFailure: ApiFailure?
     private let writeFailure: ApiFailure?
 
-    /// Whether a deletion suspends instead of answering, and the ones currently suspended.
-    private var holdsDeletions = false
+    /// Which writes suspend instead of answering, how many have arrived and are suspended, and the
+    /// continuations that will let them go.
+    ///
+    /// **The in-flight state is only observable while a request is outstanding**, and a fake that
+    /// answers instantly has no such window at all — so both the row's `Deleting…` and the rename
+    /// the phone applies before the Mac replies can only be reasoned about without this, never
+    /// asserted.
+    private var held: Set<Write> = []
+    private var arrived: [Write: Int] = [:]
     private var waiting: [CheckedContinuation<Void, Never>] = []
-    private var arrived = 0
+
+    /// The two writes a test can hold. Reads are never held: nothing here is about a list arriving
+    /// halfway.
+    enum Write: Hashable, Sendable {
+        case update
+        case deletion
+    }
 
     /// What the first read answers with, when the point of the test is what the **second** one does.
     /// A retry is what a reader presses when a screen has gone wrong, so it is worth holding to its
@@ -59,47 +72,48 @@ actor FakeGranitaRepository: GranitaRepository {
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
         patches.append((worktree: worktree, patch: patch))
+        await arrive(.update)
         if let writeFailure { throw writeFailure }
         guard let index = worktrees.firstIndex(where: { $0.id == worktree }) else { throw .worktreeGone }
-        worktrees[index] = worktrees[index].applying(patch)
+        worktrees[index] = worktrees[index].answering(patch)
         return worktrees[index]
-    }
-
-    /// Keeps every deletion suspended until a test lets it go.
-    ///
-    /// **The in-flight state is only observable while a request is outstanding**, and every other
-    /// fake here answers instantly — so without a held request the window the row's `Deleting…`
-    /// exists for cannot be photographed by an assertion at all, only reasoned about.
-    func holdTheNextDeletion() {
-        holdsDeletions = true
-    }
-
-    /// Suspends until `count` deletions have arrived and are being held.
-    func waitForADeletionToArrive(count: Int = 1) async {
-        while arrived < count {
-            await Task.yield()
-        }
-    }
-
-    func releaseHeldDeletions() {
-        holdsDeletions = false
-        for held in waiting {
-            held.resume()
-        }
-        waiting = []
     }
 
     func delete(_ worktree: WorktreeID) async throws(ApiFailure) {
         deleted.append(worktree)
-        arrived += 1
-        if holdsDeletions {
-            await withCheckedContinuation { continuation in
-                waiting.append(continuation)
-            }
-        }
+        await arrive(.deletion)
         if let writeFailure { throw writeFailure }
         guard worktrees.contains(where: { $0.id == worktree }) else { throw .worktreeGone }
         worktrees.removeAll { $0.id == worktree }
+    }
+
+    /// Keeps every write of this kind suspended until a test lets it go.
+    func holdTheNext(_ write: Write) {
+        held.insert(write)
+    }
+
+    /// Suspends until `count` writes of this kind have arrived and are being held.
+    func waitForOneToArrive(_ write: Write, count: Int = 1) async {
+        while arrived[write, default: 0] < count {
+            await Task.yield()
+        }
+    }
+
+    func releaseHeld(_ write: Write) {
+        held.remove(write)
+        for continuation in waiting {
+            continuation.resume()
+        }
+        waiting = []
+    }
+
+    /// Counts the arrival and suspends if this kind is being held.
+    private func arrive(_ write: Write) async {
+        arrived[write, default: 0] += 1
+        guard held.contains(write) else { return }
+        await withCheckedContinuation { continuation in
+            waiting.append(continuation)
+        }
     }
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
@@ -138,10 +152,13 @@ actor FakeGranitaRepository: GranitaRepository {
 
 private nonisolated extension Worktree {
 
-    /// The Mac's own resolution, applied here so the fake answers what a real one would rather than
-    /// echoing the patch back. A fake that returned the alias without re-deriving the display name
-    /// would let a row that never updates pass.
-    func applying(_ patch: WorktreePatch) -> Worktree {
+    /// The Mac's own resolution, written out here rather than delegated to `applying(_:)`.
+    ///
+    /// **`applying(_:)` is now production code — it is what the phone shows while a rename is in
+    /// flight — so a fake that called it would be asserting a rule against itself.** The duplication
+    /// is what keeps this an independent oracle: the phone's optimistic name and the Mac's answer are
+    /// only the same string here because two separate spellings of the rule agree.
+    func answering(_ patch: WorktreePatch) -> Worktree {
         let alias: String? = switch patch.alias {
         case .unchanged: self.alias
         case .cleared: nil

@@ -63,6 +63,31 @@ struct WorktreeDeletionCopyTests {
             """)
         #expect(subject.cost.contains("branch") == false)
     }
+
+    @Test
+    func `given a locked worktree when the cost is read then it says the lock is being overridden`() {
+        // given — **the row this is nearly every row.** Claude Code locks every worktree it creates,
+        // and the deletion sends `--force --force`, so the reader is the one overriding the lock. A
+        // reader cannot override something nobody told them about.
+        let subject = aSubject(stats: .noChanges, isLocked: true)
+
+        // given - when - then — the cost first, because that is what is being decided; the lock after
+        // it, because it is what the deletion has to get past to do it.
+        #expect(subject.cost == """
+            Granita sees no uncommitted changes here, but the whole folder goes — including the \
+            files git ignores, like local settings and build output. The branch stays on your Mac.
+
+            Your Mac has this worktree locked — Claude Code locks the ones it makes. Deleting it \
+            here goes ahead anyway.
+            """)
+    }
+
+    @Test
+    func `given an unlocked worktree when the cost is read then no lock is mentioned`() {
+        // given - when - then — a sentence about a lock on a worktree that has none is the alert
+        // inventing a reason to hesitate at the moment hesitation is most expensive.
+        #expect(aSubject(stats: .noChanges).cost.contains("locked") == false)
+    }
 }
 
 // MARK: - What the one alert says, and about what
@@ -121,10 +146,10 @@ struct WorktreeAlertPromptTests {
     func `given a deletion the Mac refused when the message is read then it says nothing was deleted`() {
         // given - when - then — the row said this one was deletable and the Mac disagreed, so the
         // reader is told plainly that the worktree is still there.
-        let prompt = WorktreeAlertPrompt.refusal(.deletion(.worktreeNotDeletable(message: "locked")))
+        let prompt = WorktreeAlertPrompt.refusal(.deletion(.worktreeNotDeletable(message: "primary")))
         #expect(prompt.message == """
             Nothing was deleted and the worktree is still there. Your Mac will not remove this one: \
-            it is the project’s own checkout, or somebody at that Mac locked it.
+            it is the project’s own checkout rather than one of its worktrees.
             """)
     }
 
@@ -152,10 +177,11 @@ struct WorktreeAlertPromptTests {
 
 // MARK: -
 
-private func aSubject(stats: WorktreeRowStats) -> WorktreeDeletionSubject {
+private func aSubject(stats: WorktreeRowStats, isLocked: Bool = false) -> WorktreeDeletionSubject {
     WorktreeDeletionSubject(
         worktree: WorktreeID(rawValue: "w-tls-pinning"),
         displayName: "tls-pinning",
-        stats: stats
+        stats: stats,
+        isLocked: isLocked
     )
 }

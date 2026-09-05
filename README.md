@@ -73,6 +73,18 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.9.1 — 2026-09-05
+- **Deleting a worktree works.** It did not, on any worktree Claude Code made — which is nearly every
+  worktree Granita shows. Claude Code marks each one it creates as locked, Granita read that as
+  somebody at the Mac saying leave this alone, and refused. The confirmation now tells you the
+  worktree is locked and deletes it anyway, because you are the one who put the lock there.
+- **Renaming a worktree is instant.** The sheet stayed up and the row kept its old name until the Mac
+  answered, and the Mac was answering by re-reading every worktree of every project you have enabled
+  first — which on a handful of real repositories is minutes. The sheet now closes on Save, the row
+  reads the new name immediately, and the Mac only looks at the worktree you renamed. If it refuses,
+  the name goes back and Granita says so.
+- **Pinning is instant too**, for the same reason and by the same route.
+
 ### 0.9.0 — 2026-09-04
 - **Your phone wakes your Mac.** A Mac that has gone to sleep used to be a Mac that simply was not
   there — nothing in the list, nothing to tap, and no way to tell it apart from one that was
