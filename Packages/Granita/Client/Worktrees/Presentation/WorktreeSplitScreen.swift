@@ -68,8 +68,19 @@ public struct WorktreeSplitScreen<Opened: View>: View {
 
     private var twoColumns: some View {
         NavigationSplitView {
-            WorktreeSidebarScreen(model: model, opening: opening)
+            // **`claimsRowTaps: false`.** This screen is a `NavigationSplitView` column here, not a
+            // stack of its own — a `navigationDestination` declared inside it would be the nearest
+            // one to the row's `NavigationLink` and would claim the tap before it reached the split
+            // view's and the detail column's declarations below, with nowhere in the sidebar column
+            // to push the result. That is exactly the bug a tap on a real Mac found: the row
+            // highlighted and nothing opened. See `WorktreeSidebarScreen`'s doc comment.
+            WorktreeSidebarScreen(model: model, claimsRowTaps: false, opening: opening)
                 .navigationSplitViewColumnWidth(WorktreeSidebarView.widthInASplitView)
+                // The stock sidebar chrome — translucent material, vibrant selection — rather than
+                // the plain list style `List` defaults to. Scoped to this column only, so the
+                // compact-width stack (§2's phone shape) keeps the list style it was designed and
+                // baselined against.
+                .listStyle(.sidebar)
         } detail: {
             // **A stack, not the empty state on its own, because the column a chosen row lands in
             // has to be able to hold it.** A split view claims the destinations declared inside its
