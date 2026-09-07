@@ -73,6 +73,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.9.2 — 2026-09-07
+- **Tapping a worktree in the sidebar now opens it.** In the split-view layout — an iPad in a regular
+  width, or the Client running on a Mac — the row highlighted and nothing happened. The sidebar was
+  declaring its own destination for the tap alongside the split view's, and the nearer one swallowed
+  it before it could reach the column meant to show it.
+- **The sidebar uses the system's own sidebar look** in that same split-view layout, instead of a
+  plain list.
+
 ### 0.9.1 — 2026-09-05
 - **Deleting a worktree works.** It did not, on any worktree Claude Code made — which is nearly every
   worktree Granita shows. Claude Code marks each one it creates as locked, Granita read that as

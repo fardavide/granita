@@ -12,10 +12,15 @@ import CoreDiffDomain
 ///
 /// **The whole screen, and on the iPad only one column of it.** Pairing routes here, so it is
 /// reached two ways: directly from the stack in a compact width, and as the sidebar of `§2`'s split
-/// view otherwise — which is why the destination below is declared here *and* on the containers
-/// `WorktreeSplitScreen` owns. A split view keeps what its columns declare, and a row whose
-/// destination is kept from the container that receives it is a row that does nothing, which is the
-/// defect this project shipped for eight releases.
+/// view otherwise. `claimsRowTaps` tells this screen which one it is: in the first case it is the
+/// only container there is, so it declares the destination itself; in the second, `WorktreeSplitScreen`
+/// already declares the same destination on the split view and its detail column, and this screen
+/// declaring it a third time is what silently swallowed the tap — the nearest `navigationDestination`
+/// to a `NavigationLink` wins, and a sidebar column is not itself a stack, so the row had nowhere to
+/// push to and just sat there selected. A row whose destination is kept from the container that
+/// receives it is a row that does nothing, which is the defect this project shipped for eight
+/// releases; a row whose destination is claimed by a container that cannot show it is the same defect
+/// wearing a highlight.
 ///
 /// **What a row opens is handed in rather than built here**, and that is the layer graph rather than
 /// a preference: the diff screen is another feature's `Presentation`, and a `Presentation` target
@@ -39,8 +44,20 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
 
     private let opening: (WorktreeID, String, String) -> Opened
 
+    /// Whether this screen should claim its rows' taps itself.
+    ///
+    /// **False when this screen is a `NavigationSplitView` column, true everywhere else.** A row's
+    /// `NavigationLink` resolves against the *nearest* `navigationDestination` above it, and the
+    /// sidebar column of a split view is not itself a `NavigationStack` — so a destination declared
+    /// inside this screen intercepts the tap there and has nowhere to push it, which reads as a row
+    /// that only highlights. `WorktreeSplitScreen` already declares the same destination on the split
+    /// view and its detail column, which the tap reaches once this screen stops shadowing it. The
+    /// compact-width stack has no other container to declare it, so this screen still owns it there.
+    private let claimsRowTaps: Bool
+
     public init(
         model: ClientWorktreesModel,
+        claimsRowTaps: Bool = true,
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
@@ -48,11 +65,15 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         // property would swap the displayed model while the running .task kept driving the discarded
         // one.
         _model = State(initialValue: model)
+        self.claimsRowTaps = claimsRowTaps
         self.opening = opening
     }
 
     public var body: some View {
-        WorktreeSidebarView(
+        // `let` rather than a second computed property, so the sheet, the alert and their closures
+        // stay exactly where they were before `claimsRowTaps` existed — moving them into a property
+        // referenced from both branches below would relocate lines a review has no reason to touch.
+        let sidebar = WorktreeSidebarView(
             macName: model.macName,
             state: model.state,
             mode: model.mode,
@@ -67,12 +88,6 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             onDelete: model.beginDeleting,
             onRetry: { Task { await model.load() } }
         )
-        // **Declared beside the rows that link to it**, which is the placement that stops a link and
-        // its destination drifting apart in two modules — the exact way this app came to ship a row
-        // that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
-        .navigationDestination(for: WorktreeID.self) { worktree in
-            opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
-        }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(
                 subject: subject,
@@ -112,6 +127,17 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             Text(prompt.message)
         }
         .task { await model.load() }
+
+        if claimsRowTaps {
+            // **Declared beside the rows that link to it**, which is the placement that stops a link
+            // and its destination drifting apart in two modules — the exact way this app came to ship
+            // a row that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
+            sidebar.navigationDestination(for: WorktreeID.self) { worktree in
+                opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
+            }
+        } else {
+            sidebar
+        }
     }
 
     /// What the alert is currently for, or nothing.
