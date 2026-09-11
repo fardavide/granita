@@ -30,7 +30,7 @@ public struct ServerAddress: Hashable, Sendable {
 /// Modelled as one type with an optional pin rather than as two parallel flows, because every step
 /// after this one — read the contract, spend the code, write the token down — is identical, and two
 /// flows would be two places for that sequence to drift. The asymmetry is a single property, and
-/// `nil` is the whole of it. See `.claude/docs/decisions.md`.
+/// `nil` is the whole of it. See `.ai/docs/decisions.md`.
 public enum PairingAttempt: Hashable, Sendable {
 
     /// Read off the Mac's screen, fingerprint included.

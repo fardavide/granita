@@ -55,7 +55,7 @@ extension Color {
     /// **It collides with a renamed file's status bar, which is also indigo**, and that is recorded
     /// rather than resolved: the system palette ran out at four hues, the two are different shapes in
     /// different places — a 3pt vertical rail in the gutter against a 3pt horizontal bar in a header
-    /// — and neither carries its meaning by colour alone. See `.claude/docs/decisions.md`.
+    /// — and neither carries its meaning by colour alone. See `.ai/docs/decisions.md`.
     static var diffCommentRail: Color { .indigo }
 
     /// A comment whose lines are gone, which is the one comment state that is a warning.

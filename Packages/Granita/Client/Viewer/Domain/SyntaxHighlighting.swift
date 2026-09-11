@@ -112,7 +112,7 @@ public struct HighlightKey: Hashable, Sendable {
     /// hunk splices context the parser never sent, so the string grows while the hash does not.
     /// Keyed on the hash alone, the entry made before an expansion would be handed back after it and
     /// indexed against lines that are no longer where it thinks they are. The numbers are the
-    /// smallest thing that tells the two questions apart. Recorded in `.claude/docs/decisions.md`.
+    /// smallest thing that tells the two questions apart. Recorded in `.ai/docs/decisions.md`.
     public let lineNumbers: [Int]
 
     public init(
@@ -153,7 +153,7 @@ public struct HighlightKey: Hashable, Sendable {
 /// re-tagging it by its text, which let every real marker through to the lexer. `<<<<<<<` is not
 /// source in any language, and a lexer handed one mis-lexes everything after it — which is the whole
 /// failure this section is written to avoid, arriving through the one row that announces a conflict.
-/// Recorded in `.claude/docs/decisions.md`.
+/// Recorded in `.ai/docs/decisions.md`.
 public enum SyntaxHighlighting {
 
     /// `SPEC.md` §10's caps, above which a side renders plain.

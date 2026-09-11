@@ -1,6 +1,6 @@
 ---
 name: generated-files
-description: The three artefacts that are generated AND committed — the Xcode project, the golden diff fixtures, the app icons — how to regenerate each, which are gated by CI, the two commands to run before committing after Xcode or swift test, and the path-independence trap that cost two red runs.
+description: Regenerates and verifies Granita's committed Xcode project, golden diff fixtures, and app icons. Use before editing generated artifacts, adding targets or schemes, changing generators, or diagnosing the Generated files CI job.
 when_to_use: >
   Consult before editing anything under Granita.xcodeproj, Core/Diff/DomainTests/Fixtures or an
   Assets.xcassets icon set; when adding a target, a scheme or a build setting; when the "Generated

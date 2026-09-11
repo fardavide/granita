@@ -2881,7 +2881,7 @@ instance name, and the `serverInstanceID` that would join them is the TXT record
 for and the Mac does not publish — which is on `status.md`'s "Waiting on Davide" for design §1's
 *Recent* and *Other Macs* sections already, and is now blocking a second thing.
 
-So the frames for that state stay in `.claude/docs/design/`, alone, and the rest are deleted with the
+So the frames for that state stay in `.ai/docs/design/`, alone, and the rest are deleted with the
 sections that shipped. **A `pairedAt` date on the token store is not added either**, for the same
 reason: it is one field and one better sentence on a screen no reader can currently reach, and adding
 it now would be API a screen has not agreed to — which is the mistake `ClientConnectionModel` already
@@ -4122,7 +4122,7 @@ instance identifier may — and now nothing needs it to.
 **The row is the fix, and the screen is not.** The review's own reading, recorded in the first entry
 above, was that *already-paired is a discovery problem wearing a pairing screen*, and that the right
 behaviour is a paired Mac's row going straight to its worktrees. That is what ships. The drawn
-already-paired frames stay in `.claude/docs/design/` for the one reader who ever reaches that
+already-paired frames stay in `.ai/docs/design/` for the one reader who ever reaches that
 situation — the one whose token the Mac revoked — and that case is handled without a screen for now:
 a refusal forgets the pairing, so Back and a second tap reach the two credentials again.
 

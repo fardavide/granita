@@ -44,7 +44,7 @@ public enum PinnedTrust {
     /// paired one, and this one has no paired Mac yet and answers *what am I about to trust*. Making
     /// the judgement take an optional pin instead would have put "accept anything" one `nil` away
     /// from the code path every authenticated request uses, which is the last place in this app
-    /// where a default should be able to go wrong quietly. See `.claude/docs/decisions.md`.
+    /// where a default should be able to go wrong quietly. See `.ai/docs/decisions.md`.
     ///
     /// Still refuses bytes that are not a P-256 point, for the same reason the judgement does: a key
     /// this Mac could not have served is not one to record as the thing this phone trusts from here

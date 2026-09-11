@@ -11,7 +11,7 @@ import ClientConnectionDomain
 ///
 /// It used to hold a second one — how wide the app was allowed to draw, released once the reader was
 /// past the pairing spine — and that rule is gone. The pre-pairing screens lay themselves out with
-/// stock SwiftUI now, at whatever width the window gives them. See `.claude/docs/decisions.md`.
+/// stock SwiftUI now, at whatever width the window gives them. See `.ai/docs/decisions.md`.
 @Observable
 public final class PairingSpineNavigation {
 

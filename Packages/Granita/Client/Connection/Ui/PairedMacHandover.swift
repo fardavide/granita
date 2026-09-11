@@ -19,7 +19,7 @@ extension View {
     /// the time a pairing can succeed, the viewfinder or the six-word screen is over it. The Mac
     /// issued a token, the phone stored it, the model reached the ending — and the reader was left on
     /// a spinner, on both paths, with no screen behind it and nothing to press. See
-    /// `.claude/docs/decisions.md`.
+    /// `.ai/docs/decisions.md`.
     ///
     /// So: the two screens that can be frontmost when a credential is spent apply this, and no
     /// screen beneath them watches for anything.
@@ -28,7 +28,7 @@ extension View {
     /// reports what happened, which is the whole definition of this layer. Filed under
     /// `Presentation` it was a view body in the one scope that excludes view bodies by construction
     /// and outside the one that renders them: the Unit row was charged for every line of it and the
-    /// snapshot pass covered seventeen of them for no credit. See `.claude/docs/decisions.md`.
+    /// snapshot pass covered seventeen of them for no credit. See `.ai/docs/decisions.md`.
     public func handsOverAPairedMac(
         from pairing: PairingState,
         to onPaired: @escaping (PairedMac) -> Void

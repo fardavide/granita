@@ -35,7 +35,7 @@ public final class UrlSessionHttpTransport: HttpTransport {
     /// **Only ever for the pairing handshake.** What comes back from `trustedFingerprint()` is what
     /// the repository's own transport is then pinned to, so the window in which anything is
     /// unpinned is one exchange long and ends the moment pairing does. The screen that offers this
-    /// path says what it means; see `.claude/docs/decisions.md`.
+    /// path says what it means; see `.ai/docs/decisions.md`.
     public init(trustingFirstAnswer: Void = ()) {
         let trust = FirstContactServerTrust()
         session = URLSession(configuration: .ephemeral, delegate: trust, delegateQueue: nil)

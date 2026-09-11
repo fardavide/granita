@@ -31,7 +31,7 @@ public struct GranitaMobileScene: Scene {
             // worktree lists speaks over. **The container moved out because it holds a decision** —
             // the measure is released past the pairing spine and not before — and a decision left in
             // a `Main` module is untested code that no longer looks untested. This one was wrong for
-            // the route every reader takes and shipped that way; see `.claude/docs/decisions.md`.
+            // the route every reader takes and shipped that way; see `.ai/docs/decisions.md`.
             PairingSpineScreen(
                 model: ClientConnectionModel(
                     // **Wrapped so that a browse wakes the Macs it is about to look for.**
@@ -105,7 +105,7 @@ public struct GranitaMobileScene: Scene {
     /// **The two are not peers and this is where that shows.** A scanned link arrived over a channel
     /// nobody on the network can write to, so its session is pinned before a byte is sent; six words
     /// carry a code and nothing else, so theirs trusts whatever answers and the pairing reads back
-    /// what it ended up trusting. See `.claude/docs/decisions.md`.
+    /// what it ended up trusting. See `.ai/docs/decisions.md`.
     private static let handshake: @Sendable (PairingAttempt) -> any ServerPairing = { attempt in
         // Spelled as two branches rather than collapsed into a `??`, and the label is written out
         // rather than left to its default: which side an attempt falls on is the whole of what the

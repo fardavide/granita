@@ -169,7 +169,7 @@ public struct ContinuousDiffView: View {
         // explicit section identity and the target layout were each tried and none of them moves it,
         // so it is `scrollPosition` and pinned section headers interacting — the reader gets the file
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
-        // real thumb. See `.claude/docs/status.md`.
+        // real thumb. See `.ai/docs/status.md`.
         .scrollPosition(id: $scrolledTo, anchor: .top)
         // **`initial: true`, and that is what makes the jump photographable.** A jump target handed
         // to a freshly-built view is a value that has already stopped changing, so a watch that only

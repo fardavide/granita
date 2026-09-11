@@ -592,7 +592,7 @@ Nothing joined a discovered Mac to a stored token, which was read as waiting on 
 §8 asks for. It was waiting on the **key** instead: a pairing is now filed under the Bonjour instance
 name, which a browse result carries, so a Mac paired with before opens its worktrees on the first tap
 and the pairing screens are reached only by a Mac this phone does not know. §5's already-paired
-*screen* stays unbuilt on purpose — its frames remain in `.claude/docs/design/` for the one reader
+*screen* stays unbuilt on purpose — its frames remain in `.ai/docs/design/` for the one reader
 who reaches it, whose token the Mac revoked. See [`decisions.md`](decisions.md).
 
 **None of the pairing screens or the sidebar's controls has been pressed on a device.** Every one is

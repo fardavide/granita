@@ -30,14 +30,14 @@ packages:
 
 # Settings both apps share. The version lives here, once, and it is bumped by hand — a second
 # constant in CoreBrandingDomain tracks it, and a test fails until both agree. See
-# .claude/skills/versioning.
+# .ai/skills/versioning.
 settingGroups:
   shared:
     MARKETING_VERSION: 0.9.2
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
-    # upload. See .claude/skills/versioning.
+    # upload. See .ai/skills/versioning.
     CURRENT_PROJECT_VERSION: 1
     DEVELOPMENT_TEAM: A7Q83J6LR4
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -106,7 +106,7 @@ targets:
     # broadcast — not only multicast — needs `com.apple.developer.networking.multicast`, and the
     # check is in the network stack, so a raw BSD socket is no way around it. Without this the magic
     # packet that wakes a sleeping Mac never leaves the phone and nothing reports why. Apple must
-    # approve the request before a profile can carry it; see `.claude/docs/decisions.md`.
+    # approve the request before a profile can carry it; see `.ai/docs/decisions.md`.
     # **The file is generated from here**, so the key lives in this block and not in the plist —
     # XcodeGen rewrites that file on every `make project` and a hand-edited one comes back empty.
     entitlements:

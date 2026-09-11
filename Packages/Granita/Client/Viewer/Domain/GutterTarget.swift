@@ -19,7 +19,7 @@ import CoreDiffDomain
 /// defined answer.
 ///
 /// **Recorded as a departure**: `SPEC.md` treats a control under 44pt as a defect with no exception,
-/// and until Davide writes that exception the spec wins. See `.claude/docs/decisions.md`.
+/// and until Davide writes that exception the spec wins. See `.ai/docs/decisions.md`.
 public enum GutterTarget {
 
     /// The row a touch at `y` points at, or nothing when no row there can carry a comment.

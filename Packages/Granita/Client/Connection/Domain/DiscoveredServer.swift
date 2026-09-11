@@ -8,7 +8,7 @@ import Foundation
 /// paired yet cannot know it, and there is nothing in a browse result to match it against. A Bonjour
 /// instance name is unique within a local domain — the system appends "(2)" itself — and it is in
 /// hand the instant a Mac appears in the list, which is the moment the phone has to decide whether
-/// it already knows this one. See `.claude/docs/decisions.md`.
+/// it already knows this one. See `.ai/docs/decisions.md`.
 ///
 /// Renaming a Mac renames the service, so a rename costs one more pairing. That is the whole of the
 /// price, and it is paid by the reader who renamed the machine rather than by everybody every time
