@@ -94,6 +94,29 @@ struct WakingServerDiscoveryTests {
     }
 
     @Test
+    func `given a remembered Mac with a fallback when a cold browse keeps searching then the remembered Mac is found`() async {
+        // given
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "MacBook Pro"),
+            name: "MacBook Pro"
+        )
+        let scenario = Scenario(
+            remembering: ["MacBook Pro": []],
+            fallingBackTo: [
+                "MacBook Pro": ServerAddress(host: "100.101.102.103", port: 8_737)
+            ],
+            reporting: [.searching],
+            keepingBrowseOpen: true
+        )
+
+        // when
+        let states = await scenario.statesWhileBrowsing()
+
+        // then
+        #expect(states.last == .found([mac]))
+    }
+
+    @Test
     func `given a Keychain that refuses when the browse begins then the browse still reports its Macs`() async throws {
         // given — the wake is unreachable and the reader must not be able to tell.
         let scenario = Scenario(keychainRefusing: .refused(status: -25308), reporting: [.searching, .found([])])
@@ -176,8 +199,10 @@ private struct Scenario {
 
     init(
         remembering: [String: [String]] = [:],
+        fallingBackTo fallbackAddresses: [String: ServerAddress] = [:],
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
-        reporting states: [DiscoveryState] = [.searching, .found([])]
+        reporting states: [DiscoveryState] = [.searching, .found([])],
+        keepingBrowseOpen: Bool = false
     ) {
         var held: [BonjourInstanceName: RememberedMac] = [:]
         for (name, addresses) in remembering {
@@ -188,13 +213,13 @@ private struct Scenario {
                     serverInstanceId: ServerInstanceId(rawValue: "server-\(name)")
                 ),
                 fingerprint: SpkiFingerprint(rawValue: "fingerprint-\(name)"),
-                fallbackAddress: nil,
+                fallbackAddress: fallbackAddresses[name],
                 wakeAddresses: HardwareAddress.all(in: addresses)
             )
         }
         macs = refusal.map(FakeRememberedMacStore.init(refusing:)) ?? FakeRememberedMacStore(holding: held)
         sut = WakingServerDiscovery(
-            discovery: FakeDiscovery(reporting: states),
+            discovery: FakeDiscovery(reporting: states, finishes: !keepingBrowseOpen),
             macs: macs,
             waking: waking
         )
@@ -219,6 +244,22 @@ private struct Scenario {
         }
         return seen
     }
+
+    func statesWhileBrowsing() async -> [DiscoveryState] {
+        let sut = sut
+        let listening = Task {
+            var seen: [DiscoveryState] = []
+            for await state in sut.discover() {
+                seen.append(state)
+            }
+            return seen
+        }
+        for _ in 0..<50 {
+            await Task.yield()
+        }
+        listening.cancel()
+        return await listening.value
+    }
 }
 
 // MARK: -
@@ -227,18 +268,23 @@ private struct Scenario {
 private struct FakeDiscovery: ServerDiscovering {
 
     let states: [DiscoveryState]
+    let finishes: Bool
 
-    init(reporting states: [DiscoveryState]) {
+    init(reporting states: [DiscoveryState], finishes: Bool = true) {
         self.states = states
+        self.finishes = finishes
     }
 
     func discover() -> AsyncStream<DiscoveryState> {
         let states = states
+        let finishes = finishes
         return AsyncStream { continuation in
             for state in states {
                 continuation.yield(state)
             }
-            continuation.finish()
+            if finishes {
+                continuation.finish()
+            }
         }
     }
 }

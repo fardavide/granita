@@ -79,6 +79,14 @@ actor FakeRememberedMacStore: RememberedMacStore {
         return Set(saved.keys)
     }
 
+    func remotelyReachableMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName> {
+        if isSilent { await neverAnswer() }
+        if let refusal { throw refusal }
+        return Set(saved.compactMap { mac, remembered in
+            remembered.fallbackAddress == nil ? nil : mac
+        })
+    }
+
     func wakeAddresses() async throws(RememberedMacStoreFailure) -> [HardwareAddress] {
         if isSilent { await neverAnswer() }
         if let refusal { throw refusal }
