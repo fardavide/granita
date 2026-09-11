@@ -23,8 +23,8 @@ final class BonjourServiceConnection: ServiceConnecting {
     private let connection: NWConnection
 
     /// A browse result carries an instance name and no domain, so `local.` is supplied here. It is
-    /// the only domain this app has ever been in: SPEC §0 locks v1 to the LAN, and the Mac
-    /// advertises nowhere else.
+    /// the only domain Bonjour uses here. Tailnet reconnection bypasses service resolution and
+    /// dials the stable address the paired Mac reported through health.
     init(to server: DiscoveredServer) {
         connection = NWConnection(
             to: .service(

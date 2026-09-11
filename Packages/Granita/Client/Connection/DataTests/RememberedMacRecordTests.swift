@@ -26,9 +26,22 @@ struct RememberedMacRecordTests {
             read?.remembered == RememberedMac(
                 device: aPairedDevice,
                 fingerprint: aFingerprint,
+                fallbackAddress: aPairedMac.address,
                 wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
             )
         )
+    }
+
+    @Test
+    func `given a paired Mac when its record is encoded and decoded then the fallback address survives`() async {
+        // given
+        let bytes = RememberedMacRecord(of: aPairedMac).encoded
+
+        // when
+        let read = bytes.flatMap(RememberedMacRecord.decoded(from:))
+
+        // then
+        #expect(read?.remembered.fallbackAddress == aPairedMac.address)
     }
 
     @Test
@@ -81,20 +94,6 @@ struct RememberedMacRecordTests {
         #expect(RememberedMacRecord.decoded(from: bytes) == nil)
     }
 
-    @Test
-    func `given a pairing when it is written then the address it was reached at is not in it`() async {
-        // given — the system chooses the port every time a Mac binds, so a stored address is wrong
-        // the first time it restarts. Keeping one would be a phone reporting a Mac two feet away as
-        // unreachable, which is worse than the lookup it saves.
-        let record = RememberedMacRecord(of: aPairedMac)
-
-        // when
-        let written = String(data: record.encoded ?? Data(), encoding: .utf8) ?? ""
-
-        // then
-        #expect(!written.contains("davides-macbook-pro.local"))
-        #expect(!written.contains("59144"))
-    }
 }
 
 // MARK: -
@@ -112,6 +111,7 @@ private let aPairedMac = PairedMac(
     name: "Davide's MacBook Pro",
     device: aPairedDevice,
     address: ServerAddress(host: "davides-macbook-pro.local", port: 59_144),
+    fallbackAddress: ServerAddress(host: "davides-macbook-pro.local", port: 59_144),
     fingerprint: aFingerprint,
     wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
 )

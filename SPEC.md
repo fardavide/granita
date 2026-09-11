@@ -38,7 +38,7 @@ Not open for substitution. If you think one is wrong, stop and say so rather tha
 | v1 scope | Viewer only. Comments are v2 |
 | v1 viewer features | Syntax highlighting, word level intra-line diff, mark file as viewed, collapsed context |
 | Diff navigation | One continuous scroll across all files, plus a file selector, plus a wrap toggle |
-| Network | LAN only in v1 |
+| Network | Bonjour on the LAN, with remote reconnection through separately installed Tailscale apps |
 | Live updates | Yes in v1. Pushing feedback into Claude is v2 |
 | Distribution | Paid Apple Developer Program, TestFlight |
 | Persistence | No SQL. The data is tiny and does not justify a database |
@@ -669,7 +669,9 @@ explicit null. Absent means unchanged, null means clear, a value means set. `isP
 **Pair body.** Request `{ code, deviceName, platform }`, response
 `{ token, deviceID, serverInstanceID }`, 401 `pairingExpired` on a stale or reused code.
 
-**Health body.** `{ "name": "Granita", "apiVersion": 1, "serverVersion": "1.0.3" }`. The Mac app and
+**Health body.** `{ "name": "Granita", "apiVersion": 1, "serverVersion": "1.0.3", "wakeAddresses":
+[...], "tailnetEndpoint": { "host": "100.x.y.z", "port": 8737 } }`. Both reachability fields are
+optional for compatibility with older independently shipped builds. The Mac app and
 the TestFlight iOS app ship independently, so version skew is guaranteed: the client refuses to pair
 and shows "update your Mac app" on `apiVersion` mismatch, and any route returns 426
 `unsupportedApiVersion` if the client sends a newer one.
@@ -690,10 +692,9 @@ no longer matches so a stale version cannot be marked viewed), `gitFailure` (500
   pairing QR carries `granita://pair?host=&port=&code=&spki=<base64 SHA-256 of the SPKI>` and the
   client **pins that SPKI** in a `URLSessionDelegate` server-trust challenge.
 - A custom trust evaluation satisfies App Transport Security, so **no ATS exception is required**.
-  Keep `NSAllowsLocalNetworking = YES` only as a declaration of intent. This also unblocks v2:
-  `NSAllowsLocalNetworking` covers only unqualified names, `.local` names and IP addresses, so a
-  Tailscale MagicDNS host such as `macbook.tail1234.ts.net` would be blocked under plain HTTP. With
-  pinning, v2 remote access is a host change and no code change.
+  Keep `NSAllowsLocalNetworking = YES` only as a declaration of intent. Tailscale reconnection uses
+  the Mac's stable `100.64.0.0/10` IPv4 address and the same pinned TLS identity, so it needs neither
+  an ATS exception nor MagicDNS.
 - Bearer token on every route except `/v1/health` and `/v1/pair`, constant time comparison. Tokens
   are per device, individually revocable, stored hashed on the Mac and in the Keychain on iOS. The
   one time pairing code expires after 120 seconds and is single use. A six word fallback code is
@@ -709,12 +710,10 @@ no longer matches so a stale version cannot be marked viewed), `gitFailure` (500
 Hummingbird binds it too via SwiftNIO; two objects cannot bind the same TCP port, so advertising on
 the real port fails and advertising on port 0 publishes the wrong one.
 
-Run the Hummingbird `Application` on a `NIOTSEventLoopGroup` and bind
-`BindAddress.nwEndpoint(.service(name: <device name>, type: "_granita._tcp", domain: "local",
-interface: nil))`. Hummingbird's `Server.makeServer` routes that through `NIOTSListenerBootstrap`,
-which listens and advertises together, and it is the same code path that carries `tlsOptions` for the
-TLS identity above. `NWBrowser` on iOS is unchanged. Put `apiVersion` and a stable `serverInstanceID`
-in the TXT record so a client can tell its paired Mac from another one.
+Run the Hummingbird `Application` on a `NIOTSEventLoopGroup`. The Mac app binds one TLS listener on
+`0.0.0.0:8737`, then attaches an `NWListener.Service` to that listener once it is ready; Network
+explicitly permits changing `service` after readiness. The same socket is therefore reachable over
+both LAN and Tailscale and is the one Bonjour advertises. `NWBrowser` on iOS is unchanged.
 
 **TRAP, local network privacy applies to macOS too.** It exists on macOS 15+ and all Bonjour
 operations require it, including **registering** a service, so `GranitaMac` needs
@@ -927,8 +926,8 @@ they do not, the arithmetic is wrong and that must be known before the UI is bui
 pinning, grouped and flat worktree lists, directory grouped file selector with path compaction,
 continuous diff of uncommitted changes across all files with a wrap toggle, per-file focus mode,
 syntax highlighting, word level intra line diff, mark file as viewed, collapsed context with
-expansion, live updates, Bonjour plus QR pairing over TLS with SPKI pinning, LAN only, universal
-iPhone and iPad, light and dark.
+expansion, live updates, Bonjour plus QR pairing over TLS with SPKI pinning, remembered-Mac
+reconnection over Tailscale, universal iPhone and iPad, light and dark.
 
 **Out, v2 backlog. Design so these stay cheap, build none of them:**
 
@@ -937,7 +936,6 @@ iPhone and iPad, light and dark.
   straight into the Claude Code session
 - push notifications when an agent finishes, via a Claude Code `Stop` hook posting to the Mac server,
   which then hits APNs
-- remote access over Tailscale, already unblocked by the TLS decision, host change only
 - committed history browsing, staged versus unstaged split, discarding a hunk, pruning worktrees
 - Mac App Store build on a libgit2 `GitClient`
 

@@ -1012,6 +1012,7 @@ private let aPairedMac = PairedMac(
     name: aMacTheBrowseFound.name,
     device: aPairedDevice,
     address: anAddress,
+    fallbackAddress: nil,
     fingerprint: aLink.fingerprint,
     wakeAddresses: []
 )

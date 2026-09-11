@@ -163,17 +163,14 @@ public struct GranitaMobileScene: Scene {
         store: rememberedMacStore,
         addresses: addresses,
         connect: { repository(of: $0) },
-        // Unpinned, and it does not need to be: health carries no secret, it is the one route that
-        // answers before pairing, and what comes back is used only to aim a broadcast that anyone
-        // on this network could send anyway. Pinning would mean a second session per Mac for a
-        // read whose worst outcome is a packet nothing answers.
-        wakeAddressesOf: { address in
-            let health = try? await HttpServerPairing(
+        // Pinned because this health answer can become the address used for later reconnections;
+        // only the Mac this phone paired with may redirect those sessions.
+        healthOf: { address, fingerprint in
+            try? await HttpServerPairing(
                 macReachableAt: address,
-                transport: UrlSessionHttpTransport(trustingFirstAnswer: ())
+                transport: UrlSessionHttpTransport(pinnedTo: fingerprint)
             )
             .health()
-            return HardwareAddress.all(in: health?.wakeAddresses ?? [])
         }
     )
 

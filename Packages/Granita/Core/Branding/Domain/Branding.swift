@@ -38,7 +38,7 @@ public enum Branding {
     /// as a payload half-decoded on a screen.
     public static let apiVersionHeader = "X-Granita-Api-Version"
 
-    /// Default TCP port. Taken ports fall back automatically and the chosen one is persisted.
+    /// Stable TCP port used by the Mac app on both local and Tailscale interfaces.
     public static let defaultPort = 8737
 
     /// The subsystem every line Granita writes to the system log carries.

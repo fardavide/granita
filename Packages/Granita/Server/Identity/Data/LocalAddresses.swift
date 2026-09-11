@@ -30,6 +30,20 @@ public enum LocalAddresses {
         return found
     }
 
+    /// The stable IPv4 address Tailscale assigned this Mac, when its app is connected.
+    ///
+    /// Tailscale node addresses occupy `100.64.0.0/10`: the first octet is 100 and the top two
+    /// bits of the second are `01`. IPv6 is deliberately left for a later slice; every tailnet node
+    /// has an IPv4 address, which keeps pairing links compatible with every supported client.
+    public static func tailscaleIpv4Address(in addresses: [IpAddress]) -> IpAddress? {
+        addresses.first { address in
+            address.bytes.count == 4
+                && address.bytes[0] == 100
+                && address.bytes[1] >= 64
+                && address.bytes[1] <= 127
+        }
+    }
+
     /// One socket address as the bytes a certificate can carry, or nothing when it can carry none.
     ///
     /// **Public because the enumeration above cannot be made to answer a question.** It reports

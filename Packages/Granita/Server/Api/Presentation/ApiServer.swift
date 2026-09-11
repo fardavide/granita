@@ -18,6 +18,12 @@ public enum ApiServerBinding: Sendable {
     /// only form that is reachable by typing an address.
     case hostname(String, port: Int)
 
+    /// Bind a fixed host and port, then advertise that same listener through Bonjour.
+    ///
+    /// The fixed port is what makes the listener reachable through Tailscale after a restart; the
+    /// Bonjour advertisement keeps local discovery working without opening a second socket.
+    case hostnameAndBonjour(host: String, port: Int, name: String)
+
     /// Bind and advertise as a Bonjour service in one operation.
     ///
     /// The system chooses the port and publishes the one it chose, which is the point: a separate
@@ -95,6 +101,7 @@ public enum ApiServer {
                 tlsOptions: try tlsOptions(for: configuration.transport)
             ),
             onServerRunning: { channel in
+                await advertise(configuration.binding, on: channel)
                 await onRunning(endpoint(of: channel, for: configuration.binding))
             },
 
@@ -122,7 +129,7 @@ public enum ApiServer {
         switch binding {
         case .hostname(let host, _):
             return ServerEndpoint(host: host, port: port)
-        case .bonjourService:
+        case .hostnameAndBonjour, .bonjourService:
             // The service name is what the phone browses for; what belongs on a status line beside
             // a port is the name that resolves to this Mac.
             return ServerEndpoint(host: MachineName.localHost, port: port)
@@ -151,6 +158,8 @@ public enum ApiServer {
         switch binding {
         case .hostname(let host, let port):
             .hostname(host, port: port)
+        case .hostnameAndBonjour(let host, let port, _):
+            .hostname(host, port: port)
         case .bonjourService(let name):
             .nwEndpoint(
                 .service(
@@ -161,5 +170,25 @@ public enum ApiServer {
                 )
             )
         }
+    }
+
+    /// Attaches Bonjour metadata to a fixed listener after it becomes ready.
+    ///
+    /// `NWListener.service` is mutable after readiness specifically for this use. Mutated on the
+    /// channel's event loop, alongside the listener that owns it, so no Network object crosses an
+    /// isolation boundary.
+    private static func advertise(_ binding: ApiServerBinding, on channel: any Channel) async {
+        guard case .hostnameAndBonjour(_, _, let name) = binding else { return }
+        _ = try? await channel
+            .getOption(NIOTSChannelOptions.listener)
+            .map { listener in
+                listener?.service = NWListener.Service(
+                    name: name,
+                    type: Branding.bonjourServiceType,
+                    domain: "local",
+                    txtRecord: nil
+                )
+            }
+            .get()
     }
 }

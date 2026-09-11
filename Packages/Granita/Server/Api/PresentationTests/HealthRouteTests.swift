@@ -34,7 +34,15 @@ struct HealthRouteTests {
         let health = try await scenario.health()
 
         // then
-        #expect(health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2", wakeAddresses: []))
+        #expect(
+            health == HealthResponse(
+                name: "Granita",
+                apiVersion: 1,
+                serverVersion: "0.4.2",
+                tailnetEndpoint: nil,
+                wakeAddresses: []
+            )
+        )
     }
 
     @Test
@@ -74,6 +82,19 @@ struct HealthRouteTests {
         // empty as "this Mac has nothing that can be woken", and it does different things about each.
         #expect(health.wakeAddresses == [])
     }
+
+    @Test
+    func `given ApiDependencies with a tailnet endpoint when getting health then the answer carries it`() async throws {
+        // given
+        let tailnetEndpoint = TailnetEndpoint(host: "100.100.42.7", port: Branding.defaultPort)
+        let scenario = Scenario(serverVersion: "0.6.0", tailnetEndpoint: tailnetEndpoint)
+
+        // when
+        let health = try await scenario.health()
+
+        // then
+        #expect(health.tailnetEndpoint == tailnetEndpoint)
+    }
 }
 
 // MARK: -
@@ -82,10 +103,18 @@ private struct Scenario {
 
     let sut: any ApplicationProtocol
 
-    init(serverVersion: String, wakeAddresses: [String] = []) {
+    init(
+        serverVersion: String,
+        wakeAddresses: [String] = [],
+        tailnetEndpoint: TailnetEndpoint? = nil
+    ) {
         sut = Application(
             router: GranitaRouter.build(
-                ApiScenario.healthOnlyDependencies(serverVersion: serverVersion, wakeAddresses: wakeAddresses)
+                ApiScenario.healthOnlyDependencies(
+                    serverVersion: serverVersion,
+                    wakeAddresses: wakeAddresses,
+                    tailnetEndpoint: tailnetEndpoint
+                )
             )
         )
     }
@@ -100,4 +129,3 @@ private struct Scenario {
         }
     }
 }
-

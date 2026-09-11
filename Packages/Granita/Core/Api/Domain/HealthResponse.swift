@@ -15,6 +15,12 @@ public struct HealthResponse: Codable, Hashable, Sendable {
     public let apiVersion: Int
     public let serverVersion: String
 
+    /// The stable address the Mac app exposes through the separately installed Tailscale app.
+    ///
+    /// Optional because Tailscale may not be installed or connected, and because a Mac running an
+    /// older Granita has no such field. The phone treats absence as Bonjour-only reachability.
+    public let tailnetEndpoint: TailnetEndpoint?
+
     /// The hardware addresses a magic packet may be sent to, to wake this Mac.
     ///
     /// **The phone is this Mac's sleep proxy now, which is why an address is on the wire at all.**
@@ -33,20 +39,46 @@ public struct HealthResponse: Codable, Hashable, Sendable {
     /// publishes nothing that was not already there for the asking.
     public let wakeAddresses: [String]?
 
-    public init(name: String, apiVersion: Int, serverVersion: String, wakeAddresses: [String]?) {
+    public init(
+        name: String,
+        apiVersion: Int,
+        serverVersion: String,
+        tailnetEndpoint: TailnetEndpoint?,
+        wakeAddresses: [String]?
+    ) {
         self.name = name
         self.apiVersion = apiVersion
         self.serverVersion = serverVersion
+        self.tailnetEndpoint = tailnetEndpoint
         self.wakeAddresses = wakeAddresses
     }
 
     /// The values a running server reports — the two that are not constants.
-    public init(serverVersion: String, wakeAddresses: [String]) {
+    public init(
+        serverVersion: String,
+        tailnetEndpoint: TailnetEndpoint?,
+        wakeAddresses: [String]
+    ) {
         self.init(
             name: Branding.productName,
             apiVersion: Branding.apiVersion,
             serverVersion: serverVersion,
+            tailnetEndpoint: tailnetEndpoint,
             wakeAddresses: wakeAddresses
         )
+    }
+}
+
+// MARK: -
+
+/// A stable server endpoint inside a Tailscale network.
+public struct TailnetEndpoint: Codable, Hashable, Sendable {
+
+    public let host: String
+    public let port: Int
+
+    public init(host: String, port: Int) {
+        self.host = host
+        self.port = port
     }
 }

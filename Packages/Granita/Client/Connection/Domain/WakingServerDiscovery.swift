@@ -1,4 +1,4 @@
-/// A browse that wakes the Macs this phone already knows before waiting to hear from them.
+/// A browse that keeps the Macs this phone already knows reachable in the discovery list.
 ///
 /// **A sleeping Mac is not a Mac that answers slowly — it is one that is not on the network at
 /// all.** Since macOS 15 withdrew the sleep-proxy client, a Mac that dozes off takes its Bonjour
@@ -12,9 +12,9 @@
 /// seconds later, through the states the discovery screen already draws, and the reader is told
 /// nothing they would have to act on.
 ///
-/// **It never delays, degrades or filters the browse it wraps.** The wake runs beside the stream,
-/// not in front of it: a Keychain that will not answer, or a network that will not take a datagram,
-/// must not cost the reader the Macs that are awake and were always going to be found.
+/// **Remembered rows outlive Bonjour.** A Mac with a stored direct address stays tappable when the
+/// browse is empty or local-network permission is absent; opening it still tries Bonjour first and
+/// only then uses that address. Keychain failures leave the wrapped browse unchanged.
 public struct WakingServerDiscovery: ServerDiscovering {
 
     private let discovery: any ServerDiscovering
@@ -32,6 +32,9 @@ public struct WakingServerDiscovery: ServerDiscovering {
         let macs = macs
         let waking = waking
         return AsyncStream { continuation in
+            let remembering = Task {
+                (try? await macs.rememberedMacs()) ?? []
+            }
             let waker = Task {
                 // Silent on refusal, and the silence is the design. A Keychain that will not
                 // enumerate costs the reader a wake they cannot perceive the absence of; reporting
@@ -41,11 +44,35 @@ public struct WakingServerDiscovery: ServerDiscovering {
             }
             let browsing = Task {
                 for await state in discovery.discover() {
-                    continuation.yield(state)
+                    switch state {
+                    case .found(let servers):
+                        let remembered = await remembering.value
+                        let found = Set(servers.map(\.id))
+                        continuation.yield(.found(
+                            servers + remembered
+                                .filter { found.contains($0) == false }
+                                .sorted { $0.rawValue < $1.rawValue }
+                                .map { DiscoveredServer(id: $0, name: $0.rawValue) }
+                        ))
+                    case .localNetworkDenied:
+                        let remembered = await remembering.value
+                        guard remembered.isEmpty == false else {
+                            continuation.yield(state)
+                            continue
+                        }
+                        continuation.yield(.found(
+                            remembered
+                                .sorted { $0.rawValue < $1.rawValue }
+                                .map { DiscoveredServer(id: $0, name: $0.rawValue) }
+                        ))
+                    case .idle, .searching, .failed:
+                        continuation.yield(state)
+                    }
                 }
                 continuation.finish()
             }
             continuation.onTermination = { _ in
+                remembering.cancel()
                 waker.cancel()
                 browsing.cancel()
             }

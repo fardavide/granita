@@ -29,6 +29,9 @@ public struct ApiDependencies: Sendable {
 
     public let serverVersion: String
 
+    /// The stable Tailscale endpoint health offers to a phone for later remote reconnection.
+    public let tailnetEndpoint: TailnetEndpoint?
+
     /// The hardware addresses health reports, so a phone can wake this Mac when it next sleeps.
     ///
     /// Read once at composition rather than per request: an interface list is a syscall, health is
@@ -52,6 +55,7 @@ public struct ApiDependencies: Sendable {
         diagnostics: any Diagnostics,
         serverVersion: String,
         wakeAddresses: [String],
+        tailnetEndpoint: TailnetEndpoint?,
         requiresAuthentication: Bool
     ) {
         self.registry = registry
@@ -63,6 +67,7 @@ public struct ApiDependencies: Sendable {
         self.diagnostics = diagnostics
         self.serverVersion = serverVersion
         self.wakeAddresses = wakeAddresses
+        self.tailnetEndpoint = tailnetEndpoint
         self.requiresAuthentication = requiresAuthentication
     }
 }
@@ -101,6 +106,7 @@ public enum GranitaRouter {
         router.get("/v1/health") { _, _ in
             HealthResponse(
                 serverVersion: dependencies.serverVersion,
+                tailnetEndpoint: dependencies.tailnetEndpoint,
                 wakeAddresses: dependencies.wakeAddresses
             )
         }

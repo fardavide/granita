@@ -145,6 +145,9 @@ public struct MacPairing: MacJoining {
                 name: mac.name,
                 device: paired,
                 address: attempt.address,
+                fallbackAddress: health.tailnetEndpoint.map {
+                    ServerAddress(host: $0.host, port: $0.port)
+                },
                 fingerprint: fingerprint,
                 // From the health read above, which is the only moment this phone is guaranteed to
                 // be talking to a Mac that is awake. A Mac too old to report any leaves this empty

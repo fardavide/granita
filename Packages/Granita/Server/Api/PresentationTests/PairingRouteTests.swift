@@ -223,6 +223,7 @@ struct PairingRouteTests {
                         diagnostics: FakeDiagnostics(),
                         serverVersion: "0.0.6",
                         wakeAddresses: [],
+                        tailnetEndpoint: nil,
                         requiresAuthentication: true
                     )
                 )

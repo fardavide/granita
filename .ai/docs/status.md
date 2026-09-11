@@ -2,6 +2,18 @@
 
 Where the project is. Update this when a slice lands.
 
+**Tailscale reconnection is implemented for the existing Mac and iOS apps.** The Mac app binds its
+pinned TLS API on stable port 8737, advertises that same listener through Bonjour, and exposes its
+`100.64.0.0/10` address through health whenever the separately installed Tailscale app is connected.
+The phone keeps that endpoint beside the pairing, continues to prefer Bonjour on the LAN, and falls
+back directly when discovery is empty, unreachable or denied. Existing pairings learn the endpoint
+from pinned health on their next successful local connection; no re-pairing or Tailscale setting
+change is required.
+
+**First contact is still local.** A Mac must appear through Bonjour before the current pairing flow
+can open its QR or six-word screens. This slice makes an existing pairing remote-capable; it does not
+add a global QR scanner or a manual tailnet address entry screen.
+
 **Version 0.9.1 — the two worktree writes work, and one of them never had.** Davide reported both on
 5 September 2026: deleting a worktree did nothing, and renaming one left the sheet up for what felt
 like forever.

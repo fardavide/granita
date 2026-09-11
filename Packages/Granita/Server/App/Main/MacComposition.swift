@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiagnosticsData
 import CoreDiagnosticsDomain
@@ -79,6 +80,9 @@ final class MacComposition {
         // a network, and its key is what every paired phone is pinning.
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
 
+        let tailnetEndpoint = LocalAddresses
+            .tailscaleIpv4Address(in: LocalAddresses.current())
+            .map { TailnetEndpoint(host: $0.description, port: Branding.defaultPort) }
         let dependencies = ApiDependencies(
             registry: WorktreeRegistry(
                 store: store,
@@ -95,6 +99,8 @@ final class MacComposition {
             // What the phone sends a magic packet to when this Mac is asleep. Read once here
             // because a composition root is where a syscall belongs.
             wakeAddresses: HardwareAddresses.ofThisMac(),
+            // Present only while the separately installed Tailscale app has its interface up.
+            tailnetEndpoint: tailnetEndpoint,
             // The plaintext escape hatch is a flag on the executable and is never reachable from
             // here. A token over plaintext is a token everyone on the network already has.
             requiresAuthentication: true
@@ -115,7 +121,11 @@ final class MacComposition {
                 host: RebindingOnWake(
                     host: TransportResolvingServerHost(
                         dependencies: dependencies,
-                        binding: .bonjourService(name: MachineName.computer),
+                        binding: .hostnameAndBonjour(
+                            host: "0.0.0.0",
+                            port: Branding.defaultPort,
+                            name: MachineName.computer
+                        ),
                         // Asked per run, not once here. A rebind after waking has to be able to
                         // fail for a reason someone can act on — a locked keychain, an identity
                         // deleted by hand — and a transport resolved at launch could only report

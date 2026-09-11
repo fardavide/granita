@@ -8,10 +8,11 @@ Concepts and contracts here, not type names — names rot on rename.
 ## The two halves and the wire between them
 
 A Mac holds the source and the `git` binary. A phone holds the reader. Between them is a JSON API
-over TLS on the local network, and the client is a strict consumer of it: it never sees a filesystem
-path it could ask about, only opaque identifiers the server resolves against its own registry of
-explicitly-enabled projects. That rule is the security boundary, not a stylistic one — the payload
-is private source code, and a path parameter would be a traversal hole.
+over pinned TLS. Bonjour discovers the Mac on the LAN; after pairing, a stable Tailscale endpoint can
+reconnect the same pinned session across networks. The client never sees a filesystem path it could
+ask about, only opaque identifiers the server resolves against its own registry of explicitly-enabled
+projects. That rule is the security boundary, not a stylistic one — the payload is private source
+code, and a path parameter would be a traversal hole.
 
 The Mac app embeds the backend in-process. The same backend is also an executable, so the whole
 server side builds, runs and is tested from a terminal with no Xcode in the loop. The menu bar app is

@@ -30,9 +30,31 @@ struct MacPairingTests {
                 theMacTheReaderOpened.id: RememberedMac(
                     device: aPairedDevice,
                     fingerprint: aLink.fingerprint,
+                    fallbackAddress: nil,
                     wakeAddresses: []
                 )
             ]
+        )
+    }
+
+    @Test
+    func `given a tailnet endpoint different from the local address when pairing succeeds then it is remembered as the fallback`() async {
+        // given
+        let tailnetEndpoint = TailnetEndpoint(host: "100.100.42.7", port: Branding.defaultPort)
+        let scenario = Scenario(servingTailnetEndpoint: tailnetEndpoint)
+
+        // when
+        let outcome = await scenario.sut.pair(with: .scanned(aLink), on: theMacTheReaderOpened, as: anIphone)
+
+        // then
+        guard case .paired(let pairing) = outcome else {
+            Issue.record("a Mac that agrees has to come back paired, or there is no live address to check")
+            return
+        }
+        #expect(pairing.address == anAddress)
+        #expect(
+            await scenario.macs.saved[theMacTheReaderOpened.id]?.fallbackAddress
+                == ServerAddress(host: "100.100.42.7", port: Branding.defaultPort)
         )
     }
 
@@ -189,6 +211,7 @@ struct MacPairingTests {
                     name: theMacTheReaderOpened.name,
                     device: aPairedDevice,
                     address: anAddress,
+                    fallbackAddress: nil,
                     fingerprint: anObservedKey,
                     wakeAddresses: []
                 )
@@ -261,6 +284,7 @@ struct MacPairingTests {
                 theMacTheReaderOpened.id: RememberedMac(
                     device: aPairedDevice,
                     fingerprint: aLink.fingerprint,
+                    fallbackAddress: nil,
                     wakeAddresses: []
                 )
             ]
@@ -371,9 +395,19 @@ struct MacPairingTests {
         // to say after the question has already been asked.
         let scenario = Scenario(remembering: [
             BonjourInstanceName(rawValue: "Davide's MacBook Pro"):
-                RememberedMac(device: aPairedDevice, fingerprint: aLink.fingerprint, wakeAddresses: []),
+                RememberedMac(
+                    device: aPairedDevice,
+                    fingerprint: aLink.fingerprint,
+                    fallbackAddress: nil,
+                    wakeAddresses: []
+                ),
             BonjourInstanceName(rawValue: "Mac Studio"):
-                RememberedMac(device: aPairedDevice, fingerprint: anObservedKey, wakeAddresses: [])
+                RememberedMac(
+                    device: aPairedDevice,
+                    fingerprint: anObservedKey,
+                    fallbackAddress: nil,
+                    wakeAddresses: []
+                )
         ])
 
         // when
@@ -469,6 +503,7 @@ private struct Scenario {
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         keychainNeverAnswering isKeychainSilent: Bool = false,
         silentOn: FakeServerPairing.SilentStep? = nil,
+        servingTailnetEndpoint tailnetEndpoint: TailnetEndpoint? = nil,
         servingWakeAddresses wakeAddresses: [String]? = nil
     ) {
         if isKeychainSilent {
@@ -484,6 +519,7 @@ private struct Scenario {
                     name: "Granita",
                     apiVersion: apiVersion,
                     serverVersion: "0.0.9",
+                    tailnetEndpoint: tailnetEndpoint,
                     wakeAddresses: wakeAddresses
                 )
             )
@@ -539,6 +575,7 @@ private let aPairedMac = PairedMac(
     name: theMacTheReaderOpened.name,
     device: aPairedDevice,
     address: anAddress,
+    fallbackAddress: nil,
     fingerprint: aLink.fingerprint,
     wakeAddresses: []
 )
@@ -551,6 +588,7 @@ private func aPairedMac(wakingAt addresses: [String]) -> PairedMac {
         name: theMacTheReaderOpened.name,
         device: aPairedDevice,
         address: anAddress,
+        fallbackAddress: nil,
         fingerprint: aLink.fingerprint,
         wakeAddresses: HardwareAddress.all(in: addresses)
     )

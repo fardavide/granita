@@ -2,6 +2,8 @@ import Foundation
 import Synchronization
 import Testing
 
+import CoreApiDomain
+import CoreBrandingDomain
 import CoreDiffDomain
 import CorePairingDomain
 
@@ -34,9 +36,7 @@ struct RememberedMacsTests {
         // when
         _ = try await scenario.sut.worktrees(inProject: nil)
 
-        // then — and the address is the one Bonjour answered with just now, never a stored one: the
-        // system chooses the port, so a remembered `host:port` is wrong the first time the Mac
-        // restarts.
+        // then — Bonjour's fresh local answer wins over any stored fallback.
         #expect(
             scenario.opened == [
                 PairedMac(
@@ -44,6 +44,7 @@ struct RememberedMacsTests {
                     name: theMacTheReaderTapped.name,
                     device: aRememberedMac.device,
                     address: whereTheMacIsNow,
+                    fallbackAddress: aRememberedMac.fallbackAddress,
                     fingerprint: aRememberedMac.fingerprint,
                     wakeAddresses: aRememberedMac.wakeAddresses
                 )
@@ -291,6 +292,28 @@ struct RememberedMacsTests {
     }
 
     @Test
+    func `given a remembered Mac with a fallback when Bonjour cannot resolve it then that address is used to connect`() async {
+        // given
+        let fallbackAddress = ServerAddress(host: "100.64.0.42", port: 59_144)
+        let rememberedMac = RememberedMac(
+            device: aRememberedMac.device,
+            fingerprint: aRememberedMac.fingerprint,
+            fallbackAddress: fallbackAddress,
+            wakeAddresses: aRememberedMac.wakeAddresses
+        )
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: rememberedMac],
+            resolving: .failure(.unreachable(diagnostic: "No route to host."))
+        )
+
+        // when
+        _ = try? await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        #expect(scenario.opened.map(\.address) == [fallbackAddress])
+    }
+
+    @Test
     func `given local network access withheld when a Mac is read then the small print names it`() async {
         // given — the one refusal a reader can fix, and the sidebar's sentence does not offer to fix
         // it. Naming the setting in the diagnostic is the whole of what this layer can do about it;
@@ -306,6 +329,58 @@ struct RememberedMacsTests {
         ) {
             try await scenario.sut.worktrees(inProject: nil)
         }
+    }
+
+    @Test
+    func `given a remembered Mac with a fallback when local network access is withheld then that address is used to connect`() async {
+        // given
+        let fallbackAddress = ServerAddress(host: "100.64.0.43", port: 59_145)
+        let rememberedMac = RememberedMac(
+            device: aRememberedMac.device,
+            fingerprint: aRememberedMac.fingerprint,
+            fallbackAddress: fallbackAddress,
+            wakeAddresses: aRememberedMac.wakeAddresses
+        )
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: rememberedMac],
+            resolving: .failure(.localNetworkDenied)
+        )
+
+        // when
+        _ = try? await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        #expect(scenario.opened.map(\.address) == [fallbackAddress])
+    }
+}
+
+// MARK: - Learning a direct address from a newer Mac
+
+extension RememberedMacsTests {
+
+    @Test
+    func `given a remembered Mac with no fallback when it is reached then its tailnet endpoint is learned and kept`() async throws {
+        // given
+        let tailnetEndpoint = TailnetEndpoint(host: "100.100.42.7", port: Branding.defaultPort)
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            servingHealth: HealthResponse(
+                name: "Granita",
+                apiVersion: Branding.apiVersion,
+                serverVersion: "0.6.0",
+                tailnetEndpoint: tailnetEndpoint,
+                wakeAddresses: []
+            )
+        )
+
+        // when
+        _ = try await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        #expect(
+            await scenario.macs.saved[theMacTheReaderTapped.id]?.fallbackAddress
+                == ServerAddress(host: tailnetEndpoint.host, port: tailnetEndpoint.port)
+        )
     }
 }
 
@@ -388,6 +463,7 @@ private struct Scenario {
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
         refusing readFailure: ApiFailure? = nil,
+        servingHealth healthResponse: HealthResponse? = nil,
         servingWakeAddresses wakeAddresses: [String] = []
     ) {
         macs = refusal.map(FakeRememberedMacStore.init(refusing:))
@@ -400,6 +476,13 @@ private struct Scenario {
         // builds *one* is asserted separately, through `opened`.
         let mac = FakeMacBehindAPairing(answering: readFailure)
         self.mac = mac
+        let healthResponse = healthResponse ?? HealthResponse(
+            name: "Granita",
+            apiVersion: Branding.apiVersion,
+            serverVersion: "0.6.0",
+            tailnetEndpoint: nil,
+            wakeAddresses: wakeAddresses
+        )
         sut = RememberedMacRepository(
             reading: theMacTheReaderTapped,
             through: RememberedMacs(
@@ -409,7 +492,7 @@ private struct Scenario {
                     connections.opened(pairing)
                     return mac
                 },
-                wakeAddressesOf: { _ in HardwareAddress.all(in: wakeAddresses) }
+                healthOf: { _, _ in healthResponse }
             )
         )
     }
@@ -569,6 +652,7 @@ private let aRememberedMac = RememberedMac(
         serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
     ),
     fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007"),
+    fallbackAddress: nil,
     wakeAddresses: HardwareAddress.all(in: ["3e:2d:c6:c3:4b:fe"])
 )
 
@@ -577,11 +661,11 @@ private let aRememberedMac = RememberedMac(
 private let aRememberedMacWithNoWakeAddress = RememberedMac(
     device: aRememberedMac.device,
     fingerprint: aRememberedMac.fingerprint,
+    fallbackAddress: nil,
     wakeAddresses: []
 )
 
-/// Deliberately not a port anything stored: the system picks one per launch, which is the reason a
-/// pairing keeps no address at all.
+/// The fresh local answer, preferred over any stable remote fallback.
 private let whereTheMacIsNow = ServerAddress(host: "davides-macbook-pro.local", port: 61_022)
 
 private let aProject = ProjectID(rawValue: "a1b2c3")

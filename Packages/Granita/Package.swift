@@ -689,6 +689,7 @@ let package = Package(
         .target(
             name: "ServerAppMain",
             dependencies: [
+                "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CoreDiagnosticsData",
                 "CoreDiagnosticsDomain",
