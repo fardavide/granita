@@ -63,6 +63,7 @@ private let aPairedMac = PairedMac(
         serverInstanceId: ServerInstanceId(rawValue: "3B9AC0DE-1111-4A2C-8D6E-55E0B1CAFE22")
     ),
     address: ServerAddress(host: "mac-studio.local", port: 59_144),
+    fallbackAddress: nil,
     fingerprint: SpkiFingerprint(rawValue: "cf83e1357eefb8bdf1542850d66d8007"),
     wakeAddresses: []
 )

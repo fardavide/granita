@@ -2,10 +2,9 @@ import CorePairingDomain
 
 /// Where a Mac is, right now.
 ///
-/// Not stored anywhere and not an identity: a Granita binds a service endpoint and the system
-/// chooses the port, so this goes stale the moment the Mac restarts. It exists because the two
-/// credentials arrive with it differently — a scanned link carries one, and six words have to have
-/// one resolved for them.
+/// Not an identity: the live address is resolved for the current session, while a separately
+/// reported stable address may be retained as a fallback. It exists because the two credentials
+/// arrive with it differently — a scanned link carries one, and six words have one resolved.
 public struct ServerAddress: Hashable, Sendable {
 
     /// A name this Mac answers to, never a path. The rule the whole API rests on applies here too.
@@ -92,6 +91,9 @@ public struct PairedMac: Hashable, Sendable {
 
     public let address: ServerAddress
 
+    /// The stable address health reported for reconnection outside Bonjour's local network.
+    public let fallbackAddress: ServerAddress?
+
     /// **What was actually trusted**, which is not always what was asked for. On the scanned path
     /// it is the link's pin; on the spoken path it is the key first contact found, read back from
     /// the handshake rather than assumed — nothing above that seam may invent a fingerprint it did
@@ -110,6 +112,7 @@ public struct PairedMac: Hashable, Sendable {
         name: String,
         device: PairedDevice,
         address: ServerAddress,
+        fallbackAddress: ServerAddress?,
         fingerprint: SpkiFingerprint,
         wakeAddresses: [HardwareAddress]
     ) {
@@ -117,6 +120,7 @@ public struct PairedMac: Hashable, Sendable {
         self.name = name
         self.device = device
         self.address = address
+        self.fallbackAddress = fallbackAddress
         self.fingerprint = fingerprint
         self.wakeAddresses = wakeAddresses
     }

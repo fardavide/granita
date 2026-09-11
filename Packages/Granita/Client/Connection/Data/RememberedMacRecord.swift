@@ -22,6 +22,12 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
     let serverInstanceId: String
     let fingerprint: String
 
+    /// Where the Mac can be reached when Bonjour cannot find it.
+    ///
+    /// Optional for the same migration reason as `wakeAddresses`: pairings written before remote
+    /// reachability existed have no field, and remain valid local-only pairings.
+    private let fallbackAddress: StoredServerAddress?
+
     /// What to send a magic packet to when this Mac is asleep.
     ///
     /// **Optional so that a record written before it existed still decodes.** Every Mac already
@@ -36,6 +42,7 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
         deviceId = pairing.device.deviceId.rawValue
         serverInstanceId = pairing.device.serverInstanceId.rawValue
         fingerprint = pairing.fingerprint.rawValue
+        fallbackAddress = pairing.fallbackAddress.map(StoredServerAddress.init)
         wakeAddresses = pairing.wakeAddresses.map(\.text)
     }
 
@@ -47,6 +54,7 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
                 serverInstanceId: ServerInstanceId(rawValue: serverInstanceId)
             ),
             fingerprint: SpkiFingerprint(rawValue: fingerprint),
+            fallbackAddress: fallbackAddress.map(\.domain),
             // Re-parsed rather than trusted: what is on disk was written by some other version, and
             // one entry that is not an address must cost that entry rather than the pairing.
             wakeAddresses: HardwareAddress.all(in: wakeAddresses ?? [])
@@ -68,5 +76,22 @@ struct RememberedMacRecord: Codable, Hashable, Sendable {
     /// different key, and anything else under this one is a Mac that has to be paired with again.
     static func decoded(from data: Data) -> RememberedMacRecord? {
         try? JSONDecoder().decode(RememberedMacRecord.self, from: data)
+    }
+}
+
+// MARK: -
+
+private struct StoredServerAddress: Codable, Hashable, Sendable {
+
+    let host: String
+    let port: Int
+
+    init(_ address: ServerAddress) {
+        host = address.host
+        port = address.port
+    }
+
+    var domain: ServerAddress {
+        ServerAddress(host: host, port: port)
     }
 }

@@ -27,7 +27,13 @@ struct HttpServerPairingTests {
 
         // then
         #expect(
-            health == HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.4.2", wakeAddresses: nil)
+            health == HealthResponse(
+                name: "Granita",
+                apiVersion: 1,
+                serverVersion: "0.4.2",
+                tailnetEndpoint: nil,
+                wakeAddresses: nil
+            )
         )
         let request = try #require(await scenario.transport.sent.first)
         #expect(request.method == .get)

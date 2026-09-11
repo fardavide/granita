@@ -1,13 +1,13 @@
+import CoreApiDomain
 import CoreDiffDomain
+import CorePairingDomain
 
 /// Every Mac this phone has paired with before, and the one live connection to each.
 ///
 /// **It exists because reaching a remembered Mac is three things, none of which a screen may do.**
-/// The pairing is in the Keychain, where the Mac *is* has to be asked of Bonjour every time, and the
-/// session that carries a request has to be pinned to the key that pairing bought — and all three
-/// have to happen before the first byte of the first request. Done in a view they would be a screen
-/// that resolves an address; done here they are the front of a repository, so what the reader sees
-/// is the worktree list's own spinner and, if it fails, the worktree list's own sentence.
+/// The pairing is in the Keychain, Bonjour is the freshest local answer for where the Mac is, and a
+/// stable tailnet endpoint is the fallback when Bonjour cannot cross the network boundary. The
+/// session that carries a request is pinned to the key pairing bought whichever route wins.
 ///
 /// **One connection per Mac, kept.** A session per request would leak a delegate and a connection
 /// pool every time the phone polls, and re-resolving a Bonjour name on every read would put an mDNS
@@ -25,29 +25,29 @@ public actor RememberedMacs {
     /// naming a session pinned to that Mac's key, which is `Data`'s to know and not this layer's.
     private let connect: @Sendable (PairedMac) -> any GranitaRepository
 
-    /// What that Mac says about itself, asked of a Mac that is demonstrably awake.
+    /// What that Mac says about itself, asked through the key this phone already trusts.
     ///
     /// **Only for the backfill below**, and a closure for the same reason `connect` is one: reading
     /// health means an HTTP client, which is `Data`'s to build. Answers nothing when the Mac cannot
     /// be reached or is too old to say, which are the same thing to the caller.
-    private let wakeAddressesOf: @Sendable (ServerAddress) async -> [HardwareAddress]
+    private let healthOf: @Sendable (ServerAddress, SpkiFingerprint) async -> HealthResponse?
 
     private var reached: [BonjourInstanceName: any GranitaRepository] = [:]
 
     /// Macs already backfilled this run, so a Mac with genuinely no addresses is asked once rather
     /// than on every reconnection.
-    private var backfilled: Set<BonjourInstanceName> = []
+    private var refreshed: Set<BonjourInstanceName> = []
 
     public init(
         store: any RememberedMacStore,
         addresses: any ServerAddressResolving,
         connect: @escaping @Sendable (PairedMac) -> any GranitaRepository,
-        wakeAddressesOf: @escaping @Sendable (ServerAddress) async -> [HardwareAddress]
+        healthOf: @escaping @Sendable (ServerAddress, SpkiFingerprint) async -> HealthResponse?
     ) {
         self.store = store
         self.addresses = addresses
         self.connect = connect
-        self.wakeAddressesOf = wakeAddressesOf
+        self.healthOf = healthOf
     }
 
     /// Something that can read that Mac, opening a connection to it if there is not one already.
@@ -91,12 +91,20 @@ public actor RememberedMacs {
         } catch {
             switch error {
             case .unreachable(let diagnostic):
-                throw ApiFailure.unreachable(diagnostic: diagnostic)
+                guard let fallbackAddress = remembered.fallbackAddress else {
+                    throw ApiFailure.unreachable(diagnostic: diagnostic)
+                }
+                address = fallbackAddress
             case .localNetworkDenied:
-                // The one refusal a reader can fix, and the sentence the sidebar draws does not
-                // offer to fix it — this is the small print under it, which is where a fact nobody
-                // can act on from here belongs. The Mac list is the screen with the Settings button.
-                throw ApiFailure.unreachable(diagnostic: "iOS is withholding local network access from Granita")
+                guard let fallbackAddress = remembered.fallbackAddress else {
+                    // The one refusal a reader can fix, and the sentence the sidebar draws does not
+                    // offer to fix it — this is the small print under it, which is where a fact nobody
+                    // can act on from here belongs. The Mac list is the screen with the Settings button.
+                    throw ApiFailure.unreachable(
+                        diagnostic: "iOS is withholding local network access from Granita"
+                    )
+                }
+                address = fallbackAddress
             }
         }
 
@@ -105,40 +113,48 @@ public actor RememberedMacs {
             name: server.name,
             device: remembered.device,
             address: address,
+            fallbackAddress: remembered.fallbackAddress,
             fingerprint: remembered.fingerprint,
             wakeAddresses: remembered.wakeAddresses
         )
         let connection = connect(paired)
         reached[server.id] = connection
-        await backfillWakeAddresses(of: paired)
+        await refreshMetadata(of: paired)
         return connection
     }
 
-    /// Learns how to wake a Mac that was paired with before this phone knew how to ask.
+    /// Learns reachability metadata a newer Mac can add to an existing pairing.
     ///
-    /// **Every Mac already in the Keychain when 0.6.0 arrived has no address stored**, because the
-    /// only thing that ever wrote one was pairing — so without this the first release that can wake
-    /// a Mac cannot wake the Mac its reader already uses, and the remedy would be to walk over and
-    /// pair again. This is that walk, done by the app, at the one moment it is guaranteed to be
-    /// talking to a Mac that is awake: it just reached it.
+    /// Existing pairings have neither the wake addresses added in 0.6.0 nor the tailnet endpoint
+    /// added later. Reading health after a successful resolution upgrades either one without asking
+    /// the reader to revoke a device and pair again.
     ///
-    /// **Silent throughout, and deliberately.** A Mac too old to report an address, one that will
-    /// not answer health, and a Keychain that refuses the write all end the same way — a Mac that is
-    /// simply not wakeable, which is the state this arrived in. None of them is worth a sentence on
-    /// a screen whose job is to show worktrees.
-    private func backfillWakeAddresses(of paired: PairedMac) async {
-        guard paired.wakeAddresses.isEmpty, backfilled.contains(paired.instance) == false else { return }
-        backfilled.insert(paired.instance)
-        let learned = await wakeAddressesOf(paired.address)
-        guard learned.isEmpty == false else { return }
+    /// **Silent throughout, and deliberately.** An older Mac, a failed metadata read or a refused
+    /// Keychain update leaves the pairing exactly as capable as it was before this refresh.
+    private func refreshMetadata(of paired: PairedMac) async {
+        guard (paired.wakeAddresses.isEmpty || paired.fallbackAddress == nil),
+              refreshed.contains(paired.instance) == false
+        else {
+            return
+        }
+        refreshed.insert(paired.instance)
+        guard let health = await healthOf(paired.address, paired.fingerprint) else { return }
+        let wakeAddresses = paired.wakeAddresses.isEmpty
+            ? HardwareAddress.all(in: health.wakeAddresses ?? [])
+            : paired.wakeAddresses
+        let fallbackAddress = paired.fallbackAddress ?? health.tailnetEndpoint.map {
+            ServerAddress(host: $0.host, port: $0.port)
+        }
+        guard wakeAddresses != paired.wakeAddresses || fallbackAddress != paired.fallbackAddress else { return }
         try? await store.remember(
             PairedMac(
                 instance: paired.instance,
                 name: paired.name,
                 device: paired.device,
                 address: paired.address,
+                fallbackAddress: fallbackAddress,
                 fingerprint: paired.fingerprint,
-                wakeAddresses: learned
+                wakeAddresses: wakeAddresses
             )
         )
     }

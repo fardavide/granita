@@ -2,10 +2,9 @@ import CorePairingDomain
 
 /// Everything about a Mac that has to survive the app being closed, and nothing that does not.
 ///
-/// **The address is deliberately absent.** A Granita binds a service endpoint and the system chooses
-/// the port, so a stored `host:port` is wrong the first time the Mac restarts — and a phone that
-/// dialled it would report the Mac as unreachable while it sat two feet away. What is stored is the
-/// part that does not move; where the Mac is, is asked of Bonjour every time.
+/// Bonjour remains the first answer for where a Mac is. A fallback address is retained only when a
+/// pairing reports an endpoint whose host and port remain stable across networks, so a remembered
+/// Mac can still be reached when multicast discovery cannot cross the boundary between them.
 ///
 /// **The fingerprint is stored beside the token because they have to travel together.** A token
 /// without a pin would have to be spent on whoever answered, which is precisely the trust the
@@ -18,6 +17,12 @@ public struct RememberedMac: Hashable, Sendable {
     /// refuses to reach anywhere else without.
     public let fingerprint: SpkiFingerprint
 
+    /// Where this Mac can be reached when Bonjour cannot find it.
+    ///
+    /// Absent for pairings written before remote endpoints existed. The caller still asks Bonjour
+    /// first; this is a fallback rather than a competing source of local-network truth.
+    public let fallbackAddress: ServerAddress?
+
     /// What to send a magic packet to when this Mac is asleep.
     ///
     /// **The one thing stored here that is about *where* the Mac is**, which the doc comment above
@@ -28,9 +33,15 @@ public struct RememberedMac: Hashable, Sendable {
     /// Mac, and a Mac that can be reached does not need waking.
     public let wakeAddresses: [HardwareAddress]
 
-    public init(device: PairedDevice, fingerprint: SpkiFingerprint, wakeAddresses: [HardwareAddress]) {
+    public init(
+        device: PairedDevice,
+        fingerprint: SpkiFingerprint,
+        fallbackAddress: ServerAddress?,
+        wakeAddresses: [HardwareAddress]
+    ) {
         self.device = device
         self.fingerprint = fingerprint
+        self.fallbackAddress = fallbackAddress
         self.wakeAddresses = wakeAddresses
     }
 }

@@ -17,6 +17,7 @@ struct ApiCompatibilityTests {
             name: "Granita",
             apiVersion: Branding.apiVersion,
             serverVersion: "0.0.9",
+            tailnetEndpoint: nil,
             wakeAddresses: nil
         )
 
@@ -32,6 +33,7 @@ struct ApiCompatibilityTests {
             name: "Granita",
             apiVersion: Branding.apiVersion - 1,
             serverVersion: "0.0.1",
+            tailnetEndpoint: nil,
             wakeAddresses: nil
         )
 
@@ -46,6 +48,7 @@ struct ApiCompatibilityTests {
             name: "Granita",
             apiVersion: Branding.apiVersion + 1,
             serverVersion: "9.9.9",
+            tailnetEndpoint: nil,
             wakeAddresses: nil
         )
 

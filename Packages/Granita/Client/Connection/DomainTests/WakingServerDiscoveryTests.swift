@@ -65,13 +65,32 @@ struct WakingServerDiscoveryTests {
     func `given a browse that reports Macs when it is decorated then the states pass through unchanged`() async throws {
         // given
         let found = DiscoveryState.found([DiscoveredServer(id: BonjourInstanceName(rawValue: "M"), name: "MacBook Pro")])
-        let scenario = Scenario(remembering: ["MacBook Pro": ["3e:2d:c6:c3:4b:fe"]], reporting: [.searching, found])
+        let scenario = Scenario(remembering: ["M": ["3e:2d:c6:c3:4b:fe"]], reporting: [.searching, found])
 
         // when
         let states = await scenario.states()
 
         // then
         #expect(states == [.searching, found])
+    }
+
+    @Test
+    func `given a remembered Mac when Bonjour reports none then the remembered Mac remains found`() async throws {
+        // given
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "MacBook Pro"),
+            name: "MacBook Pro"
+        )
+        let scenario = Scenario(
+            remembering: ["MacBook Pro": ["3e:2d:c6:c3:4b:fe"]],
+            reporting: [.searching, .found([])]
+        )
+
+        // when
+        let states = await scenario.states()
+
+        // then
+        #expect(states == [.searching, .found([mac])])
     }
 
     @Test
@@ -85,6 +104,51 @@ struct WakingServerDiscoveryTests {
         // then
         #expect(states == [.searching, .found([])])
         #expect(await scenario.waking.woken.isEmpty)
+    }
+
+    @Test
+    func `given a remembered Mac when Bonjour refuses local network access then the remembered Mac remains found`() async {
+        // given
+        let mac = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "MacBook Pro"),
+            name: "MacBook Pro"
+        )
+        let scenario = Scenario(
+            remembering: ["MacBook Pro": []],
+            reporting: [.localNetworkDenied]
+        )
+
+        // when
+        let states = await scenario.states()
+
+        // then
+        #expect(states == [.found([mac])])
+    }
+
+    @Test
+    func `given remembered Macs out of order when Bonjour is denied then both remain found in instance name order`() async {
+        // given
+        let scenario = Scenario(
+            remembering: ["MacBook Pro": [], "Mac Studio": []],
+            reporting: [.localNetworkDenied]
+        )
+
+        // when
+        let states = await scenario.states()
+
+        // then
+        #expect(states == [
+            .found([
+                DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "Mac Studio"),
+                    name: "Mac Studio"
+                ),
+                DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "MacBook Pro"),
+                    name: "MacBook Pro"
+                )
+            ])
+        ])
     }
 
     @Test
@@ -124,6 +188,7 @@ private struct Scenario {
                     serverInstanceId: ServerInstanceId(rawValue: "server-\(name)")
                 ),
                 fingerprint: SpkiFingerprint(rawValue: "fingerprint-\(name)"),
+                fallbackAddress: nil,
                 wakeAddresses: HardwareAddress.all(in: addresses)
             )
         }

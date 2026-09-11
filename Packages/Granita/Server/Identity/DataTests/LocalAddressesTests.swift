@@ -57,4 +57,20 @@ struct LocalAddressesTests {
         // certificate covers — which is how the TLS path is exercised without a second device.
         #expect(addresses.contains(IpAddress(bytes: [127, 0, 0, 1])))
     }
+
+    @Test func `given ordinary and Tailscale addresses when selecting the Tailscale IPv4 address then only it is returned`() {
+        // given
+        let tailscaleAddress = IpAddress(bytes: [100, 100, 42, 7])
+        let addresses = [
+            IpAddress(bytes: [192, 168, 1, 42]),
+            IpAddress(bytes: [0x20, 0x01, 0x0d, 0xb8] + Array(repeating: 0, count: 12)),
+            tailscaleAddress,
+        ]
+
+        // when
+        let result = LocalAddresses.tailscaleIpv4Address(in: addresses)
+
+        // then
+        #expect(result == tailscaleAddress)
+    }
 }

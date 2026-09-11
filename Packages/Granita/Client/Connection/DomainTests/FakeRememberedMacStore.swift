@@ -62,6 +62,7 @@ actor FakeRememberedMacStore: RememberedMacStore {
         saved[mac.instance] = RememberedMac(
             device: mac.device,
             fingerprint: mac.fingerprint,
+            fallbackAddress: mac.fallbackAddress,
             wakeAddresses: mac.wakeAddresses
         )
     }

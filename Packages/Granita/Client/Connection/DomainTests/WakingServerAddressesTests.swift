@@ -198,6 +198,7 @@ private struct Scenario {
                     serverInstanceId: ServerInstanceId(rawValue: "server")
                 ),
                 fingerprint: SpkiFingerprint(rawValue: "fingerprint"),
+                fallbackAddress: nil,
                 wakeAddresses: HardwareAddress.all(in: wakeAddresses)
             )
         ]
