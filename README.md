@@ -73,6 +73,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.10.0 — 2026-09-11
+- **Granita now reconnects to a paired Mac through Tailscale.** Keep the existing Tailscale apps
+  connected on the Mac and phone: Granita still prefers Bonjour on the LAN, then uses the Mac's
+  stable tailnet address when local discovery cannot reach it. Existing pairings learn that address
+  on their next successful local connection, so they do not need to be paired again.
+- **First pairing still happens on the local network.** Once that pairing exists, the same pinned TLS
+  identity and device token protect both the local and Tailscale connections.
+
 ### 0.9.2 — 2026-09-07
 - **Tapping a worktree in the sidebar now opens it.** In the split-view layout — an iPad in a regular
   width, or the Client running on a Mac — the row highlighted and nothing happened. The sidebar was
