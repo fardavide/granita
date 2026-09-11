@@ -382,6 +382,46 @@ extension RememberedMacsTests {
                 == ServerAddress(host: tailnetEndpoint.host, port: tailnetEndpoint.port)
         )
     }
+
+    @Test
+    func `given no remembered metadata when pinned health reports a tailnet endpoint without wake addresses then only the fallback is learned`() async throws {
+        // given
+        let fallbackAddress = ServerAddress(host: "100.100.42.8", port: Branding.defaultPort)
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMacWithNoWakeAddress],
+            servingHealth: HealthResponse(
+                name: "Granita",
+                apiVersion: Branding.apiVersion,
+                serverVersion: "0.6.0",
+                tailnetEndpoint: TailnetEndpoint(host: "100.100.42.8", port: Branding.defaultPort),
+                wakeAddresses: nil
+            )
+        )
+
+        // when
+        _ = try await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        let remembered = await scenario.macs.saved[theMacTheReaderTapped.id]
+        #expect(remembered?.fallbackAddress == fallbackAddress)
+        #expect(remembered?.wakeAddresses == [])
+    }
+
+    @Test
+    func `given remembered metadata is missing when pinned health is unavailable then the read succeeds without rewriting it`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMacWithNoWakeAddress],
+            healthUnavailable: true
+        )
+
+        // when
+        let worktrees = try await scenario.sut.worktrees(inProject: nil)
+
+        // then
+        #expect(worktrees == [aWorktree])
+        #expect(await scenario.macs.saved[theMacTheReaderTapped.id] == aRememberedMacWithNoWakeAddress)
+    }
 }
 
 // MARK: - Learning how to wake a Mac paired with before this phone could
@@ -463,6 +503,7 @@ private struct Scenario {
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
         refusing readFailure: ApiFailure? = nil,
+        healthUnavailable isHealthUnavailable: Bool = false,
         servingHealth healthResponse: HealthResponse? = nil,
         servingWakeAddresses wakeAddresses: [String] = []
     ) {
@@ -476,13 +517,17 @@ private struct Scenario {
         // builds *one* is asserted separately, through `opened`.
         let mac = FakeMacBehindAPairing(answering: readFailure)
         self.mac = mac
-        let healthResponse = healthResponse ?? HealthResponse(
-            name: "Granita",
-            apiVersion: Branding.apiVersion,
-            serverVersion: "0.6.0",
-            tailnetEndpoint: nil,
-            wakeAddresses: wakeAddresses
-        )
+        let availableHealth: HealthResponse? = if isHealthUnavailable {
+            nil
+        } else {
+            healthResponse ?? HealthResponse(
+                name: "Granita",
+                apiVersion: Branding.apiVersion,
+                serverVersion: "0.6.0",
+                tailnetEndpoint: nil,
+                wakeAddresses: wakeAddresses
+            )
+        }
         sut = RememberedMacRepository(
             reading: theMacTheReaderTapped,
             through: RememberedMacs(
@@ -492,7 +537,7 @@ private struct Scenario {
                     connections.opened(pairing)
                     return mac
                 },
-                healthOf: { _, _ in healthResponse }
+                healthOf: { _, _ in availableHealth }
             )
         )
     }

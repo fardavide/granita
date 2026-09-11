@@ -126,6 +126,32 @@ struct WakingServerDiscoveryTests {
     }
 
     @Test
+    func `given remembered Macs out of order when Bonjour is denied then both remain found in instance name order`() async {
+        // given
+        let scenario = Scenario(
+            remembering: ["MacBook Pro": [], "Mac Studio": []],
+            reporting: [.localNetworkDenied]
+        )
+
+        // when
+        let states = await scenario.states()
+
+        // then
+        #expect(states == [
+            .found([
+                DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "Mac Studio"),
+                    name: "Mac Studio"
+                ),
+                DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "MacBook Pro"),
+                    name: "MacBook Pro"
+                )
+            ])
+        ])
+    }
+
+    @Test
     func `given a browse that refuses local network access when it is decorated then that reaches the reader`() async throws {
         // given — the one refusal the reader can act on, and a decorator that swallowed it would
         // leave them looking at an empty list with no way to learn why.
