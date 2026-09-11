@@ -14,7 +14,7 @@ import ClientConnectionUi
 /// others and therefore sees every path — and being underneath is precisely what stopped it working,
 /// because `onChange` dies at `onDisappear` while the body goes on being evaluated. What it passes
 /// down instead is the closure, to the two screens that can be on top when a credential is spent.
-/// See `PairedMacHandover` and `.claude/docs/decisions.md`.
+/// See `PairedMacHandover` and `.ai/docs/decisions.md`.
 struct PairingEntryScreen: View {
 
     private let model: ClientConnectionModel
@@ -53,7 +53,7 @@ struct PairingEntryScreen: View {
         // link and its destination drifting apart in two modules — the exact way this app came to
         // ship a row that did nothing at all. The switch is total over the step, so the third case,
         // which is linked from the two screens below, cannot be forgotten either. See `CLAUDE.md`
-        // and `.claude/docs/decisions.md`.
+        // and `.ai/docs/decisions.md`.
         .navigationDestination(for: PairingStep.self) { step in
             switch step {
             case .scanTheCode:

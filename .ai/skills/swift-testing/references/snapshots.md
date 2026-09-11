@@ -127,7 +127,7 @@ Scripts/adopt-mac-baselines.py <dir>
 ## Before committing a re-record
 
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
-  and `.claude/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
+  and `.ai/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill.
 - **Review every changed PNG by eye.** Re-recording is the one operation in this repository that can
   make a wrong screen permanently correct.

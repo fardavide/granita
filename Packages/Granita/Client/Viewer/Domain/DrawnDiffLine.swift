@@ -29,7 +29,7 @@ public struct DrawnDiffLine: Hashable, Sendable {
     /// the syntax highlighter arrives and wants the same property — `SPEC.md` §10 has always
     /// specified "a stronger background on the changed spans over the line level add/remove
     /// background", and Davide settled the collision back to the specification on 28 August 2026.
-    /// Recorded in `.claude/docs/decisions.md`.
+    /// Recorded in `.ai/docs/decisions.md`.
     public static func of(_ line: DiffLine) -> DrawnDiffLine {
         guard let segments = line.segments, segments.count > 1 else {
             // Either the parser paired this line with nothing, or it paired it as one whole run —

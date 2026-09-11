@@ -1,6 +1,6 @@
 ---
 name: git-invocation
-description: How Granita invokes the git binary — the per-subcommand argument vector, the hardening flags, the environment, concurrent draining and timeouts, -z parsing including the two opposite rename layouts, and the six verified behaviours a naive implementation gets wrong.
+description: Defines how Granita invokes and parses the git binary, including hardening, timeouts, and `-z` rename layouts. Use before changing git execution, adding a subcommand, or diagnosing git-layer behavior.
 when_to_use: >
   Consult before writing or changing any code that runs `git`, before adding a new subcommand to
   the git client, and when a git-layer test fails in a way that looks like git "behaving oddly".

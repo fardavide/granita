@@ -1,6 +1,6 @@
 ---
 name: swift-style
-description: Granita's Swift 6 and SwiftUI conventions — strict concurrency and actor isolation, optionality discipline, exhaustive switch, typed throws with domain error enums, naming without consecutive uppercase, import grouping, member ordering, no init defaults on domain models, and SwiftUI styling.
+description: Granita's Swift 6 and SwiftUI conventions for concurrency, optionality, errors, naming, ordering, domain models, and styling. Use when writing or reviewing production Swift or building a screen to a design.
 when_to_use: >
   Consult when writing or reviewing Swift production code — adding a type, a view model or a
   SwiftUI view, choosing optionality or error handling, or naming something. Also when building a

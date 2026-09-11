@@ -1,6 +1,6 @@
 ---
 name: design
-description: Granita's screens are already designed — the client's four, the Mac's seven, the controls each one must use, the fields that drop first at 390pt, and the calls that are settled. Points at the design authority and names the rules that are binding rather than advisory.
+description: Granita's binding screen and control design rules for the client and Mac app. Use before changing SwiftUI, choosing controls, adding snapshot states, or answering how a screen should look.
 when_to_use: >
   Consult BEFORE writing or changing any SwiftUI in a Client or Server Ui or Presentation target — a
   screen, a Settings tab, a menu, a row, an empty state, a sheet, a toolbar, a colour or a
@@ -128,7 +128,7 @@ skill adds is what to do when the design is already written and the code cannot 
 3. Re-record the baselines (`swift-testing` skill) so the committed frames and the document agree.
    A baseline that moves while `design.md` does not is the screen drifting, not the design.
 
-**The frames are working material and they expire.** `.claude/docs/design/` holds drawings for
+**The frames are working material and they expire.** `.ai/docs/design/` holds drawings for
 screens that are **not built yet**, and a section's frames are **deleted in the pull request that
 implements it** — the built screen is pinned from then on by its snapshot baselines, and a drawing
 kept beside them is a second answer to a question that now has a real one. §1's frames are already

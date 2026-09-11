@@ -1,6 +1,6 @@
 ---
 name: design-handoff
-description: How Granita asks Claude Design for a screen and takes the answer back — that no pull request touching a screen opens before the frames exist, the round trip, the eight parts a prompt must carry, why the screens sent are the committed snapshot baselines, why no design system is uploaded, and where a returned call ends up.
+description: Runs Granita's design handoff and records the returned decision before screen work reaches a PR. Use before building or redrawing reader-visible UI, when requesting a design review, or when a design response returns.
 when_to_use: >
   Consult before building or redrawing anything a reader looks at — a phone screen, a state a reader
   can land in, the Mac settings window — and BEFORE opening any pull request that touches one, since
@@ -109,8 +109,8 @@ Three destinations, and **the second is the one that matters**.
 
 | What | Where | Why |
 |---|---|---|
-| The frames, as returned | `.claude/docs/design/`, with a row in that README | So a drawing can be looked at rather than remembered |
-| The calls, in this repository's own voice | A design sheet under `.claude/docs/`, and `status.md` when a slice moves | Prose survives a re-render; a frame is a snapshot of one moment's answer |
+| The frames, as returned | `.ai/docs/design/`, with a row in that README | So a drawing can be looked at rather than remembered |
+| The calls, in this repository's own voice | A design sheet under `.ai/docs/`, and `status.md` when a slice moves | Prose survives a re-render; a frame is a snapshot of one moment's answer |
 | Anything expensive to reverse | `decisions.md`, newest last, naming what it beat | The standing rule for every decision here |
 
 **A return is a recommendation, not a decision.** Where a frame and a locked item in `SPEC.md`

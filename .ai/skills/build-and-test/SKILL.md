@@ -1,5 +1,8 @@
 ---
-description: Build and test Granita the sanctioned way — package tests, then both app targets.
+name: build-and-test
+description: Builds and tests Granita through its sanctioned package, app, and coverage commands. Use when the user asks to build, test, verify, or prepare Granita for a PR.
+when_to_use: Use when the user asks to build, test, verify, or prepare Granita for a PR.
+user-invocable: true
 ---
 
 Run these, in this order, and report the real output rather than a summary of it.

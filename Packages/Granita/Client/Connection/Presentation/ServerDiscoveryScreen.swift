@@ -51,7 +51,7 @@ public struct ServerDiscoveryScreen<RememberedMacScreen: View>: View {
         // destination for that value — which compiles, draws a chevron, and does nothing at all
         // when tapped. It shipped that way. A link and its destination living in two modules is
         // what let them drift apart silently; in one file, adding the first without the second is
-        // visible. See `CLAUDE.md` and `.claude/docs/decisions.md`.
+        // visible. See `CLAUDE.md` and `.ai/docs/decisions.md`.
         //
         // **The branch is the whole of what a remembered Mac changes**, and it is here rather than
         // in the row because a row that led somewhere else would need `Ui` to know what a stored
@@ -59,7 +59,7 @@ public struct ServerDiscoveryScreen<RememberedMacScreen: View>: View {
         // draws: the worktrees for a Mac this phone has paired with, the two credentials for one it
         // has not. Design §5 is explicit that the first is where a paired Mac's row goes; until
         // 0.4.0 both went to the second, so every open of the app asked for a code again. See
-        // `.claude/docs/decisions.md`.
+        // `.ai/docs/decisions.md`.
         .navigationDestination(for: DiscoveredServer.self) { server in
             ChosenMacScreen(isRemembered: model.isRemembered(server)) {
                 readingARememberedMac(server)

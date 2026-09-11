@@ -1,6 +1,6 @@
 ---
 name: versioning
-description: Granita's version-bump and changelog convention — patch for fixes, minor when a feature slice lands, major only when Davide calls it, the README changelog in lockstep, and the build number left alone because Xcode Cloud writes it.
+description: Granita's version-bump and changelog convention, including Xcode Cloud build numbers. Use before changing the version, cutting a release, or opening a PR with user-visible behavior.
 when_to_use: >
   Consult before bumping the version or opening a pull request that adds user-visible behaviour —
   editing MARKETING_VERSION in project.yml, or when Davide says "bump the version" or "cut a

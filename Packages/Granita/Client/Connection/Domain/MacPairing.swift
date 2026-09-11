@@ -10,7 +10,7 @@ import CorePairingDomain
 /// **It exists because a screen drives the whole sequence now.** The model that drives those four
 /// screens is tested against one double for the sequence rather than against the two collaborators
 /// underneath it — which is the difference between a test about what a screen shows and a second
-/// copy of `MacPairingTests` one layer up. See `.claude/docs/decisions.md`.
+/// copy of `MacPairingTests` one layer up. See `.ai/docs/decisions.md`.
 public protocol MacJoining: Sendable {
 
     /// Spends a pairing code and keeps the only copy of what it buys.
@@ -65,7 +65,7 @@ public struct MacPairing: MacJoining {
     /// would replace the transport's own diagnostic with a worse one on an ordinary bad network.
     /// What it is for is the step that has no deadline at all: the Keychain is a synchronous call
     /// into another process, nothing above it can call it off, and a wedged one used to end as a
-    /// spinner with no screen behind it. See `.claude/docs/decisions.md`.
+    /// spinner with no screen behind it. See `.ai/docs/decisions.md`.
     private let patience: Duration
 
     public init(
@@ -310,7 +310,7 @@ public enum PairingOutcome: Hashable, Sendable {
     /// **The ending the vocabulary could not spell, and its absence is what shipped 0.1.0's worst
     /// defect.** Every other case here is something that happened; this is the one where nothing
     /// did, so the screen kept drawing the state before it — which is a spinner — for as long as the
-    /// reader was willing to look at it. See `.claude/docs/decisions.md`.
+    /// reader was willing to look at it. See `.ai/docs/decisions.md`.
     case neverAnswered(PairingStall)
 }
 

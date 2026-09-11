@@ -9,7 +9,7 @@
 > Items marked **VERIFY** must be checked against the real environment before code is written.
 >
 > Where the repository has since diverged from this document, the divergence is recorded in
-> `.claude/docs/decisions.md` with its reason. This file is the specification; that file is the
+> `.ai/docs/decisions.md` with its reason. This file is the specification; that file is the
 > history of departures from it.
 
 ---
@@ -1012,7 +1012,7 @@ If a practice exists in only one of the two, follow that one; if they disagree, 
 
 Follow them for, at minimum: CI setup, GitHub repository rules, screenshot tests, coverage reports,
 and the Claude Design handoff flow. What was found and adopted is recorded in
-`.claude/docs/decisions.md`.
+`.ai/docs/decisions.md`.
 
 ---
 

@@ -19,7 +19,7 @@ import CoreDiffDomain
 /// "orientation for arriving, not for staying" — and arriving is what §3's file selector is for.
 /// **It is provisional**: whether a two-form header can be made to keep one slot height is a
 /// question about a real scroll under a real thumb, and it goes with the rest of §4's device
-/// questions. See `.claude/docs/decisions.md`.
+/// questions. See `.ai/docs/decisions.md`.
 ///
 /// **Both controls design §4 puts on this line are here now.** The chevron shuts the file, which is
 /// what `SPEC.md` §10 means by a file marked viewed rendering collapsed, and the circle writes the

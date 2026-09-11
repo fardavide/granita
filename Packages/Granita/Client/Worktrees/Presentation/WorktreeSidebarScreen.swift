@@ -131,7 +131,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         if claimsRowTaps {
             // **Declared beside the rows that link to it**, which is the placement that stops a link
             // and its destination drifting apart in two modules — the exact way this app came to ship
-            // a row that did nothing at all. See `CLAUDE.md` and `.claude/docs/decisions.md`.
+            // a row that did nothing at all. See `CLAUDE.md` and `.ai/docs/decisions.md`.
             sidebar.navigationDestination(for: WorktreeID.self) { worktree in
                 opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
             }

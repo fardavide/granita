@@ -14,7 +14,7 @@ import ClientConnectionDomain
 /// **Nothing here clamps how wide the app may draw.** Through 0.7.0 everything before a paired Mac
 /// was held in a 420pt centred column, which put the large title and the rows in the middle of an
 /// iPad and left the window white either side of them. The screens use stock SwiftUI at the width
-/// they are given now. See `.claude/docs/decisions.md`.
+/// they are given now. See `.ai/docs/decisions.md`.
 ///
 /// The two destinations past the spine are handed in, because both are built over a session pinned
 /// to one Mac and neither may be seen from here: a `Presentation` target sees its own `Ui` and any

@@ -14,7 +14,7 @@ import CorePairingDomain
 ///
 /// It used to assert a second rule — the 420pt measure everything before a paired Mac was clamped
 /// to, and its release past the spine. That measure is gone, so its six tests are too. See
-/// `.claude/docs/decisions.md`.
+/// `.ai/docs/decisions.md`.
 @Suite("Pairing spine navigation")
 struct PairingSpineNavigationTests {
 

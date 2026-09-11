@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Granita's module rules — the <Unit>/<Feature>/<Layer> tree, which layer may import which, no I/O in a view, one model per unit, the three composition roots, adding a module, typed opaque identifiers, and dependency inversion with handwritten fakes.
+description: Granita's module rules, composition roots, typed identifiers, and dependency inversion. Use before creating modules, adding dependencies, placing types, or putting external I/O near a view.
 when_to_use: >
   Consult before creating a module or a directory that will hold one, before adding any dependency
   line to Package.swift, before deciding where a new type belongs, and whenever a build fails with

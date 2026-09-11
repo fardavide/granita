@@ -96,7 +96,7 @@ struct PairingStateTests {
 
         // then — all three, because the thing this ending replaces is a spinner: an ending that
         // reached the vocabulary and not this predicate would leave the reader exactly where the
-        // defect left them. See `.claude/docs/decisions.md`.
+        // defect left them. See `.ai/docs/decisions.md`.
         #expect(state.needsTheOutcomeScreen)
     }
 

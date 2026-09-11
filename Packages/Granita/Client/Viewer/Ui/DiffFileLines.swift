@@ -13,7 +13,7 @@ import CoreDiffDomain
 /// a row wider than its container is centred in it. So the numbers are a fixed column outside the
 /// scroll, the code is a stack inside it, and the price is that two stacks have to agree on every
 /// row's height. That height is therefore stated once, below, rather than left to two text engines
-/// to arrive at independently. See `.claude/docs/decisions.md`.
+/// to arrive at independently. See `.ai/docs/decisions.md`.
 ///
 /// **The tints are drawn behind both halves rather than on either.** A row's colour says which side
 /// of the comparison the line is on, which is a fact about the row and not about the text — so it
@@ -407,7 +407,7 @@ public struct DiffFileLines: View {
     /// instead, taking the unchanged runs down to secondary. That reads well and it spends the one
     /// property the syntax highlighter needs: a lexer colours text, and a line whose text colour
     /// already means *this part changed* has nothing left to say `keyword` with. Davide settled it
-    /// back to the specification on 28 August 2026. In `.claude/docs/decisions.md`.
+    /// back to the specification on 28 August 2026. In `.ai/docs/decisions.md`.
     ///
     /// **So the alpha is derived rather than drawn.** §4's argument that "stronger" is a ratio still
     /// holds, and it is the thing that survives: the changed run reads at three times the row's own

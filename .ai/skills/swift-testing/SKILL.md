@@ -1,6 +1,6 @@
 ---
 name: swift-testing
-description: Granita's test conventions — Swift Testing not XCTest, the Scenario fixture, given/when/then names, handwritten fakes over mocking frameworks, the golden diff corpus, the snapshot suites and their tolerances, and covering new code against the coverage gate.
+description: Granita's Swift Testing, Scenario, fake, golden-fixture, snapshot, and coverage conventions. Use when writing or reviewing tests, recording snapshots, asserting fixtures, or diagnosing coverage failures.
 when_to_use: >
   Use when writing or reviewing test code — adding a @Test, building a Scenario, writing a fake,
   asserting against a golden fixture, adding or re-recording a snapshot baseline, or when a coverage
@@ -118,7 +118,7 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
   `make snapshots-mac` is expected to be red on your machine. Never record the phone's on CI, and
   never re-record the Mac's locally to make it green.
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
-  and `.claude/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
+  and `.ai/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill. Review every changed PNG by eye before committing.
 - **Every `@Suite` here carries `.serialized`**, all twenty of them. The suites share one real window,
   so anything a render leaves behind is the next render's input, and waiting for it to clear means
