@@ -168,6 +168,7 @@ nonisolated let aPairedMac = PairedMac(
         serverInstanceId: ServerInstanceId(rawValue: "server-1")
     ),
     address: aMacAddress,
+    fallbackAddress: nil,
     fingerprint: SpkiFingerprint(rawValue: "9dQ0mHXWiHc4T0uQr4nqe3sBEUqB1qkFqjNwr8SsCkI="),
     wakeAddresses: []
 )
