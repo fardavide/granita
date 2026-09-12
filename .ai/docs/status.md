@@ -2,6 +2,11 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.10.1 — remembered Macs appear on a cold remote launch.** On cellular, `NWBrowser` can
+remain in its searching state without ever reporting an empty result. The phone now surfaces
+fallback-capable remembered Macs from that state instead of waiting for a Bonjour result that may
+never arrive; a later Bonjour result remains authoritative.
+
 **Version 0.10.0 — Tailscale reconnection is implemented for the existing Mac and iOS apps.** The Mac
 app binds its pinned TLS API on stable port 8737, advertises that same listener through Bonjour, and
 exposes its `100.64.0.0/10` address through health whenever the separately installed Tailscale app is

@@ -81,6 +81,12 @@ public protocol RememberedMacStore: Sendable {
     /// handling tokens.
     func rememberedMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName>
 
+    /// Every remembered Mac with a stable address outside Bonjour.
+    ///
+    /// Names only, so discovery can keep remote-capable rows present without reading the token or
+    /// fingerprint that protects the connection behind each one.
+    func remotelyReachableMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName>
+
     /// Every hardware address this phone knows, across every Mac it has paired with.
     ///
     /// **Addresses only, for the same reason the call above is names only**: waking a Mac takes no

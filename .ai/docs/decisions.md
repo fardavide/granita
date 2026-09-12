@@ -5686,6 +5686,13 @@ state remain authoritative. An unreachable or locally denied resolve uses the st
 the same SPKI pin and bearer token; remembered rows therefore remain tappable even when multicast
 discovery has no answer.
 
+**A searching browser is already an empty local answer for remote rows.** On cellular, `NWBrowser`
+can become ready and remain searching without ever calling its results handler with an empty set.
+Waiting for `.found([])` therefore leaves the screen searching forever even when a remembered Mac
+has a stable fallback. The discovery decorator surfaces fallback-capable remembered Macs from
+`.searching`, then lets any later Bonjour result supply the authoritative local name for matching
+servers while unmatched remembered rows remain available remotely.
+
 **Old pairings upgrade rather than expire.** Missing endpoint fields decode as local-only. On the
 next successful local connection, the phone reads health through the already-stored pin and rewrites
 the Keychain record with any tailnet endpoint and wake addresses it learned. An untrusted Bonjour

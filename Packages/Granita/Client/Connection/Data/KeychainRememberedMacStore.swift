@@ -124,6 +124,16 @@ public struct KeychainRememberedMacStore: RememberedMacStore {
         }
     }
 
+    public func remotelyReachableMacs() async throws(RememberedMacStoreFailure) -> Set<BonjourInstanceName> {
+        var reachable: Set<BonjourInstanceName> = []
+        for mac in try await rememberedMacs() {
+            if try await remembered(mac)?.fallbackAddress != nil {
+                reachable.insert(mac)
+            }
+        }
+        return reachable
+    }
+
     public func wakeAddresses() async throws(RememberedMacStoreFailure) -> [HardwareAddress] {
         // **This one does read the data**, unlike the enumeration above, because a hardware address
         // is stored inside the same item as the token — so there is no attribute-only query that

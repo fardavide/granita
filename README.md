@@ -73,6 +73,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.10.1 — 2026-09-12
+- **Remembered Macs now appear when Granita opens away from the local network.** A cellular-only
+  launch previously remained on Searching because Bonjour did not report an empty result. Granita
+  now surfaces paired Macs with stored Tailscale addresses immediately, while still preferring
+  Bonjour whenever it returns.
+
 ### 0.10.0 — 2026-09-11
 - **Granita now reconnects to a paired Mac through Tailscale.** Keep the existing Tailscale apps
   connected on the Mac and phone: Granita still prefers Bonjour on the LAN, then uses the Mac's

@@ -35,6 +35,9 @@ public struct WakingServerDiscovery: ServerDiscovering {
             let remembering = Task {
                 (try? await macs.rememberedMacs()) ?? []
             }
+            let remotelyReachable = Task {
+                (try? await macs.remotelyReachableMacs()) ?? []
+            }
             let waker = Task {
                 // Silent on refusal, and the silence is the design. A Keychain that will not
                 // enumerate costs the reader a wake they cannot perceive the absence of; reporting
@@ -65,7 +68,16 @@ public struct WakingServerDiscovery: ServerDiscovering {
                                 .sorted { $0.rawValue < $1.rawValue }
                                 .map { DiscoveredServer(id: $0, name: $0.rawValue) }
                         ))
-                    case .idle, .searching, .failed:
+                    case .searching:
+                        continuation.yield(state)
+                        let withFallback = await remotelyReachable.value
+                        guard withFallback.isEmpty == false else { continue }
+                        continuation.yield(.found(
+                            withFallback
+                                .sorted { $0.rawValue < $1.rawValue }
+                                .map { DiscoveredServer(id: $0, name: $0.rawValue) }
+                        ))
+                    case .idle, .failed:
                         continuation.yield(state)
                     }
                 }
@@ -73,6 +85,7 @@ public struct WakingServerDiscovery: ServerDiscovering {
             }
             continuation.onTermination = { _ in
                 remembering.cancel()
+                remotelyReachable.cancel()
                 waker.cancel()
                 browsing.cancel()
             }
