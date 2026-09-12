@@ -60,6 +60,9 @@ public final class UrlSessionHttpTransport: HttpTransport {
     }
 
     public func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse {
+        guard request.url.scheme == "https" else {
+            throw .requestNotBuildable(diagnostic: "Granita connections require HTTPS")
+        }
         var outgoing = URLRequest(url: request.url)
         outgoing.httpMethod = request.method.rawValue
         outgoing.httpBody = request.body

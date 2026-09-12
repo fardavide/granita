@@ -302,8 +302,8 @@ jobs:
       #
       # Keyed on project.yml rather than on the project's Package.resolved, which is what Aura keys
       # on. Aura hand-maintains its .xcodeproj so that file is committed there; here the project is
-      # generated, and `xcodegen generate` wipes project.xcworkspace/xcshareddata — so the file
-      # cannot be committed, hashFiles would return empty, and every run would collide on one
+      # generated, and the workspace lockfile is an ignored runtime cache — so hashFiles would
+      # return empty on a fresh checkout, and every run would collide on one
       # degenerate key while looking like it had a cache.
       #
       # The cost of the substitute: project.yml pins a lower bound, so a new patch release of
@@ -365,6 +365,10 @@ jobs:
             -destination 'platform=iOS Simulator,name=${{ steps.simulator.outputs.name }},OS=latest' \
             -clonedSourcePackagesDirPath SourcePackages \
             CODE_SIGNING_ALLOWED=NO
+
+      # Native TLS must be judged inside the app host, not by host-only certificate unit tests.
+      - name: Run pinned TLS connection tests
+        run: make tls-tests-ios TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
 
       # On a mismatch the freshly-rendered image is written beside the baseline it failed against
       # (SnapshotSupport pins SNAPSHOT_ARTIFACTS there). Pair them into one self-contained HTML page

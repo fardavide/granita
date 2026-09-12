@@ -691,10 +691,10 @@ no longer matches so a stale version cannot be marked viewed), `gitFailure` (500
   the login Keychain, ten year validity, SAN covering the Bonjour hostname and every local IP. The
   pairing QR carries `granita://pair?host=&port=&code=&spki=<base64 SHA-256 of the SPKI>` and the
   client **pins that SPKI** in a `URLSessionDelegate` server-trust challenge.
-- A custom trust evaluation satisfies App Transport Security, so **no ATS exception is required**.
-  Keep `NSAllowsLocalNetworking = YES` only as a declaration of intent. Tailscale reconnection uses
-  the Mac's stable `100.64.0.0/10` IPv4 address and the same pinned TLS identity, so it needs neither
-  an ATS exception nor MagicDNS.
+- Custom pin evaluation does not override ATS requirements for remote IP loads. Keep
+  `NSAllowsLocalNetworking = YES` for local discovery and declare a manual-trust exception only
+  for Tailscale's `100.64.0.0/10` IPv4 range. Tailscale reconnection uses the same pinned TLS
+  identity and HTTPS, without MagicDNS, global arbitrary loads or weaker TLS requirements.
 - Bearer token on every route except `/v1/health` and `/v1/pair`, constant time comparison. Tokens
   are per device, individually revocable, stored hashed on the Mac and in the Keychain on iOS. The
   one time pairing code expires after 120 seconds and is single use. A six word fallback code is

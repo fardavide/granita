@@ -5,14 +5,14 @@ import CorePairingDomain
 
 /// The `URLSession` delegate that decides whether a Mac is the Mac this phone paired with.
 ///
-/// **It replaces the system's evaluation; it does not add to it.** The reasoning lives on
+/// It replaces the delegate's certificate decision, not ATS policy. The reasoning lives on
 /// `PinnedTrust`, which is where the decision is and where the tests are. What is here is the
 /// adaptation: pull the leaf key out of a `SecTrust`, ask, and turn the answer into a disposition.
 ///
 /// One of these per paired Mac, because one fingerprint is one Mac. A session built with this
 /// delegate can reach exactly one server, which is the property that makes a mixed-up base URL a
 /// refused handshake rather than a silent read from the wrong machine.
-public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
+public final class PinnedServerTrust: NSObject, URLSessionTaskDelegate, Sendable {
 
     private let pinned: SpkiFingerprint
     private let logs: ConnectionLogs
@@ -71,6 +71,16 @@ public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
             await logs.record(event)
             completionHandler(answer.disposition, answer.credential)
         }
+    }
+
+    // The API has no redirect routes; refusing them prevents an HTTPS-to-HTTP downgrade.
+    public func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        nil
     }
 
     private func judgment(forAuthenticationMethod method: String, trust: SecTrust?) -> Judgment {

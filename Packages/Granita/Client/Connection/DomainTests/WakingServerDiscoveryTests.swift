@@ -93,7 +93,7 @@ struct WakingServerDiscoveryTests {
         #expect(states == [.searching, .found([mac])])
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `given remembered Macs with fallbacks when a cold browse keeps searching then the remembered Macs are found`() async {
         // given
         let macBookPro = DiscoveredServer(
@@ -115,10 +115,14 @@ struct WakingServerDiscoveryTests {
         )
 
         // when
-        let states = await scenario.statesWhileBrowsing()
+        var states: [DiscoveryState] = []
+        for await state in scenario.sut.discover() {
+            states.append(state)
+            if case .found = state { break }
+        }
 
         // then
-        #expect(states.last == .found([macMini, macBookPro]))
+        #expect(states == [.searching, .found([macMini, macBookPro])])
     }
 
     @Test
@@ -248,22 +252,6 @@ private struct Scenario {
             await Task.yield()
         }
         return seen
-    }
-
-    func statesWhileBrowsing() async -> [DiscoveryState] {
-        let sut = sut
-        let listening = Task {
-            var seen: [DiscoveryState] = []
-            for await state in sut.discover() {
-                seen.append(state)
-            }
-            return seen
-        }
-        for _ in 0..<50 {
-            await Task.yield()
-        }
-        listening.cancel()
-        return await listening.value
     }
 }
 

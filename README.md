@@ -84,6 +84,11 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.11.2 — 2026-09-12
+- **Pinned HTTPS connections over Tailscale now complete.** The phone no longer rejects the
+  Mac's self-signed certificate after its saved public-key pin matches. The exception is limited
+  to Tailscale's IPv4 range; connections still use HTTPS and the same pairing identity.
+
 ### 0.11.1 — 2026-09-12
 - **Copy Logs now includes certificate-check outcomes.** Connection reports show whether the
   phone reached Granita's TLS trust check and whether the Mac matched its saved public-key pin,
