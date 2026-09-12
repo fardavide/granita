@@ -101,6 +101,10 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 snapshots-ios: ## Render the phone's screens on a simulator
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO
 
+.PHONY: tls-tests-ios
+tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobileConnections -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO $(TLS_PACKAGE_FLAGS)
+
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment
 	@# **A red run here is the normal state on a developer's Mac, and is not something to fix.**
@@ -196,15 +200,15 @@ clean: ## Remove build output and the generated fixture repositories
 
 .PHONY: resolve
 resolve: ## Refresh Package.resolved for the Xcode graph (run before committing after `swift test`)
-	@# Xcode resolves the project AND the local package as one graph and writes the union here;
-	@# `swift build` and `swift test` rewrite the same file with the package's own dependencies
-	@# only, dropping the Xcode-only ones. Xcode Cloud disables automatic resolution and refuses a
-	@# stale file, so the union is what must be committed.
+	@# Xcode writes the project/package union into the workspace's lockfile. SwiftPM writes only
+	@# the package graph into the committed file, so copy the freshly resolved union back before
+	@# validating it. Xcode Cloud disables automatic resolution and needs those Xcode-only pins.
 	@# Into a throwaway derived data path, deliberately. With a warm one there is nothing to
 	@# resolve, so xcodebuild does not rewrite the file and silently leaves whatever `swift build`
 	@# last wrote — which is the stripped version this target exists to undo.
 	xcodebuild -resolvePackageDependencies -project $(PROJECT) -scheme GranitaMobile \
 		-derivedDataPath "$$(mktemp -d)/resolve" > /dev/null
+	cp $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved $(PACKAGE)/Package.resolved
 	@python3 -c "import json;d=json.load(open('$(PACKAGE)/Package.resolved'));\
 		pins=d['pins'];\
 		ok=any('snapshot' in p['identity'] for p in pins);\

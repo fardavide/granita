@@ -2,7 +2,18 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.11.1 — TLS decision reporting is implemented, awaiting PR merge.** The phone-side report includes
+**Version 0.11.2 — scoped Tailscale TLS correction is implemented; release is pending.** A real app-hosted
+URLSession test on iOS 26.5 reproduced build 137's matched-pin-then-`-1200` report. Adding only
+a manual-trust ATS exception for `100.64.0.0/10` made the same HTTPS fixture request succeed.
+Certificate pinning and TLS defaults are unchanged; the client independently enforces HTTPS.
+Verification passes: 1,364 package tests, three real simulator TLS controls, unsigned package/app
+builds, and all six coverage values against main at `232e0ef`. Wrong pins remain refused and the
+same fixture remains ATS-protected outside the tailnet range. Native callback tests cover both
+delegates' redirect refusal. No server restart or identity replacement is part of this fix; iOS 27 phone
+confirmation remains a post-release step. The comparison's initial LAN-IP control was invalid
+because it received a different certificate, so it is not treated as LAN-policy evidence.
+
+**Version 0.11.1 — TLS decision reporting is published (PR #80 merged).** The phone-side report includes
 the paired connection's server-trust callback outcome: matching pin, mismatched pin, missing trust
 or unusable public key. The decision is recorded before callback completion, without certificates,
 fingerprints or credentials. Acceptance policy, server code and visible error screens are unchanged.

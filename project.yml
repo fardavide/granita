@@ -33,7 +33,7 @@ packages:
 # .ai/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.11.1
+    MARKETING_VERSION: 0.11.2
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -140,11 +140,13 @@ targets:
         # would be a rule that always answers no.
         LSApplicationQueriesSchemes:
           - itms-beta
-        # A custom trust evaluation in a URLSessionDelegate satisfies App Transport Security on
-        # its own, so no exception is required. This key is kept as a declaration of intent, and
-        # because it is what a plaintext fallback would need if TLS ever had to be turned off.
+        # ATS still evaluates remote IP loads after the delegate accepts our self-signed pin.
+        # Allow manual trust only for Tailscale's IPv4 range; retain TLS defaults and pin checks.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            "100.64.0.0/10":
+              NSExceptionAllowsInsecureHTTPLoads: true
         CFBundleURLTypes:
           - CFBundleURLName: dev.fardavide.granita.pairing
             CFBundleURLSchemes: [granita]
@@ -271,10 +273,36 @@ targets:
         BUNDLE_LOADER: "$(TEST_HOST)"
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.snapshottests
 
+  # Real URLSession TLS handshakes must run inside the app whose ATS policy they judge.
+  GranitaMobileConnectionTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - Apps/GranitaMobileConnectionTests
+    dependencies:
+      - target: GranitaMobile
+    settings:
+      groups: [shared]
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.connectiontests
+        GENERATE_INFOPLIST_FILE: YES
+
 # XcodeGen emits a shared scheme only when a `schemes:` block declares one. Without this, Xcode
 # Cloud's product list comes up empty with no explanation — verify with
 # `xcodebuild -project Granita.xcodeproj -describeAllArchivableProducts -json`.
 schemes:
+
+  GranitaMobileConnections:
+    build:
+      targets:
+        GranitaMobile: [test]
+        GranitaMobileConnectionTests: [test]
+    test:
+      config: Debug
+      targets:
+        - GranitaMobileConnectionTests
 
   # Two kinds of test in one scheme, which is why every invocation of it now says `-only-testing`.
   # Without that, `make snapshots-mac` and the `Snapshot tests (macOS)` job would silently start

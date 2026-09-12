@@ -15,7 +15,7 @@ import CorePairingDomain
 /// first use: whoever answers at that address in that moment becomes the Mac, and everything after
 /// pairing is pinned strictly to whatever this recorded. The screen offering this path says so, in
 /// as many words, because a risk nobody is told about is one nobody accepted.
-public final class FirstContactServerTrust: NSObject, URLSessionDelegate, Sendable {
+public final class FirstContactServerTrust: NSObject, URLSessionTaskDelegate, Sendable {
 
     private let observed = Observed()
 
@@ -63,6 +63,16 @@ public final class FirstContactServerTrust: NSObject, URLSessionDelegate, Sendab
             let answer = await disposition(forAuthenticationMethod: method, trust: trust)
             completionHandler(answer.disposition, answer.credential)
         }
+    }
+
+    // Pairing also stays on its original HTTPS endpoint, never a redirected destination.
+    public func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        nil
     }
 
     /// The public key of the certificate the server presented, in the X9.63 form CryptoKit reads.

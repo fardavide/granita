@@ -366,6 +366,10 @@ jobs:
             -clonedSourcePackagesDirPath SourcePackages \
             CODE_SIGNING_ALLOWED=NO
 
+      # Native TLS must be judged inside the app host, not by host-only certificate unit tests.
+      - name: Run pinned TLS connection tests
+        run: make tls-tests-ios TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
+
       # On a mismatch the freshly-rendered image is written beside the baseline it failed against
       # (SnapshotSupport pins SNAPSHOT_ARTIFACTS there). Pair them into one self-contained HTML page
       # so a red run is reviewable by eye — including on a phone — rather than by downloading an
