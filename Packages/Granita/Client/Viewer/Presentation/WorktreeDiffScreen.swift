@@ -224,6 +224,7 @@ public struct WorktreeDiffScreen: View {
     private var diff: some View {
         ContinuousDiffView(
             state: model.state,
+            logCopyState: model.logCopyState,
             pointSize: layout.codePointSize,
             jumpTarget: model.jumpTarget,
             comments: model.reviewed,
@@ -245,7 +246,8 @@ public struct WorktreeDiffScreen: View {
             onTapGutter: { row, file in model.tappedGutter(row, in: file) },
             onLongPressGutter: { row, file in model.longPressedGutter(row, in: file) },
             onOpenReview: { model.showReview() },
-            onRetry: { Task { await model.load() } }
+            onRetry: { Task { await model.load() } },
+            onCopyLogs: { Task { await model.copyLogs() } }
         )
         // **Overlaid, never inset.** A `safeAreaInset` shortens the scroll, and a scroll that changes
         // height is every measured row position invalidated under a reader who pressed nothing —

@@ -43,6 +43,7 @@ struct WorktreeSidebarViewSnapshotTests {
                 WorktreeSidebarView(
                     macName: subject.macName,
                     state: subject.state,
+                    logCopyState: .ready,
                     mode: subject.mode,
                     showsQuietWorktrees: subject.showsQuietWorktrees,
                     removing: subject.removing,
@@ -51,7 +52,8 @@ struct WorktreeSidebarViewSnapshotTests {
                     onRename: { _ in },
                     onSetPinned: { _, _ in },
                     onDelete: { _ in },
-                    onRetry: {}
+                    onRetry: {},
+                    onCopyLogs: {}
                 )
             }
             .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)

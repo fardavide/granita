@@ -13,18 +13,26 @@ import ClientConnectionDomain
 /// all once this list becomes a split-view sidebar. The destination arrives with pairing.
 public struct ServerDiscoveryView: View {
 
+    @Environment(\.accessibilityReduceMotion) public var reduceMotion
+
     private let state: DiscoveryState
+    private let logCopyState: DiagnosticCopyState
     private let onSearchAgain: () -> Void
     private let onOpenSettings: () -> Void
+    private let onCopyLogs: () -> Void
 
     public init(
         state: DiscoveryState,
+        logCopyState: DiagnosticCopyState,
         onSearchAgain: @escaping () -> Void,
-        onOpenSettings: @escaping () -> Void
+        onOpenSettings: @escaping () -> Void,
+        onCopyLogs: @escaping () -> Void
     ) {
         self.state = state
+        self.logCopyState = logCopyState
         self.onSearchAgain = onSearchAgain
         self.onOpenSettings = onOpenSettings
+        self.onCopyLogs = onCopyLogs
     }
 
     public var body: some View {
@@ -38,11 +46,12 @@ public struct ServerDiscoveryView: View {
                 list(of: servers)
             case .localNetworkDenied:
                 permissionRefused
-            case .failed(let diagnostic):
-                failed(diagnostic)
+            case .failed:
+                failed
             }
         }
         .navigationTitle("Granita")
+        .animation(reduceMotion ? nil : .default, value: logCopyState)
     }
 
     /// No spinner: a progress view promises a finish, and Bonjour has none. The symbol's motion is
@@ -69,6 +78,8 @@ public struct ServerDiscoveryView: View {
             // recourse, which is to kill the app.
             Button("Search Again", action: onSearchAgain)
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            copyLogs
         }
     }
 
@@ -76,32 +87,56 @@ public struct ServerDiscoveryView: View {
         ContentUnavailableView {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
         } description: {
-            Text("Granita finds your Mac over the local network. Without permission it cannot see it at all.")
+            Text("Allow Local Network access in Settings so Granita can find your Mac.")
         } actions: {
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            copyLogs
         }
     }
 
-    /// Three slots, three jobs. The description is ours and always says the same two things; the
-    /// action retries; the system's own sentence goes to the bottom in small print, where it is
-    /// copyable into a bug report and unmistakably not instructions.
-    private func failed(_ diagnostic: String) -> some View {
+    private var failed: some View {
         ContentUnavailableView {
             Label("Could not search", systemImage: "exclamationmark.triangle")
         } description: {
-            Text("Something stopped Granita from looking on this network. Trying again usually works; if it does not, check Local Network access in Settings.")
+            Text("Try searching again. If it still fails, check Local Network access in Settings.")
         } actions: {
             Button("Try Again", action: onSearchAgain)
                 .buttonStyle(.borderedProminent)
-            Text(diagnostic)
-                .font(.caption2)
-                .monospaced()
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .textSelection(.enabled)
-                .padding(.top)
+                .controlSize(.large)
+            copyLogs
         }
+    }
+
+    private var copyLogs: some View {
+        VStack(spacing: 8) {
+            Button(action: onCopyLogs) {
+                switch logCopyState {
+                case .ready: Text("Copy Logs")
+                case .copying: Text("Copying Logs…")
+                case .copied: Text("Copy Logs Again")
+                case .failed: Text("Try Copying Again")
+                }
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.large)
+            .disabled(logCopyState == .copying)
+
+            switch logCopyState {
+            case .ready, .copying:
+                EmptyView()
+            case .copied:
+                Text("Logs copied. Paste them into your message.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            case .failed:
+                Text("Couldn’t copy logs. Please try again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .multilineTextAlignment(.center)
     }
 
     private func list(of servers: [DiscoveredServer]) -> some View {

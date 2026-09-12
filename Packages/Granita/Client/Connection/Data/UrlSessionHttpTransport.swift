@@ -11,21 +11,23 @@ import CorePairingDomain
 /// would leak a delegate and a connection pool every time the phone polls.
 public final class UrlSessionHttpTransport: HttpTransport {
 
-    private let session: URLSession
+    private let session: any SessionRequests
+    private let logs: ConnectionLogs
 
     /// What this transport ended up trusting. A closure because the two ways of building one answer
     /// it from different places — a pin is known at construction, a first contact only after a
     /// handshake — and the caller above must not have to know which kind it holds.
     private let trusted: @Sendable () async -> SpkiFingerprint?
 
-    public init(pinnedTo fingerprint: SpkiFingerprint) {
+    public init(pinnedTo fingerprint: SpkiFingerprint, logs: ConnectionLogs) {
         // Ephemeral: nothing about a diff belongs in a URL cache on disk, and a 304 against a
         // revision the phone is polling for would be a change it never learns about.
-        session = URLSession(
+        session = UrlSessionRequests(session: URLSession(
             configuration: .ephemeral,
             delegate: PinnedServerTrust(pinnedTo: fingerprint),
             delegateQueue: nil
-        )
+        ))
+        self.logs = logs
         // A pinned session refuses everything else, so what it trusted is the pin by construction.
         trusted = { fingerprint }
     }
@@ -36,10 +38,21 @@ public final class UrlSessionHttpTransport: HttpTransport {
     /// the repository's own transport is then pinned to, so the window in which anything is
     /// unpinned is one exchange long and ends the moment pairing does. The screen that offers this
     /// path says what it means; see `.ai/docs/decisions.md`.
-    public init(trustingFirstAnswer: Void = ()) {
+    public init(trustingFirstAnswer: Void, logs: ConnectionLogs) {
         let trust = FirstContactServerTrust()
-        session = URLSession(configuration: .ephemeral, delegate: trust, delegateQueue: nil)
+        session = UrlSessionRequests(session: URLSession(configuration: .ephemeral, delegate: trust, delegateQueue: nil))
+        self.logs = logs
         trusted = { await trust.fingerprint() }
+    }
+
+    init(
+        performing session: any SessionRequests,
+        trusting trusted: @escaping @Sendable () async -> SpkiFingerprint?,
+        logs: ConnectionLogs
+    ) {
+        self.session = session
+        self.trusted = trusted
+        self.logs = logs
     }
 
     public func trustedFingerprint() async -> SpkiFingerprint? {
@@ -59,8 +72,14 @@ public final class UrlSessionHttpTransport: HttpTransport {
             guard let http = response as? HTTPURLResponse else {
                 throw ApiFailure.notUnderstood(diagnostic: "the reply was not an HTTP response")
             }
+            await logs.record(.requestFinished(method: request.method, url: request.url, statusCode: http.statusCode))
             return HttpResponse(statusCode: http.statusCode, body: body)
         } catch {
+            await logs.record(.requestFailed(
+                method: request.method,
+                url: request.url,
+                errors: ConnectionLogError.chain(for: error)
+            ))
             // **What the failure means is `ApiFailure`'s to say, not this file's.** Nothing can
             // build a `URLSession` in a test binary, so a decision written here is one nothing holds
             // to its behaviour — and the decision that used to live here was wrong: a cancelled

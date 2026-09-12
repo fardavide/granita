@@ -36,8 +36,10 @@ struct ServerDiscoveryViewSnapshotTests {
             NavigationStack {
                 ServerDiscoveryView(
                     state: subject.state,
+                    logCopyState: .ready,
                     onSearchAgain: {},
-                    onOpenSettings: {}
+                    onOpenSettings: {},
+                    onCopyLogs: {}
                 )
             },
             layout: layout,

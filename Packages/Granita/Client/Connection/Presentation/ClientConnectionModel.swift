@@ -16,6 +16,7 @@ import CorePairingDomain
 public final class ClientConnectionModel {
 
     public private(set) var discovery: DiscoveryState = .idle
+    public private(set) var logCopyState: DiagnosticCopyState = .ready
 
     /// Which browse is current. The screen keys its task on this, so changing it is what tears the
     /// running browse down and starts another.
@@ -89,6 +90,7 @@ public final class ClientConnectionModel {
     private let camera: any CameraAuthorizing
     private let scanner: any CodeScanning
     private let addresses: any ServerAddressResolving
+    private let copyingLogs: any DiagnosticLogsCopying
 
     /// How long the hint stays replaced by the capsule that says a code was not ours.
     private let hintReturnsAfter: Duration
@@ -98,7 +100,8 @@ public final class ClientConnectionModel {
         joining: any MacJoining,
         camera: any CameraAuthorizing,
         scanner: any CodeScanning,
-        addresses: any ServerAddressResolving
+        addresses: any ServerAddressResolving,
+        copyingLogs: any DiagnosticLogsCopying
     ) {
         self.init(
             browsing: browsing,
@@ -106,6 +109,7 @@ public final class ClientConnectionModel {
             camera: camera,
             scanner: scanner,
             addresses: addresses,
+            copyingLogs: copyingLogs,
             hintReturnsAfter: .seconds(2)
         )
     }
@@ -118,6 +122,7 @@ public final class ClientConnectionModel {
         camera: any CameraAuthorizing,
         scanner: any CodeScanning,
         addresses: any ServerAddressResolving,
+        copyingLogs: any DiagnosticLogsCopying,
         hintReturnsAfter: Duration
     ) {
         self.browsing = browsing
@@ -125,7 +130,18 @@ public final class ClientConnectionModel {
         self.camera = camera
         self.scanner = scanner
         self.addresses = addresses
+        self.copyingLogs = copyingLogs
         self.hintReturnsAfter = hintReturnsAfter
+    }
+
+    public func copyLogs(context: DiagnosticContext) async {
+        logCopyState = .copying
+        do {
+            try await copyingLogs.copy(context: context)
+            logCopyState = .copied
+        } catch {
+            logCopyState = .failed
+        }
     }
 
     /// Whether tapping that Mac should open its worktrees rather than ask for a code.

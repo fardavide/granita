@@ -11,6 +11,53 @@ import CorePairingDomain
 @Suite("Client connection model")
 struct ClientConnectionModelTests {
 
+    // MARK: - Copying local diagnostics
+
+    @Test
+    func `given logs have not been copied when the reader copies logs then the use case runs and success is visible`() async {
+        // given
+        let scenario = Scenario()
+        #expect(scenario.sut.logCopyState == .ready)
+
+        // when
+        await scenario.sut.copyLogs(context: .discovery(.idle))
+
+        // then
+        #expect(await scenario.copyingLogs.invocations == 1)
+        #expect(scenario.sut.logCopyState == .copied)
+    }
+
+    @Test
+    func `given the clipboard is unavailable when the reader copies logs then failure is visible instead of copied`() async {
+        // given
+        let scenario = Scenario(copyingLogs: .failure(.unavailable))
+
+        // when
+        await scenario.sut.copyLogs(context: .discovery(.idle))
+
+        // then
+        #expect(await scenario.copyingLogs.invocations == 1)
+        #expect(scenario.sut.logCopyState == .failed)
+    }
+
+    @Test
+    func `given a pairing refusal when logs are copied then the supplied pairing context reaches the report`() async throws {
+        // given
+        let failureState = PairingState.finished(.refused(.pairingExpired))
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.copyLogs(context: .pairing(failureState))
+
+        // then
+        let context = try #require(await scenario.copyingLogs.lastContext())
+        guard case .pairing(let copiedState) = context else {
+            Issue.record("The pairing screen must supply its context rather than discovery context")
+            return
+        }
+        #expect(copiedState == failureState)
+    }
+
     // MARK: - The browse
 
     @Test
@@ -917,6 +964,7 @@ struct ClientConnectionModelTests {
 private struct Scenario {
 
     let camera: FakeCameraAuthorization
+    let copyingLogs: FakeDiagnosticLogsCopying
     let joining: FakeMacJoining
     let scanner: FakeCodeScanner
 
@@ -938,9 +986,11 @@ private struct Scenario {
         answeringWriteAfter writeDelay: Duration = .zero,
         resolving address: Result<ServerAddress, ServerAddressResolutionFailure> = .success(anAddress),
         remembering: Set<BonjourInstanceName> = [],
+        copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
         hintReturnsAfter hint: Duration = .seconds(60)
     ) {
         camera = FakeCameraAuthorization(current, answering: answer, answeredAfter: alertLife)
+        copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
         joining = FakeMacJoining(
             answeringPair: pairOutcome,
             answeringPairAfter: pairDelay,
@@ -961,6 +1011,7 @@ private struct Scenario {
             camera: camera,
             scanner: scanner,
             addresses: FakeServerAddressResolver(answering: address),
+            copyingLogs: copyingLogs,
             hintReturnsAfter: hint
         )
     }

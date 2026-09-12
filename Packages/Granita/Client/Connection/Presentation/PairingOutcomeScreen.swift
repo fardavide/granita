@@ -34,6 +34,7 @@ struct PairingOutcomeScreen: View {
         PairingOutcomeView(
             macName: server.name,
             state: model.pairing,
+            logCopyState: model.logCopyState,
             canOpenTestFlight: canOpenTestFlight,
             // **The Mac goes with the tap**, which is the whole of what this screen knows that the
             // model cannot: one model serves the app, and what it is still holding may belong to a
@@ -41,7 +42,8 @@ struct PairingOutcomeScreen: View {
             onTryAgain: { Task { await model.spendAgain(on: server, as: phone.device) } },
             onSaveTokenAgain: { Task { await model.saveTokenAgain() } },
             onOpenTestFlight: openTestFlight,
-            onOpenSettings: openSettings
+            onOpenSettings: openSettings,
+            onCopyLogs: { Task { await model.copyLogs(context: .pairing(model.pairing)) } }
         )
         #if !os(macOS)
         .navigationBarBackButtonHidden(model.pairing == .spending || model.pairing == .savingToken)
