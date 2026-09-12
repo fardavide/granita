@@ -54,26 +54,41 @@ public actor ConnectionLogs: DiagnosticReportProviding {
     }
 
     public func record(_ event: Event) {
-        let method: HttpRequest.Method
-        let url: URL
+        let method: Method
+        var endpoint: URLComponents?
         let outcome: String
         switch event {
         case .requestFailed(let verb, let address, let errors):
-            method = verb
-            url = address
+            method = .http(verb)
+            endpoint = URLComponents(url: address, resolvingAgainstBaseURL: false)
             outcome = errors.map { "\($0.domain) (\($0.code))" }.joined(separator: ", ")
         case .requestFinished(let verb, let address, let status):
-            method = verb
-            url = address
+            method = .http(verb)
+            endpoint = URLComponents(url: address, resolvingAgainstBaseURL: false)
             outcome = "HTTP \(status)"
+        case .pinnedKeyMatched(let host, let port):
+            method = .tls
+            endpoint = Self.tlsEndpoint(host: host, port: port)
+            outcome = "accepted — pinned key matched"
+        case .pinnedKeyMismatched(let host, let port):
+            method = .tls
+            endpoint = Self.tlsEndpoint(host: host, port: port)
+            outcome = "refused — pinned key mismatch"
+        case .serverTrustUnavailable(let host, let port):
+            method = .tls
+            endpoint = Self.tlsEndpoint(host: host, port: port)
+            outcome = "refused — server trust unavailable"
+        case .publicKeyUnavailable(let host, let port):
+            method = .tls
+            endpoint = Self.tlsEndpoint(host: host, port: port)
+            outcome = "refused — public key unavailable"
         }
-        var endpoint = URLComponents(url: url, resolvingAgainstBaseURL: false)
         endpoint?.user = nil
         endpoint?.password = nil
         endpoint?.query = nil
         endpoint?.fragment = nil
         entries.append(
-            "\(now().ISO8601Format()) \(method.rawValue) "
+            "\(now().ISO8601Format()) \(method.text) "
                 + "\(endpoint?.string ?? "<unavailable endpoint>") — \(outcome)"
         )
         if entries.count > capacity {
@@ -90,8 +105,32 @@ public actor ConnectionLogs: DiagnosticReportProviding {
             + (entries.isEmpty ? "No connection events recorded" : entries.joined(separator: "\n"))
     }
 
+    private static func tlsEndpoint(host: String, port: Int) -> URLComponents {
+        var endpoint = URLComponents()
+        endpoint.scheme = "https"
+        endpoint.host = host
+        endpoint.port = port
+        return endpoint
+    }
+
     public enum Event: Sendable {
         case requestFailed(method: HttpRequest.Method, url: URL, errors: [ConnectionLogError])
         case requestFinished(method: HttpRequest.Method, url: URL, statusCode: Int)
+        case pinnedKeyMatched(host: String, port: Int)
+        case pinnedKeyMismatched(host: String, port: Int)
+        case serverTrustUnavailable(host: String, port: Int)
+        case publicKeyUnavailable(host: String, port: Int)
+    }
+
+    private enum Method {
+        case http(HttpRequest.Method)
+        case tls
+
+        var text: String {
+            switch self {
+            case .http(let method): method.rawValue
+            case .tls: "TLS"
+            }
+        }
     }
 }

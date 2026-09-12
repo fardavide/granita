@@ -33,6 +33,10 @@ The report includes the current screen's failure and connection events from the 
 it does not collect Mac or system logs. If you reopened Granita since the problem, reproduce it first.
 You do not need to attach your phone to a Mac or create an archive.
 
+TLS events explain whether Granita received a server-trust challenge and whether the paired
+Mac's public-key pin matched. These are local diagnostic decisions, not proof that the TLS
+handshake completed; a later request failure still matters. Certificate checks are unchanged.
+
 ## Stack
 
 | | |
@@ -79,6 +83,12 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 `main` is PR-gated: land every change through a pull request and wait for the checks.
 
 ## Changelog
+
+### 0.11.1 — 2026-09-12
+- **Copy Logs now includes certificate-check outcomes.** Connection reports show whether the
+  phone reached Granita's TLS trust check and whether the Mac matched its saved public-key pin,
+  helping diagnose remote connection failures without visiting your Mac. Certificate checks and
+  pairing security are unchanged.
 
 ### 0.11.0 — 2026-09-12
 - **Error screens now explain what happened without a wall of technical text.** Discovery, pairing,

@@ -81,7 +81,16 @@ private struct Scenario {
     }
 
     func judge(method: String, trust: SecTrust?) -> URLSession.AuthChallengeDisposition {
-        PinnedServerTrust(pinnedTo: pinned).disposition(forAuthenticationMethod: method, trust: trust).disposition
+        PinnedServerTrust(
+            pinnedTo: pinned,
+            logs: ConnectionLogs(
+                context: ConnectionLogContext(
+                    appVersion: "0.9.1", build: "241", systemVersion: "iOS 26.0", deviceModel: "iPhone"
+                ),
+                capacity: 8,
+                now: { Date(timeIntervalSince1970: 0) }
+            )
+        ).disposition(forAuthenticationMethod: method, trust: trust).disposition
     }
 
     func trust() throws -> SecTrust {

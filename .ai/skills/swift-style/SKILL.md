@@ -63,6 +63,11 @@ Domain identifiers get wrapper types and keep them through every signature. Neve
 `String` for convenience — see the `architecture` skill for why this one is load-bearing rather than
 stylistic.
 
+Preserve enum types through local values and mappings too. When Swift code must combine an existing
+typed vocabulary with another category, extend the owned enum if the category belongs to it;
+otherwise introduce a closed enum with an associated value wrapping the existing type. Convert to
+text only at the final rendering or serialization boundary, never to make incompatible cases fit.
+
 ## Naming — no consecutive uppercase
 
 Identifiers we define use single-capital segments: `Dto` not `DTO`, `Url` not `URL`, `Http` not

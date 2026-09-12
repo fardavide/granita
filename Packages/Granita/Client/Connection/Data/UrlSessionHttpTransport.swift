@@ -24,7 +24,7 @@ public final class UrlSessionHttpTransport: HttpTransport {
         // revision the phone is polling for would be a change it never learns about.
         session = UrlSessionRequests(session: URLSession(
             configuration: .ephemeral,
-            delegate: PinnedServerTrust(pinnedTo: fingerprint),
+            delegate: PinnedServerTrust(pinnedTo: fingerprint, logs: logs),
             delegateQueue: nil
         ))
         self.logs = logs

@@ -15,9 +15,11 @@ import CorePairingDomain
 public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
 
     private let pinned: SpkiFingerprint
+    private let logs: ConnectionLogs
 
-    public init(pinnedTo pinned: SpkiFingerprint) {
+    public init(pinnedTo pinned: SpkiFingerprint, logs: ConnectionLogs) {
         self.pinned = pinned
+        self.logs = logs
     }
 
     /// What to do about a challenge, separated from the callback so it can be asserted without a
@@ -30,19 +32,7 @@ public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
         forAuthenticationMethod method: String,
         trust: SecTrust?
     ) -> (disposition: URLSession.AuthChallengeDisposition, credential: URLCredential?) {
-        guard method == NSURLAuthenticationMethodServerTrust else {
-            // Not ours to answer. Granita issues no client certificate and no HTTP credential, so
-            // anything else is the framework's business and cancelling it here would refuse a
-            // challenge this app has no opinion about.
-            return (.performDefaultHandling, nil)
-        }
-        guard let trust, let key = Self.leafPublicKey(of: trust) else {
-            return (.cancelAuthenticationChallenge, nil)
-        }
-        guard PinnedTrust.isTrusted(leafPublicKeyX963: key, against: pinned) else {
-            return (.cancelAuthenticationChallenge, nil)
-        }
-        return (.useCredential, URLCredential(trust: trust))
+        judgment(forAuthenticationMethod: method, trust: trust).answer
     }
 
     public func urlSession(
@@ -50,11 +40,58 @@ public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
-        let answer = disposition(
+        let judgment = judgment(
             forAuthenticationMethod: challenge.protectionSpace.authenticationMethod,
             trust: challenge.protectionSpace.serverTrust
         )
-        completionHandler(answer.disposition, answer.credential)
+        let answer = judgment.answer
+        let event: ConnectionLogs.Event
+        switch judgment {
+        case .unhandledChallenge:
+            completionHandler(answer.disposition, answer.credential)
+            return
+        case .serverTrustUnavailable:
+            event = .serverTrustUnavailable(
+                host: challenge.protectionSpace.host, port: challenge.protectionSpace.port
+            )
+        case .publicKeyUnavailable:
+            event = .publicKeyUnavailable(
+                host: challenge.protectionSpace.host, port: challenge.protectionSpace.port
+            )
+        case .pinnedKeyMismatched:
+            event = .pinnedKeyMismatched(
+                host: challenge.protectionSpace.host, port: challenge.protectionSpace.port
+            )
+        case .pinnedKeyMatched:
+            event = .pinnedKeyMatched(
+                host: challenge.protectionSpace.host, port: challenge.protectionSpace.port
+            )
+        }
+        Task {
+            await logs.record(event)
+            completionHandler(answer.disposition, answer.credential)
+        }
+    }
+
+    private func judgment(forAuthenticationMethod method: String, trust: SecTrust?) -> Judgment {
+        guard method == NSURLAuthenticationMethodServerTrust else {
+            // Granita issues no client certificate or HTTP credential; other challenges remain
+            // the framework's business rather than being refused by our pinning decision.
+            return .unhandledChallenge
+        }
+        guard let trust else {
+            return .serverTrustUnavailable
+        }
+        guard let key = Self.leafPublicKey(of: trust) else {
+            return .publicKeyUnavailable
+        }
+        guard let fingerprint = PinnedTrust.fingerprint(ofLeafPublicKeyX963: key) else {
+            return .publicKeyUnavailable
+        }
+        guard pinned.matches(fingerprint) else {
+            return .pinnedKeyMismatched
+        }
+        return .pinnedKeyMatched(trust)
     }
 
     /// The public key of the certificate the server presented, in the X9.63 form CryptoKit reads.
@@ -71,5 +108,24 @@ public final class PinnedServerTrust: NSObject, URLSessionDelegate, Sendable {
             return nil
         }
         return representation as Data
+    }
+
+    private enum Judgment {
+        case unhandledChallenge
+        case serverTrustUnavailable
+        case publicKeyUnavailable
+        case pinnedKeyMismatched
+        case pinnedKeyMatched(SecTrust)
+
+        var answer: (disposition: URLSession.AuthChallengeDisposition, credential: URLCredential?) {
+            switch self {
+            case .unhandledChallenge:
+                (.performDefaultHandling, nil)
+            case .serverTrustUnavailable, .publicKeyUnavailable, .pinnedKeyMismatched:
+                (.cancelAuthenticationChallenge, nil)
+            case .pinnedKeyMatched(let trust):
+                (.useCredential, URLCredential(trust: trust))
+            }
+        }
     }
 }
