@@ -178,6 +178,17 @@ public struct GranitaMobileScene: Scene {
         patience: WakingServerAddresses.defaultPatience
     )
 
+    /// Short-lived route checks reuse a bounded session per saved public-key pin.
+    private static let pinnedHealth = HttpPinnedServerHealth(logs: connectionLogs)
+
+    private static let rememberedAddresses = RacingServerAddresses(
+        addresses: addresses,
+        macs: rememberedMacStore,
+        localNetwork: NetworkLocalNetworkAvailability(),
+        health: pinnedHealth,
+        timing: connectionLogs
+    )
+
     /// **Every Mac this phone can open without pairing, and the one live connection to each** — made
     /// once for the life of the app rather than per screen, which is the whole of what it buys. A
     /// `navigationDestination` closure is re-evaluated on every pass, so a reconnection built inside
@@ -185,16 +196,15 @@ public struct GranitaMobileScene: Scene {
     /// each time; held here, the sidebar and an open diff share one.
     private static let rememberedMacs = RememberedMacs(
         store: rememberedMacStore,
-        addresses: addresses,
+        addresses: rememberedAddresses,
         connect: { [logs = connectionLogs] in repository(of: $0, logs: logs) },
         // Pinned because this health answer can become the address used for later reconnections;
         // only the Mac this phone paired with may redirect those sessions.
         healthOf: { [logs = connectionLogs] address, fingerprint in
             try? await HttpServerPairing(
                 macReachableAt: address,
-                transport: UrlSessionHttpTransport(pinnedTo: fingerprint, logs: logs)
-            )
-            .health()
+                transport: UrlSessionHttpTransport(pinnedTo: fingerprint, logs: logs, requestTimeout: .seconds(5))
+            ).health()
         }
     )
 

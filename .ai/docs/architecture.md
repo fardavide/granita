@@ -14,6 +14,13 @@ ask about, only opaque identifiers the server resolves against its own registry 
 projects. That rule is the security boundary, not a stylistic one — the payload is private source
 code, and a path parameter would be a traversal hole.
 
+Remembered connections race the saved tailnet route with local discovery only when physical Wi-Fi
+is available. Discovery alone cannot win: a route must complete pinned HTTPS health verification.
+Network availability, pinned health and semantic stage timing are domain-owned ports; Network and
+URLSession implement them in Data. HTTP methods and request timing remain in Data, where the bounded
+journal formats sanitized report text. Probe sessions have a short total deadline; source-reading
+sessions retain their existing timeouts.
+
 The Mac app embeds the backend in-process. The same backend is also an executable, so the whole
 server side builds, runs and is tested from a terminal with no Xcode in the loop. The menu bar app is
 a delivery mechanism for it, not its host.

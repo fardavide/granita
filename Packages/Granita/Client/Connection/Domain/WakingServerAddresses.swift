@@ -71,6 +71,7 @@ public struct WakingServerAddresses: ServerAddressResolving {
                     throw error
                 }
             }
+            if Task.isCancelled { break }
             await wakeEverythingKnown()
         }
         // The last thing that actually went wrong, so the small print under the sentence names the

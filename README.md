@@ -84,6 +84,14 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.11.3 — 2026-09-12
+- **Opening a remembered Mac over Tailscale no longer waits for local discovery first.** On
+  cellular, local discovery and wake retries are skipped; on Wi-Fi, the first route to complete
+  pinned HTTPS verification wins. Health probes have a five-second deadline without shortening
+  worktree or diff requests.
+- **Copy Logs now shows where connection time goes.** Reports include local discovery,
+  route verification and request durations, without credentials or source text.
+
 ### 0.11.2 — 2026-09-12
 - **Pinned HTTPS connections over Tailscale now complete.** The phone no longer rejects the
   Mac's self-signed certificate after its saved public-key pin matches. The exception is limited
