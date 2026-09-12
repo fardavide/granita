@@ -94,16 +94,21 @@ struct WakingServerDiscoveryTests {
     }
 
     @Test
-    func `given a remembered Mac with a fallback when a cold browse keeps searching then the remembered Mac is found`() async {
+    func `given remembered Macs with fallbacks when a cold browse keeps searching then the remembered Macs are found`() async {
         // given
-        let mac = DiscoveredServer(
+        let macBookPro = DiscoveredServer(
             id: BonjourInstanceName(rawValue: "MacBook Pro"),
             name: "MacBook Pro"
         )
+        let macMini = DiscoveredServer(
+            id: BonjourInstanceName(rawValue: "Mac mini"),
+            name: "Mac mini"
+        )
         let scenario = Scenario(
-            remembering: ["MacBook Pro": []],
+            remembering: ["MacBook Pro": [], "Mac mini": []],
             fallingBackTo: [
-                "MacBook Pro": ServerAddress(host: "100.101.102.103", port: 8_737)
+                "MacBook Pro": ServerAddress(host: "100.101.102.103", port: 8_737),
+                "Mac mini": ServerAddress(host: "100.101.102.104", port: 8_737)
             ],
             reporting: [.searching],
             keepingBrowseOpen: true
@@ -113,7 +118,7 @@ struct WakingServerDiscoveryTests {
         let states = await scenario.statesWhileBrowsing()
 
         // then
-        #expect(states.last == .found([mac]))
+        #expect(states.last == .found([macMini, macBookPro]))
     }
 
     @Test
