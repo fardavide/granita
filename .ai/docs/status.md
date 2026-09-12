@@ -10,9 +10,9 @@ request outcomes and sanitized current-screen failure context; no TLS policy cha
 slice. Verification passes: 1,356 package tests, 669 simulator checks including a real iOS clipboard
 write, unsigned package/app builds, and all six coverage values against main at `af99cc2`.
 
-**Publishing is blocked by GitHub access.** Terminal authentication returns 401, Git cannot read
-credentials, and the connected GitHub integration denies content writes with 403. No PR exists for
-`feat/mobile-diagnostics` yet. Actual screen tapping remains unverified because Simulator inspection
+**Release awaits PR review and merge.** GitHub CLI access was restored and verified as `fardavide`
+on 12 September 2026; `feat/mobile-diagnostics` is ready to publish for review.
+Actual screen tapping remains unverified because Simulator inspection
 times out; public UIKit accessibility containers did not expose the SwiftUI button, so that unsupported
 test harness was removed rather than replaced with a direct-model call. Its feature branch must be
 cleaned up only after the PR is merged.
