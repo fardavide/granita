@@ -2,7 +2,17 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.11.2 — scoped Tailscale TLS correction is implemented; release is pending.** A real app-hosted
+**Version 0.11.3 — faster remembered-Mac routing is implemented; release is pending.** Davide confirmed remote
+connections work but reported more than thirty seconds before opening. The client now starts pinned
+tailnet verification without waiting for Bonjour, races a verified LAN route on physical Wi-Fi, and
+skips local discovery/wake retries on cellular. Copy Logs separates route stages and HTTP request
+durations. Loading animation and large-worktree profiling are a separate follow-up:
+[issue #82](https://github.com/fardavide/granita/issues/82).
+Verification passes: 1,387 package tests in 127 suites, unsigned package/app builds, and all six
+coverage values against main at `afd0c1a`. Mac snapshot comparisons retain the documented local
+rendering drift; their CI check remains authoritative. No baselines or coverage scopes were changed.
+
+**Version 0.11.2 — scoped Tailscale TLS correction is published; Davide confirmed it works.** A real app-hosted
 URLSession test on iOS 26.5 reproduced build 137's matched-pin-then-`-1200` report. Adding only
 a manual-trust ATS exception for `100.64.0.0/10` made the same HTTPS fixture request succeed.
 Certificate pinning and TLS defaults are unchanged; the client independently enforces HTTPS.
@@ -10,7 +20,7 @@ Verification passes: 1,364 package tests, three real simulator TLS controls, uns
 builds, and all six coverage values against main at `232e0ef`. Wrong pins remain refused and the
 same fixture remains ATS-protected outside the tailnet range. Native callback tests cover both
 delegates' redirect refusal. No server restart or identity replacement is part of this fix; iOS 27 phone
-confirmation remains a post-release step. The comparison's initial LAN-IP control was invalid
+confirmation succeeded. The comparison's initial LAN-IP control was invalid
 because it received a different certificate, so it is not treated as LAN-policy evidence.
 
 **Version 0.11.1 — TLS decision reporting is published (PR #80 merged).** The phone-side report includes

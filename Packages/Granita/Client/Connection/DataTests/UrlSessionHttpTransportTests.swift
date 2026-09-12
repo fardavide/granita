@@ -2,11 +2,67 @@ import Foundation
 import Testing
 
 import ClientConnectionDomain
+import CorePairingDomain
 
 @testable import ClientConnectionData
 
 @Suite("URL session transport diagnostics")
 struct UrlSessionHttpTransportTests {
+    @Test
+    func `given a bounded native probe session when inspecting trust then the saved pin is retained`() async {
+        // given
+        let fingerprint = SpkiFingerprint(rawValue: "bounded-native-session-key")
+        let sut = UrlSessionHttpTransport(pinnedTo: fingerprint, logs: ConnectionLogs(
+            context: ConnectionLogContext(appVersion: "0.11.3", build: "test", systemVersion: "test", deviceModel: "test"),
+            capacity: 200, now: Date.init
+        ), requestTimeout: .seconds(5))
+
+        // when
+        let trusted = await sut.trustedFingerprint()
+
+        // then
+        #expect(trusted == fingerprint)
+    }
+
+    @Test(arguments: [FailureTiming(code: -1200, outcome: "failed"), FailureTiming(code: NSURLErrorCancelled, outcome: "cancelled")])
+    func `given a failed or cancelled request when sending then timing diagnostics retain its outcome`(failure: FailureTiming) async throws {
+        // given
+        let scenario = Scenario(answer: .failure(NSError(domain: NSURLErrorDomain, code: failure.code)), timestamp: Date(timeIntervalSince1970: 0), elapsed: .milliseconds(937))
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/worktrees"))
+
+        // when
+        await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.send(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+        }
+        let report = await scenario.logs.report()
+
+        // then
+        #expect(report.contains("REQUEST GET https://100.81.42.98:8737/v1/worktrees — \(failure.outcome) — 937 ms"))
+    }
+
+
+    @Test
+    func `given a successful request when sending then ordered timing diagnostics preserve the HTTP response`() async throws {
+        // given
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/worktrees"))
+        let body = Data("worktrees-response".utf8)
+        let scenario = Scenario(
+            answer: .success((body, try #require(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)))),
+            timestamp: Date(timeIntervalSince1970: 0), elapsed: .milliseconds(2_781)
+        )
+
+        // when
+        let response = try await scenario.sut.send(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+        let report = await scenario.logs.report()
+
+        // then
+        let started = try #require(report.range(of: "REQUEST GET https://100.81.42.98:8737/v1/worktrees — started"))
+        let finished = try #require(report.range(of: "REQUEST GET https://100.81.42.98:8737/v1/worktrees — succeeded — 2781 ms"))
+        #expect(started.lowerBound < finished.lowerBound)
+        #expect(report.contains("GET https://100.81.42.98:8737/v1/worktrees — HTTP 200"))
+        #expect(response.statusCode == 200)
+        #expect(response.body == body)
+    }
 
     @Test
     func `given a probe deadline when configuring the session then both inactivity and total request time are bounded`() {
@@ -157,12 +213,17 @@ struct UrlSessionHttpTransportTests {
         #expect(report.contains("cookie-secret") == false)
     }
 
+    struct FailureTiming: Sendable {
+        let code: Int
+        let outcome: String
+    }
+
     private struct Scenario {
         let sut: UrlSessionHttpTransport
         let logs: ConnectionLogs
         let session: FakeSessionRequests
 
-        init(answer: Result<(Data, URLResponse), NSError>, timestamp: Date, requestTimeout: Duration = .seconds(60)) {
+        init(answer: Result<(Data, URLResponse), NSError>, timestamp: Date, requestTimeout: Duration = .seconds(60), elapsed: Duration = .zero) {
             session = FakeSessionRequests(answer: answer)
             logs = ConnectionLogs(
                 context: ConnectionLogContext(
@@ -178,7 +239,8 @@ struct UrlSessionHttpTransportTests {
                 performing: session,
                 trusting: { nil },
                 logs: logs,
-                requestTimeout: requestTimeout
+                requestTimeout: requestTimeout,
+                elapsedSince: { _ in elapsed }
             )
         }
     }
