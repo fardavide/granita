@@ -10,6 +10,8 @@
 xcuserdata/
 *.xcuserstate
 DerivedData/
+# Native resolver cache; the canonical union lockfile is committed under Packages/Granita.
+Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 build/
 *.xcarchive
 *.ipa

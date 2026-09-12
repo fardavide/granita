@@ -71,19 +71,23 @@ That is exactly how it landed in a documentation-only commit and turned a pull r
 
 ## The two resolvers that disagree about `Package.resolved`
 
-There is one `Package.resolved`, at `Packages/Granita/Package.resolved`, and **two things write
-it**:
+The canonical committed `Package.resolved` lives at `Packages/Granita/Package.resolved`.
+Earlier runs observed **two things writing it**:
 
 | What ran | Result |
 |---|---|
 | `xcodebuild` / opening the project | 30 pins — the project's remote packages **and** the package's own |
 | `swift build`, `swift test`, `make test` | 26 pins — the package's own only |
 
-Xcode treats the local package as the graph root and writes the union there.
+Those runs treated the local package as the graph root and wrote the union there.
 
-It does **not** write `Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`;
-that file is never created, which is why no CI cache may be keyed on it — `hashFiles` returns empty
-for a missing file, so every run would collide on one key while appearing to cache.
+The workspace resolved file was not created in those runs. On 12 September 2026, with the
+app-hosted connection-test target in the project, isolated `make resolve` runs instead wrote
+30 pins to `Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, leaving
+the canonical package file at 26 pins. The target now copies that freshly resolved union back
+before its existing full-graph validation. The workspace file is ignored as a runtime cache;
+the package file remains committed. CI cache keys must still use committed inputs, not the
+workspace cache, which is absent on a fresh checkout.
 
 **The union is what must be committed.** Xcode Cloud disables automatic dependency resolution and
 refuses a stale resolved file, so the stripped version fails the archive — after the merge, as an
@@ -91,9 +95,10 @@ email, with no red check to have caught it. A CI step asserts the committed file
 Xcode graph, which turns that silent post-merge failure into a red check on the pull request.
 
 **A correction worth keeping:** an earlier revision of the skill claimed `xcodegen generate` wipes
-the workspace resolved file. It does not — the file simply never exists. The test that produced that
-claim checked for a file that had never been created, so it failed for the wrong reason and read as
-a wipe.
+the workspace resolved file. It did not; the file had never been created in those runs. The test that produced that
+claim checked for a file that had never been created in those runs, so it failed for the wrong
+reason and read as a wipe. The current workspace cache also survives regeneration; its presence
+is not generated-source drift and must not make `make verify-generated` fail.
 
 ## Why the icons are not gated, and the two rejects they avoid
 

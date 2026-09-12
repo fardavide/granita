@@ -5797,3 +5797,8 @@ The sanctioned target now copies its freshly resolved workspace graph back befor
 The lockfile is regenerated through that target, including its normal transitive-version refresh;
 no external dependency was added. Separate pre-existing local-runner Makefile changes are preserved
 unstaged and are not part of this TLS correction.
+
+The workspace lock survives XcodeGen regeneration and initially made `make verify-generated`
+report an untracked cache as source drift. Only that exact runtime cache file is now ignored;
+the canonical package lock and all generated project/fixture sources remain checked. The
+sanctioned generated-source verifier passes with no project or golden-fixture drift.
