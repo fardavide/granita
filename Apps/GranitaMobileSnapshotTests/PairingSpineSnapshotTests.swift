@@ -252,6 +252,7 @@ private func aModel(
         joining: FakeMacJoining(answering: joining, remembering: remembering),
         camera: FakeCameraAuthorization(current: camera),
         scanner: FakeCodeScanner(),
-        addresses: FakeServerAddressResolver(answering: resolving)
+        addresses: FakeServerAddressResolver(answering: resolving),
+        copyingLogs: FakeDiagnosticLogsCopying()
     )
 }

@@ -26,6 +26,7 @@ public final class ClientWorktreesModel {
     public let macName: String
 
     public private(set) var state: WorktreeSidebarState = .loading
+    public private(set) var logCopyState: DiagnosticCopyState = .ready
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
 
@@ -59,20 +60,38 @@ public final class ClientWorktreesModel {
     private var worktrees: [Worktree] = []
     private let repository: any GranitaRepository
     private let preferences: any WorktreeListPreferences
+    private let copyingLogs: any DiagnosticLogsCopying
     private let now: @Sendable () -> Date
 
     public init(
         macName: String,
         repository: any GranitaRepository,
         preferences: any WorktreeListPreferences,
+        copyingLogs: any DiagnosticLogsCopying,
         now: @escaping @Sendable () -> Date
     ) {
         self.macName = macName
         self.repository = repository
         self.preferences = preferences
+        self.copyingLogs = copyingLogs
         self.now = now
         mode = preferences.mode()
         showsQuietWorktrees = preferences.showsQuietWorktrees()
+    }
+
+    public func copyLogs() async {
+        logCopyState = .copying
+        let failure: ApiFailure?
+        switch state {
+        case .failed(let error): failure = error
+        case .loading, .noProjects, .allQuiet, .listing: failure = nil
+        }
+        do {
+            try await copyingLogs.copy(context: .worktrees(failure))
+            logCopyState = .copied
+        } catch {
+            logCopyState = .failed
+        }
     }
 
     /// Reads every worktree the Mac is serving, across all enabled projects.

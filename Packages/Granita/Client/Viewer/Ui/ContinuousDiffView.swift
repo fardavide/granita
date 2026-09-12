@@ -23,6 +23,8 @@ import CoreDiffDomain
 /// is, and a model that held it would be written to on every frame of an ordinary scroll.
 public struct ContinuousDiffView: View {
 
+    @Environment(\.accessibilityReduceMotion) public var reduceMotion
+
     /// Where the scroll is, as the scroll's own state rather than the model's.
     ///
     /// This and the model's `jumpTarget` answer different questions: the model says *go here*, once,
@@ -35,6 +37,7 @@ public struct ContinuousDiffView: View {
     @State private var scrolledTo: FileID?
 
     private let state: ContinuousDiffState
+    private let logCopyState: DiagnosticCopyState
     private let pointSize: CGFloat
 
     /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
@@ -67,9 +70,11 @@ public struct ContinuousDiffView: View {
     private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
     private let onOpenReview: () -> Void
     private let onRetry: () -> Void
+    private let onCopyLogs: () -> Void
 
     public init(
         state: ContinuousDiffState,
+        logCopyState: DiagnosticCopyState,
         pointSize: CGFloat,
         jumpTarget: FileID?,
         comments: [ReviewedComment] = [],
@@ -84,9 +89,11 @@ public struct ContinuousDiffView: View {
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
         onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
         onOpenReview: @escaping () -> Void = {},
-        onRetry: @escaping () -> Void
+        onRetry: @escaping () -> Void,
+        onCopyLogs: @escaping () -> Void
     ) {
         self.state = state
+        self.logCopyState = logCopyState
         self.pointSize = pointSize
         self.jumpTarget = jumpTarget
         self.comments = comments
@@ -105,6 +112,7 @@ public struct ContinuousDiffView: View {
         self.onLongPressGutter = onLongPressGutter
         self.onOpenReview = onOpenReview
         self.onRetry = onRetry
+        self.onCopyLogs = onCopyLogs
     }
 
     public var body: some View {
@@ -114,8 +122,8 @@ public struct ContinuousDiffView: View {
             // fails. The spinner design §1 refuses for a Bonjour browse is the right control here.
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .failed(let failure):
-            failed(failure)
+        case .failed:
+            failed
         case .nothingChanged:
             nothingChanged
         case .reading(let entries):
@@ -307,33 +315,48 @@ public struct ContinuousDiffView: View {
         }
     }
 
-    /// Three slots, three jobs — the shape design §1 settled and every empty state in this app has
-    /// used since. The description is ours; the action retries; the machine's own sentence goes to
-    /// the bottom in small print, where it is copyable into a bug report and unmistakably not
-    /// instructions.
-    private func failed(_ failure: ApiFailure) -> some View {
+    private var failed: some View {
         ContentUnavailableView {
             Label("Could not read this worktree", systemImage: "exclamationmark.triangle")
         } description: {
-            Text(
-                """
-                Something stopped Granita from reading what changed here. Trying again usually \
-                works; if it does not, check that Granita is still running on your Mac.
-                """
-            )
+            Text("Try again. If it still fails, check that Granita is running on your Mac.")
         } actions: {
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
-            if let diagnostic = failure.diagnostic {
-                Text(diagnostic)
-                    .font(.caption2)
-                    .monospaced()
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .textSelection(.enabled)
-                    .padding(.top)
+                .controlSize(.large)
+            copyLogs
+        }
+        .animation(reduceMotion ? nil : .default, value: logCopyState)
+    }
+
+    private var copyLogs: some View {
+        VStack(spacing: 8) {
+            Button(action: onCopyLogs) {
+                switch logCopyState {
+                case .ready: Text("Copy Logs")
+                case .copying: Text("Copying Logs…")
+                case .copied: Text("Copy Logs Again")
+                case .failed: Text("Try Copying Again")
+                }
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.large)
+            .disabled(logCopyState == .copying)
+
+            switch logCopyState {
+            case .ready, .copying:
+                EmptyView()
+            case .copied:
+                Text("Logs copied. Paste them into your message.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            case .failed:
+                Text("Couldn’t copy logs. Please try again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
+        .multilineTextAlignment(.center)
     }
 
     /// **No action, and that is the design rather than an omission.** A reader reaches this by

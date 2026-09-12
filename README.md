@@ -26,6 +26,13 @@ pinned certificate — the payload is your private source code.
 The full specification, including the empirically-verified traps the implementation must not
 simplify away, is in [`SPEC.md`](SPEC.md).
 
+## Share connection logs from your phone
+
+If connecting or reading fails, tap **Copy Logs** on the error screen, then paste into your message.
+The report includes the current screen's failure and connection events from the current app session;
+it does not collect Mac or system logs. If you reopened Granita since the problem, reproduce it first.
+You do not need to attach your phone to a Mac or create an archive.
+
 ## Stack
 
 | | |
@@ -72,6 +79,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 `main` is PR-gated: land every change through a pull request and wait for the checks.
 
 ## Changelog
+
+### 0.11.0 — 2026-09-12
+- **Error screens now explain what happened without a wall of technical text.** Discovery, pairing,
+  worktree and diff failures keep their recovery actions alongside clearer, accessible messages.
+- **Copy Logs lets you share a connection report directly from your phone.** It copies the app
+  version, timestamps, connection endpoints and error codes from the current app session, without
+  credentials, pairing codes, request bodies or source text. No Mac, archive or share sheet is needed.
 
 ### 0.10.1 — 2026-09-12
 - **Remembered Macs now appear when Granita opens away from the local network.** A cellular-only

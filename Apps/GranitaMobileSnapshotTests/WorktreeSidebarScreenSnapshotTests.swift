@@ -180,6 +180,7 @@ private func aModel(writeFailure: ApiFailure? = nil) -> ClientWorktreesModel {
         macName: aMacName,
         repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: writeFailure),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
+        copyingLogs: FakeDiagnosticLogsCopying(),
         now: { aFixedMoment }
     )
 }

@@ -12,6 +12,7 @@ import ClientViewerPresentation
 import ClientViewerUi
 import ClientWorktreesData
 import ClientWorktreesPresentation
+import CoreBrandingDomain
 
 /// Composition root for the phone and the iPad: the one Client target that may see a `Data`
 /// target, because wiring implementations into the protocols every other target depends on is
@@ -49,7 +50,8 @@ public struct GranitaMobileScene: Scene {
                     scanner: Self.scanner,
                     // And wrapped again here, because the browse can be a step ahead of the
                     // machine: a Mac woken a moment ago resolves to nothing until it is back.
-                    addresses: Self.addresses
+                    addresses: Self.addresses,
+                    copyingLogs: Self.copyingLogs
                 ),
                 phone: Self.phone,
                 startingAt: NavigationPath(),
@@ -97,6 +99,28 @@ public struct GranitaMobileScene: Scene {
     /// second one per worktree would pay that cost every time a reader opened a diff.
     private static let highlighter = HighlightrSyntaxHighlighter()
 
+    #if canImport(UIKit)
+    private static let diagnosticDeviceModel = UIDevice.current.model
+    #else
+    private static let diagnosticDeviceModel = "Mac"
+    #endif
+
+    private static let connectionLogs = ConnectionLogs(
+        context: ConnectionLogContext(
+            appVersion: Branding.serverVersion,
+            build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown",
+            systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+            deviceModel: diagnosticDeviceModel
+        ),
+        capacity: 200,
+        now: Date.init
+    )
+
+    private static let copyingLogs = CopyDiagnosticLogs(
+        report: connectionLogs,
+        pasteboard: UiKitDiagnosticPasteboard()
+    )
+
     /// What only this machine can answer, read once for the same reason.
     private static let phone = ThisPhone(device: thisDevice, cameraSession: scanner.session)
 
@@ -106,15 +130,15 @@ public struct GranitaMobileScene: Scene {
     /// nobody on the network can write to, so its session is pinned before a byte is sent; six words
     /// carry a code and nothing else, so theirs trusts whatever answers and the pairing reads back
     /// what it ended up trusting. See `.ai/docs/decisions.md`.
-    private static let handshake: @Sendable (PairingAttempt) -> any ServerPairing = { attempt in
+    private static let handshake: @Sendable (PairingAttempt) -> any ServerPairing = { [logs = connectionLogs] attempt in
         // Spelled as two branches rather than collapsed into a `??`, and the label is written out
         // rather than left to its default: which side an attempt falls on is the whole of what the
         // two credentials do not share, and it is the one line in this file where getting it wrong
         // would pin nothing and look identical.
         if let pin = attempt.pin {
-            HttpServerPairing(mac: attempt, transport: UrlSessionHttpTransport(pinnedTo: pin))
+            HttpServerPairing(mac: attempt, transport: UrlSessionHttpTransport(pinnedTo: pin, logs: logs))
         } else {
-            HttpServerPairing(mac: attempt, transport: UrlSessionHttpTransport(trustingFirstAnswer: ()))
+            HttpServerPairing(mac: attempt, transport: UrlSessionHttpTransport(trustingFirstAnswer: (), logs: logs))
         }
     }
 
@@ -162,13 +186,13 @@ public struct GranitaMobileScene: Scene {
     private static let rememberedMacs = RememberedMacs(
         store: rememberedMacStore,
         addresses: addresses,
-        connect: { repository(of: $0) },
+        connect: { [logs = connectionLogs] in repository(of: $0, logs: logs) },
         // Pinned because this health answer can become the address used for later reconnections;
         // only the Mac this phone paired with may redirect those sessions.
-        healthOf: { address, fingerprint in
+        healthOf: { [logs = connectionLogs] address, fingerprint in
             try? await HttpServerPairing(
                 macReachableAt: address,
-                transport: UrlSessionHttpTransport(pinnedTo: fingerprint)
+                transport: UrlSessionHttpTransport(pinnedTo: fingerprint, logs: logs)
             )
             .health()
         }
@@ -191,6 +215,7 @@ public struct GranitaMobileScene: Scene {
                 macName: macName,
                 repository: repository,
                 preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
+                copyingLogs: copyingLogs,
                 now: Date.init
             )
         ) { worktree, displayName, projectName in
@@ -221,7 +246,8 @@ public struct GranitaMobileScene: Scene {
                     // evaluates the whole highlight.js bundle, and its `JSContext` cannot be shared
                     // across threads — so it is an actor held here for the process's lifetime, the
                     // way `SPEC.md` §2's trap paragraph requires.
-                    highlighter: highlighter
+                    highlighter: highlighter,
+                    copyingLogs: copyingLogs
                 )
             )
         }
@@ -230,7 +256,7 @@ public struct GranitaMobileScene: Scene {
     /// A session that can reach exactly one Mac, which is what makes the pin worth having: the
     /// token, the address and the fingerprint all came from the same pairing, so a request cannot
     /// leave for a machine nobody vouched for.
-    private static func repository(of mac: PairedMac) -> HttpGranitaRepository {
-        HttpGranitaRepository(mac: mac, transport: UrlSessionHttpTransport(pinnedTo: mac.fingerprint))
+    private nonisolated static func repository(of mac: PairedMac, logs: ConnectionLogs) -> HttpGranitaRepository {
+        HttpGranitaRepository(mac: mac, transport: UrlSessionHttpTransport(pinnedTo: mac.fingerprint, logs: logs))
     }
 }

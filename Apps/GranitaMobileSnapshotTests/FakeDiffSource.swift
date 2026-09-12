@@ -802,7 +802,8 @@ func aLoadedViewerModel(
         // answering at all.** `ClientViewerUi` has no unit test target, so without this the one
         // dependency that turns every line of every file a different colour would be exercised by
         // nothing — the shape of a control that looks finished in every layer and does nothing.
-        highlighter: theHighlighter
+        highlighter: theHighlighter,
+        copyingLogs: FakeDiagnosticLogsCopying()
     )
     await model.load()
     await model.reading(0)

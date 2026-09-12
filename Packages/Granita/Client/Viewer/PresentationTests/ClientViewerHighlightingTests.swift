@@ -294,7 +294,8 @@ private struct Scenario {
             repository: repository,
             commentStore: FakeReviewCommentStore(),
             pasteboard: FakeReviewPasteboard(),
-            highlighter: highlighter
+            highlighter: highlighter,
+            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(()))
         )
     }
 }

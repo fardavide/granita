@@ -76,6 +76,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         let sidebar = WorktreeSidebarView(
             macName: model.macName,
             state: model.state,
+            logCopyState: model.logCopyState,
             mode: model.mode,
             showsQuietWorktrees: model.showsQuietWorktrees,
             removing: model.removing,
@@ -86,7 +87,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 Task { await model.setPinned(pinned, on: worktree) }
             },
             onDelete: model.beginDeleting,
-            onRetry: { Task { await model.load() } }
+            onRetry: { Task { await model.load() } },
+            onCopyLogs: { Task { await model.copyLogs() } }
         )
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(

@@ -43,8 +43,10 @@ public struct ServerDiscoveryScreen<RememberedMacScreen: View>: View {
     public var body: some View {
         ServerDiscoveryView(
             state: model.discovery,
+            logCopyState: model.logCopyState,
             onSearchAgain: model.searchAgain,
-            onOpenSettings: openSettings
+            onOpenSettings: openSettings,
+            onCopyLogs: { Task { await model.copyLogs(context: .discovery(model.discovery)) } }
         )
         // **Declared here, beside the rows that link to it, and that placement is the fix.** The
         // list offers `NavigationLink(value:)`, and for a while nothing in the app declared a

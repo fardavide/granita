@@ -12,6 +12,8 @@ import CoreDiffDomain
 /// a Mac, a network or a paired device.
 public struct WorktreeSidebarView: View {
 
+    @Environment(\.accessibilityReduceMotion) public var reduceMotion
+
     /// §2's measure for the sidebar, and it is *narrower* than the phone's 390: "the iPad is the
     /// harder layout for this row, not the easier one, and the drop order above is what saves it."
     ///
@@ -23,6 +25,7 @@ public struct WorktreeSidebarView: View {
 
     private let macName: String
     private let state: WorktreeSidebarState
+    private let logCopyState: DiagnosticCopyState
     private let mode: WorktreeListMode
     private let showsQuietWorktrees: Bool
     // Both reach a `Binding`'s setter, which iOS 26 declares `@isolated(any) @Sendable`, so each
@@ -36,6 +39,7 @@ public struct WorktreeSidebarView: View {
     private let onSetPinned: (Bool, WorktreeID) -> Void
     private let onDelete: (WorktreeDeletionSubject) -> Void
     private let onRetry: () -> Void
+    private let onCopyLogs: () -> Void
 
     /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
     /// the answer arrives.
@@ -44,6 +48,7 @@ public struct WorktreeSidebarView: View {
     public init(
         macName: String,
         state: WorktreeSidebarState,
+        logCopyState: DiagnosticCopyState,
         mode: WorktreeListMode,
         showsQuietWorktrees: Bool,
         removing: Set<WorktreeID>,
@@ -52,10 +57,12 @@ public struct WorktreeSidebarView: View {
         onRename: @escaping (WorktreeRenameSubject) -> Void,
         onSetPinned: @escaping (Bool, WorktreeID) -> Void,
         onDelete: @escaping (WorktreeDeletionSubject) -> Void,
-        onRetry: @escaping () -> Void
+        onRetry: @escaping () -> Void,
+        onCopyLogs: @escaping () -> Void
     ) {
         self.macName = macName
         self.state = state
+        self.logCopyState = logCopyState
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
         self.removing = removing
@@ -65,6 +72,7 @@ public struct WorktreeSidebarView: View {
         self.onSetPinned = onSetPinned
         self.onDelete = onDelete
         self.onRetry = onRetry
+        self.onCopyLogs = onCopyLogs
     }
 
     public var body: some View {
@@ -75,8 +83,8 @@ public struct WorktreeSidebarView: View {
                 // one — a request either answers or fails. So the spinner discovery refuses is the
                 // right control here.
                 ProgressView()
-            case .failed(let failure):
-                failed(failure)
+            case .failed:
+                failed
             case .noProjects:
                 noProjects
             case .allQuiet(let worktreeCount, let projectNames):
@@ -103,6 +111,7 @@ public struct WorktreeSidebarView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { arrangement }
+        .animation(reduceMotion ? nil : .default, value: logCopyState)
     }
 
     /// One menu holding an inline picker and a toggle, rather than a segmented control.
@@ -176,32 +185,47 @@ public struct WorktreeSidebarView: View {
         }
     }
 
-    /// Three slots, three jobs — the same shape design §1 settled and for the same reasons. The
-    /// description is ours; the action retries; the machine's own sentence goes to the bottom in
-    /// small print, where it is copyable into a bug report and unmistakably not instructions.
-    private func failed(_ failure: ApiFailure) -> some View {
+    private var failed: some View {
         ContentUnavailableView {
             Label("Could not read your Mac", systemImage: "exclamationmark.triangle")
         } description: {
-            Text(
-                """
-                Something stopped Granita from reading the worktrees on your Mac. Trying again \
-                usually works; if it does not, check that Granita is still running there.
-                """
-            )
+            Text("Try again. If it still fails, check that Granita is running on your Mac.")
         } actions: {
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
-            if let diagnostic = failure.diagnostic {
-                Text(diagnostic)
-                    .font(.caption2)
-                    .monospaced()
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .textSelection(.enabled)
-                    .padding(.top)
+                .controlSize(.large)
+            copyLogs
+        }
+    }
+
+    private var copyLogs: some View {
+        VStack(spacing: 8) {
+            Button(action: onCopyLogs) {
+                switch logCopyState {
+                case .ready: Text("Copy Logs")
+                case .copying: Text("Copying Logs…")
+                case .copied: Text("Copy Logs Again")
+                case .failed: Text("Try Copying Again")
+                }
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.large)
+            .disabled(logCopyState == .copying)
+
+            switch logCopyState {
+            case .ready, .copying:
+                EmptyView()
+            case .copied:
+                Text("Logs copied. Paste them into your message.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            case .failed:
+                Text("Couldn’t copy logs. Please try again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
+        .multilineTextAlignment(.center)
     }
 
     private func list(_ listing: WorktreeListing) -> some View {

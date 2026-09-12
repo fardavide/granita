@@ -1,13 +1,11 @@
 import SwiftUI
 
 import ClientConnectionDomain
-import CoreBrandingDomain
 
 /// What a spent credential came to: one destination, and a button only where the phone can act.
 ///
-/// **Three of the endings carry no action at all, and that is precisely what makes the other two
-/// believable.** Nothing on this phone updates a Mac, and nothing on it shortens a minute of rate
-/// limiting, so those screens say what happened and stop.
+/// Recovery is offered only where the phone can safely act. Every error can copy local logs without
+/// repeating a pairing attempt or a Keychain write.
 ///
 /// Stateless, and it renders `PairingState` rather than only the outcome because two of the things a
 /// reader can land here with are not outcomes: the Keychain write being retried, and six typed words
@@ -18,13 +16,17 @@ import CoreBrandingDomain
 /// the destination resembles the origin, and here a frozen viewfinder becomes a populated list.
 public struct PairingOutcomeView: View {
 
+    @Environment(\.accessibilityReduceMotion) public var reduceMotion
+
     private let macName: String
     private let state: PairingState
+    private let logCopyState: DiagnosticCopyState
     private let canOpenTestFlight: Bool
     private let onTryAgain: () -> Void
     private let onSaveTokenAgain: () -> Void
     private let onOpenTestFlight: () -> Void
     private let onOpenSettings: () -> Void
+    private let onCopyLogs: () -> Void
 
     /// `canOpenTestFlight` is handed in rather than asked here: whether that URL opens anything is a
     /// question only a device can answer, and asking the system is I/O, which a view does not do.
@@ -34,19 +36,23 @@ public struct PairingOutcomeView: View {
     public init(
         macName: String,
         state: PairingState,
+        logCopyState: DiagnosticCopyState,
         canOpenTestFlight: Bool,
         onTryAgain: @escaping () -> Void,
         onSaveTokenAgain: @escaping () -> Void,
         onOpenTestFlight: @escaping () -> Void,
-        onOpenSettings: @escaping () -> Void
+        onOpenSettings: @escaping () -> Void,
+        onCopyLogs: @escaping () -> Void
     ) {
         self.macName = macName
         self.state = state
+        self.logCopyState = logCopyState
         self.canOpenTestFlight = canOpenTestFlight
         self.onTryAgain = onTryAgain
         self.onSaveTokenAgain = onSaveTokenAgain
         self.onOpenTestFlight = onOpenTestFlight
         self.onOpenSettings = onOpenSettings
+        self.onCopyLogs = onCopyLogs
     }
 
     public var body: some View {
@@ -56,12 +62,12 @@ public struct PairingOutcomeView: View {
                 contract(compatibility)
             case .finished(.refused(let failure)):
                 refused(failure)
-            case .finished(.tokenNotStored(_, let failure)):
-                keyNotSaved(failure)
+            case .finished(.tokenNotStored):
+                keyNotSaved
             case .finished(.neverAnswered(let stall)):
                 neverAnswered(stall)
-            case .notReached(.unreachable(let diagnostic)):
-                unreachable(diagnostic: diagnostic)
+            case .notReached(.unreachable):
+                unreachable
             // Six typed words with nowhere to send them, and *Try Again* would be a dead control in
             // front of a permission that will never grant itself. Design §1 owns this state's words
             // and this screen borrows them rather than writing a second set.
@@ -87,6 +93,7 @@ public struct PairingOutcomeView: View {
             }
         }
         .navigationTitle(macName)
+        .animation(reduceMotion ? nil : .default, value: logCopyState)
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -99,28 +106,26 @@ public struct PairingOutcomeView: View {
     /// the difference between walking back to the Mac and simply tapping again.
     @ViewBuilder private func contract(_ compatibility: ApiCompatibility) -> some View {
         switch compatibility {
-        case .macIsBehind(let serving):
-            // No action: nothing on the phone helps, and the fix is on the other machine.
+        case .macIsBehind:
+            // No recovery: the update belongs on the other machine.
             ContentUnavailableView {
                 Label("Your Mac needs a newer Granita", systemImage: "laptopcomputer.and.arrow.down")
             } description: {
                 Text(
                     """
-                    \(macName) is running an older version than this iPhone can talk to. \
-                    Update Granita on the Mac, then pair again. The code was not used.
+                    Update Granita on \(macName), then pair again. The code was not used.
                     """
                 )
             } actions: {
-                diagnostic("/v1/health · contract: Mac offers \(serving), this build requires \(Branding.apiVersion)")
+                copyLogs
             }
 
-        case .phoneIsBehind(let serving):
+        case .phoneIsBehind:
             ContentUnavailableView {
                 Label("This iPhone needs a newer Granita", systemImage: "arrow.down.app")
             } description: {
                 Text(
                     """
-                    \(macName) is running a newer version than this build can talk to. \
                     Install the latest Granita from TestFlight, then pair again. The code was not used.
                     """
                 )
@@ -130,91 +135,88 @@ public struct PairingOutcomeView: View {
                 if canOpenTestFlight {
                     Button("Open TestFlight", action: onOpenTestFlight)
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                 }
-                diagnostic("/v1/health · contract: Mac offers \(serving), this build speaks \(Branding.apiVersion)")
+                copyLogs
             }
 
         case .sameContract:
             // A mismatch that is not one, which is this app's own bug rather than anything the
-            // reader did. It gets the failure idiom and the machine's words rather than a sentence
-            // invented for a state nothing can produce.
-            couldNotPair(diagnostic: "the Mac and this build agree on the contract, and the handshake refused anyway")
+            // reader did. It gets the failure idiom and a report, not an invented recovery.
+            couldNotPair
         }
     }
 
     @ViewBuilder private func refused(_ failure: ApiFailure) -> some View {
         switch failure {
         case .rateLimited:
-            // No action, no countdown and no diagnostic: waiting is the whole remedy, and the
+            // No recovery or countdown: waiting is the whole remedy, and the
             // limiter counts per source address, so the kinder sentence is the true one.
             ContentUnavailableView {
                 Label("Too many attempts", systemImage: "clock.badge.exclamationmark")
             } description: {
                 Text(
                     """
-                    \(macName) has stopped taking pairing codes from this iPhone for a minute. \
-                    Wait, then ask your Mac for a new code.
+                    Wait a minute, then ask your Mac for a new code.
                     """
                 )
+            } actions: {
+                copyLogs
             }
 
         case .pairingExpired:
             // One sentence covers expired and never-existed and names neither, because the Mac
-            // refuses to say which and this must not invent the distinction back. No action: the
+            // refuses to say which and this must not invent the distinction back. No recovery: the
             // remedy is a new code, and that is minted on the other machine.
             ContentUnavailableView {
                 Label("That code is no longer valid", systemImage: "clock.badge.xmark")
             } description: {
                 Text("On your Mac, choose “Pair a device” for a new one.")
+            } actions: {
+                copyLogs
             }
 
-        case .unreachable(let diagnostic):
-            unreachable(diagnostic: diagnostic)
+        case .unreachable:
+            unreachable
 
         case .unauthorized, .projectNotVisible, .worktreeGone, .worktreeNotDeletable, .fileGone,
              .staleContentHash, .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion,
              .requestNotBuildable, .notUnderstood, .cancelled:
             // Everything a Mac can answer that is not one of the three above. They share a remedy
-            // and a sentence, and what tells them apart is the small print — which is what the
-            // small print is for.
+            // and a sentence. The copied report preserves what tells them apart.
             //
             // **`cancelled` is in here rather than given a screen**, and that is deliberate: a
             // pairing is a sequence the reader is watching, so the only way to cancel one is to
             // leave — and a screen nobody is on needs no words. What it must not do is claim the
             // code was spent, so it takes the sentence that offers another attempt.
-            couldNotPair(diagnostic: failure.diagnostic)
+            couldNotPair
         }
     }
 
     /// The Mac was there a moment ago. Trying again re-runs the health probe and the spend.
-    private func unreachable(diagnostic: String) -> some View {
+    private var unreachable: some View {
         ContentUnavailableView {
             Label("Could not reach \(macName)", systemImage: "wifi.exclamationmark")
         } description: {
-            Text("It was on the network a moment ago but did not answer. Trying again usually works.")
+            Text("Check that Granita is running on your Mac, then try again.")
         } actions: {
             Button("Try Again", action: onTryAgain)
                 .buttonStyle(.borderedProminent)
-            self.diagnostic(diagnostic)
+                .controlSize(.large)
+            copyLogs
         }
     }
 
-    private func couldNotPair(diagnostic: String?) -> some View {
+    private var couldNotPair: some View {
         ContentUnavailableView {
             Label("Could not pair with \(macName)", systemImage: "exclamationmark.triangle")
         } description: {
-            Text(
-                """
-                Something stopped Granita from pairing with this Mac. Trying again usually works; \
-                if it does not, ask your Mac for a new code.
-                """
-            )
+            Text("Try again. If it still fails, ask your Mac for a new code.")
         } actions: {
             Button("Try Again", action: onTryAgain)
                 .buttonStyle(.borderedProminent)
-            if let diagnostic {
-                self.diagnostic(diagnostic)
-            }
+                .controlSize(.large)
+            copyLogs
         }
     }
 
@@ -226,22 +228,23 @@ public struct PairingOutcomeView: View {
     /// code that bought this token is spent, so re-running the handshake would ask a Mac to honour a
     /// credential that no longer exists, and `errSecInteractionNotAllowed` is transient far more
     /// often than not. No *Pair Again*, which would leave a second device record beside the orphan.
-    private func keyNotSaved(_ failure: RememberedMacStoreFailure) -> some View {
+    private var keyNotSaved: some View {
         ContentUnavailableView {
             Label("Paired, but the key was not saved", systemImage: "key.slash")
         } description: {
             Text(
                 """
-                \(macName) now lists this iPhone, but this iPhone could not store the key it was \
-                given — so every request it makes will be refused.
+                \(macName) now lists this iPhone. Try saving the key again first.
 
-                On the Mac, open Granita ▸ Settings ▸ Devices, remove this iPhone, then pair again.
+                If it still fails, remove this iPhone in Granita ▸ Settings ▸ Devices on the Mac, \
+                then pair again.
                 """
             )
         } actions: {
-            Button("Try Again", action: onSaveTokenAgain)
+            Button("Try Saving Again", action: onSaveTokenAgain)
                 .buttonStyle(.borderedProminent)
-            diagnostic(keychainDiagnostic(failure))
+                .controlSize(.large)
+            copyLogs
         }
     }
 
@@ -263,33 +266,32 @@ public struct PairingOutcomeView: View {
             } description: {
                 Text(
                     """
-                    Granita was checking your Mac and no answer came back. The code was not used, \
-                    so trying again costs nothing.
+                    The code was not used. Try checking your Mac again.
                     """
                 )
             } actions: {
                 Button("Try Again", action: onTryAgain)
                     .buttonStyle(.borderedProminent)
-                diagnostic("/v1/health · no answer, and the step was given the whole of its patience")
+                    .controlSize(.large)
+                copyLogs
             }
 
         case .spendingTheCode:
-            // No action, and the absence is the point: the phone cannot learn whether the Mac took
+            // No retry, and the absence is the point: the phone cannot learn whether the Mac took
             // the code, so *Try Again* would offer to spend a credential that may already be gone.
             ContentUnavailableView {
                 Label("The code was sent and nothing came back", systemImage: "clock.badge.questionmark")
             } description: {
                 Text(
                     """
-                    \(macName) took the code and never answered, so Granita cannot tell whether it \
-                    was used.
+                    The code may have been used, but \(macName) did not answer.
 
-                    On the Mac, open Granita ▸ Settings ▸ Devices. If this iPhone is listed, \
-                    remove it — then ask for a new code and pair again.
+                    In Granita ▸ Settings ▸ Devices on the Mac, remove this iPhone if listed. \
+                    Then ask for a new code and pair again.
                     """
                 )
             } actions: {
-                diagnostic("/v1/pair · no answer, and the step was given the whole of its patience")
+                copyLogs
             }
 
         case .writingTheKey:
@@ -300,17 +302,17 @@ public struct PairingOutcomeView: View {
             } description: {
                 Text(
                     """
-                    \(macName) now lists this iPhone, and the Keychain took the key without ever \
-                    saying whether it kept it — so every request this iPhone makes may be refused.
+                    \(macName) now lists this iPhone. Saving the key did not finish; try saving it again.
 
-                    Try again. If it does not answer this time either, open Granita ▸ Settings ▸ \
-                    Devices on the Mac, remove this iPhone, then pair again.
+                    If it still fails, remove this iPhone in Granita ▸ Settings ▸ Devices on the Mac, \
+                    then pair again.
                     """
                 )
             } actions: {
-                Button("Try Again", action: onSaveTokenAgain)
+                Button("Try Saving Again", action: onSaveTokenAgain)
                     .buttonStyle(.borderedProminent)
-                diagnostic("Keychain · no answer, and the write was given the whole of its patience")
+                    .controlSize(.large)
+                copyLogs
             }
         }
     }
@@ -319,10 +321,12 @@ public struct PairingOutcomeView: View {
         ContentUnavailableView {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
         } description: {
-            Text("Granita finds your Mac over the local network. Without permission it cannot see it at all.")
+            Text("Allow Local Network access in Settings so Granita can find your Mac.")
         } actions: {
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            copyLogs
         }
     }
 
@@ -344,24 +348,33 @@ public struct PairingOutcomeView: View {
         .padding()
     }
 
-    /// The machine's own words, in the one slot they belong in: small print at the bottom, copyable
-    /// into a bug report and unmistakably not instructions. The description slot is ours on every
-    /// screen in this app.
-    private func diagnostic(_ text: String) -> some View {
-        Text(verbatim: text)
-            .font(.caption2)
-            .monospaced()
-            .foregroundStyle(.tertiary)
-            .multilineTextAlignment(.center)
-            .textSelection(.enabled)
-            .padding(.top)
-    }
+    private var copyLogs: some View {
+        VStack(spacing: 8) {
+            Button(action: onCopyLogs) {
+                switch logCopyState {
+                case .ready: Text("Copy Logs")
+                case .copying: Text("Copying Logs…")
+                case .copied: Text("Copy Logs Again")
+                case .failed: Text("Try Copying Again")
+                }
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.large)
+            .disabled(logCopyState == .copying)
 
-    /// The status code is the whole bug report, and the reader of this app is the developer.
-    private func keychainDiagnostic(_ failure: RememberedMacStoreFailure) -> String {
-        switch failure {
-        case .refused(let status): "Keychain OSStatus \(status)"
-        case .unreadable: "Keychain: what is stored for this Mac is not a token"
+            switch logCopyState {
+            case .ready, .copying:
+                EmptyView()
+            case .copied:
+                Text("Logs copied. Paste them into your message.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            case .failed:
+                Text("Couldn’t copy logs. Please try again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+        .multilineTextAlignment(.center)
     }
 }

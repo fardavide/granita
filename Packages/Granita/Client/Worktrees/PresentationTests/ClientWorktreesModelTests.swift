@@ -15,7 +15,49 @@ import CoreDiffDomain
 @MainActor
 struct ClientWorktreesModelTests {
 
+    // MARK: - Copying local diagnostics
+
+    @Test(arguments: [
+        (Result<Void, DiagnosticCopyFailure>.success(()), DiagnosticCopyState.copied),
+        (.failure(.unavailable), .failed)
+    ])
+    func `given a clipboard outcome when the reader copies logs then the result is visible`(
+        outcome: Result<Void, DiagnosticCopyFailure>,
+        expectedState: DiagnosticCopyState
+    ) async {
+        // given
+        let scenario = Scenario(worktrees: [], copyingLogs: outcome)
+        #expect(scenario.sut.logCopyState == .ready)
+
+        // when
+        await scenario.sut.copyLogs()
+
+        // then
+        #expect(await scenario.copyingLogs.invocations == 1)
+        #expect(scenario.sut.logCopyState == expectedState)
+    }
+
     // MARK: - Reading
+
+    @Test
+    func `given a refused worktree list when logs are copied then that failure reaches the report`() async throws {
+        // given
+        let failure = ApiFailure.unauthorized
+        let scenario = Scenario(worktrees: [], readFailure: failure)
+        await scenario.sut.load()
+        #expect(scenario.sut.state == .failed(failure))
+
+        // when
+        await scenario.sut.copyLogs()
+
+        // then
+        let context = try #require(await scenario.copyingLogs.lastContext())
+        guard case .worktrees(let copiedFailure) = context else {
+            Issue.record("The worktree screen must supply worktree failure context")
+            return
+        }
+        #expect(copiedFailure == failure)
+    }
 
     @Test
     func `given a Mac with worktrees when loading then the list arrives arranged`() async {
@@ -837,6 +879,7 @@ struct ClientWorktreesModelTests {
         let sut: ClientWorktreesModel
         let repository: FakeGranitaRepository
         let preferences: FakeWorktreeListPreferences
+        let copyingLogs: FakeDiagnosticLogsCopying
 
         /// Empty for every state that is not a list, so a test that expected rows and got a refusal
         /// fails on the rows rather than on a pattern match three lines earlier.
@@ -868,6 +911,7 @@ struct ClientWorktreesModelTests {
             readFailure: ApiFailure? = nil,
             refusesTheFirstRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
+            copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
         ) {
             repository = FakeGranitaRepository(
@@ -877,10 +921,12 @@ struct ClientWorktreesModelTests {
                 refusesTheFirstRead: refusesTheFirstRead
             )
             self.preferences = preferences
+            copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
             sut = ClientWorktreesModel(
                 macName: "Mac Studio",
                 repository: repository,
                 preferences: preferences,
+                copyingLogs: copyingLogs,
                 now: { aMoment }
             )
         }

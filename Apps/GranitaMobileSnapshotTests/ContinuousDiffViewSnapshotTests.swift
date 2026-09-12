@@ -31,6 +31,7 @@ struct ContinuousDiffViewSnapshotTests {
         assertScreenSnapshot(
             ContinuousDiffView(
                 state: subject.state,
+                logCopyState: .ready,
                 pointSize: layout.codePointSize,
                 jumpTarget: subject.jumpTarget,
                 onReading: { _ in },
@@ -38,7 +39,8 @@ struct ContinuousDiffViewSnapshotTests {
                 onSetViewed: { _, _ in },
                 onSetOpen: { _, _ in },
                 onExpand: { _, _, _ in },
-                onRetry: {}
+                onRetry: {},
+                onCopyLogs: {}
             ),
             layout: layout,
             named: subject.name

@@ -125,15 +125,31 @@ An unavailable-content view's description is the one line the reader will act on
 error's localised description means the screen's advice is written by whichever framework failed, and
 Network.framework writes badly.
 
-Three slots, three jobs:
+Three jobs, without a wall of technical text *(revised for mobile diagnostics)*:
 
-- **The description is ours** and always says the same two things: try again, and here is the one
-  other thing it could be.
-- **The action is "Try Again".**
-- **The system's string moves to the bottom** at caption2, monospaced, tertiary and selectable — so
-  it is copyable into a bug report and unmistakably not instructions. The raw network error code is
-  appended, because it is the only part of that string a developer can act on, and here the reader is
-  the developer.
+- **The description is ours**, short and actionable. Do not claim a particular cause when the
+  failure only tells us that the request did not finish.
+- **The primary action is the safe remedy**, usually "Try Again". Preserve the pairing distinction
+  between retrying an unspent code and saving an already-bought key; copying logs never retries either.
+- **"Copy Logs" is a secondary action**, next to the remedy rather than below a raw error dump.
+  Render it as blue text without a background or icon, never as another filled or bordered button.
+  It copies a bounded report from this app session directly to the clipboard, without a Mac,
+  an archive, a share sheet or another network request. Show "Logs copied" only after the clipboard
+  write completes, followed by "Paste them into your message." A failed copy says so and remains
+  retryable. While copying, the button says "Copying Logs…" and is disabled for that visible reason.
+
+Use native `ContentUnavailableView`, a prominent native recovery button and a borderless text
+report action at the width SwiftUI gives the screen. Short advice, recovery and reporting stay together;
+no fixed-height spacer, 420pt measure,
+tiny selectable footer, disclosure, alert or decorative error card. Respect Dynamic Type and
+Reduce Motion, and animate the copy-status change with the framework's default animation.
+
+The report contains app/build/system versions, timestamps, sanitized request endpoints,
+structured error domains/codes and the current screen's safe failure summary. Keychain refusals
+retain their numeric status; discovery and API failures retain only app-owned identifiers.
+It excludes credentials, pairing codes, query strings, fragments,
+headers, bodies and source text. It is phone-side evidence, not a promise to collect inaccessible
+Mac or system logs. Explain its current-session scope in the report itself.
 
 **Route policy errors away from this state.** iOS reports a refusal one way to a first browser and
 another way to every browser after it, so a genuine denial will sometimes arrive as a failure. When
@@ -144,8 +160,9 @@ direction costs the reader one tap; being wrong the other way costs them the app
 > on. Rejected: an alert — it demands an answer to a question the reader was not asked, then leaves
 > the same empty screen behind it. This is a state of the screen, not an interruption.
 
-*Should feel like* the app taking responsibility. The words are ours; the diagnostic is in small
-print at the bottom where diagnostics go.
+*Should feel like* the app taking responsibility: understandable advice and one tap to bring useful
+evidence into the conversation. Davide explicitly approved implementing this iteration without the
+external design tool on 12 September 2026; a later design round trip remains available.
 
 ### The iPad draws these screens the way SwiftUI draws them *(revised in 0.7.1)*
 
@@ -1084,14 +1101,15 @@ repeating is what makes it safe.
 
 ### One outcome screen, and a button only where the phone can act
 
-A spent credential has one destination and five appearances of it. **Three carry no action, and that
-is precisely what makes the other two believable.**
+A spent credential has one destination and five appearances of it. **Only offer recovery the phone
+can safely perform.** Every error also offers the local "Copy Logs" action described in §1; it is
+reporting, not recovery, and never spends a code or retries a Keychain write.
 
-| Outcome | Action | Why |
+| Outcome | Recovery action | Why |
 |---|---|---|
 | The Mac is behind | none | Nothing on the phone helps. The fix is on the other machine |
 | The phone is behind | *Open TestFlight*, **when the device has it** | It leaves the app, so it only appears when the URL can be opened |
-| Rate limited | none | Waiting is the whole remedy. No countdown and no diagnostic |
+| Rate limited | none | Waiting is the whole remedy. No countdown |
 | Unreachable | *Try Again* | Re-runs the health probe and the spend |
 | Paired, key not saved | *Try Again* | Retries the Keychain write alone — see below |
 | A step never answered | depends on whether the code was spent | The thirteenth state — see below |
@@ -1119,8 +1137,8 @@ it, so *Try Again* retries the write alone, and the trip to the Mac drops to the
 against the drawn version.
 
 > Rejected: alerts for any of these. An alert dismisses to a live viewfinder that immediately
-> re-reads the same dead QR, which is a loop. Rejected: a *Contact support* or bug-report action —
-> the reader is the developer, and the selectable `OSStatus` is the whole bug report.
+> re-reads the same dead QR, which is a loop. A *Contact support* destination remains unnecessary;
+> the earlier rejection of local bug-report copying is reversed by the mobile diagnostics request.
 
 ### §5.7 — The thirteenth state: a step that never answered
 

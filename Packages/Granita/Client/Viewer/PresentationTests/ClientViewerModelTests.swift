@@ -15,6 +15,48 @@ import CoreDiffDomain
 @MainActor
 struct ClientViewerModelTests {
 
+    // MARK: - Copying local diagnostics
+
+    @Test(arguments: [
+        (Result<Void, DiagnosticCopyFailure>.success(()), DiagnosticCopyState.copied),
+        (.failure(.unavailable), .failed)
+    ])
+    func `given a clipboard outcome when the reader copies logs then the result is visible`(
+        outcome: Result<Void, DiagnosticCopyFailure>,
+        expectedState: DiagnosticCopyState
+    ) async {
+        // given
+        let scenario = Scenario(copyingLogs: outcome)
+        #expect(scenario.sut.logCopyState == .ready)
+
+        // when
+        await scenario.sut.copyLogs()
+
+        // then
+        #expect(await scenario.copyingLogs.invocations == 1)
+        #expect(scenario.sut.logCopyState == expectedState)
+    }
+
+    @Test
+    func `given a failed diff read when logs are copied then that failure reaches the report`() async throws {
+        // given
+        let failure = ApiFailure.gitFailure(message: "fatal: cannot read private-index.lock")
+        let scenario = Scenario(changeSetFailure: failure)
+        await scenario.sut.load()
+        #expect(scenario.sut.state == .failed(failure))
+
+        // when
+        await scenario.sut.copyLogs()
+
+        // then
+        let context = try #require(await scenario.copyingLogs.lastContext())
+        guard case .diff(let copiedFailure) = context else {
+            Issue.record("The diff screen must supply diff failure context")
+            return
+        }
+        #expect(copiedFailure == failure)
+    }
+
     @Test
     func `given a worktree with changes when it loads then every file is named before any is fetched`() async {
         // given — the change set carries the file list and the stats and never the hunks, which is
@@ -879,6 +921,7 @@ private struct Scenario {
     let sut: ClientViewerModel
     let repository: FakeGranitaRepository
     let fileIds: [FileID]
+    let copyingLogs: FakeDiagnosticLogsCopying
 
     init(
         files: [FileChange] = [],
@@ -890,6 +933,7 @@ private struct Scenario {
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
         refusesTheFirstRead: ApiFailure? = nil,
         isTruncated: Bool = false,
+        copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
         alsoAnswering stranger: FileChange? = nil
     ) {
         fileIds = files.map(\.id)
@@ -908,6 +952,7 @@ private struct Scenario {
             refusesTheFirstRead: refusesTheFirstRead,
             alsoAnswering: stranger
         )
+        copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
         // The review is beside the point in every test here and is asserted in
         // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
         sut = ClientViewerModel(
@@ -919,7 +964,8 @@ private struct Scenario {
             pasteboard: FakeReviewPasteboard(),
             // Highlighting is beside the point in every test here and is asserted in
             // `ClientViewerHighlightingTests`, so the lexer is built inline and never inspected.
-            highlighter: FakeSyntaxHighlighter()
+            highlighter: FakeSyntaxHighlighter(),
+            copyingLogs: copyingLogs
         )
     }
 }

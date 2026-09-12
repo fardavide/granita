@@ -19,6 +19,7 @@ import CoreDiffDomain
 public final class ClientViewerModel {
 
     public private(set) var state: ContinuousDiffState = .loading
+    public private(set) var logCopyState: DiagnosticCopyState = .ready
 
     /// The file selector's rows, in the arrangement it settled on.
     public private(set) var selector = FileSelectorListing(
@@ -236,6 +237,7 @@ public final class ClientViewerModel {
     private let commentStore: any ReviewCommentStore
     private let pasteboard: any ReviewPasteboard
     private let highlighter: any SyntaxHighlighter
+    private let copyingLogs: any DiagnosticLogsCopying
 
     public init(
         worktree: WorktreeID,
@@ -244,7 +246,8 @@ public final class ClientViewerModel {
         repository: any GranitaRepository,
         commentStore: any ReviewCommentStore,
         pasteboard: any ReviewPasteboard,
-        highlighter: any SyntaxHighlighter
+        highlighter: any SyntaxHighlighter,
+        copyingLogs: any DiagnosticLogsCopying
     ) {
         self.worktree = worktree
         self.worktreeName = worktreeName
@@ -253,7 +256,23 @@ public final class ClientViewerModel {
         self.commentStore = commentStore
         self.pasteboard = pasteboard
         self.highlighter = highlighter
+        self.copyingLogs = copyingLogs
         comments = commentStore.comments(in: worktree)
+    }
+
+    public func copyLogs() async {
+        logCopyState = .copying
+        let failure: ApiFailure?
+        switch state {
+        case .failed(let error): failure = error
+        case .loading, .nothingChanged, .reading: failure = nil
+        }
+        do {
+            try await copyingLogs.copy(context: .diff(failure))
+            logCopyState = .copied
+        } catch {
+            logCopyState = .failed
+        }
     }
 
     /// Reads what changed, which is the file list and the stats and never the hunks.

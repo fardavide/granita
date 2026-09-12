@@ -40,11 +40,13 @@ struct PairingOutcomeViewSnapshotTests {
                 PairingOutcomeView(
                     macName: aMacName,
                     state: subject.state,
+                    logCopyState: .ready,
                     canOpenTestFlight: subject.canOpenTestFlight,
                     onTryAgain: {},
                     onSaveTokenAgain: {},
                     onOpenTestFlight: {},
-                    onOpenSettings: {}
+                    onOpenSettings: {},
+                    onCopyLogs: {}
                 )
             },
             layout: layout,

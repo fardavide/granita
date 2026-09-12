@@ -2,6 +2,21 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.11.0 — mobile diagnostics and readable error screens are implemented, not published.**
+Davide approved proceeding without the external design tool for this iteration. Error screens offer
+a subtle blue text-only “Copy Logs” action for a safe local clipboard report from the phone's current
+app session, instead of raw error dumps or attached-device log collection on a Mac. Reports include
+request outcomes and sanitized current-screen failure context; no TLS policy change is part of this
+slice. Verification passes: 1,356 package tests, 669 simulator checks including a real iOS clipboard
+write, unsigned package/app builds, and all six coverage values against main at `af99cc2`.
+
+**Release awaits PR review and merge.** GitHub CLI access was restored and verified as `fardavide`
+on 12 September 2026; `feat/mobile-diagnostics` is ready to publish for review.
+Actual screen tapping remains unverified because Simulator inspection
+times out; public UIKit accessibility containers did not expose the SwiftUI button, so that unsupported
+test harness was removed rather than replaced with a direct-model call. Its feature branch must be
+cleaned up only after the PR is merged.
+
 **Version 0.10.1 — remembered Macs appear on a cold remote launch.** On cellular, `NWBrowser` can
 remain in its searching state without ever reporting an empty result. The phone now surfaces
 fallback-capable remembered Macs from that state instead of waiting for a Bonjour result that may
