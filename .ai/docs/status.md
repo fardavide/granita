@@ -2,7 +2,16 @@
 
 Where the project is. Update this when a slice lands.
 
-**Version 0.11.0 — mobile diagnostics and readable error screens are implemented, not published.**
+**Version 0.11.1 — TLS decision reporting is implemented, awaiting PR merge.** The phone-side report includes
+the paired connection's server-trust callback outcome: matching pin, mismatched pin, missing trust
+or unusable public key. The decision is recorded before callback completion, without certificates,
+fingerprints or credentials. Acceptance policy, server code and visible error screens are unchanged.
+Verification passes: 1,362 package tests, 669 simulator checks, unsigned package/app builds, and
+all six coverage values against main at `cffb67f`. Local Mac snapshots retain the documented
+platform drift; their PR check remains the authority. HTTP methods remain typed in a closed
+journal enum; text conversion occurs only at report formatting.
+
+**Version 0.11.0 — mobile diagnostics and readable error screens are published.**
 Davide approved proceeding without the external design tool for this iteration. Error screens offer
 a subtle blue text-only “Copy Logs” action for a safe local clipboard report from the phone's current
 app session, instead of raw error dumps or attached-device log collection on a Mac. Reports include
@@ -10,12 +19,12 @@ request outcomes and sanitized current-screen failure context; no TLS policy cha
 slice. Verification passes: 1,356 package tests, 669 simulator checks including a real iOS clipboard
 write, unsigned package/app builds, and all six coverage values against main at `af99cc2`.
 
-**Release awaits PR review and merge.** GitHub CLI access was restored and verified as `fardavide`
-on 12 September 2026; `feat/mobile-diagnostics` is ready to publish for review.
+**PR #79 merged on 12 September 2026; Davide installed TestFlight build 136.** His copied report
+confirmed `NSURLErrorDomain (-1200)` over the tailnet but lacked the pin-validation decision.
 Actual screen tapping remains unverified because Simulator inspection
 times out; public UIKit accessibility containers did not expose the SwiftUI button, so that unsupported
-test harness was removed rather than replaced with a direct-model call. Its feature branch must be
-cleaned up only after the PR is merged.
+test harness was removed rather than replaced with a direct-model call. The merged feature branch
+was deleted locally; GitHub had already removed its remote branch.
 
 **Version 0.10.1 — remembered Macs appear on a cold remote launch.** On cellular, `NWBrowser` can
 remain in its searching state without ever reporting an empty result. The phone now surfaces
