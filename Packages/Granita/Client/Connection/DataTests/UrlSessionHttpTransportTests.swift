@@ -9,6 +9,26 @@ import ClientConnectionDomain
 struct UrlSessionHttpTransportTests {
 
     @Test
+    func `given a short probe timeout when sending a request then the native request uses that deadline`() async throws {
+        // given
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/health"))
+        let scenario = Scenario(
+            answer: .success((Data(), try #require(HTTPURLResponse(
+                url: url, statusCode: 200, httpVersion: nil, headerFields: nil
+            )))),
+            timestamp: Date(timeIntervalSince1970: 0),
+            requestTimeout: .seconds(5)
+        )
+
+        // when
+        _ = try await scenario.sut.send(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+
+        // then
+        let request = try #require(await scenario.session.requests.last)
+        #expect(request.timeoutInterval == 5)
+    }
+
+    @Test
     func `given a non HTTPS URL when an authenticated request is sent then it is refused before reaching the session`() async throws {
         // given
         let url = try #require(URL(string: "http://100.81.42.98:8737/v1/worktrees"))
@@ -131,7 +151,7 @@ struct UrlSessionHttpTransportTests {
         let logs: ConnectionLogs
         let session: FakeSessionRequests
 
-        init(answer: Result<(Data, URLResponse), NSError>, timestamp: Date) {
+        init(answer: Result<(Data, URLResponse), NSError>, timestamp: Date, requestTimeout: Duration = .seconds(60)) {
             session = FakeSessionRequests(answer: answer)
             logs = ConnectionLogs(
                 context: ConnectionLogContext(
@@ -146,7 +166,8 @@ struct UrlSessionHttpTransportTests {
             sut = UrlSessionHttpTransport(
                 performing: session,
                 trusting: { nil },
-                logs: logs
+                logs: logs,
+                requestTimeout: requestTimeout
             )
         }
     }

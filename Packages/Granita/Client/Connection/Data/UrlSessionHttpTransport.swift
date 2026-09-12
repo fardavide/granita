@@ -13,6 +13,7 @@ public final class UrlSessionHttpTransport: HttpTransport {
 
     private let session: any SessionRequests
     private let logs: ConnectionLogs
+    private let requestTimeout: Duration
 
     /// What this transport ended up trusting. A closure because the two ways of building one answer
     /// it from different places — a pin is known at construction, a first contact only after a
@@ -28,6 +29,7 @@ public final class UrlSessionHttpTransport: HttpTransport {
             delegateQueue: nil
         ))
         self.logs = logs
+        requestTimeout = .seconds(60)
         // A pinned session refuses everything else, so what it trusted is the pin by construction.
         trusted = { fingerprint }
     }
@@ -42,17 +44,20 @@ public final class UrlSessionHttpTransport: HttpTransport {
         let trust = FirstContactServerTrust()
         session = UrlSessionRequests(session: URLSession(configuration: .ephemeral, delegate: trust, delegateQueue: nil))
         self.logs = logs
+        requestTimeout = .seconds(60)
         trusted = { await trust.fingerprint() }
     }
 
     init(
         performing session: any SessionRequests,
         trusting trusted: @escaping @Sendable () async -> SpkiFingerprint?,
-        logs: ConnectionLogs
+        logs: ConnectionLogs,
+        requestTimeout: Duration = .seconds(60)
     ) {
         self.session = session
         self.trusted = trusted
         self.logs = logs
+        self.requestTimeout = requestTimeout
     }
 
     public func trustedFingerprint() async -> SpkiFingerprint? {
@@ -64,6 +69,8 @@ public final class UrlSessionHttpTransport: HttpTransport {
             throw .requestNotBuildable(diagnostic: "Granita connections require HTTPS")
         }
         var outgoing = URLRequest(url: request.url)
+        let timeout = requestTimeout.components
+        outgoing.timeoutInterval = Double(timeout.seconds) + Double(timeout.attoseconds) / 1e18
         outgoing.httpMethod = request.method.rawValue
         outgoing.httpBody = request.body
         for (name, value) in request.headers {
