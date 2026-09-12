@@ -9,6 +9,17 @@ import ClientConnectionDomain
 struct UrlSessionHttpTransportTests {
 
     @Test
+    func `given a probe deadline when configuring the session then both inactivity and total request time are bounded`() {
+        // given - when
+        let configuration = UrlSessionHttpTransport.sessionConfiguration(requestTimeout: .milliseconds(5_250))
+
+        // then
+        #expect(configuration.timeoutIntervalForRequest == 5.25)
+        #expect(configuration.timeoutIntervalForResource == 5.25)
+        #expect(configuration.urlCache?.diskCapacity == 0)
+    }
+
+    @Test
     func `given a short probe timeout when sending a request then the native request uses that deadline`() async throws {
         // given
         let url = try #require(URL(string: "https://100.81.42.98:8737/v1/health"))

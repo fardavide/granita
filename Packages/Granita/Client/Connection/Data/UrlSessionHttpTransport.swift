@@ -34,6 +34,19 @@ public final class UrlSessionHttpTransport: HttpTransport {
         trusted = { fingerprint }
     }
 
+    public convenience init(pinnedTo fingerprint: SpkiFingerprint, logs: ConnectionLogs, requestTimeout: Duration) {
+        self.init(
+            performing: UrlSessionRequests(session: URLSession(
+                configuration: Self.sessionConfiguration(requestTimeout: requestTimeout),
+                delegate: PinnedServerTrust(pinnedTo: fingerprint, logs: logs),
+                delegateQueue: nil
+            )),
+            trusting: { fingerprint },
+            logs: logs,
+            requestTimeout: requestTimeout
+        )
+    }
+
     /// A transport for a Mac nobody vouched for, which is what six typed words amount to.
     ///
     /// **Only ever for the pairing handshake.** What comes back from `trustedFingerprint()` is what
@@ -62,6 +75,15 @@ public final class UrlSessionHttpTransport: HttpTransport {
 
     public func trustedFingerprint() async -> SpkiFingerprint? {
         await trusted()
+    }
+
+    static func sessionConfiguration(requestTimeout: Duration) -> URLSessionConfiguration {
+        let configuration = URLSessionConfiguration.ephemeral
+        let timeout = requestTimeout.components
+        let seconds = Double(timeout.seconds) + Double(timeout.attoseconds) / 1e18
+        configuration.timeoutIntervalForRequest = seconds
+        configuration.timeoutIntervalForResource = seconds
+        return configuration
     }
 
     public func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse {
