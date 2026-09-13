@@ -127,6 +127,69 @@ struct WorktreeDiffScreenSnapshotTests {
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-refused-mark")
     }
 
+    // MARK: - Design §9's two states inside a reserved card
+
+    /// **The ordinary shape of a refused batch: several stopped blocks and one bar.**
+    ///
+    /// Every card carries its own sentence, because five files are blank and five files say why; the
+    /// control is at the bottom edge once, because one request failed. This is also where the two
+    /// halves are seen to be different sizes — each block is its own file's estimate, so nothing
+    /// repeats at a fixed pitch.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a batch the Mac refused when the screen is rendered then every blank card says so`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetToSelectFrom,
+            holding: [],
+            in: layout,
+            refusing: .unreachable(diagnostic: "NSURLErrorDomain -1004")
+        )
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-batch-that-failed")
+    }
+
+    /// **The one failure whose control is not a retry**, and the reason the bar lives in one place at
+    /// all: a revoked pairing refuses every later request too, so *Try Again* there is a control that
+    /// cannot work — and a per-file retry would have drawn that dead control once per blank card.
+    @Test(arguments: SnapshotLayout.all)
+    func `given the pairing was revoked when the screen is rendered then the bar offers pairing`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetToSelectFrom,
+            holding: [],
+            in: layout,
+            refusing: .unauthorized
+        )
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-batch-refused-outright")
+    }
+
+    /// **The second refusal, which is two different sentences rather than the same one again.** The
+    /// first line says it is the second time and the second stops naming the reason and starts naming
+    /// the remedy — a sentence the reader has not already read and acted on.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a retry that failed again when the screen is rendered then the bar names the remedy`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetToSelectFrom,
+            holding: [],
+            in: layout,
+            refusing: .unreachable(diagnostic: "NSURLErrorDomain -1004")
+        )
+        await model.retryDiffs()
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-batch-that-failed-twice")
+    }
+
     // MARK: - Design §7's two corners
 
     /// **The capsule, and the fact that it is not in the toolbar.** Design §7.4's call 2: a toolbar
@@ -230,6 +293,20 @@ struct WorktreeDiffScreenSnapshotTests {
 @MainActor
 private func screen(of model: ClientViewerModel) -> some View {
     NavigationStack {
-        WorktreeDiffScreen(worktreeName: "TLS pinning", model: model)
+        WorktreeDiffScreen(worktreeName: "TLS pinning", model: model, onPairAgain: {})
     }
+        // **Reduced Motion wherever a card is still on its way.** Design §9's sweep is an infinite
+        // repeat, so a raster of it lands wherever the run loop happened to be — and the design says
+        // in as many words that the still form is what a screenshot of this screen looks like. Asked
+        // of the model rather than declared per test, so a state that gains an unarrived file cannot
+        // forget. What the sweep does under a thumb is checked by pressing it, like every other
+        // motion in this app.
+        .environment(\._accessibilityReduceMotion, rendersStill(model))
+}
+
+/// Whether this screen holds a card whose sweep would otherwise be caught mid-crossing.
+@MainActor
+private func rendersStill(_ model: ClientViewerModel) -> Bool {
+    guard case .reading(let entries) = model.state else { return false }
+    return entries.contains { $0.isReady == false }
 }

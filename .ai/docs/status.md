@@ -2,6 +2,50 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.12.0 — a file you are waiting for says so, and one that failed says that instead.** The
+return for [issue #67](https://github.com/fardavide/granita/issues/67) is recorded in design §9 and
+every state it draws is built. A card whose diff has not arrived draws one row of type and one 7pt
+bar per reserved row, under a single slow sweep; after ten seconds the row adds a word. A card whose
+batch the Mac refused stops sweeping, halves its bars, takes a `!` in the marker column and says
+`couldn’t read this file`. The recovery is one bar at the bottom of the diff pane, and the failure
+class picks its control — *Try Again*, *Pair Again* or *Back to Worktrees*.
+
+**The defect underneath it was a `try?` and a bare return.** `ClientViewerModel.fetch` dropped a
+refused batch entirely, so every file in it stayed `awaiting` — which draws a blank card. `inFlight`
+emptied, so a later scroll could re-ask; a reader already sitting on the file scrolls nothing, so
+nothing did, and the blank was permanent for the life of the screen. `ContinuousDiffContent` has a
+third case now, `ContinuousDiffLoading.next` a fourth set, and a failed file is only re-asked when
+the reader presses. All in [`decisions.md`](decisions.md).
+
+**Three things are built differently from the frames**, each recorded in design §9: the bars keep one
+starting x where the frames step it in, because the prose beside them says so; the bar stacks above
+§7.1's instruction bar rather than beside it, because unlike the bar and the capsule those two *can*
+both be true and the frames do not draw the collision; and `ApiFailure`'s sixteen cases fold into the
+four sentences the return names, with `cancelled` never reaching the bar at all.
+
+**What no baseline can hold is the sweep.** An infinite repeat has no frame a raster can be pinned
+to, so every subject holding an unarrived card renders with Reduced Motion — which is where design §9
+itself puts the sweep's absence. The bars, the sentence, the marker and all three bar states are
+photographed. Whether the light reads as *working* rather than *stopped* is a question for the device
+afternoon, with the gutter's aim.
+
+**A baseline caught the bar being drawn twice, and it took three wrong fixes to isolate.** A
+full-width container sitting hard against the bottom safe area is read by iOS 26 as bottom-bar
+chrome, and every phone picture came back with the bar's trailing control mirrored into the top of
+the window. Neither the material nor the transition was it; what settled it was rendering the bar in
+a **component** suite of its own, with no stack, no toolbar and no overlay, where the duplicate was
+still there. The 34pt the design already gives the home indicator is the fix. In
+[`decisions.md`](decisions.md).
+
+**Verification.** 1,476 package tests in 138 suites pass; unsigned package and both app builds pass;
+the phone and iPad snapshot comparison passes clean after a full re-record, and every changed PNG has
+been reviewed. All six coverage values hold against main at `a7728ab` — unit 97.2%/94.5%, snapshot
+97.1%/97.8%, all-test 97.9%/95.3%, with 201 uncovered lines, two fewer than the baseline. Baselines
+that moved only because a re-record caught a spinner at a different phase — the pairing screens, the
+sidebar's loading states and this screen's own `loading` subject — were reverted rather than
+committed. Mac snapshots retain their documented local drift; their CI check remains the authority.
+No release has been published.
+
 **Version 0.11.4 — loading feedback is implemented; release is pending.** The returned
 design for [issue #82](https://github.com/fardavide/granita/issues/82) is recorded in design §8.
 Observed connection stages, a whole-attempt elapsed clock, cancellable reads, retained refresh

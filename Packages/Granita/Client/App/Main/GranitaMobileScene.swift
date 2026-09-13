@@ -8,6 +8,7 @@ import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
 import ClientViewerData
+import ClientViewerDomain
 import ClientViewerPresentation
 import ClientViewerUi
 import ClientWorktreesData
@@ -261,8 +262,14 @@ public struct GranitaMobileScene: Scene {
                     // across threads — so it is an actor held here for the process's lifetime, the
                     // way `SPEC.md` §2's trap paragraph requires.
                     highlighter: highlighter,
-                    copyingLogs: copyingLogs
-                )
+                    copyingLogs: copyingLogs,
+                    announcing: VoiceOverDiffReadAnnouncements(),
+                    longWait: DiffFileWait.longWait
+                ),
+                // **The same closure the worktree list is given**, because a revoked pairing refuses
+                // the diff's batches and the list's reads with one credential — and design §9 makes
+                // that the one failure whose control is not a retry.
+                onPairAgain: onPairAgain
             )
         }
     }

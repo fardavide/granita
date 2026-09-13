@@ -70,6 +70,27 @@ extension Color {
     /// having no colour.
     static var diffCommentStale: Color { .fileStatusAmber }
 
+    /// The light that crosses a card whose file is still on its way.
+    ///
+    /// **White in both appearances, at two very different alphas, and that is the treatment rather
+    /// than an oversight.** In light the card is white and the bars are about 8% black, so the sweep
+    /// fades the bars where it passes; in dark the card is `#1C1C1E` and the bars are white, so the
+    /// same hue lifts them. Design §9's own numbers, and they are what keeps the sweep from needing
+    /// a boundary between two near-blacks to be visible: it reads as light *inside* the card rather
+    /// than as a lighter area of it.
+    ///
+    /// A dynamic `UIColor` rather than two call sites reading the colour scheme, for the reason
+    /// every other pair in this file is written here: two halves of one fact, written apart, drift.
+    static var diffSweep: Color {
+        #if canImport(UIKit)
+        Color(uiColor: UIColor { traits in
+            UIColor.white.withAlphaComponent(traits.userInterfaceStyle == .dark ? 0.055 : 0.75)
+        })
+        #else
+        Color.white.opacity(0.5)
+        #endif
+    }
+
     /// The hunk band's fill, and the review's fourth fault finished.
     ///
     /// **`quaternarySystemFill`, which is what this band was always documented as and never drawn

@@ -2,10 +2,10 @@ import CoreDiffDomain
 
 /// Whether a file's diff has arrived yet.
 ///
-/// **Both cases are on screen at once, always.** The change set names every changed file before a
-/// single diff is fetched, so the scroll draws all of them from the first frame and fills them in
-/// five ahead of the reader. A file waiting for its diff is not a loading state the reader is
-/// blocked by — it is a stretch of scroll with a reserved height, and reserving that height
+/// **The first two cases are on screen at once, always.** The change set names every changed file
+/// before a single diff is fetched, so the scroll draws all of them from the first frame and fills
+/// them in five ahead of the reader. A file waiting for its diff is not a loading state the reader
+/// is blocked by — it is a stretch of scroll with a reserved height, and reserving that height
 /// correctly enough is the whole of what keeps the content below it from jumping.
 public enum ContinuousDiffContent: Hashable, Sendable {
 
@@ -16,10 +16,23 @@ public enum ContinuousDiffContent: Hashable, Sendable {
     /// drawn never reverts to its estimate, so scrolling back up cannot reflow.
     case ready(FileDiff)
 
+    /// Asked for, refused, and not coming back until the reader asks again.
+    ///
+    /// **The third case exists because there was nowhere for a refusal to go.** The model held an
+    /// `ApiFailure` and dropped it, so a file whose batch failed stayed `awaiting` — which is to say
+    /// a blank card, for the life of the screen, with nothing anywhere saying so. Design §9 makes
+    /// *still coming*, *arrived empty* and *failed and never coming* three pictures rather than one,
+    /// and this is the case that lets the screen tell the third from the first.
+    ///
+    /// It carries the `FileChange` rather than the failure. The failure belongs to the **request**,
+    /// which carried five files, so it is held once by the model and printed once in the bar.
+    case failed(FileChange)
+
     public var file: FileChange {
         switch self {
         case .awaiting(let file): file
         case .ready(let diff): diff.file
+        case .failed(let file): file
         }
     }
 }
@@ -55,6 +68,11 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
         ContinuousDiffEntry(content: .ready(diff), openedByTheReader: nil)
     }
 
+    /// Asked for and refused.
+    public static func failed(_ file: FileChange) -> ContinuousDiffEntry {
+        ContinuousDiffEntry(content: .failed(file), openedByTheReader: nil)
+    }
+
     public var file: FileChange { content.file }
 
     public var id: FileID { file.id }
@@ -62,8 +80,22 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
     /// Whether the diff is in hand, which is what the loader asks before spending a batch slot.
     public var isReady: Bool {
         switch content {
-        case .awaiting: false
+        case .awaiting, .failed: false
         case .ready: true
+        }
+    }
+
+    /// Whether the last thing this file heard from the Mac was a refusal.
+    ///
+    /// Read by the screen, which draws a stopped block instead of a sweeping one, and by the model,
+    /// which keeps these out of `ContinuousDiffLoading`'s reach until the reader presses *Try
+    /// Again*. Without the second, a failed file leaving `inFlight` is eligible again on the very
+    /// next position update — so a reader nudging the scroll would re-ask a dead Mac every frame and
+    /// the rows would flicker between the two sentences.
+    public var isFailed: Bool {
+        switch content {
+        case .awaiting, .ready: false
+        case .failed: true
         }
     }
 
@@ -78,10 +110,38 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
     /// too small or too large only matters *below* the viewport, where nothing the reader is
     /// looking at moves when it is corrected — which is why loading runs strictly forward and why
     /// the estimate needs to be reasonable rather than exact.
+    ///
+    /// **A refused file answers exactly as a waiting one does**, which is design §9's one hard
+    /// requirement of the third case: the box a failed file draws into is the box it was already
+    /// drawing into, so the treatment that says it failed cannot change the height on the way in.
     public var reservedRows: Int {
         switch content {
-        case .awaiting(let file): max(1, file.estimatedLineCount)
+        case .awaiting(let file), .failed(let file): max(1, file.estimatedLineCount)
         case .ready(let diff): diff.hunks.reduce(0) { $0 + $1.lines.count }
+        }
+    }
+
+    /// The same entry with its batch's refusal recorded against it.
+    ///
+    /// **A file already in hand keeps its diff**, which is the branch that must never be taken
+    /// rather than the one that is: a batch never carries a file the loader is already holding, and
+    /// blanking drawn content on a later refusal would take away the thing the reader is reading.
+    public func failing() -> ContinuousDiffEntry {
+        switch content {
+        case .ready:
+            self
+        case .awaiting(let file), .failed(let file):
+            ContinuousDiffEntry(content: .failed(file), openedByTheReader: openedByTheReader)
+        }
+    }
+
+    /// The same entry put back on its way, which is the whole of what *Try Again* does to a file.
+    public func retrying() -> ContinuousDiffEntry {
+        switch content {
+        case .ready:
+            self
+        case .awaiting(let file), .failed(let file):
+            ContinuousDiffEntry(content: .awaiting(file), openedByTheReader: openedByTheReader)
         }
     }
 
@@ -125,6 +185,8 @@ private extension ContinuousDiffContent {
         switch self {
         case .awaiting(let file):
             .awaiting(file.viewed(isViewed))
+        case .failed(let file):
+            .failed(file.viewed(isViewed))
         case .ready(let diff):
             .ready(FileDiff(
                 file: diff.file.viewed(isViewed),

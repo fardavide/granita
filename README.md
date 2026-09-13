@@ -84,6 +84,19 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.12.0 — 2026-09-13
+- **A file you are waiting for now says so.** Where a diff that had not arrived drew an empty card
+  under its header, it draws the rows the file has not sent yet — one line of type saying
+  `reading from your Mac`, and a slow sweep of light across the card. After ten seconds the line
+  reads `still reading from your Mac`. Nothing moves when the real diff lands.
+- **A diff that never arrives no longer looks like one that is still coming.** A file whose batch
+  your Mac refused stops sweeping, dims, and says `couldn’t read this file` — where before it stayed
+  blank for as long as the screen was open, with nothing anywhere explaining why.
+- **And there is something to press about it.** A bar at the bottom of the diff says how many files
+  could not be read and why, and offers the one action that can help: **Try Again**, or
+  **Pair Again** when the pairing was revoked, or **Back to Worktrees** when the worktree is gone.
+  Trying again re-asks for every file that failed.
+
 ### 0.11.4 — 2026-09-13
 - **Opening a Mac explains what Granita is waiting for.** Finding a route, checking the paired
   key and reading worktrees have distinct labels. Long waits show elapsed time and offer Copy Logs.

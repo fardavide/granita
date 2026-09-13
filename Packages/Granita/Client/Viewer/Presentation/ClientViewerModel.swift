@@ -65,6 +65,28 @@ public final class ClientViewerModel {
     /// would mean typing a paragraph and watching it evaporate.
     public private(set) var commentFailure = false
 
+    /// The refusal that left one or more files blank, if the Mac gave one.
+    ///
+    /// **Kept once for the request rather than once per file**, which is design §9's call 6.4: the
+    /// reason belongs to the batch, the batch carried five files, and printing it in each of five
+    /// cards would be one sentence said five times in boxes that may be 18pt tall.
+    public private(set) var diffFailure: ApiFailure?
+
+    /// Whether the batch the reader asked for again is still running.
+    public private(set) var isRetryingDiffs = false
+
+    /// Whether the reader has already pressed once and been refused a second time.
+    public private(set) var hasTriedDiffsAgain = false
+
+    /// Whether the batch in flight has been waiting long enough for its rows to add a word.
+    ///
+    /// **A flag rather than a clock**, which is design §9 reversing its own last round: an elapsed
+    /// stopwatch was right on the loading screen, where there was one wait and one spinner, and here
+    /// it would be five stopwatches ticking inside a scroll. It also costs one view update at the
+    /// threshold rather than one per second, and a per-second rebuild of anything inside this scroll
+    /// is a rebuild of the scroll.
+    public private(set) var isWaitingLong = false
+
     /// The refusal the Mac gave the last time a hunk was expanded, if it gave one.
     ///
     /// **Reported rather than swallowed, unlike a refused batch of diffs**, and the difference is
@@ -238,6 +260,14 @@ public final class ClientViewerModel {
     private let pasteboard: any ReviewPasteboard
     private let highlighter: any SyntaxHighlighter
     private let copyingLogs: any DiagnosticLogsCopying
+    private let announcing: any DiffReadAnnouncing
+
+    /// How long a batch is in flight before the rows add their second word.
+    ///
+    /// **Handed in rather than read from `DiffFileWait`**, because ten seconds of real waiting is a
+    /// screen no test would ever see: everything a fake answers, it answers at once, so the window
+    /// this word lives in had no way to be held open.
+    private let longWait: Duration
 
     public init(
         worktree: WorktreeID,
@@ -247,7 +277,9 @@ public final class ClientViewerModel {
         commentStore: any ReviewCommentStore,
         pasteboard: any ReviewPasteboard,
         highlighter: any SyntaxHighlighter,
-        copyingLogs: any DiagnosticLogsCopying
+        copyingLogs: any DiagnosticLogsCopying,
+        announcing: any DiffReadAnnouncing,
+        longWait: Duration
     ) {
         self.worktree = worktree
         self.worktreeName = worktreeName
@@ -257,6 +289,8 @@ public final class ClientViewerModel {
         self.pasteboard = pasteboard
         self.highlighter = highlighter
         self.copyingLogs = copyingLogs
+        self.announcing = announcing
+        self.longWait = longWait
         comments = commentStore.comments(in: worktree)
     }
 
@@ -298,6 +332,11 @@ public final class ClientViewerModel {
             // screen no longer draws — memory nothing can reach.
             highlighted = [:]
             asked = []
+            // A new change set is a new set of requests, so a refusal from the old one describes
+            // files this screen no longer draws — and its bar would count blank cards that are gone.
+            diffFailure = nil
+            isRetryingDiffs = false
+            hasTriedDiffsAgain = false
             isTruncated = changes.isTruncated
             collapsed = FileSelector.initiallyCollapsed(in: changes.files)
             state = entries.isEmpty ? .nothingChanged : .reading(entries)
@@ -327,9 +366,53 @@ public final class ClientViewerModel {
             // **A file drawn shut is not fetched.** `SPEC.md` §10 puts a *Load diff* affordance on
             // the big ones, and a phone that had already spent a batch slot on 1,558 lines nobody
             // asked to see would be offering to do what it had done.
-            deferred: Set(entries.filter { $0.collapse.isCollapsed }.map(\.id))
+            deferred: Set(entries.filter { $0.collapse.isCollapsed }.map(\.id)),
+            // **And a file the Mac refused is not fetched either, until the reader asks.** It left
+            // `inFlight` when its request ended, so without this it is eligible again on the very
+            // next position update — and a position update is what every frame of a scroll produces.
+            refused: Set(entries.filter(\.isFailed).map(\.id))
         )
         await fetch(wanted)
+    }
+
+    /// What the bar at the bottom of the diff says, or nothing at all when no card is blank.
+    ///
+    /// **Derived rather than stored**, so it cannot disagree with the cards it is about: the files it
+    /// counts are the entries drawing a stopped block, and the moment the last of them arrives the
+    /// bar has nothing to describe and goes.
+    public var batchFailure: DiffBatchFailure? {
+        guard let diffFailure else { return nil }
+        let blank = entries.filter(\.isFailed)
+        guard blank.isEmpty == false else { return nil }
+        return DiffBatchFailure(
+            failure: diffFailure,
+            files: blank.map { DiffFilePath.name(of: $0.file.path) },
+            isRetrying: isRetryingDiffs,
+            hasBeenTried: hasTriedDiffsAgain
+        )
+    }
+
+    /// Asks the Mac for every file it refused, which is the one control the failure offers.
+    ///
+    /// **It re-asks the batch rather than a file**, because one request failed carrying several — so
+    /// there is one thing to retry and not five. Emptying the refused set is what puts those files
+    /// back in front of `ContinuousDiffLoading`; without that they are filtered out of every window
+    /// forever, which is the point of the set.
+    public func retryDiffs() async {
+        let refused = entries.filter(\.isFailed).map(\.id)
+        guard refused.isEmpty == false else { return }
+        isRetryingDiffs = true
+        // **The rows revert to *reading from your Mac* at the same instant**, so pressing the bar is
+        // perceivable in the region it is about rather than only in the bar's own slot.
+        for position in entries.indices where entries[position].isFailed {
+            entries[position] = entries[position].retrying()
+        }
+        state = .reading(entries)
+        // Recorded before the request rather than after it, so a second refusal already knows it is
+        // the second one by the time it writes the sentence.
+        hasTriedDiffsAgain = true
+        await fetch(refused)
+        isRetryingDiffs = false
     }
 
     /// Reports what the screen is drawing with, and re-colours everything when either changes.
@@ -746,23 +829,53 @@ public final class ClientViewerModel {
     ///
     /// A refusal here is deliberately not the screen's failure. The change set arrived, so the
     /// reader has a list of files and their sizes; losing one batch of hunks leaves placeholders
-    /// where content would be, and the next thing they scroll to asks again. Replacing the whole
-    /// screen with an error because the fourth batch of twenty failed would throw away everything
-    /// they had already read.
+    /// where content would be. Replacing the whole screen with an error because the fourth batch of
+    /// twenty failed would throw away everything they had already read.
+    ///
+    /// **It is no longer swallowed either, and that was a defect rather than a call.** This read
+    /// `try?` and returned, so a refused batch left every file in it `awaiting` — a blank card, with
+    /// nothing anywhere on the screen saying so. `inFlight` emptied, so a later scroll *could*
+    /// re-ask; a reader already sitting on the file scrolls nothing, so nothing did, and the blank
+    /// was permanent for the life of the screen. Now the files move to `failed`, the refusal is kept
+    /// once for the batch, and the bar at the bottom is the one thing that asks again.
     private func fetch(_ wanted: [FileID]) async {
         guard wanted.isEmpty == false else { return }
         inFlight.formUnion(wanted)
-        defer { inFlight.subtract(wanted) }
+        let saying = sayingTheWaitIsLong()
+        defer {
+            inFlight.subtract(wanted)
+            saying.cancel()
+            if inFlight.isEmpty {
+                isWaitingLong = false
+            }
+        }
 
-        guard let diffs = try? await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext) else {
+        let diffs: [FileDiff]
+        do {
+            diffs = try await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext)
+        } catch .cancelled {
+            // **The app's own doing, so nothing is marked failed.** A `.task` is torn down whenever
+            // its view goes away, and a card reading *couldn’t read this file* because the reader
+            // pressed Back is the app blaming the Mac for something the app did.
+            return
+        } catch {
+            refuse(wanted, with: error)
             return
         }
+        isRetryingDiffs = false
         for diff in diffs {
             guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
             // The mark and the chevron are the phone's, and a diff arriving is the Mac answering a
             // question that was asked before either was touched. Keeping what is on screen stops a
             // mark the reader has just set being taken back off by a batch already in flight.
             entries[position] = entries[position].arrived(diff)
+        }
+        // **The bar goes when the last blank card does, not when one batch answers.** Two batches can
+        // fail and one of them recover, and a bar that cleared on the first answer would leave the
+        // other five cards saying they failed with nothing left to press.
+        if entries.contains(where: \.isFailed) == false {
+            diffFailure = nil
+            hasTriedDiffsAgain = false
         }
         state = .reading(entries)
         // **A batch landing is the moment a comment on that file becomes placeable.** `load()` orders
@@ -772,6 +885,36 @@ public final class ClientViewerModel {
         // because a review is a handful of comments.
         comments = ReviewedComment.ordered(comments, against: entries)
         await highlight()
+    }
+
+    /// Moves every file of a refused batch into the case that has somewhere to say so.
+    ///
+    /// **A file already in hand is left alone**, which `ContinuousDiffEntry.failing` decides rather
+    /// than this: a batch never carries one, and the rule belongs beside the case it is about.
+    private func refuse(_ wanted: [FileID], with failure: ApiFailure) {
+        for position in entries.indices where wanted.contains(entries[position].id) {
+            entries[position] = entries[position].failing()
+        }
+        diffFailure = failure
+        state = .reading(entries)
+        // **Once per batch, after the entries have moved**, so the sentence counts the cards that are
+        // actually blank rather than the files this request happened to carry — a batch of five over
+        // a file already in hand is four blank cards and one that is not.
+        if let batchFailure {
+            announcing.announce(batchFailure)
+        }
+    }
+
+    /// Adds the rows' second word once a batch has been in flight long enough to deserve it.
+    ///
+    /// **Cancelled by the `defer` that ends the batch**, so a request that answers inside the
+    /// threshold never writes anything and the ordinary screen never sees the word at all.
+    private func sayingTheWaitIsLong() -> Task<Void, Never> {
+        Task { [weak self, longWait] in
+            try? await Task.sleep(for: longWait)
+            guard Task.isCancelled == false else { return }
+            self?.isWaitingLong = true
+        }
     }
 
     /// Colours every file the reader has open, starting from the one they are looking at.

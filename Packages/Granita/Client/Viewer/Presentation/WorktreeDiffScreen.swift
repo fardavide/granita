@@ -33,6 +33,16 @@ public struct WorktreeDiffScreen: View {
 
     private let worktreeName: String
 
+    /// What *Pair Again* does, which is the composition root's to answer: pairing lives in another
+    /// feature's `Presentation` and this target may not see one. Required rather than optional, so
+    /// the one failure whose remedy is not a retry cannot ship as a control that does nothing.
+    private let onPairAgain: () -> Void
+
+    /// What *Back to Worktrees* does. The system's own pop rather than a closure, because this
+    /// screen is pushed on a stack in both layouts — the phone's spine and, on the iPad, the detail
+    /// column's own stack.
+    @Environment(\.dismiss) private var dismiss
+
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -44,8 +54,9 @@ public struct WorktreeDiffScreen: View {
     /// environment value, which is why the model is told rather than left to guess.
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(worktreeName: String, model: ClientViewerModel) {
+    public init(worktreeName: String, model: ClientViewerModel, onPairAgain: @escaping () -> Void) {
         self.worktreeName = worktreeName
+        self.onPairAgain = onPairAgain
         // Pinned in `@State` rather than held as a plain `let`, the same way every other screen in
         // this app does it and for the reason the iPad's split view proved: a destination closure is
         // re-evaluated, and a plain property would swap the displayed model while the running
@@ -238,6 +249,7 @@ public struct WorktreeDiffScreen: View {
             // keeps the diff behind it live — and a gesture that lands there is one the draft has
             // nothing to do with. The scroll still moves; only the aim goes.
             acceptsTargeting: model.sheet == nil,
+            isWaitingLong: model.isWaitingLong,
             onReading: { position in Task { await model.reading(position) } },
             onJumped: model.didJump,
             onSetViewed: { isViewed, file in Task { await model.setViewed(isViewed, on: file) } },
@@ -253,7 +265,18 @@ public struct WorktreeDiffScreen: View {
         // height is every measured row position invalidated under a reader who pressed nothing —
         // which is the reflow `SPEC.md` §10 exists to forbid. Floating over the bottom of the diff
         // costs the layout nothing at all.
-        .overlay(alignment: .bottom) { instructionBar }
+        //
+        // **The failure bar sits under the instruction bar rather than beside it**, which is a call
+        // the frames do not make: §7.1's bar and §9's are both bottom chrome and, unlike the bar and
+        // the capsule, they *can* both be true — a reader can hold a row in one file while another
+        // file's batch is failing. Stacked, neither covers the other and the one that is permanent is
+        // the one at the edge.
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 8) {
+                instructionBar
+                failureBar
+            }
+        }
         .overlay(alignment: .bottomTrailing) { capsule }
         // **On the container, which is the rule the whole screen follows and the reason the two
         // `.transition`s above were inert.** A transition needs an animated state change to run
@@ -273,6 +296,32 @@ public struct WorktreeDiffScreen: View {
         if model.draft.heldEnd != nil {
             CommentInstructionBar(anchorLabel: model.heldRowLabel) { model.cancelDraft() }
                 .transition(.move(edge: .bottom))
+        }
+    }
+
+    /// The one control a refused batch offers, and the failure picks which one it is.
+    ///
+    /// **Spanning the diff pane rather than the window**, which on the iPad matters: the failure is
+    /// about the content of one pane, the selector beside it is still perfectly good, and a bar
+    /// across a 1,194pt window would be the app saying the thing they can still use has stopped too.
+    /// It gets that for free by being an overlay on the diff rather than on the screen.
+    ///
+    /// **No `.transition`, and the first build had one.** The two above it are keyed to facts that
+    /// change under the reader's own hand; nothing keys one to a batch failing, so a `.move(edge:)`
+    /// here is the inert transition this screen already carries a paragraph about — except that it
+    /// was worse than inert. The phone baseline came back with the control drawn a second time at the
+    /// top of the window, which is a transition resolved against no animation and photographed
+    /// mid-flight. A bar that arrives because the Mac refused something is news rather than a layout
+    /// the reader asked for, so it appears.
+    @ViewBuilder private var failureBar: some View {
+        if let failure = model.batchFailure {
+            DiffFailureBar(failure: failure) { remedy in
+                switch remedy {
+                case .tryAgain: Task { await model.retryDiffs() }
+                case .backToWorktrees: dismiss()
+                case .pairAgain: onPairAgain()
+                }
+            }
         }
     }
 

@@ -54,6 +54,16 @@ rule that modified gets no colour. Two calls in it were overruled here — the m
 44pt hit area by taking it horizontally, and the iPad keeps a 12pt code size rather than the second
 gutter column §4 had argued for.
 
+**§9 arrived and left in the same release too**, for the same reason the diff review did: it is a
+review of a screen already built, so there was nothing to wait for. Issue #67 went over on 13
+September 2026 and came back the same day with the in-flight card, the failed card and the bottom
+bar, all three drawn at both ends of the reserved height's range. What it left recorded rather than
+built is in [`../design.md`](../design.md) §9 — the bars' stepped left edge, which the prose beside
+the frames contradicts; the collision between its bar and §7.1's, which the frames do not draw; and
+the twelve `ApiFailure` cases its four sentences had to absorb. The defect it was raised for is in
+[`../decisions.md`](../decisions.md): a refused batch of diffs was swallowed by a `try?`, so a file
+whose diff never arrived drew the same nothing as one still on its way, for the life of the screen.
+
 **Five of its calls were then built wrongly and repaired in 0.6.1**, which is the case for reading
 the prose rather than trusting the release note: the separation between files was built the same
 colour as the files, the hunk band was drawn in the quaternary *label* rather than the quaternary
