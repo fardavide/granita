@@ -846,7 +846,9 @@ private struct Scenario {
             // Highlighting is beside the point here and is asserted in
             // `ClientViewerHighlightingTests`, so the lexer is built inline and never inspected.
             highlighter: FakeSyntaxHighlighter(),
-            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(()))
+            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
+            announcing: FakeDiffReadAnnouncing(),
+            longWait: DiffFileWait.longWait
         )
     }
 

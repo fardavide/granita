@@ -167,7 +167,7 @@ private func theSidebar(
 ) -> some View {
     NavigationStack {
         WorktreeSidebarScreen(model: model, onPairAgain: {}) { _, displayName, _ in
-            WorktreeDiffScreen(worktreeName: displayName, model: diff)
+            WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
         }
     }
         .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)

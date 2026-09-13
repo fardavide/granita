@@ -1,5 +1,173 @@
 # Design
 
+## §9 — A file in flight, and one that never arrives *(returned 13 September 2026)*
+
+The return for [issue #67](https://github.com/fardavide/granita/issues/67). It is about one region:
+the card a file draws in the height it reserved, between the change set naming it and its hunks
+arriving — and after the Mac has refused to send them.
+
+**The box is not a state waiting to be filled; it is a length of the code grid the file has not
+arrived to occupy.** Everything below follows from drawing it as that.
+
+### Measured in rows, because the box is
+
+The reserved height is `max(1, estimatedLineCount)` rows, so a row of the code grid is the one unit
+that fits both ends of the range without being scaled, centred or inset: a one-row file has exactly
+one row to spend and a three-hundred-row file has three hundred. A treatment one row tall is the
+whole body of the first and 0.3% of the second, and it looks the same deliberate thing in both
+because it **is** the same thing.
+
+The first reserved row is type at the code font and the code point size — never a Dynamic Type
+style, because §10 makes the code size its own setting and a row that grew to 24pt inside an 18pt box
+would be the reflow trap arriving through the accessibility settings. Every row after it is a 7pt
+bar, centred in its row, at `quaternarySystemFill`, starting where the code starts and running to a
+width that changes every one to four rows so the block reads as code rather than as a grid.
+
+**The figure column stays empty and nothing prints the estimate.** §10 allows the count to be wrong,
+and the treatment survives that only because there is no number to contradict: the widths are ragged,
+the column is empty, and a file that arrives with fewer rows simply replaces a shorter block. A
+reader cannot count what they were shown, which is the only reason drawing it is legal.
+
+### The row is sticky inside its box, and that answers two states with one rule
+
+The row's offset is the box's intersection with the viewport, clamped so it never rises above the
+pinned header and never leaves the box — stopping one row short of the bottom edge, where the next
+file's header takes the pin. A file scrolling past shows its sentence at the top and is gone; a
+reader sitting inside 5,400pt of reserved card always has it under the header. **Stickiness is a
+rendering position**, the same thing the section headers already do, so no height changes.
+
+*Built with `visualEffect`*, which runs after layout has decided everything — the one SwiftUI
+primitive that can move a view without a layout pass, which is what makes a sticky row legal inside a
+scroll that may never reflow.
+
+### Still no spinner. A sweep, which is a material rather than an instrument
+
+One slow crossing of the whole card: 26% of its width, 2.4s, linear, **one per box and not one per
+row**, so a 300-row file is one moving thing. It does not advance, fill, count or finish, so it
+claims nothing the server cannot produce — the objection that kept a spinner off this screen is
+answered rather than reversed. Five cards in flight read as one page loading, which is the opposite
+of five indicators describing five requests.
+
+**Absent under Reduced Motion rather than slowed.** That is also the form every baseline photographs,
+because an infinite repeat has no frame a raster can be pinned to; what the light does under a thumb
+is checked by looking at the app, like every other motion here.
+
+### The words, and the second one
+
+`reading from your Mac`, and after ten seconds `still reading from your Mac`. Lower case, because
+this is the collapsed bar's register — a fact about the file, like `viewed` or
+`binary · no diff to show` — rather than a sentence addressed to the reader. A failed card says
+`couldn’t read this file`.
+
+**No clock, and that reverses §8's own last round.** A stopwatch was right on the loading screen,
+where there was one wait and one spinner; here five files are in flight, so a clock is five
+stopwatches ticking in a scroll — the plumbing argument with numbers on it. One word changes, once,
+and then nothing moves. It is one flag rather than a timeline, because a per-second rebuild of
+anything inside this scroll is a rebuild of the scroll.
+
+### A failed card is the same block, stopped
+
+The sweep stops, the bars drop to half weight, the sentence goes from `secondaryLabel` to `label`,
+and the marker column takes a `!` where a `+` or a `−` would be — **the diff's own vocabulary taking
+a third word** rather than a badge borrowed from somewhere else. Stillness is the loudest part of it:
+on a screen where four other cards are sweeping, the one that has stopped is visible from across the
+room, and the sentence is there for the reader who arrives after everything has stopped.
+
+**The row is never a control.** The 44pt floor is under anything pressable and the box can be 18pt
+tall, so a per-file retry would exist on large files and not on small ones — a control that appears
+with the estimate. It is also the wrong unit: one request failed carrying five files.
+
+### The statement is per file; the recovery is per request, and it is one bar
+
+56pt of chrome floating **34pt clear of the bottom** of the diff pane — the home indicator's own
+allowance, which the return names — growing to 88 at xxLarge rather than clipping. Two lines: what happened, and why. One control, 44pt, 10pt from the
+trailing edge. **Overlaid, never inset** — a `safeAreaInset` shortens the scroll, and a scroll that
+changes height is every measured row position invalidated under a reader who pressed nothing.
+
+Because it is chrome it finds the reader wherever they have scrolled to, including a thousand points
+below the batch they never saw fail; the count is how they learn there is something behind them. It
+is **not dismissible** while any card is blank — a notice you can put away leaves five statements on
+screen with nothing to press, which is this request's own defect wearing a tidier face.
+
+| Failure | What it says | Control |
+|---|---|---|
+| `gitFailure` and the rest | Couldn’t read 5 files. / Your Mac couldn’t read them. | **Try Again** |
+| `unreachable`, `requestNotBuildable` | Couldn’t read 5 files. / Your Mac is out of reach. | **Try Again** |
+| `worktreeGone` | This worktree is gone. / It was removed while you were reading it. | **Back to Worktrees** |
+| `unauthorized`, `pairingExpired` | This iPhone is no longer paired. / Pair again to keep reading. | **Pair Again** |
+
+One file names itself — `Couldn’t read ContinuousDiffView.swift.` — and from two upwards it counts.
+Pressed, the stock indicator takes the control's slot and every card reverts to `reading from your
+Mac` at the same instant, so the press is perceivable in the region it is about. Refused a second
+time, **both lines change**: the first says it is the second time, the second stops naming the reason
+and starts naming the remedy.
+
+**The revoked pairing is why the bar exists in one place.** Every later request fails too, so a *Try
+Again* there is a control that cannot work; with one bar the failure class chooses the control, and
+the case a reader must not retry is the case where the control is not a retry.
+
+### Nothing above the fold, and the worktree list's notice is not the same problem
+
+Three differences and any one would be enough. The list's failure is about the whole screen and one
+refresh fixes all of it; here it is five files in a scroll of twelve. On the list the top of the
+screen is free; here it is spoken for by the pinned header, which is the one label saying which file
+the reader is in. And the list can take an inserted row; this scroll cannot — a notice at the top of
+the content pushes 52pt of code down under the reader's finger.
+
+*Rejected: a top notice, inserted or floated. Rejected: an alert, which is what a refused hunk
+expansion gets — the reader asked for that one, and nobody asked for this batch.*
+
+### The iPad is the same row, 19pt of it
+
+No separate treatment: the code size beside the selector is 12pt, so the line height is 19pt and the
+row is 19pt — which is the whole reason the row takes its metric from the same function the box does.
+**The bar spans the diff column only, not the window**: the failure is about one pane's content, the
+selector beside it is still good, and a bar across 1,194pt would be the app saying the thing they can
+still use has stopped too. The selector's own rows are untouched — a file whose diff failed is still a
+file in the change set, and dimming it in the tree would be a second vocabulary for a state that is
+about the wire rather than about the file.
+
+### Accessibility
+
+A file **arriving announces nothing** — five land at once and the reader asked for no particular one.
+A failure announces **once per batch**, naming the control as well as the news, because it is the one
+thing on the screen they could not have caused and cannot discover by scrolling. The bars do not
+exist to VoiceOver; the sentence is the card's one element. Nothing in the region is a target, or the
+gutter grows a selection on a line that does not exist.
+
+### What is built differently from the return, and why
+
+- **The bars keep one starting x.** The prose says "starting at the same 48pt and running to a width
+  that changes"; the frames additionally step the left edge in by 14pt on some runs. The prose is the
+  authority here, and the ragged right edge is what carries "reads as code".
+- **The bar stacks above the instruction bar rather than beside it.** §7.1's bar and this one are both
+  bottom chrome and — unlike the bar and the capsule, which can never both be true — a reader can hold
+  a row in one file while another file's batch is failing. They are a `VStack`, so neither covers the
+  other and the permanent one is at the edge. The frames do not draw this collision.
+- **Sixteen failures, four sentences.** `ApiFailure` has sixteen cases and the return names four, so
+  the rest fold into the nearest by what the reader can do about them. `cancelled` never reaches the
+  bar at all: a torn-down `.task` is the app's own doing, and a card blaming the Mac for it would be
+  the app blaming the Mac for what the app did.
+- **The bar floats rather than sitting on the bottom edge, and that is a platform constraint rather
+  than a preference.** A full-width container hard against the bottom safe area is read by iOS 26 as
+  bottom-bar chrome, and the baselines came back with the bar's trailing control drawn a second time
+  at the top of the screen — in the component's own picture as much as the screen's. The 34pt the
+  return already gives the home indicator is what breaks that, and it puts the bar in the same idiom
+  as §7.1's instruction bar, which floats 38pt clear for reasons of its own. The cost is that the
+  diff shows through under it; the gain is a control that is drawn once.
+
+### Flagged, and carried over from §8
+
+A pinned-key mismatch still arrives as `unreachable`, so it offers *Try Again* forever. Same finding
+as the last round, now with a second surface behind it.
+
+### What would make this redraw
+
+A refresh. `StaleCommentRow` already says its own legality depends on the screen loading once, and a
+pull-to-refresh on the diff would re-read the document under a finger. The row here is safe either
+way — it is inside a box the estimate owns — but the bar's *Try Again* and a refresh gesture would be
+two ways to ask one question, and one of them would have to go.
+
 ## §8 — Connecting and reading worktrees *(returned 13 September 2026)*
 
 The loading return for [issue #82](https://github.com/fardavide/granita/issues/82) keeps stock
@@ -104,6 +272,7 @@ says so and shows the measurement.
 | §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
 | §7 | Inline comments — choosing the lines, the composer, the mark, the review, the copy, the iPad | 0.7.0 | **drawn and built.** Returned 3 September 2026. Three calls are built differently from the frames and one they draw is deliberately absent; all four are below and in [`decisions.md`](decisions.md). One departure — the 18pt target — is **flagged and waiting on Davide** |
 | §8 | Connecting, reading and refreshing worktrees | 0.11.4 | **drawn, implemented and snapshotted.** Returned 13 September 2026; automated tests cover observed stages, retries, cancellation and Pair Again navigation |
+| §9 | A file in flight, and one that never arrives | 0.12.0 | **drawn, implemented and snapshotted.** Returned 13 September 2026. Three calls are built differently from the frames and each is listed in that section; the pinned-key mismatch it flags is the same one §8 flagged and is still open |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
 number rather than renumbering four sections that a dozen documents already cite; in the reader's

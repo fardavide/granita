@@ -61,6 +61,14 @@ public struct ContinuousDiffView: View {
     /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
     private let acceptsTargeting: Bool
 
+    /// Whether the batch in flight has been in flight long enough for its rows to add a word.
+    ///
+    /// **One flag rather than a clock**, which is design §9 reversing its own last round: an elapsed
+    /// stopwatch was right on the loading screen, where there was one wait and one spinner, and here
+    /// it would be five stopwatches ticking in a scroll. One word changes, once, and then nothing
+    /// moves.
+    private let isWaitingLong: Bool
+
     private let onReading: (Int) -> Void
     private let onJumped: () -> Void
     private let onSetViewed: (Bool, FileID) -> Void
@@ -81,6 +89,7 @@ public struct ContinuousDiffView: View {
         pending: PendingComment? = nil,
         highlighted: [FileID: HighlightedFile] = [:],
         acceptsTargeting: Bool = true,
+        isWaitingLong: Bool = false,
         onReading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void,
@@ -100,6 +109,7 @@ public struct ContinuousDiffView: View {
         self.pending = pending
         self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
+        self.isWaitingLong = isWaitingLong
         // Seeded with the jump when there is one and with the first file otherwise, so the position
         // is a value this view stated rather than one the scroll settled on by itself.
         _scrolledTo = State(initialValue: jumpTarget ?? state.firstFile)
@@ -287,13 +297,29 @@ public struct ContinuousDiffView: View {
                 StaleCommentRow(count: stale.count, line: stale.firstLine, onOpenReview: onOpenReview)
             }
             switch entry.content {
-            case .awaiting:
-                // Deliberately empty rather than a spinner. There is no per-file progress worth
-                // reporting — five files are in flight at once and the reader is not waiting on any
-                // of them — and a row of spinners scrolling past would be the app describing its own
-                // plumbing.
-                Color.clear
-                    .frame(height: reservedHeight(of: entry))
+            case .awaiting(let file):
+                // **Still no spinner, and still for the reason that kept one off this screen**: five
+                // files are in flight at once, the reader is waiting on none of them, and there is no
+                // per-file measurement the Mac could report. What replaced the blank is not an
+                // instrument — it is the rows the file has not sent yet, under one sentence saying
+                // who is being asked. Design §9.
+                DiffAwaitingBody(
+                    file: file,
+                    wait: isWaitingLong ? .stillReading : .reading,
+                    rows: entry.reservedRows,
+                    pointSize: pointSize
+                )
+            case .failed(let file):
+                // The same block with the sweep stopped and the bars at half weight, which on a
+                // screen where four other cards are moving makes the one that has stopped visible
+                // from across the room. The sentence is there for the reader who arrives after
+                // everything has stopped.
+                DiffAwaitingBody(
+                    file: file,
+                    wait: .failed,
+                    rows: entry.reservedRows,
+                    pointSize: pointSize
+                )
             case .ready(let diff):
                 DiffFileContent(
                     diff: diff,
@@ -368,9 +394,5 @@ public struct ContinuousDiffView: View {
         } description: {
             Text("This worktree has no uncommitted changes.")
         }
-    }
-
-    private func reservedHeight(of entry: ContinuousDiffEntry) -> CGFloat {
-        CGFloat(entry.reservedRows) * DiffLineHeight.at(pointSize: pointSize)
     }
 }

@@ -509,6 +509,42 @@ nonisolated let aChangeSetPartlyArrived: [ContinuousDiffEntry] = [
     )
 ]
 
+/// A one-line file on its way, above a file large enough to measure it against.
+///
+/// **The 18pt end of design §9's range**, which is the one that catches an answer sized to its own
+/// content: a `+1` file reserves `max(1, 1) × 18` and the sentence is the whole of it. Nothing may be
+/// clipped, nothing may be centred in a space too small for it, and the file below has to keep its
+/// 10pt gap.
+nonisolated let aChangeSetWithAOneLineFile: [ContinuousDiffEntry] = [
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Client/Viewer/Domain/DiffFileWait.swift",
+            status: .added,
+            insertions: 1,
+            deletions: 0,
+            estimatedLineCount: 1
+        )
+    ),
+    .failed(
+        aChangedFile(
+            path: "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
+            status: .modified,
+            insertions: 3,
+            deletions: 2,
+            estimatedLineCount: 1
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Client/Viewer/Ui/ContinuousDiffView.swift",
+            status: .modified,
+            insertions: 68,
+            deletions: 4,
+            estimatedLineCount: 24
+        )
+    )
+]
+
 private nonisolated let aConflictedFileHunk = Hunk(
     index: 0,
     oldStart: 61,
@@ -700,8 +736,12 @@ struct FakeDiffRepository: GranitaRepository {
     let files: [FileChange]
     let diffs: [FileID: FileDiff]
 
-    init(entries: [ContinuousDiffEntry]) {
+    /// What every batch comes back with, when it comes back refused.
+    let refusal: ApiFailure?
+
+    init(entries: [ContinuousDiffEntry], refusing refusal: ApiFailure? = nil) {
         files = entries.map(\.file)
+        self.refusal = refusal
         diffs = Dictionary(
             uniqueKeysWithValues: entries.compactMap { entry in
                 guard case .ready(let diff) = entry.content else { return nil }
@@ -724,7 +764,10 @@ struct FakeDiffRepository: GranitaRepository {
         in worktree: WorktreeID,
         contextLines: Int
     ) async throws(ApiFailure) -> [FileDiff] {
-        files.compactMap { diffs[$0] }
+        if let refusal {
+            throw refusal
+        }
+        return files.compactMap { diffs[$0] }
     }
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
@@ -786,13 +829,14 @@ func aLoadedViewerModel(of entries: [ContinuousDiffEntry], in layout: SnapshotLa
 func aLoadedViewerModel(
     of entries: [ContinuousDiffEntry],
     holding comments: [ReviewComment],
-    in layout: SnapshotLayout
+    in layout: SnapshotLayout,
+    refusing refusal: ApiFailure? = nil
 ) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
         worktreeName: "TLS pinning",
         projectName: "granita",
-        repository: FakeDiffRepository(entries: entries),
+        repository: FakeDiffRepository(entries: entries, refusing: refusal),
         // In memory rather than this simulator's defaults: a baseline must photograph the same
         // screen on the tenth run as on the first, and a store that persists would carry whatever
         // the last recording wrote into the next one.
@@ -803,12 +847,24 @@ func aLoadedViewerModel(
         // dependency that turns every line of every file a different colour would be exercised by
         // nothing — the shape of a control that looks finished in every layer and does nothing.
         highlighter: theHighlighter,
-        copyingLogs: FakeDiagnosticLogsCopying()
+        copyingLogs: FakeDiagnosticLogsCopying(),
+        // Nothing rendered here listens, and a baseline cannot hear anyway — what the sentence says
+        // is asserted in `DiffBatchFailureTests` and how often it is said in the model's own suite.
+        announcing: SilentDiffReadAnnouncements(),
+        // Nothing here waits, so the threshold is never reached and the rows keep their first word.
+        // The second one has a subject of its own in the scroll's suite, set directly.
+        longWait: DiffFileWait.longWait
     )
     await model.load()
     await model.reading(0)
     await model.drawing(in: layout.appearance, at: Double(layout.codePointSize))
     return model
+}
+
+/// A renderer has no VoiceOver to talk to, so the announcement goes nowhere here.
+struct SilentDiffReadAnnouncements: DiffReadAnnouncing {
+
+    func announce(_ failure: DiffBatchFailure) {}
 }
 
 /// One lexer for the whole suite, for the reason the app holds one: building it evaluates the whole

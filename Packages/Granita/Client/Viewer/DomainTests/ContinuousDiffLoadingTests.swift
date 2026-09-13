@@ -20,7 +20,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 12)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: 0, of: files, held: [], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 0, of: files, held: [], inFlight: [], deferred: [], refused: [])
 
         // then — the visible file and four after it, because the file being read has to be one of
         // the five rather than the one the window starts after.
@@ -34,7 +34,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 12)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: 6, of: files, held: Set(files.prefix(3)), inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 6, of: files, held: Set(files.prefix(3)), inFlight: [], deferred: [], refused: [])
 
         // then — **the three gaps behind them stay gaps.** Filling one would turn a placeholder
         // sitting above the viewport into real content, and everything below it, the viewport
@@ -48,7 +48,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 12)
 
         // when — two of the five ahead are already in hand.
-        let wanted = ContinuousDiffLoading.next(from: 2, of: files, held: [files[3], files[5]], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 2, of: files, held: [files[3], files[5]], inFlight: [], deferred: [], refused: [])
 
         // then — five files' worth of work rather than five positions' worth: the window is how
         // much is being fetched, and one already fetched costs nothing to skip.
@@ -67,7 +67,8 @@ struct ContinuousDiffLoadingTests {
             of: files,
             held: [],
             inFlight: [files[0], files[1]],
-            deferred: []
+            deferred: [],
+            refused: []
         )
 
         // then
@@ -87,7 +88,8 @@ struct ContinuousDiffLoadingTests {
             of: files,
             held: [],
             inFlight: [],
-            deferred: [files[1], files[2]]
+            deferred: [files[1], files[2]],
+            refused: []
         )
 
         // then — stepped over rather than stopped at: the window is five files of work, and the two
@@ -107,11 +109,54 @@ struct ContinuousDiffLoadingTests {
             of: files,
             held: [],
             inFlight: [],
-            deferred: [files[0]]
+            deferred: [files[0]],
+            refused: []
         )
 
         // then — a deferred file is skipped and never a stopping point, or a reader who marked the
         // first file read would have stopped the scroll fetching anything at all.
+        #expect(wanted == Array(files[1..<6]))
+    }
+
+    @Test
+    func `given a file whose batch was refused when the window is asked for then it is not asked for again`() {
+        // given — the file left `inFlight` when its request ended, so without a set of its own it is
+        // eligible on the very next position update. Scrolling reports a position per frame, which
+        // would make a dead Mac the busiest thing on the phone.
+        let files = fileIds(count: 12)
+
+        // when
+        let wanted = ContinuousDiffLoading.next(
+            from: 0,
+            of: files,
+            held: [],
+            inFlight: [],
+            deferred: [],
+            refused: [files[0], files[1]]
+        )
+
+        // then — stepped over, exactly as a shut file is: the window is five files of work and a
+        // refused one is not work until the reader asks for it again.
+        #expect(wanted == Array(files[2..<7]))
+    }
+
+    @Test
+    func `given the file being read was refused when the window is asked for then the rest still loads`() {
+        // given — the reader is sitting on the failed file, which is the case the whole treatment
+        // exists for: they scroll nothing, so nothing re-asks.
+        let files = fileIds(count: 12)
+
+        // when
+        let wanted = ContinuousDiffLoading.next(
+            from: 0,
+            of: files,
+            held: [],
+            inFlight: [],
+            deferred: [],
+            refused: [files[0]]
+        )
+
+        // then
         #expect(wanted == Array(files[1..<6]))
     }
 
@@ -121,7 +166,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 4)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: 1, of: files, held: Set(files), inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 1, of: files, held: Set(files), inFlight: [], deferred: [], refused: [])
 
         // then
         #expect(wanted.isEmpty)
@@ -133,7 +178,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 3)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: 2, of: files, held: [], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 2, of: files, held: [], inFlight: [], deferred: [], refused: [])
 
         // then
         #expect(wanted == [files[2]])
@@ -146,7 +191,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 3)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: 9, of: files, held: [], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 9, of: files, held: [], inFlight: [], deferred: [], refused: [])
 
         // then
         #expect(wanted.isEmpty)
@@ -159,7 +204,7 @@ struct ContinuousDiffLoadingTests {
         let files = fileIds(count: 3)
 
         // when
-        let wanted = ContinuousDiffLoading.next(from: -2, of: files, held: [], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: -2, of: files, held: [], inFlight: [], deferred: [], refused: [])
 
         // then
         #expect(wanted == files)
@@ -168,7 +213,7 @@ struct ContinuousDiffLoadingTests {
     @Test
     func `given no files at all when the window is asked for then nothing is asked for`() {
         // given - when
-        let wanted = ContinuousDiffLoading.next(from: 0, of: [], held: [], inFlight: [], deferred: [])
+        let wanted = ContinuousDiffLoading.next(from: 0, of: [], held: [], inFlight: [], deferred: [], refused: [])
 
         // then
         #expect(wanted.isEmpty)

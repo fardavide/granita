@@ -281,7 +281,174 @@ struct ClientViewerModelTests {
             return
         }
         #expect(entries.count == 4)
-        #expect(entries.allSatisfy { $0.isAwaitingForTests })
+        // **Failed rather than still awaiting, which is what this test used to assert.** The
+        // refusal was swallowed by a `try?` and a bare return, so every file in the batch stayed
+        // `awaiting` — a blank card, with nothing on the screen saying so, for the life of the
+        // screen. Design §9 gives it a case to fail into and a bar to be answered from.
+        #expect(entries.allSatisfy { $0.isFailed })
+        #expect(entries.allSatisfy { $0.isAwaitingForTests == false })
+    }
+
+    @Test
+    func `given a batch that is slow to answer when the threshold passes then the rows add their second word`() async {
+        // given — the batch is held open, which is the only way to look at the screen a reader spends
+        // a wait on. Everything else a fake answers, it answers at once.
+        let scenario = Scenario(files: aChangeSet(of: 2), hunksFor: 0, holdingDiffs: true, longWait: .zero)
+        await scenario.sut.load()
+        let reading = Task { await scenario.sut.reading(0) }
+
+        // when
+        while scenario.sut.isWaitingLong == false {
+            await Task.yield()
+        }
+
+        // then — one word, once, and then nothing moves: there is no clock here because five files
+        // are in flight and five stopwatches in a scroll is the plumbing argument with numbers on it.
+        #expect(scenario.sut.isWaitingLong)
+
+        // and when the batch finally answers, the word goes with the wait it described.
+        scenario.repository.releaseDiffs()
+        await reading.value
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given a batch the Mac refused when the bar is asked what to say then it counts the blank cards`() async {
+        // given — the reason belongs to the request and the request carried several files, so it is
+        // kept once and printed once, where the control is.
+        let scenario = Scenario(files: aChangeSet(of: 3), diffFailure: .unreachable(diagnostic: "-1004"))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.reading(0)
+
+        // then
+        #expect(scenario.sut.batchFailure?.files.count == 3)
+        #expect(scenario.sut.batchFailure?.remedy == .tryAgain)
+        #expect(scenario.sut.batchFailure?.detail == "Your Mac is out of reach.")
+        #expect(scenario.sut.batchFailure?.isRetrying == false)
+    }
+
+    @Test
+    func `given a batch the reader cancelled when it ends then no card says it failed`() async {
+        // given — a `.task` is torn down whenever its view goes away, and a card reading *couldn’t
+        // read this file* because the reader pressed Back is the app blaming the Mac for what the
+        // app did.
+        let scenario = Scenario(files: aChangeSet(of: 3), diffFailure: .cancelled)
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.reading(0)
+
+        // then
+        #expect(scenario.sut.batchFailure == nil)
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("a cancelled batch must not replace the file list")
+            return
+        }
+        #expect(entries.allSatisfy { $0.isFailed == false })
+    }
+
+    @Test
+    func `given a batch the Mac refused when the reader keeps scrolling then a dead Mac is not re-asked`() async {
+        // given — the file left `inFlight` when its request ended, and a scroll reports a position
+        // per file appearing. Without a set of its own, every one of those would re-ask.
+        let scenario = Scenario(files: aChangeSet(of: 3), diffFailure: .unreachable(diagnostic: "-1004"))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let asked = await scenario.repository.batchesAskedFor.count
+
+        // when
+        await scenario.sut.reading(1)
+        await scenario.sut.reading(2)
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.count == asked)
+    }
+
+    @Test
+    func `given a batch the Mac refused when the reader tries again then every refused file is asked for once more`() async {
+        // given — one request failed carrying three files, so there is one thing to retry and not
+        // three, and emptying the refused set is what puts them back in front of the loader.
+        let scenario = Scenario(files: aChangeSet(of: 3), diffFailure: .unreachable(diagnostic: "-1004"))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let asked = await scenario.repository.batchesAskedFor.count
+
+        // when
+        await scenario.sut.retryDiffs()
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.count == asked + 1)
+        #expect(await scenario.repository.batchesAskedFor.last == scenario.fileIds)
+    }
+
+    @Test
+    func `given a retry that was refused again when the bar speaks then it names the remedy rather than the reason`() async {
+        // given — the obvious thing has been tried, so the second sentence stops explaining and
+        // starts saying what to go and do.
+        let scenario = Scenario(files: aChangeSet(of: 2), diffFailure: .unreachable(diagnostic: "-1004"))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.retryDiffs()
+
+        // then
+        #expect(scenario.sut.batchFailure?.hasBeenTried == true)
+        #expect(scenario.sut.batchFailure?.headline == "Still couldn’t read them.")
+        #expect(scenario.sut.batchFailure?.detail == "Check that Granita is running on your Mac.")
+    }
+
+    @Test
+    func `given nothing was refused when the reader cannot see the bar then trying again asks for nothing`() async {
+        // given — the bar is absent in this state, so this is the branch that says the control and
+        // the state cannot disagree rather than one a finger can reach.
+        let scenario = Scenario(files: aChangeSet(of: 2), hunksFor: 0)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let asked = await scenario.repository.batchesAskedFor.count
+
+        // when
+        await scenario.sut.retryDiffs()
+
+        // then
+        #expect(await scenario.repository.batchesAskedFor.count == asked)
+        #expect(scenario.sut.batchFailure == nil)
+    }
+
+    @Test
+    func `given a batch the Mac refused when it is announced then VoiceOver hears it once`() async {
+        // given — this is the one thing on the screen the reader could not have caused and cannot
+        // discover by scrolling, and a file *arriving* announces nothing at all.
+        let scenario = Scenario(files: aChangeSet(of: 3), diffFailure: .unauthorized)
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.reading(0)
+
+        // then
+        #expect(scenario.announcing.announced.count == 1)
+        #expect(
+            scenario.announcing.announced.first?.announcement
+                == "This iPhone is no longer paired. Pair Again is at the bottom of the screen."
+        )
+    }
+
+    @Test
+    func `given a change set read again when it arrives then the last read's refusal is forgotten`() async {
+        // given — a new change set is a new set of requests, so a refusal from the old one describes
+        // files this screen no longer draws and its bar would count cards that are gone.
+        let scenario = Scenario(files: aChangeSet(of: 2), diffFailure: .unreachable(diagnostic: "-1004"))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        #expect(scenario.sut.batchFailure != nil)
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.batchFailure == nil)
     }
 
     @Test
@@ -922,6 +1089,7 @@ private struct Scenario {
     let repository: FakeGranitaRepository
     let fileIds: [FileID]
     let copyingLogs: FakeDiagnosticLogsCopying
+    let announcing: FakeDiffReadAnnouncing
 
     init(
         files: [FileChange] = [],
@@ -934,6 +1102,8 @@ private struct Scenario {
         refusesTheFirstRead: ApiFailure? = nil,
         isTruncated: Bool = false,
         copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
+        holdingDiffs: Bool = false,
+        longWait: Duration = DiffFileWait.longWait,
         alsoAnswering stranger: FileChange? = nil
     ) {
         fileIds = files.map(\.id)
@@ -950,9 +1120,11 @@ private struct Scenario {
             viewedFailure: viewedFailure,
             linesAnswer: linesAnswer,
             refusesTheFirstRead: refusesTheFirstRead,
+            holdingDiffs: holdingDiffs,
             alsoAnswering: stranger
         )
         copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
+        announcing = FakeDiffReadAnnouncing()
         // The review is beside the point in every test here and is asserted in
         // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
         sut = ClientViewerModel(
@@ -965,7 +1137,9 @@ private struct Scenario {
             // Highlighting is beside the point in every test here and is asserted in
             // `ClientViewerHighlightingTests`, so the lexer is built inline and never inspected.
             highlighter: FakeSyntaxHighlighter(),
-            copyingLogs: copyingLogs
+            copyingLogs: copyingLogs,
+            announcing: announcing,
+            longWait: longWait
         )
     }
 }
@@ -981,7 +1155,7 @@ private extension ContinuousDiffEntry {
 
     var hunkCountForTests: Int {
         switch content {
-        case .awaiting: 0
+        case .awaiting, .failed: 0
         case .ready(let diff): diff.hunks.count
         }
     }

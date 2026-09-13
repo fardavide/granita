@@ -37,12 +37,18 @@ public enum ContinuousDiffLoading {
     ///     rather than a label on something that was fetched anyway. `SPEC.md` §10 asks for that
     ///     affordance by name on a file over 500 diff lines, and a phone that had already spent a
     ///     batch slot on 1,558 lines nobody asked to see would be offering to do what it had done.
+    ///   - refused: Files whose batch the Mac turned down. **Emptied only by *Try Again***, and that
+    ///     is the whole reason it is a set of its own rather than a file simply leaving `inFlight`:
+    ///     a failed file that became eligible again would be re-asked on the very next position
+    ///     update, so a reader nudging the scroll would re-ask a dead Mac every frame and each row
+    ///     would flicker between *couldn't read this file* and *reading from your Mac*.
     public static func next(
         from visible: Int,
         of files: [FileID],
         held: Set<FileID>,
         inFlight: Set<FileID>,
-        deferred: Set<FileID>
+        deferred: Set<FileID>,
+        refused: Set<FileID>
     ) -> [FileID] {
         guard files.isEmpty == false, visible < files.count else { return [] }
         return files[max(0, visible)...]
@@ -50,6 +56,7 @@ public enum ContinuousDiffLoading {
                 held.contains(file) == false
                     && inFlight.contains(file) == false
                     && deferred.contains(file) == false
+                    && refused.contains(file) == false
             }
             .prefix(filesAhead)
             .map { $0 }

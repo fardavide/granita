@@ -295,7 +295,9 @@ private struct Scenario {
             commentStore: FakeReviewCommentStore(),
             pasteboard: FakeReviewPasteboard(),
             highlighter: highlighter,
-            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(()))
+            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
+            announcing: FakeDiffReadAnnouncing(),
+            longWait: DiffFileWait.longWait
         )
     }
 }

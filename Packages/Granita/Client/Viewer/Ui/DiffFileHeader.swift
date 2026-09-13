@@ -57,7 +57,10 @@ public struct DiffFileHeader: View {
     /// slot above the viewport, and everything below it — the reader's own content included — moves.
     /// That is the reflow `SPEC.md` §10 forbids. Two lines fit inside it; the conflicted badge and
     /// the stats do not add a third.
-    public static let height: CGFloat = 46
+    /// `nonisolated` so the awaiting body's sticky row can read it from `visualEffect`, which runs
+    /// outside this view's actor. Stating it twice is what this avoids, and a header height written
+    /// in two places is the drift that made a shut file's bar and its header draw two columns.
+    public nonisolated static let height: CGFloat = 46
 
     /// The slot the chevron sits in, and it is a slot rather than a glyph on purpose.
     ///

@@ -34,6 +34,7 @@ struct ContinuousDiffViewSnapshotTests {
                 logCopyState: .ready,
                 pointSize: layout.codePointSize,
                 jumpTarget: subject.jumpTarget,
+                isWaitingLong: subject.isWaitingLong,
                 onReading: { _ in },
                 onJumped: {},
                 onSetViewed: { _, _ in },
@@ -41,7 +42,13 @@ struct ContinuousDiffViewSnapshotTests {
                 onExpand: { _, _, _ in },
                 onRetry: {},
                 onCopyLogs: {}
-            ),
+            )
+            // **Reduced Motion wherever a card is still on its way, because design §9's sweep is an
+            // infinite repeat.** A raster of one lands wherever the run loop happened to be, and the
+            // design says in as many words that the still form is what a screenshot of this screen
+            // looks like. Set per subject rather than for the suite, so a state with no unarrived
+            // file keeps photographing what it photographed before.
+            .environment(\._accessibilityReduceMotion, subject.rendersStill),
             layout: layout,
             named: subject.name
         )
@@ -63,7 +70,26 @@ struct DiffScreenCase: Sendable, CustomTestStringConvertible {
     /// file's was, which is the difference between a row that jumps and a row that does nothing.
     let jumpTarget: FileID?
 
+    /// Whether the batch in flight has been waiting long enough for its rows to add a word.
+    let isWaitingLong: Bool
+
     var testDescription: String { name }
+
+    /// Whether this subject holds a card whose sweep would otherwise be caught mid-crossing.
+    ///
+    /// Asked of the state rather than declared per case, so a subject that gains an unarrived file
+    /// cannot forget to ask for the still form and start recording a different phase every run.
+    var rendersStill: Bool {
+        guard case .reading(let entries) = state else { return false }
+        return entries.contains { $0.isReady == false }
+    }
+
+    init(name: String, state: ContinuousDiffState, jumpTarget: FileID?, isWaitingLong: Bool = false) {
+        self.name = name
+        self.state = state
+        self.jumpTarget = jumpTarget
+        self.isWaitingLong = isWaitingLong
+    }
 
     static let all: [DiffScreenCase] = [
         // The screen doing its job: two files fetched and one still on its way, holding its place.
@@ -136,6 +162,34 @@ struct DiffScreenCase: Sendable, CustomTestStringConvertible {
         DiffScreenCase(
             name: "nothing-arrived-yet",
             state: .reading(aChangeSetPartlyArrived.map { ContinuousDiffEntry.awaiting($0.file) }),
+            jumpTarget: nil
+        ),
+
+        // **The same frame ten seconds later, which is one word's difference and nothing else.**
+        // Design §9 reverses the loading screen's elapsed clock here: five files are in flight, so a
+        // stopwatch would be five of them ticking in a scroll. One word changes, once.
+        DiffScreenCase(
+            name: "nothing-arrived-yet-for-a-while",
+            state: .reading(aChangeSetPartlyArrived.map { ContinuousDiffEntry.awaiting($0.file) }),
+            jumpTarget: nil,
+            isWaitingLong: true
+        ),
+
+        // **Every card of a refused batch, which until 0.12.0 drew exactly what the card above drew:
+        // nothing.** The sweep is gone, the bars are at half weight and the marker column carries the
+        // one glyph that says which of the two rows this is.
+        DiffScreenCase(
+            name: "a-batch-that-failed",
+            state: .reading(aChangeSetPartlyArrived.map { ContinuousDiffEntry.failed($0.file) }),
+            jumpTarget: nil
+        ),
+
+        // **The one-row case, which is the end of §9's range that catches most answers.** A `+1` file
+        // reserves `max(1, 1) × 18` = 18pt and the sentence is all of it: nothing is clipped, nothing
+        // is centred in a space too small for it, and the file below keeps its 10pt gap.
+        DiffScreenCase(
+            name: "a-one-line-file-on-its-way",
+            state: .reading(aChangeSetWithAOneLineFile),
             jumpTarget: nil
         ),
 

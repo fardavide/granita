@@ -41,7 +41,7 @@ struct WorktreeSplitScreenSnapshotTests {
         assertScreenSnapshot(
             NavigationStack {
             WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
-                    WorktreeDiffScreen(worktreeName: displayName, model: diff)
+                    WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
             layout: layout,
@@ -79,7 +79,7 @@ struct WorktreeSplitScreenSnapshotTests {
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([chosen]))) {
             WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
-                    WorktreeDiffScreen(worktreeName: displayName, model: diff)
+                    WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
             layout: layout,
@@ -113,7 +113,7 @@ struct WorktreeSplitScreenSnapshotTests {
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([removed]))) {
             WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
-                    WorktreeDiffScreen(worktreeName: displayName, model: diff)
+                    WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
             layout: layout,

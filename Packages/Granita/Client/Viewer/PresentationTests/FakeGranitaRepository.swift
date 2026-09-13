@@ -41,6 +41,14 @@ final class FakeGranitaRepository: GranitaRepository {
     /// one revision can be answered against the next.
     private let stranger: FileChange?
 
+    /// Whether a batch waits to be let go, so a test can look at the screen *while* one is in flight.
+    ///
+    /// **The only way to assert anything about waiting.** Every other answer here is immediate, which
+    /// means the screen a reader spends the wait looking at is a screen no test had ever seen — and
+    /// the second word design §9 adds at ten seconds lives entirely inside that window.
+    private let holds: Bool
+    private let released = Mutex<Bool>(false)
+
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
     private let windows = Mutex<[LineWindow]>([])
@@ -52,6 +60,7 @@ final class FakeGranitaRepository: GranitaRepository {
         viewedFailure: ApiFailure? = nil,
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
         refusesTheFirstRead: ApiFailure? = nil,
+        holdingDiffs holds: Bool = false,
         alsoAnswering stranger: FileChange? = nil
     ) {
         self.changeSet = changeSet
@@ -60,7 +69,13 @@ final class FakeGranitaRepository: GranitaRepository {
         self.viewedFailure = viewedFailure
         self.linesAnswer = linesAnswer
         self.refusesTheFirstRead = refusesTheFirstRead
+        self.holds = holds
         self.stranger = stranger
+    }
+
+    /// Lets a held batch answer.
+    func releaseDiffs() {
+        released.withLock { $0 = true }
     }
 
     /// **Refuses the first read and answers afterwards when asked to**, which is the only way to put
@@ -83,6 +98,9 @@ final class FakeGranitaRepository: GranitaRepository {
         contextLines: Int
     ) async throws(ApiFailure) -> [FileDiff] {
         batches.withLock { $0.append(files) }
+        while holds, released.withLock({ $0 }) == false {
+            await Task.yield()
+        }
         if let diffFailure { throw diffFailure }
         guard case .success(let changes) = changeSet else { return [] }
         let asked = files.compactMap { file in
