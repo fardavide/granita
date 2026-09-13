@@ -9,6 +9,30 @@ import ServerGitDomain
 struct WorktreeReadProfileTests {
 
     @Test
+    func `given an offline read with a failed status probe when rendering its profile then counts costs and the missing connection scope are explicit`() {
+        // given - when
+        let scenario = Scenario(
+            enabledProjectCount: 3,
+            duration: .seconds(4),
+            gitMeasurements: [
+                GitCommandMeasurement(command: .worktreeStatus, duration: .milliseconds(100), outcome: .succeeded),
+                GitCommandMeasurement(command: .worktreeStatus, duration: .milliseconds(250), outcome: .failed)
+            ]
+        )
+
+        // then
+        #expect(scenario.sut.text == """
+        Enabled projects: 3
+        Worktrees: 0
+        Changed files: 0
+        Server processing: 4.0 seconds
+        Git subprocesses: 0.35 seconds
+        status: 2 calls, 1 failed, 0.35 seconds
+        Offline profile: connection discovery and HTTPS verification are not included.
+        """)
+    }
+
+    @Test
     func `given repeated status and content hash commands with distinct paths when profiling a read then groups combine calls failures and duration in stable order`() {
         // given
         let measurements = [

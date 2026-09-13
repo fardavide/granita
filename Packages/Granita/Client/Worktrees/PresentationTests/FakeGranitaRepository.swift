@@ -25,12 +25,13 @@ actor FakeGranitaRepository: GranitaRepository {
     private let readFailure: ApiFailure?
     private let writeFailure: ApiFailure?
     private let reportingReadStages: [WorktreeReadStage]
+    private let reportingAfterReadStages: [WorktreeReadStage]
     private let reportingSecondReadStages: [WorktreeReadStage]?
     private let suspendingReads: Bool
     private let suspendingSecondRead: Bool
+    private let suspendedReadNumbers: Set<Int>
     private let ignoringReadCancellation: Bool
-    private let suspendedRead: AsyncStream<Void>
-    private let suspendedReadContinuation: AsyncStream<Void>.Continuation
+    private var suspendedReadContinuations: [Int: AsyncStream<Void>.Continuation] = [:]
 
     /// Which writes suspend instead of answering, how many have arrived and are suspended, and the
     /// continuations that will let them go.
@@ -63,9 +64,11 @@ actor FakeGranitaRepository: GranitaRepository {
         refusesTheFirstRead: ApiFailure? = nil,
         refusesTheSecondRead: ApiFailure? = nil,
         reportingReadStages: [WorktreeReadStage] = [],
+        reportingAfterReadStages: [WorktreeReadStage] = [],
         reportingSecondReadStages: [WorktreeReadStage]? = nil,
         suspendingReads: Bool = false,
         suspendingSecondRead: Bool = false,
+        suspendedReadNumbers: Set<Int> = [],
         ignoringReadCancellation: Bool = false
     ) {
         self.worktrees = worktrees
@@ -74,13 +77,12 @@ actor FakeGranitaRepository: GranitaRepository {
         self.refusesTheFirstRead = refusesTheFirstRead
         self.refusesTheSecondRead = refusesTheSecondRead
         self.reportingReadStages = reportingReadStages
+        self.reportingAfterReadStages = reportingAfterReadStages
         self.reportingSecondReadStages = reportingSecondReadStages
         self.suspendingReads = suspendingReads
         self.suspendingSecondRead = suspendingSecondRead
+        self.suspendedReadNumbers = suspendedReadNumbers
         self.ignoringReadCancellation = ignoringReadCancellation
-        let suspended = AsyncStream<Void>.makeStream()
-        suspendedRead = suspended.stream
-        suspendedReadContinuation = suspended.continuation
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
@@ -89,17 +91,21 @@ actor FakeGranitaRepository: GranitaRepository {
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
         reads += 1
-        if suspendingReads || (suspendingSecondRead && reads == 2) {
-            var events = suspendedRead.makeAsyncIterator()
+        let readNumber = reads
+        if suspendingReads || (suspendingSecondRead && readNumber == 2) || suspendedReadNumbers.contains(readNumber) {
+            let suspended = AsyncStream<Void>.makeStream()
+            suspendedReadContinuations[readNumber] = suspended.continuation
+            var events = suspended.stream.makeAsyncIterator()
             _ = await events.next()
+            suspendedReadContinuations.removeValue(forKey: readNumber)
             if Task.isCancelled {
                 cancelledReads += 1
                 if !ignoringReadCancellation { throw .cancelled }
             }
         }
         if let readFailure { throw readFailure }
-        if let refusesTheFirstRead, reads == 1 { throw refusesTheFirstRead }
-        if let refusesTheSecondRead, reads == 2 { throw refusesTheSecondRead }
+        if let refusesTheFirstRead, readNumber == 1 { throw refusesTheFirstRead }
+        if let refusesTheSecondRead, readNumber == 2 { throw refusesTheSecondRead }
         return worktrees
     }
 
@@ -115,7 +121,11 @@ actor FakeGranitaRepository: GranitaRepository {
         for stage in stages {
             await progress(stage)
         }
-        return try await worktrees(inProject: project)
+        let worktrees = try await worktrees(inProject: project)
+        for stage in reportingAfterReadStages {
+            await progress(stage)
+        }
+        return worktrees
     }
 
     func waitUntilReadStarted(count: Int = 1) async {
@@ -125,7 +135,10 @@ actor FakeGranitaRepository: GranitaRepository {
     }
 
     func releaseHeldRead() {
-        suspendedReadContinuation.finish()
+        for continuation in suspendedReadContinuations.values {
+            continuation.finish()
+        }
+        suspendedReadContinuations.removeAll()
     }
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {

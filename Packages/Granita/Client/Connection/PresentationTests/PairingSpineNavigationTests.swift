@@ -19,6 +19,22 @@ import CorePairingDomain
 struct PairingSpineNavigationTests {
 
     @Test
+    func `given a selected Mac on an existing stack when pairing again then its typed pairing destination replaces that stack`() {
+        // given
+        let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Mac awaiting a new pairing"), name: "Review Mac")
+        var path = NavigationPath()
+        path.append(server)
+        path.append(PairingStep.scanTheCode)
+        let scenario = Scenario(startingAt: path)
+
+        // when
+        scenario.sut.pairAgain(with: server)
+
+        // then
+        #expect(scenario.sut.path == NavigationPath([PairingAgain(server: server)]))
+    }
+
+    @Test
     func `given a pairing that worked when the Mac is opened then the pairing screens are replaced`() {
         // given — design §5: back from the worktrees returns to the Mac list, never to a viewfinder
         // holding a code that has already been spent. So the path is assigned, not appended.
@@ -43,6 +59,14 @@ struct PairingSpineNavigationTests {
 
         // then
         #expect(navigation.path.count == 1)
+    }
+
+    private struct Scenario {
+        let sut: PairingSpineNavigation
+
+        init(startingAt path: NavigationPath) {
+            sut = PairingSpineNavigation(startingAt: path)
+        }
     }
 }
 

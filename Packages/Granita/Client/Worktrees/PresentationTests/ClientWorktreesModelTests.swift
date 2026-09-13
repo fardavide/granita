@@ -39,6 +39,156 @@ struct ClientWorktreesModelTests {
 
     // MARK: - Reading
 
+    @Test(.timeLimit(.minutes(1)))
+    func `given two overlapping reads when the cancelled first read completes late then the second attempt remains pending with its own stage and timing`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "replacement read", project: "granita")],
+            reportingReadStages: [.finding(.tailnet)],
+            reportingSecondReadStages: [.reading(.local)],
+            suspendedReadNumbers: [1, 2],
+            ignoringReadCancellation: true
+        )
+        let first = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+        let second = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        first.cancel()
+        await first.value
+
+        // then
+        #expect(await scenario.repository.cancelledReads == 1)
+        #expect(scenario.sut.state == .loading)
+        #expect(scenario.sut.readStage == .reading(.local))
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.sut.readTiming == .running(started: aMoment))
+        await scenario.repository.releaseHeldRead()
+        await second.value
+        #expect(scenario.rows.map(\.displayName) == ["replacement read"])
+        #expect(scenario.sut.readResult == .read(at: aMoment, route: .local))
+    }
+
+    @Test(arguments: [WorktreeReadStage.verifying, .finding(.localAndTailnet)])
+    func `given worktree reading started when another route reports an earlier stage then reading remains visible`(lateStage: WorktreeReadStage) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "monotonic reading", project: "granita")],
+            reportingReadStages: [.reading(.tailnet), lateStage],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == .reading(.tailnet))
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given discovery is pending when a cancelled read reports verification late then its stage stays unchanged`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "late cancelled progress", project: "granita")],
+            reportingReadStages: [.finding(.tailnet)],
+            reportingAfterReadStages: [.verifying],
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(scenario.sut.readStage == .finding(.tailnet))
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
+    func `given a stale local list when retry is pending then the failure clears and the previous receipt stays`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out"),
+            reportingReadStages: [.reading(.local)],
+            suspendedReadNumbers: [3]
+        )
+        await scenario.sut.load()
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 3)
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.read(at: aMoment, route: .local))
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+    }
+
+    @Test
+    func `given a local read receipt when refresh is unauthorized then the receipt is cleared`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unauthorized,
+            reportingReadStages: [.reading(.local)]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given a local list when refresh cannot reach the Mac then its previous receipt becomes stale`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out"),
+            reportingReadStages: [.reading(.local)]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.stale(
+            at: aMoment,
+            route: .local,
+            failure: .unreachable(diagnostic: "Refresh timed out")
+        ))
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+    }
+
+    @Test
+    func `given a local route when the worktrees arrive then the receipt records its time and route`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.reading(.local)]
+        )
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.read(at: aMoment, route: .local))
+    }
+
     @Test
     func `given verification failed when another attempt finds the Mac then the new attempt shows discovery`() async {
         // given
@@ -298,6 +448,18 @@ struct ClientWorktreesModelTests {
 
         // then
         #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given an injected clock when current time is read then the loading screen uses that clock`() {
+        // given
+        let scenario = Scenario(worktrees: [])
+
+        // when
+        let time = scenario.sut.currentTime
+
+        // then
+        #expect(time == aMoment)
     }
 
     // MARK: - The toolbar menu
@@ -1079,9 +1241,11 @@ struct ClientWorktreesModelTests {
             refusesTheSecondRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
             reportingReadStages: [WorktreeReadStage] = [],
+            reportingAfterReadStages: [WorktreeReadStage] = [],
             reportingSecondReadStages: [WorktreeReadStage]? = nil,
             suspendingReads: Bool = false,
             suspendingSecondRead: Bool = false,
+            suspendedReadNumbers: Set<Int> = [],
             ignoringReadCancellation: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
@@ -1093,9 +1257,11 @@ struct ClientWorktreesModelTests {
                 refusesTheFirstRead: refusesTheFirstRead,
                 refusesTheSecondRead: refusesTheSecondRead,
                 reportingReadStages: reportingReadStages,
+                reportingAfterReadStages: reportingAfterReadStages,
                 reportingSecondReadStages: reportingSecondReadStages,
                 suspendingReads: suspendingReads,
                 suspendingSecondRead: suspendingSecondRead,
+                suspendedReadNumbers: suspendedReadNumbers,
                 ignoringReadCancellation: ignoringReadCancellation
             )
             self.preferences = preferences

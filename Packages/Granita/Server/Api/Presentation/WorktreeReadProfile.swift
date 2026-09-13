@@ -41,6 +41,22 @@ public struct WorktreeReadProfile: Sendable {
             )
         }
     }
+
+    public var text: String {
+        let summary = [
+            "Enabled projects: \(projectCount)",
+            "Worktrees: \(worktreeCount)",
+            "Changed files: \(changedFileCount)",
+            "Server processing: \(serverDuration)",
+            "Git subprocesses: \(gitDuration)"
+        ]
+        let commands = gitBreakdown.map {
+            "\($0.group): \($0.invocationCount) calls, \($0.failedCount) failed, \($0.duration)"
+        }
+        return (summary + commands + [
+            "Offline profile: connection discovery and HTTPS verification are not included."
+        ]).joined(separator: "\n")
+    }
 }
 
 public enum GitCommandGroup: CaseIterable, Hashable, Sendable {

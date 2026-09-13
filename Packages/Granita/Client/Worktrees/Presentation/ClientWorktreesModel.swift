@@ -28,6 +28,7 @@ public final class ClientWorktreesModel {
     public private(set) var state: WorktreeSidebarState = .loading
     public private(set) var readStage: WorktreeReadStage = .finding(.unknown)
     public private(set) var readTiming: WorktreeReadTiming = .notStarted
+    public private(set) var readResult: WorktreeReadResult = .notRead
     public private(set) var logCopyState: DiagnosticCopyState = .ready
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
@@ -58,6 +59,8 @@ public final class ClientWorktreesModel {
     /// that is a swipe that appears to have done nothing. A refused deletion is a different
     /// sentence, which is what the operation travels for.
     public private(set) var writeFailure: WorktreeWriteRefusal?
+
+    public var currentTime: Date { now() }
 
     private var worktrees: [Worktree] = []
     private var reading: ReadTask = .idle
@@ -114,14 +117,21 @@ public final class ClientWorktreesModel {
     /// opening a worktree while this is still loading cancels it — and reporting that as *Could not
     /// read your Mac* is the app blaming the Mac for something the app did.
     public func load() async {
+        cancelLoading()
+        let attempt = UUID()
         let started = now()
+        if case .stale(let at, let route, _) = readResult {
+            readResult = .read(at: at, route: route)
+        }
         readStage = .finding(.unknown)
         readTiming = .running(started: started)
-        let task = Task { await performLoad() }
-        reading = .running(task)
+        let task = Task { await performLoad(attempt: attempt) }
+        reading = .running(attempt, task)
         defer {
-            reading = .idle
-            readTiming = .finished(started: started, ended: now())
+            if ownsRead(attempt) {
+                reading = .idle
+                readTiming = .finished(started: started, ended: now())
+            }
         }
         await withTaskCancellationHandler {
             await task.value
@@ -133,11 +143,11 @@ public final class ClientWorktreesModel {
     public func cancelLoading() {
         switch reading {
         case .idle: break
-        case .running(let task): task.cancel()
+        case .running(_, let task): task.cancel()
         }
     }
 
-    private func performLoad() async {
+    private func performLoad(attempt: UUID) async {
         // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
         // that: blanking on every read photographed a spinner on screens that had already loaded,
         // because a screen re-runs its `.task` every time it appears — so coming back to the
@@ -148,20 +158,36 @@ public final class ClientWorktreesModel {
         }
         do {
             let answer = try await repository.worktrees(inProject: nil, reporting: { stage in
-                await self.record(stage)
+                await self.record(stage, attempt: attempt)
             })
+            guard ownsRead(attempt) else { return }
             guard Task.isCancelled == false else {
                 state = arrangement
                 return
             }
             worktrees = answer
+            let route: WorktreeConnectionRoute = switch readStage {
+            case .finding, .verifying: .unknown
+            case .reading(let route): route
+            }
+            readResult = .read(at: now(), route: route)
             state = arrangement
         } catch .cancelled {
+            guard ownsRead(attempt) else { return }
             state = arrangement
         } catch .unauthorized {
+            guard ownsRead(attempt), !Task.isCancelled else { return }
+            readResult = .notRead
             state = .failed(.unauthorized)
         } catch {
-            state = state.isArrangeable ? arrangement : .failed(error)
+            guard ownsRead(attempt), !Task.isCancelled else { return }
+            switch readResult {
+            case .notRead:
+                state = .failed(error)
+            case .read(let at, let route), .stale(let at, let route, _):
+                readResult = .stale(at: at, route: route, failure: error)
+                state = arrangement
+            }
         }
     }
 
@@ -359,9 +385,18 @@ public final class ClientWorktreesModel {
         state = arrangement
     }
 
-    private func record(_ stage: WorktreeReadStage) {
+    private func record(_ stage: WorktreeReadStage, attempt: UUID) {
+        guard ownsRead(attempt), !Task.isCancelled else { return }
+        if case .reading = readStage { return }
         if case .verifying = readStage, case .finding = stage { return }
         readStage = stage
+    }
+
+    private func ownsRead(_ attempt: UUID) -> Bool {
+        switch reading {
+        case .idle: false
+        case .running(let active, _): active == attempt
+        }
     }
 
     /// The clock is read once per arrangement rather than per row, so every age on screen is
@@ -373,6 +408,6 @@ public final class ClientWorktreesModel {
 
     private enum ReadTask {
         case idle
-        case running(Task<Void, Never>)
+        case running(UUID, Task<Void, Never>)
     }
 }
