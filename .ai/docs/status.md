@@ -2,6 +2,21 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.12.1 — the skeleton is short, and the diff arrives rather than replacing it.** Davide
+read 0.12.0 and reversed design §9's opening premise: *"we cannot predict the size of the expanders,
+so it actually doesn't match correctly the final height."* He is right and the arithmetic was never
+available — `estimatedLineCount` counts diff lines, and a drawn file is diff lines plus a torn
+expander wherever the diff skipped something, which nothing on the wire reports. A 300-row file was
+reserving 5,400pt in order to land somewhere else.
+
+So `reservedRows` is capped at four for an unarrived file, the skeleton fades out where the code
+fades in, and the stack that lays the movement out carries `Animation.disclosure` keyed on readiness
+— a key that had been **deliberately excluded** with a comment saying so, correct while the swap
+moved nothing and wrong the moment it moved something. What holds the screen still is the rule that
+was always underneath the reserved height rather than the height itself: loading runs strictly
+forward, so a file whose height changes is at or below the reader. The sticky sentence went with the
+tall box that justified it. All in [`decisions.md`](decisions.md).
+
 **Version 0.12.0 — a file you are waiting for says so, and one that failed says that instead.** The
 return for [issue #67](https://github.com/fardavide/granita/issues/67) is recorded in design §9 and
 every state it draws is built. A card whose diff has not arrived draws one row of type and one 7pt

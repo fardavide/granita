@@ -9,13 +9,22 @@ arriving — and after the Mac has refused to send them.
 **The box is not a state waiting to be filled; it is a length of the code grid the file has not
 arrived to occupy.** Everything below follows from drawing it as that.
 
-### Measured in rows, because the box is
+### Measured in rows, and capped short *(reversed in 0.12.1)*
 
-The reserved height is `max(1, estimatedLineCount)` rows, so a row of the code grid is the one unit
-that fits both ends of the range without being scaled, centred or inset: a one-row file has exactly
-one row to spend and a three-hundred-row file has three hundred. A treatment one row tall is the
-whole body of the first and 0.3% of the second, and it looks the same deliberate thing in both
-because it **is** the same thing.
+> **The reserved height was reversed in 0.12.1, on Davide's call, and most of this section went with
+> it.** §9 was built on "the box keeps every point of its height", and the height it kept was
+> `max(1, estimatedLineCount)` rows. **That number cannot be right.** `estimatedLineCount` counts
+> *diff lines*; a drawn file is diff lines **plus a torn expander wherever the diff skipped
+> something** — 44pt each, about two and a half rows, one above the first hunk, one below the last
+> and one between every pair — and nothing on the wire says how many there are. So a long file was
+> reserving most of a screen in order to land somewhere else. Davide: *"we cannot predict the size of
+> the expanders, so it actually doesn't match correctly the final height."*
+
+A row of the code grid is still the unit — it is the only one that fits both ends of the range
+without being scaled, centred or inset — but the block is now **capped at four rows**. Enough to read
+as *a file is arriving*; short enough that the real content growing into place is a movement rather
+than a collapse. Capped rather than fixed, so a one-line file still draws one row: a skeleton taller
+than the file it stands for is the same lie in the other direction.
 
 The first reserved row is type at the code font and the code point size — never a Dynamic Type
 style, because §10 makes the code size its own setting and a row that grew to 24pt inside an 18pt box
@@ -23,22 +32,28 @@ would be the reflow trap arriving through the accessibility settings. Every row 
 bar, centred in its row, at `quaternarySystemFill`, starting where the code starts and running to a
 width that changes every one to four rows so the block reads as code rather than as a grid.
 
-**The figure column stays empty and nothing prints the estimate.** §10 allows the count to be wrong,
-and the treatment survives that only because there is no number to contradict: the widths are ragged,
-the column is empty, and a file that arrives with fewer rows simply replaces a shorter block. A
-reader cannot count what they were shown, which is the only reason drawing it is legal.
+**The figure column stays empty and nothing prints the estimate**, and with the height no longer
+claiming to be the file's, that matters more rather than less: the widths are ragged, the column is
+empty, and there is no number for the arriving content to contradict. A reader cannot count what they
+were shown, which is the only reason drawing it is legal.
 
-### The row is sticky inside its box, and that answers two states with one rule
+### The content arrives, rather than replacing what was there
 
-The row's offset is the box's intersection with the viewport, clamped so it never rises above the
-pinned header and never leaves the box — stopping one row short of the bottom edge, where the next
-file's header takes the pin. A file scrolling past shows its sentence at the top and is gone; a
-reader sitting inside 5,400pt of reserved card always has it under the header. **Stickiness is a
-rendering position**, the same thing the section headers already do, so no height changes.
+The skeleton fades out where the code fades in, and the file grows to its real height on the
+platform's own curve — `Animation.disclosure`, the same one every other disclosure on this screen
+uses, stated once and keyed on the stack that lays the movement out rather than on the section
+inside it. That is §4's rule about *where* an animation goes, applied to a fourth site.
 
-*Built with `visualEffect`*, which runs after layout has decided everything — the one SwiftUI
-primitive that can move a view without a layout pass, which is what makes a sticky row legal inside a
-scroll that may never reflow.
+**What keeps a growing file from being the reflow §10 forbids is the rule that was always
+underneath the reserved height rather than the height itself**: loading runs strictly forward, so a
+file whose height changes is at or below the reader and never above them. The height was one way of
+keeping the screen still; motion is the other, and it is the honest one once the number it was
+built on is known to be wrong.
+
+> **What went with the tall box:** the sentence used to be *sticky inside it*, offset by the box's
+> intersection with the viewport so a reader sitting in 5,400pt of reserved card kept the words under
+> the pinned header. A four-row card has no inside to sit in, so the rule went with the height that
+> justified it, and `visualEffect` with it.
 
 ### Still no spinner. A sweep, which is a material rather than an instrument
 
@@ -272,7 +287,7 @@ says so and shows the measurement.
 | §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
 | §7 | Inline comments — choosing the lines, the composer, the mark, the review, the copy, the iPad | 0.7.0 | **drawn and built.** Returned 3 September 2026. Three calls are built differently from the frames and one they draw is deliberately absent; all four are below and in [`decisions.md`](decisions.md). One departure — the 18pt target — is **flagged and waiting on Davide** |
 | §8 | Connecting, reading and refreshing worktrees | 0.11.4 | **drawn, implemented and snapshotted.** Returned 13 September 2026; automated tests cover observed stages, retries, cancellation and Pair Again navigation |
-| §9 | A file in flight, and one that never arrives | 0.12.0 | **drawn, implemented and snapshotted.** Returned 13 September 2026. Three calls are built differently from the frames and each is listed in that section; the pinned-key mismatch it flags is the same one §8 flagged and is still open |
+| §9 | A file in flight, and one that never arrives | 0.12.0, corrected in 0.12.1 | **drawn, implemented and snapshotted.** Returned 13 September 2026. Three calls are built differently from the frames and each is listed in that section. **Its opening premise was then reversed by Davide**: the reserved height cannot be computed, because the estimate omits the torn expanders, so the skeleton is capped at four rows and the arrival is animated instead. The pinned-key mismatch it flags is the same one §8 flagged and is still open |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
 number rather than renumbering four sections that a dozen documents already cite; in the reader's

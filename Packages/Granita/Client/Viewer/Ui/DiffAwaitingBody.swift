@@ -13,17 +13,19 @@ import CoreDiffDomain
 /// several thousand at the other, so a treatment sized to *itself* looks like two different things,
 /// and one centred on its own height reflows the moment the hunks land.
 ///
-/// **Nothing here has a height the arriving content can change.** Every element is exactly one line
-/// height, the whole body is exactly the rows it was given, and a file that arrives with fewer rows
-/// than it promised simply replaces a shorter block. That last part is also why nothing prints the
-/// estimate: `SPEC.md` §10 allows the count to be wrong, so the bars are ragged and uncountable and
-/// the figure column stays empty. A reader cannot check what they were shown, which is the only
-/// reason drawing it is legal at all.
+/// **It is short, and it does not pretend to be the file that is coming.** The first build reserved
+/// `estimatedLineCount` rows and that number cannot be right: the server counts *diff lines* and a
+/// drawn file is diff lines plus a torn expander wherever the diff skipped something, which nothing
+/// on the wire reports. So the block is capped at four rows — enough to read as *a file is arriving*,
+/// short enough that the real content growing into place is a movement rather than a collapse.
 ///
-/// **The row is sticky inside the box and the bars are not.** A file scrolling past shows its
-/// sentence at the top and is gone; a reader sitting inside 5,400pt of reserved card always has it
-/// under the pinned header. That is one rule answering both, and it costs no layout — the offset is
-/// a rendering position, the same thing the section headers above it already do.
+/// **Nothing here prints the estimate**, and with the height no longer claiming to be the file's that
+/// matters more rather than less: the bars are ragged and uncountable and the figure column is empty,
+/// so there is no number for the arriving content to contradict.
+///
+/// The sentence is the first row and stays there. An earlier build made it sticky inside its own box
+/// so a reader sitting in 5,400pt of reserved height kept the words under the pinned header; a
+/// four-row card has no inside to sit in, so the rule went with the height that justified it.
 public struct DiffAwaitingBody: View {
 
     /// The bar, in the 18pt row it stands in the middle of.
@@ -98,12 +100,6 @@ public struct DiffAwaitingBody: View {
             Spacer(minLength: 0)
         }
         .frame(height: lineHeight)
-        // **A rendering position rather than a layout change**, which is what makes a sticky row
-        // legal inside a scroll that may never reflow: this runs after layout has already decided
-        // everything, so the row travels and no height anywhere moves with it.
-        .visualEffect { [boxHeight, lineHeight] content, proxy in
-            content.offset(y: Self.stickyOffset(of: proxy, boxHeight: boxHeight, lineHeight: lineHeight))
-        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text(wait.sentence))
     }
@@ -227,22 +223,6 @@ public struct DiffAwaitingBody: View {
         return shares
     }
 
-    /// How far the sentence has travelled down its own box.
-    ///
-    /// Clamped at both ends: it never rises above the pinned header that says which file this is,
-    /// and it never leaves the box, stopping one row short of the bottom edge so the next file's
-    /// header takes the pin from it.
-    /// `nonisolated` because `visualEffect` runs its closure outside this view's actor and a
-    /// `GeometryProxy` is not `Sendable` — the offset has to be computed where the proxy already is.
-    nonisolated private static func stickyOffset(
-        of proxy: GeometryProxy,
-        boxHeight: CGFloat,
-        lineHeight: CGFloat
-    ) -> CGFloat {
-        let box = proxy.frame(in: .scrollView(axis: .vertical))
-        let beneathTheHeader = max(0, DiffFileHeader.height - box.minY)
-        return min(beneathTheHeader, max(0, boxHeight - lineHeight))
-    }
 }
 
 // MARK: -

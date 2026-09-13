@@ -103,21 +103,38 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
         FileCollapsing.state(of: file, openedByTheReader: openedByTheReader)
     }
 
-    /// How many rows to reserve for a file nobody has seen yet.
+    /// The tallest a skeleton is allowed to be, however many lines the file says it has.
     ///
-    /// `estimatedLineCount` comes from the server, which counted it while it had the comparison
-    /// open. Being wrong here is cheap in one direction and not in the other: an estimate that is
-    /// too small or too large only matters *below* the viewport, where nothing the reader is
-    /// looking at moves when it is corrected — which is why loading runs strictly forward and why
-    /// the estimate needs to be reasonable rather than exact.
+    /// **Four rows, because the estimate cannot be right and a tall wrong box is worse than a short
+    /// honest one.** `estimatedLineCount` counts *diff lines*, and a drawn file is diff lines **plus
+    /// a torn expander wherever the diff skipped something** — 44pt each, about two and a half rows,
+    /// and there is one above the first hunk, one below the last and one between every pair. Nothing
+    /// on the wire says how many, so a box sized from the line count alone is short by an amount
+    /// nobody can compute. It was reserving hundreds of points to land in the wrong place anyway.
+    public static let skeletonRows = 4
+
+    /// How many rows a file nobody has seen yet draws into.
+    ///
+    /// **A short skeleton rather than the file's own height**, which reverses design §9's opening
+    /// premise on Davide's call: the box no longer pretends to be the file that is coming, so the
+    /// content that arrives is free to be whatever height it is. What keeps that from being the
+    /// reflow `SPEC.md` §10 forbids is the rule that was always underneath it — loading runs strictly
+    /// forward, so a file whose height changes is at or below the reader, never above them — and the
+    /// growth is animated rather than snapped, so what they see is a file arriving rather than the
+    /// screen jumping.
+    ///
+    /// Capped rather than fixed, so a one-line file still draws one row: a skeleton taller than the
+    /// file it stands for is the same lie in the other direction.
     ///
     /// **A refused file answers exactly as a waiting one does**, which is design §9's one hard
     /// requirement of the third case: the box a failed file draws into is the box it was already
     /// drawing into, so the treatment that says it failed cannot change the height on the way in.
     public var reservedRows: Int {
         switch content {
-        case .awaiting(let file), .failed(let file): max(1, file.estimatedLineCount)
-        case .ready(let diff): diff.hunks.reduce(0) { $0 + $1.lines.count }
+        case .awaiting(let file), .failed(let file):
+            min(max(1, file.estimatedLineCount), Self.skeletonRows)
+        case .ready(let diff):
+            diff.hunks.reduce(0) { $0 + $1.lines.count }
         }
     }
 

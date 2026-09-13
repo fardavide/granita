@@ -84,6 +84,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.12.1 — 2026-09-13
+- **A file that has not arrived draws a short placeholder instead of a full-height one.** 0.12.0
+  sized it from the line count your Mac reports, which cannot include the expanders a drawn file
+  gets — so a long file reserved most of a screen and then landed somewhere else entirely.
+- **The diff now moves into place instead of snapping.** The placeholder fades into the code and the
+  file grows to its real height on the same curve everything else on this screen opens with.
+
 ### 0.12.0 — 2026-09-13
 - **A file you are waiting for now says so.** Where a diff that had not arrived drew an empty card
   under its header, it draws the rows the file has not sent yet — one line of type saying
