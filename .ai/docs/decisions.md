@@ -5845,6 +5845,12 @@ remains visible. A late refusal after cancellation is still cancellation, rather
 screen or a revoked pairing. The clock measures the whole attempt and freezes when it ends.
 Ten seconds changes the explanation; it is neither a timeout nor a processing estimate.
 
+Both running and completed elapsed labels use that attempt's supplied clock. The screen already
+samples it once per second. A native independently running text timer ignored the supplied time;
+an accessibility snapshot exposed it displaying 0:00 for an attempt that had lasted 42 seconds.
+Using the same clock for the label and the long-wait threshold also keeps the elapsed value
+available to VoiceOver on demand without announcing each tick.
+
 A successful read keeps its arrival time and verified route. Refresh retains usable content and
 its receipt, and a recoverable failure makes that content's age explicit above the rows. Retry
 clears the old notice and shows stock activity while leaving those rows operable. Authorization

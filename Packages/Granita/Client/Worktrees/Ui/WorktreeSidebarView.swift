@@ -178,18 +178,7 @@ public struct WorktreeSidebarView: View {
         switch readTiming {
         case .notStarted:
             EmptyView()
-        case .running(let started):
-            HStack(spacing: 4) {
-                Text("Waiting")
-                Text(timerInterval: started...Date.distantFuture, countsDown: false)
-                    .fixedSize()
-            }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-            .monospacedDigit()
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.updatesFrequently)
-        case .finished:
+        case .running, .finished:
             let seconds = Int(readTiming.elapsed(at: now))
             Text("\(state == .loading ? "Waiting" : "Waited") \(seconds / 60):\(String(format: "%02d", seconds % 60))")
                 .font(.caption2)

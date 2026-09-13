@@ -15,6 +15,48 @@ import CorePairingDomain
 struct RememberedMacsTests {
 
     @Test(.timeLimit(.minutes(1)))
+    func `given a legacy repository when reporting a filtered worktree read then unknown reading is reported before its unchanged result arrives`() async throws {
+        // given
+        let project = ProjectID(rawValue: "legacy-filtered-project")
+        let scenario = Scenario(suspendingWorktreeReads: true)
+        let repository: any GranitaRepository = scenario.mac
+
+        // when
+        let read = Task {
+            try await repository.worktrees(inProject: project, reporting: { stage in
+                await scenario.progress.record(stage)
+            })
+        }
+        await scenario.mac.waitUntilWorktreeReadStarted(inProject: project)
+
+        // then
+        #expect(await scenario.progress.stages == [.reading(.unknown)])
+        #expect(await scenario.mac.asked == [.worktrees(inProject: project)])
+        await scenario.mac.releaseWorktreeRead()
+        #expect(try await read.value == [aWorktree])
+    }
+
+    @Test
+    func `given a legacy repository refuses a filtered worktree read when reporting it then unknown reading precedes the unchanged typed refusal`() async {
+        // given
+        let project = ProjectID(rawValue: "legacy-refused-project")
+        let failure = ApiFailure.unreachable(diagnostic: "The legacy worktree request timed out")
+        let scenario = Scenario(refusing: failure)
+        let repository: any GranitaRepository = scenario.mac
+
+        // when
+        await #expect(throws: failure) {
+            try await repository.worktrees(inProject: project, reporting: { stage in
+                await scenario.progress.record(stage)
+            })
+        }
+
+        // then
+        #expect(await scenario.progress.stages == [.reading(.unknown)])
+        #expect(await scenario.mac.asked == [.worktrees(inProject: project)])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func `given resolution fails and a remembered fallback is used when worktrees are still pending then progress reports reading without a verified route`() async throws {
         // given
         let fallback = ServerAddress(host: "100.118.92.64", port: 8_737)
@@ -677,8 +719,8 @@ private actor FakeMacBehindAPairing: GranitaRepository {
         return [aWorktree]
     }
 
-    func waitUntilWorktreeReadStarted() async {
-        while asked.contains(.worktrees(inProject: nil)) == false {
+    func waitUntilWorktreeReadStarted(inProject project: ProjectID? = nil) async {
+        while asked.contains(.worktrees(inProject: project)) == false {
             await Task.yield()
         }
     }

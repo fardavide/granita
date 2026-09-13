@@ -220,7 +220,7 @@ func assertScreenSnapshot(
     _ view: some View,
     layout: SnapshotLayout,
     named name: String,
-    limitsAnimationUpdates: Bool = false,
+    freezesActivity: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -238,15 +238,14 @@ func assertScreenSnapshot(
     // while sixteen suites were unserialised took 22 unrelated baselines down.
     drainTheKeyboard()
 
-    if limitsAnimationUpdates {
+    if freezesActivity {
         // Accessibility sizes enlarge the native spinner enough for its changing phase to exceed
-        // the image drift budget. The hosting controller's frame interval outlasts this assertion,
-        // so the same initial native frame is rendered at the reader's actual text size.
-        let controller = UIHostingController(rootView: AnyView(probingSafeArea(
+        // the image drift budget. Capture its first native animation frame at the reader's actual
+        // text size, while keeping the host window's normal rendering and safe area.
+        let controller = ActivitySnapshotHostingController(rootView: AnyView(probingSafeArea(
             of: view.environment(\.locale, Locale(identifier: "en_US")),
             named: "\(name)-\(layout.name)"
         )))
-        controller._rendererConfiguration.minFrameInterval = 1_000
         assertSnapshot(
             of: controller as UIViewController,
             as: .image(
@@ -294,6 +293,29 @@ func assertScreenSnapshot(
     )
 
     drainTheKeyboard()
+}
+
+@MainActor
+private final class ActivitySnapshotHostingController: UIHostingController<AnyView> {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard let root = view else { return }
+        var remaining = [root]
+        while let current = remaining.popLast() {
+            if let indicator = current as? UIActivityIndicatorView {
+                for subview in indicator.subviews {
+                    guard let image = subview as? UIImageView else { continue }
+                    let frames = image.animationImages ?? image.image?.images
+                    guard let frame = frames?.first else { continue }
+                    image.stopAnimating()
+                    image.image = frame
+                    image.layer.speed = 0
+                    image.layer.timeOffset = 0
+                }
+            }
+            remaining.append(contentsOf: current.subviews)
+        }
+    }
 }
 
 /// Waits out the keyboard a render may have raised, so the next render does not inherit its geometry.

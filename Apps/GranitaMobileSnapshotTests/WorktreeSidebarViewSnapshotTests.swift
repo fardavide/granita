@@ -71,7 +71,7 @@ struct WorktreeSidebarViewSnapshotTests {
             .frame(maxWidth: .infinity, alignment: .leading),
             layout: layout,
             named: subject.name,
-            limitsAnimationUpdates: subject.state == .loading && subject.dynamicTypeSize.isAccessibilitySize
+            freezesActivity: subject.state == .loading && subject.dynamicTypeSize.isAccessibilitySize
         )
     }
 }
@@ -206,7 +206,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             mode: .groupedByProject,
             showsQuietWorktrees: false,
             readStage: .reading(.tailnet),
-            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment),
+            readTiming: .running(started: aFixedMoment.addingTimeInterval(-42)),
             dynamicTypeSize: .accessibility3
         ),
 
@@ -397,7 +397,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             mode: .groupedByProject,
             showsQuietWorktrees: false,
             readStage: .reading(.local),
-            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+            readTiming: .running(started: aFixedMoment.addingTimeInterval(-42))
         ),
 
         SidebarCase(
