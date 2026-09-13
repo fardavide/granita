@@ -1,5 +1,79 @@
 # Design
 
+## §8 — Connecting and reading worktrees *(returned 13 September 2026)*
+
+The loading return for [issue #82](https://github.com/fardavide/granita/issues/82) keeps stock
+SwiftUI rather than replacing the spinner with a progress illustration. The phone observes routes
+being found, pinned health being verified, and a worktree request waiting for its complete answer.
+It has no live server processing counter and must not manufacture one.
+
+### A spinner anchored by its first line, with words underneath
+
+Use a circular progress view, a headline and a secondary sentence in a scrollable column. Anchor
+the top of the block near the vertical middle of the available area; stage changes and long-wait
+details grow below it, rather than recentering the block. Adapt that anchor at accessibility sizes
+so every control is reachable by scrolling. Preserve the inline Mac title and live Back navigation.
+On iPad use the existing 320pt sidebar; the unselected detail stays *Choose a worktree*.
+
+The normal labels are *Finding <Mac>*, *Verifying <Mac>* and *Reading worktrees*. Concurrent route
+work is a sentence, never a checklist. Verification takes precedence over discovery and never goes
+backwards during an attempt. Name both routes only when both are actually attempted. On cellular,
+say that local discovery needs Wi-Fi only after network availability has been observed. Verification
+says *Checking it against the key this device pinned when it paired.* Reading names the verified
+winning route: *Connected over Tailscale.* or *Connected on this network.* An unverified or unknown
+route must not claim a verified connection.
+
+### Ten seconds is a wait threshold, never a deadline
+
+At ten seconds add *Still* to the stage label, a monospaced-digit *Waiting m:ss* elapsed clock and
+the existing borderless Copy Logs control. Keep the same attempt start across stage changes.
+Only while reading worktrees explain: *Your Mac describes every worktree in every enabled project
+before it answers, so this grows with the number of projects you have enabled.* Discovery and
+verification get stage-appropriate explanations, not a claim that git is already running.
+
+Rejected: percentages, an ETA, a countdown, named git operations and completed-worktree counts.
+The endpoint returns one complete answer, and the historical 122.7-second read is not a denominator.
+Rejected: Try Again while a request is still running, because it would restart the expensive read.
+Back is cancellation. Copy Logs retains its copying, copied and failed feedback.
+
+### Failure offers the remedy the phone can actually use
+
+An unreachable connection says *Could not reach <Mac>* with advice to check Granita and the local
+network or Tailscale. A response failure keeps *Could not read your Mac*. Both offer prominent
+Try Again. Authorization refusal says the pairing was revoked and offers Pair Again, which must
+open this Mac's real pairing flow. A refused identity must never be described as an accepted Mac.
+Diagnostics and the completed attempt's elapsed duration go last, caption2, monospaced, tertiary and
+selectable; Copy Logs follows. Do not manufacture diagnostics for an authorization refusal.
+For this worktree-read screen, the returned treatment replaces §1's earlier omission of selectable
+diagnostics. Keep recovery and reporting reachable in a scroll view at accessibility sizes.
+
+### Refresh keeps the content, and makes its age visible
+
+Add stock pull-to-refresh to the list. Rows remain visible and operable while it runs. Retry from
+a refresh notice starts another refresh and clears the notice for that attempt. Cancel when leaving
+or opening a worktree; ignore stale completions so an old attempt cannot replace a later result.
+Pull-to-refresh uses the list's own activity indicator. Try Again over retained content shows a
+stock progress view above the rows until that attempt ends; do not duplicate the pull indicator.
+
+A recoverable refresh failure leaves rows visible, re-ages them against the current clock and
+places *Couldn't refresh. These worktrees were read <age>.* with inline Try Again at the top.
+The footer switches from *Read <age>, over Tailscale/on this network.* to *Showing worktrees read
+<age>.* until a read succeeds. Unknown routes omit the route phrase. Authorization refusal replaces
+the list with Pair Again, because its rows no longer have a usable credential.
+Rejected: an alert hiding the old list, and a permanent diagnostic toolbar button.
+
+### Accessibility and transitions carry the same facts
+
+Use semantic colors and text styles; loading copy wraps without truncation. Combine the stage
+indicator, label and sentence into one accessible element; keep Copy Logs separate. Announce each
+stage change once, successful arrival with the real worktree count, and refresh failure. The elapsed
+clock is available on demand and never announced every second. Cross-fade initial loading into
+the result without a navigation push or staggered rows. Reduced Motion swaps states directly and
+suppresses layout and reordering animation; the stock activity indicator may still spin.
+
+The optional future counter drawn in the return is explicitly deferred until the server publishes
+real observable completions. No performance optimization is selected by the design.
+
 The client's eight screens, judged and drawn. This is the authority on **what the phone and the iPad
 look like and why**, and it is the half that lasts. The Mac's own surfaces are in
 [`design-mac.md`](design-mac.md).
@@ -29,6 +103,7 @@ says so and shows the measurement.
 | §5 | Pairing — the entry, the scanner, the six words, the outcome | M4 | built |
 | §6 | Deleting a worktree — the affordance on §2's row and the confirmation | 0.5.0 | **built provisionally, not drawn.** The prompt is [#52](https://github.com/fardavide/granita/issues/52) and has not been sent. Thirteen calls were made without authority and each is listed below to be overruled |
 | §7 | Inline comments — choosing the lines, the composer, the mark, the review, the copy, the iPad | 0.7.0 | **drawn and built.** Returned 3 September 2026. Three calls are built differently from the frames and one they draw is deliberately absent; all four are below and in [`decisions.md`](decisions.md). One departure — the 18pt target — is **flagged and waiting on Davide** |
+| §8 | Connecting, reading and refreshing worktrees | 0.11.4 | **drawn, implemented and snapshotted.** Returned 13 September 2026; automated tests cover observed stages, retries, cancellation and Pair Again navigation |
 
 **§5 is numbered last and happens first.** It was reviewed four days after §1–§4 and takes the next
 number rather than renumbering four sections that a dozen documents already cite; in the reader's

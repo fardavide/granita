@@ -2,6 +2,26 @@
 
 Where the project is. Update this when a slice lands.
 
+**Version 0.11.4 — loading feedback is implemented; release is pending.** The returned
+design for [issue #82](https://github.com/fardavide/granita/issues/82) is recorded in design §8.
+Observed connection stages, a whole-attempt elapsed clock, cancellable reads, retained refresh
+content and real Pair Again navigation are implemented. The package suite passes 1,432 tests in
+134 suites, unsigned package/app builds and the real pinned-HTTPS regression suite pass. New snapshots cover loading routes, long waits,
+refresh receipts, failure recovery, accessibility sizes and Reduced Motion in all four layouts.
+Snapshot recording and a subsequent clean comparison pass all 797 phone/iPad cases, and every
+changed PNG has been reviewed. Accessibility loading snapshots limit their hosting controller's
+animation updates during capture while preserving native rendering and the existing image
+tolerances. Temporary diagnostic probes are removed. The downloaded archive,
+extracted files and temporary working frames have been deleted. Host desktop capture is not part
+of verification, per Davide's instruction.
+The coverage target stopped before measurement because its authenticated GitHub artifact download
+returned HTTP 401 in this runner; the credential discrepancy with Davide's terminal is being
+investigated without changing machine configuration. The authenticated GitHub app can create the
+pull request; CI must provide the coverage verdict before merge. No release has been published.
+[Fresh profiling](loading-profile-82.md) records five projects, ten worktrees and 154 changed files:
+5.843 seconds on the server, dominated by git change metadata and status, plus a separate 0.0117-second
+verified loopback health exchange. This is not a phone or Tailscale latency measurement.
+
 **Version 0.11.3 — faster remembered-Mac routing is implemented; release is pending.** Davide confirmed remote
 connections work but reported more than thirty seconds before opening. The client now starts pinned
 tailnet verification without waiting for Bonjour, races a verified LAN route on physical Wi-Fi, and

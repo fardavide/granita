@@ -8,6 +8,38 @@ import ServerGitDomain
 @Suite("Worktree read profile")
 struct WorktreeReadProfileTests {
 
+    @Test(arguments: [
+        (GitCommand.worktrees, GitCommandGroup.enumeration),
+        (.currentBranch, .revision),
+        (.headCommit, .revision),
+        (.trackedChanges(against: .head), .changeMetadata),
+        (.trackedStats(against: .emptyTree), .changeMetadata),
+        (.untrackedPaths, .changeMetadata),
+        (.fileDiff(path: RepositoryRelativePath("Sources/Tracked.swift"), against: .head, contextLines: 3), .diffContent),
+        (.untrackedFileDiff(path: RepositoryRelativePath("Sources/New.swift"), contextLines: 7), .diffContent),
+        (.fileContent(path: RepositoryRelativePath("Sources/Previous.swift"), at: .head), .diffContent),
+        (.worktreeStatus, .status),
+        (.hashWorktreeFiles(paths: [RepositoryRelativePath("Sources/Hashed.swift")]), .contentHash),
+        (.version, .other),
+        (.isInsideWorkTree, .other),
+        (.repositoryRoot, .other),
+        (.removeWorktree(at: RepositoryLocation(path: "/repo/removed-checkout")), .other)
+    ])
+    func `given a measured git command when profiling a read then its cost is assigned to the operation group`(
+        command: GitCommand,
+        expectedGroup: GitCommandGroup
+    ) {
+        // given - when
+        let scenario = Scenario(gitMeasurements: [
+            GitCommandMeasurement(command: command, duration: .milliseconds(271), outcome: .succeeded)
+        ])
+
+        // then
+        #expect(scenario.sut.gitBreakdown == [
+            GitCommandProfile(group: expectedGroup, invocationCount: 1, failedCount: 0, duration: .milliseconds(271))
+        ])
+    }
+
     @Test
     func `given an offline read with a failed status probe when rendering its profile then counts costs and the missing connection scope are explicit`() {
         // given - when

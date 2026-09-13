@@ -84,6 +84,13 @@ make fixtures    # rebuild the git fixture repos and the golden diff fixtures
 
 ## Changelog
 
+### 0.11.4 — 2026-09-13
+- **Opening a Mac explains what Granita is waiting for.** Finding a route, checking the paired
+  key and reading worktrees have distinct labels. Long waits show elapsed time and offer Copy Logs.
+- **Refresh keeps your worktrees available.** Pull to refresh, retry a stale read inline, and see
+  when the list was last read. Opening a worktree or leaving cancels the pending list read.
+- **Revoked pairings offer Pair Again.** The action opens the selected Mac's pairing screen.
+
 ### 0.11.3 — 2026-09-12
 - **Opening a remembered Mac over Tailscale no longer waits for local discovery first.** On
   cellular, local discovery and wake retries are skipped; on Wi-Fi, the first route to complete

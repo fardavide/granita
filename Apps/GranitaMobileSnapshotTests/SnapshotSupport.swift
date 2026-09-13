@@ -220,6 +220,7 @@ func assertScreenSnapshot(
     _ view: some View,
     layout: SnapshotLayout,
     named name: String,
+    limitsAnimationUpdates: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -236,6 +237,35 @@ func assertScreenSnapshot(
     // Draining here is only safe because every suite is `.serialized` now. The version that did this
     // while sixteen suites were unserialised took 22 unrelated baselines down.
     drainTheKeyboard()
+
+    if limitsAnimationUpdates {
+        // Accessibility sizes enlarge the native spinner enough for its changing phase to exceed
+        // the image drift budget. The hosting controller's frame interval outlasts this assertion,
+        // so the same initial native frame is rendered at the reader's actual text size.
+        let controller = UIHostingController(rootView: AnyView(probingSafeArea(
+            of: view.environment(\.locale, Locale(identifier: "en_US")),
+            named: "\(name)-\(layout.name)"
+        )))
+        controller._rendererConfiguration.minFrameInterval = 1_000
+        assertSnapshot(
+            of: controller as UIViewController,
+            as: .image(
+                on: layout.configuration,
+                drawHierarchyInKeyWindow: true,
+                precision: 0.999,
+                perceptualPrecision: 0.87,
+                traits: UITraitCollection(userInterfaceStyle: layout.style)
+            ),
+            named: "\(name)-\(layout.name)",
+            fileID: fileID,
+            file: file,
+            testName: testName,
+            line: line,
+            column: column
+        )
+        drainTheKeyboard()
+        return
+    }
 
     assertSnapshot(
         // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first

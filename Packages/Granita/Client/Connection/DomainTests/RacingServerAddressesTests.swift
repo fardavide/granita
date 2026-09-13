@@ -8,6 +8,24 @@ import CorePairingDomain
 @Suite("Racing server addresses")
 struct RacingServerAddressesTests {
 
+    @Test
+    func `given an unremembered Mac without local networking when resolving with progress then local discovery is never reported or attempted`() async {
+        // given
+        let scenario = Scenario(remembering: [:], localNetworkAvailability: .unavailable)
+
+        // when
+        await #expect(throws: ServerAddressResolutionFailure.self) {
+            try await scenario.sut.address(
+                of: DiscoveredServer(id: BonjourInstanceName(rawValue: "Mac without an available local route"), name: "Unavailable local Mac"),
+                reporting: { stage in await scenario.progress.record(stage) }
+            )
+        }
+
+        // then
+        #expect(await scenario.progress.stages.contains(.finding(.local)) == false)
+        #expect(scenario.addresses.lookups == 0)
+    }
+
     @Test(.timeLimit(.minutes(1)))
     func `given local and tailnet routes sharing an address when only the local probe verifies then progress identifies the local winner`() async throws {
         // given

@@ -38,11 +38,11 @@ public struct RacingServerAddresses: ServerAddressResolving {
             throw .unreachable(diagnostic: "the remembered Mac could not be read")
         }
         guard let remembered, let address = remembered.fallbackAddress else {
-            await progress(.finding(.local))
             guard await localNetwork.availability() == .available else {
                 await timing.record(.finished(.localDiscovery, duration: .zero, outcome: .skipped))
                 throw .unreachable(diagnostic: "Wi-Fi is unavailable and this Mac has no saved remote address")
             }
+            await progress(.finding(.local))
             let address = try await discover(server)
             guard let remembered else {
                 await progress(.reading(.unknown))

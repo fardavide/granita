@@ -14,6 +14,38 @@ import CorePairingDomain
 @Suite("Remembered Macs")
 struct RememberedMacsTests {
 
+    @Test(.timeLimit(.minutes(1)))
+    func `given resolution fails and a remembered fallback is used when worktrees are still pending then progress reports reading without a verified route`() async throws {
+        // given
+        let fallback = ServerAddress(host: "100.118.92.64", port: 8_737)
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: RememberedMac(
+                device: aRememberedMac.device,
+                fingerprint: aRememberedMac.fingerprint,
+                fallbackAddress: fallback,
+                wakeAddresses: aRememberedMac.wakeAddresses
+            )],
+            resolving: .failure(.unreachable(diagnostic: "The route probes could not reach the Mac")),
+            reportingResolutionStages: [.finding(.local), .verifying],
+            suspendingWorktreeReads: true
+        )
+        let repository: any GranitaRepository = scenario.sut
+
+        // when
+        let read = Task {
+            try await repository.worktrees(inProject: nil, reporting: { stage in
+                await scenario.progress.record(stage)
+            })
+        }
+        await scenario.mac.waitUntilWorktreeReadStarted()
+
+        // then
+        #expect(await scenario.progress.stages == [.finding(.local), .verifying, .reading(.unknown)])
+        #expect(scenario.opened.map(\.address) == [fallback])
+        await scenario.mac.releaseWorktreeRead()
+        #expect(try await read.value == [aWorktree])
+    }
+
     @Test
     func `given a remembered Mac reached through a verified local route when cached worktrees are read then that route remains in progress without resolving again`() async throws {
         // given
@@ -548,6 +580,7 @@ private struct Scenario {
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
         reportingResolutionStages: [WorktreeReadStage] = [],
+        suspendingWorktreeReads: Bool = false,
         refusing readFailure: ApiFailure? = nil,
         healthUnavailable isHealthUnavailable: Bool = false,
         servingHealth healthResponse: HealthResponse? = nil,
@@ -562,7 +595,7 @@ private struct Scenario {
         // One instance rather than one per connection, so a test can read what reached the Mac
         // without holding the repository the reconnection built. That the reconnection only ever
         // builds *one* is asserted separately, through `opened`.
-        let mac = FakeMacBehindAPairing(answering: readFailure)
+        let mac = FakeMacBehindAPairing(answering: readFailure, suspendingWorktreeReads: suspendingWorktreeReads)
         self.mac = mac
         let availableHealth: HealthResponse? = if isHealthUnavailable {
             nil
@@ -618,9 +651,16 @@ private actor FakeMacBehindAPairing: GranitaRepository {
     private(set) var asked: [MacRequest] = []
 
     private let answering: ApiFailure?
+    private let suspendingWorktreeReads: Bool
+    private let suspendedWorktreeRead: AsyncStream<Void>
+    private let suspendedWorktreeReadContinuation: AsyncStream<Void>.Continuation
 
-    init(answering: ApiFailure?) {
+    init(answering: ApiFailure?, suspendingWorktreeReads: Bool = false) {
         self.answering = answering
+        self.suspendingWorktreeReads = suspendingWorktreeReads
+        let suspended = AsyncStream<Void>.makeStream()
+        suspendedWorktreeRead = suspended.stream
+        suspendedWorktreeReadContinuation = suspended.continuation
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
@@ -630,7 +670,21 @@ private actor FakeMacBehindAPairing: GranitaRepository {
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
         try note(.worktrees(inProject: project))
+        if suspendingWorktreeReads {
+            var events = suspendedWorktreeRead.makeAsyncIterator()
+            _ = await events.next()
+        }
         return [aWorktree]
+    }
+
+    func waitUntilWorktreeReadStarted() async {
+        while asked.contains(.worktrees(inProject: nil)) == false {
+            await Task.yield()
+        }
+    }
+
+    func releaseWorktreeRead() {
+        suspendedWorktreeReadContinuation.finish()
     }
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {

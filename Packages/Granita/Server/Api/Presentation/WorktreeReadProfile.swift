@@ -26,9 +26,11 @@ public struct WorktreeReadProfile: Sendable {
                 let measuredGroup: GitCommandGroup = switch measurement.command {
                 case .worktreeStatus: .status
                 case .hashWorktreeFiles: .contentHash
-                case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .headCommit,
-                     .worktrees, .untrackedPaths, .trackedChanges, .trackedStats, .fileDiff,
-                     .untrackedFileDiff, .fileContent, .removeWorktree: .other
+                case .worktrees: .enumeration
+                case .currentBranch, .headCommit: .revision
+                case .untrackedPaths, .trackedChanges, .trackedStats: .changeMetadata
+                case .fileDiff, .untrackedFileDiff, .fileContent: .diffContent
+                case .version, .isInsideWorkTree, .repositoryRoot, .removeWorktree: .other
                 }
                 return measuredGroup == group
             }
@@ -62,6 +64,10 @@ public struct WorktreeReadProfile: Sendable {
 public enum GitCommandGroup: CaseIterable, Hashable, Sendable {
     case status
     case contentHash
+    case enumeration
+    case revision
+    case changeMetadata
+    case diffContent
     case other
 }
 

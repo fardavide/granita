@@ -39,6 +39,108 @@ struct ClientWorktreesModelTests {
 
     // MARK: - Reading
 
+    @Test(arguments: [
+        ApiFailure.unauthorized,
+        .unreachable(diagnostic: "The cancelled request timed out")
+    ])
+    func `given a Mac refuses after cancellation when the cancelled read ends then that refusal stays absent`(
+        failure: ApiFailure
+    ) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "cancelled response", project: "granita")],
+            readFailure: failure,
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await scenario.repository.releaseHeldRead()
+        await load.value
+
+        // then
+        #expect(scenario.sut.state == .noProjects)
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.announcing.announcements.isEmpty)
+    }
+
+    @Test(arguments: [
+        (WorktreeReadTrigger.appearance, false),
+        (.pullToRefresh, false),
+        (.retry, true)
+    ])
+    func `given worktrees were read when another read is pending then only retry reports additional activity`(
+        trigger: WorktreeReadTrigger,
+        expectedActivity: Bool
+    ) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingSecondRead: true
+        )
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load(trigger: trigger) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // then
+        #expect(scenario.sut.isRetryingRefresh == expectedActivity)
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+        #expect(!scenario.sut.isRetryingRefresh)
+    }
+
+    @Test
+    func `given a list was read when refresh fails then that failure is announced once`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out")
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.announcing.announcements == [
+            .arrived(worktreeCount: 1),
+            .refreshFailed
+        ])
+    }
+
+    @Test
+    func `given routes report duplicates and regressions when reading then each advancing stage and arrival is announced once`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [
+                .finding(.local),
+                .finding(.local),
+                .verifying,
+                .verifying,
+                .finding(.localAndTailnet),
+                .reading(.tailnet)
+            ]
+        )
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.announcing.announcements == [
+            .stage(.finding(.local), macName: "Mac Studio"),
+            .stage(.verifying, macName: "Mac Studio"),
+            .stage(.reading(.tailnet), macName: "Mac Studio"),
+            .arrived(worktreeCount: 1)
+        ])
+    }
+
     @Test(.timeLimit(.minutes(1)))
     func `given two overlapping reads when the cancelled first read completes late then the second attempt remains pending with its own stage and timing`() async {
         // given
@@ -277,6 +379,7 @@ struct ClientWorktreesModelTests {
         // then
         #expect(await scenario.repository.cancelledReads == 1)
         #expect(scenario.sut.state == .noProjects)
+        #expect(scenario.announcing.announcements.isEmpty)
     }
 
     @Test
@@ -1208,6 +1311,7 @@ struct ClientWorktreesModelTests {
         let repository: FakeGranitaRepository
         let preferences: FakeWorktreeListPreferences
         let copyingLogs: FakeDiagnosticLogsCopying
+        let announcing: FakeWorktreeReadAnnouncing
 
         /// Empty for every state that is not a list, so a test that expected rows and got a refusal
         /// fails on the rows rather than on a pattern match three lines earlier.
@@ -1266,11 +1370,13 @@ struct ClientWorktreesModelTests {
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
+            announcing = FakeWorktreeReadAnnouncing()
             sut = ClientWorktreesModel(
                 macName: "Mac Studio",
                 repository: repository,
                 preferences: preferences,
                 copyingLogs: copyingLogs,
+                announcing: announcing,
                 now: { aMoment }
             )
         }

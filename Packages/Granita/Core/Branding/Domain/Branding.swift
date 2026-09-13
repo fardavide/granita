@@ -58,5 +58,5 @@ public enum Branding {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? fallbackServerVersion
     }
 
-    static let fallbackServerVersion = "0.11.3"
+    static let fallbackServerVersion = "0.11.4"
 }

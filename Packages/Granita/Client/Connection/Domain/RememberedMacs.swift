@@ -106,6 +106,7 @@ public actor RememberedMacs {
                     throw ApiFailure.unreachable(diagnostic: diagnostic)
                 }
                 address = fallbackAddress
+                await observation.report(.reading(.unknown))
             case .localNetworkDenied:
                 guard let fallbackAddress = remembered.fallbackAddress else {
                     // The one refusal a reader can fix, and the sentence the sidebar draws does not
@@ -116,6 +117,7 @@ public actor RememberedMacs {
                     )
                 }
                 address = fallbackAddress
+                await observation.report(.reading(.unknown))
             }
         }
 

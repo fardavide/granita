@@ -62,11 +62,21 @@ public final class ClientWorktreesModel {
 
     public var currentTime: Date { now() }
 
+    public var isRetryingRefresh: Bool {
+        switch reading {
+        case .idle: false
+        case .running: readTrigger == .retry && readResult != .notRead
+        }
+    }
+
     private var worktrees: [Worktree] = []
     private var reading: ReadTask = .idle
+    private var announcedPhase: ReadPhase = .notAnnounced
+    private var readTrigger: WorktreeReadTrigger = .appearance
     private let repository: any GranitaRepository
     private let preferences: any WorktreeListPreferences
     private let copyingLogs: any DiagnosticLogsCopying
+    private let announcing: any WorktreeReadAnnouncing
     private let now: @Sendable () -> Date
 
     public init(
@@ -74,12 +84,14 @@ public final class ClientWorktreesModel {
         repository: any GranitaRepository,
         preferences: any WorktreeListPreferences,
         copyingLogs: any DiagnosticLogsCopying,
+        announcing: any WorktreeReadAnnouncing,
         now: @escaping @Sendable () -> Date
     ) {
         self.macName = macName
         self.repository = repository
         self.preferences = preferences
         self.copyingLogs = copyingLogs
+        self.announcing = announcing
         self.now = now
         mode = preferences.mode()
         showsQuietWorktrees = preferences.showsQuietWorktrees()
@@ -105,25 +117,24 @@ public final class ClientWorktreesModel {
     /// One request rather than one per project: the grouping is this side's arrangement of a single
     /// answer, and asking per project would make the order the list is drawn in depend on which
     /// request finished first.
-    /// Reads the Mac's worktrees, and says it is doing so.
-    ///
-    /// **The spinner is the retry's only feedback.** `/v1/worktrees` builds a change set for every
-    /// worktree of every enabled project, which on ten real repositories has been measured at over
-    /// two minutes — so a *Try Again* that left the failure on screen was indistinguishable from a
-    /// button with nothing behind it, and was reported as one. Going back to `loading` costs nothing
-    /// on the first read, where that is already the state.
-    ///
-    /// **A cancelled read is not a failure.** A `.task` is torn down whenever its view goes away, so
-    /// opening a worktree while this is still loading cancels it — and reporting that as *Could not
-    /// read your Mac* is the app blaming the Mac for something the app did.
+    /// First reads and retries from a failed screen show observed stages and elapsed time. Refresh
+    /// keeps the previous answer visible, with its receipt distinguishing a fresh read from a
+    /// refused refresh. Cancellation restores the retained arrangement, and each attempt owns its
+    /// updates so a late completion cannot replace a newer answer.
     public func load() async {
+        await load(trigger: .appearance)
+    }
+
+    public func load(trigger: WorktreeReadTrigger) async {
         cancelLoading()
+        readTrigger = trigger
         let attempt = UUID()
         let started = now()
         if case .stale(let at, let route, _) = readResult {
             readResult = .read(at: at, route: route)
         }
         readStage = .finding(.unknown)
+        announcedPhase = .notAnnounced
         readTiming = .running(started: started)
         let task = Task { await performLoad(attempt: attempt) }
         reading = .running(attempt, task)
@@ -144,50 +155,6 @@ public final class ClientWorktreesModel {
         switch reading {
         case .idle: break
         case .running(_, let task): task.cancel()
-        }
-    }
-
-    private func performLoad(attempt: UUID) async {
-        // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
-        // that: blanking on every read photographed a spinner on screens that had already loaded,
-        // because a screen re-runs its `.task` every time it appears — so coming back to the
-        // worktree list would have emptied it and started again under the reader. Content on screen
-        // stays on screen while it is re-read; a failure has nothing to keep.
-        if case .failed = state {
-            state = .loading
-        }
-        do {
-            let answer = try await repository.worktrees(inProject: nil, reporting: { stage in
-                await self.record(stage, attempt: attempt)
-            })
-            guard ownsRead(attempt) else { return }
-            guard Task.isCancelled == false else {
-                state = arrangement
-                return
-            }
-            worktrees = answer
-            let route: WorktreeConnectionRoute = switch readStage {
-            case .finding, .verifying: .unknown
-            case .reading(let route): route
-            }
-            readResult = .read(at: now(), route: route)
-            state = arrangement
-        } catch .cancelled {
-            guard ownsRead(attempt) else { return }
-            state = arrangement
-        } catch .unauthorized {
-            guard ownsRead(attempt), !Task.isCancelled else { return }
-            readResult = .notRead
-            state = .failed(.unauthorized)
-        } catch {
-            guard ownsRead(attempt), !Task.isCancelled else { return }
-            switch readResult {
-            case .notRead:
-                state = .failed(error)
-            case .read(let at, let route), .stale(let at, let route, _):
-                readResult = .stale(at: at, route: route, failure: error)
-                state = arrangement
-            }
         }
     }
 
@@ -331,6 +298,60 @@ public final class ClientWorktreesModel {
         worktrees.first { $0.id == worktree }?.projectName ?? "this project"
     }
 
+    private func performLoad(attempt: UUID) async {
+        // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
+        // that: blanking on every read photographed a spinner on screens that had already loaded,
+        // because a screen re-runs its `.task` every time it appears — so coming back to the
+        // worktree list would have emptied it and started again under the reader. Content on screen
+        // stays on screen while it is re-read; a failure has nothing to keep.
+        if case .failed = state {
+            state = .loading
+        }
+        do {
+            let answer = try await repository.worktrees(inProject: nil, reporting: { stage in
+                await self.record(stage, attempt: attempt)
+            })
+            guard ownsRead(attempt) else { return }
+            guard Task.isCancelled == false else {
+                state = arrangement
+                return
+            }
+            worktrees = answer
+            let route: WorktreeConnectionRoute = switch readStage {
+            case .finding, .verifying: .unknown
+            case .reading(let route): route
+            }
+            readResult = .read(at: now(), route: route)
+            state = arrangement
+            announcing.announce(.arrived(worktreeCount: answer.count))
+        } catch .cancelled {
+            guard ownsRead(attempt) else { return }
+            state = arrangement
+        } catch .unauthorized {
+            guard ownsRead(attempt) else { return }
+            guard !Task.isCancelled else {
+                state = arrangement
+                return
+            }
+            readResult = .notRead
+            state = .failed(.unauthorized)
+        } catch {
+            guard ownsRead(attempt) else { return }
+            guard !Task.isCancelled else {
+                state = arrangement
+                return
+            }
+            switch readResult {
+            case .notRead:
+                state = .failed(error)
+            case .read(let at, let route), .stale(let at, let route, _):
+                readResult = .stale(at: at, route: route, failure: error)
+                state = arrangement
+                announcing.announce(.refreshFailed)
+            }
+        }
+    }
+
     /// Puts the change in the list at once, then replaces it with the Mac's own answer.
     ///
     /// **Optimistic, and it is the two writes that touch no git state that get to be.** An alias and
@@ -390,6 +411,15 @@ public final class ClientWorktreesModel {
         if case .reading = readStage { return }
         if case .verifying = readStage, case .finding = stage { return }
         readStage = stage
+        let phase: ReadPhase = switch stage {
+        case .finding: .finding
+        case .verifying: .verifying
+        case .reading: .reading
+        }
+        if phase != announcedPhase {
+            announcedPhase = phase
+            announcing.announce(.stage(stage, macName: macName))
+        }
     }
 
     private func ownsRead(_ attempt: UUID) -> Bool {
@@ -409,5 +439,12 @@ public final class ClientWorktreesModel {
     private enum ReadTask {
         case idle
         case running(UUID, Task<Void, Never>)
+    }
+
+    private enum ReadPhase {
+        case notAnnounced
+        case finding
+        case verifying
+        case reading
     }
 }
