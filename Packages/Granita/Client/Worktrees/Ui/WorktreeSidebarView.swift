@@ -12,7 +12,7 @@ import CoreDiffDomain
 /// a Mac, a network or a paired device.
 public struct WorktreeSidebarView: View {
 
-    @Environment(\.accessibilityReduceMotion) public var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// §2's measure for the sidebar, and it is *narrower* than the phone's 390: "the iPad is the
     /// harder layout for this row, not the easier one, and the drop order above is what saves it."
@@ -25,6 +25,12 @@ public struct WorktreeSidebarView: View {
 
     private let macName: String
     private let state: WorktreeSidebarState
+    private let readStage: WorktreeReadStage
+    private let readTiming: WorktreeReadTiming
+    private let readResult: WorktreeReadResult
+    private let isRetryingRefresh: Bool
+    private let reduceMotion: Bool
+    private let now: Date
     private let logCopyState: DiagnosticCopyState
     private let mode: WorktreeListMode
     private let showsQuietWorktrees: Bool
@@ -39,6 +45,8 @@ public struct WorktreeSidebarView: View {
     private let onSetPinned: (Bool, WorktreeID) -> Void
     private let onDelete: (WorktreeDeletionSubject) -> Void
     private let onRetry: () -> Void
+    private let onRefresh: () async -> Void
+    private let onPairAgain: () -> Void
     private let onCopyLogs: () -> Void
 
     /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
@@ -48,6 +56,12 @@ public struct WorktreeSidebarView: View {
     public init(
         macName: String,
         state: WorktreeSidebarState,
+        readStage: WorktreeReadStage,
+        readTiming: WorktreeReadTiming,
+        readResult: WorktreeReadResult,
+        isRetryingRefresh: Bool,
+        reduceMotion: Bool,
+        now: Date,
         logCopyState: DiagnosticCopyState,
         mode: WorktreeListMode,
         showsQuietWorktrees: Bool,
@@ -58,10 +72,18 @@ public struct WorktreeSidebarView: View {
         onSetPinned: @escaping (Bool, WorktreeID) -> Void,
         onDelete: @escaping (WorktreeDeletionSubject) -> Void,
         onRetry: @escaping () -> Void,
+        onRefresh: @escaping () async -> Void,
+        onPairAgain: @escaping () -> Void,
         onCopyLogs: @escaping () -> Void
     ) {
         self.macName = macName
         self.state = state
+        self.readStage = readStage
+        self.readTiming = readTiming
+        self.readResult = readResult
+        self.isRetryingRefresh = isRetryingRefresh
+        self.reduceMotion = reduceMotion
+        self.now = now
         self.logCopyState = logCopyState
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
@@ -72,6 +94,8 @@ public struct WorktreeSidebarView: View {
         self.onSetPinned = onSetPinned
         self.onDelete = onDelete
         self.onRetry = onRetry
+        self.onRefresh = onRefresh
+        self.onPairAgain = onPairAgain
         self.onCopyLogs = onCopyLogs
     }
 
@@ -79,16 +103,13 @@ public struct WorktreeSidebarView: View {
         Group {
             switch state {
             case .loading:
-                // A progress view promises a finish, and unlike a Bonjour browse this one has
-                // one — a request either answers or fails. So the spinner discovery refuses is the
-                // right control here.
-                ProgressView()
+                loading
             case .failed:
                 failed
             case .noProjects:
-                noProjects
+                emptyResult(noProjects)
             case .allQuiet(let worktreeCount, let projectNames):
-                allQuiet(worktreeCount: worktreeCount, projectNames: projectNames)
+                emptyResult(allQuiet(worktreeCount: worktreeCount, projectNames: projectNames))
             case .listing(let listing):
                 list(listing)
             }
@@ -112,6 +133,59 @@ public struct WorktreeSidebarView: View {
         #endif
         .toolbar { arrangement }
         .animation(reduceMotion ? nil : .default, value: logCopyState)
+        .animation(reduceMotion ? nil : .default, value: state)
+        .animation(reduceMotion ? nil : .default, value: readResult)
+        .animation(reduceMotion ? nil : .default, value: isRetryingRefresh)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state == .loading)
+    }
+
+    private var loading: some View {
+        let description = WorktreeLoadingDescription(
+            stage: readStage, macName: macName, elapsed: readTiming.elapsed(at: now)
+        )
+        return GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 20) {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text(description.headline).font(.headline)
+                        Text(description.sentence).foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+
+                    if description.isLongWait {
+                        elapsed
+                        if case .reading = readStage {
+                            Text("Your Mac describes every worktree in every enabled project before it answers, so this grows with the number of projects you have enabled.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        copyLogs
+                    }
+                }
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, geometry.size.width <= Self.widthInASplitView ? 24 : 40)
+                .padding(.top, dynamicTypeSize.isAccessibilitySize ? 40 : max(24, geometry.size.height * 0.46))
+                .padding(.bottom, 24)
+                .animation(reduceMotion ? nil : .default, value: description.isLongWait)
+                .animation(reduceMotion ? nil : .default, value: readStage)
+            }
+        }
+    }
+
+    @ViewBuilder private var elapsed: some View {
+        switch readTiming {
+        case .notStarted:
+            EmptyView()
+        case .running, .finished:
+            let seconds = Int(readTiming.elapsed(at: now))
+            Text("\(state == .loading ? "Waiting" : "Waited") \(seconds / 60):\(String(format: "%02d", seconds % 60))")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+                .textSelection(.enabled)
+        }
     }
 
     /// One menu holding an inline picker and a toggle, rather than a segmented control.
@@ -186,15 +260,42 @@ public struct WorktreeSidebarView: View {
     }
 
     private var failed: some View {
-        ContentUnavailableView {
-            Label("Could not read your Mac", systemImage: "exclamationmark.triangle")
-        } description: {
-            Text("Try again. If it still fails, check that Granita is running on your Mac.")
-        } actions: {
-            Button("Try Again", action: onRetry)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            copyLogs
+        let unauthorized = state == .failed(.unauthorized)
+        let connecting: Bool = switch readStage {
+        case .finding, .verifying: true
+        case .reading: false
+        }
+        return GeometryReader { geometry in
+            ScrollView {
+                ContentUnavailableView {
+                    Label(unauthorized ? "Pairing was revoked" : connecting ? "Could not reach \(macName)" : "Could not read your Mac", systemImage: "exclamationmark.triangle")
+                } description: {
+                    if unauthorized {
+                        Text("Pair this device with your Mac again to read its worktrees.")
+                    } else if connecting {
+                        Text("Check that Granita is running on your Mac and that both devices are on the same network or connected over Tailscale.")
+                    } else {
+                        Text("Try again. If it still fails, check that Granita is running on your Mac.")
+                    }
+                } actions: {
+                    VStack(spacing: 16) {
+                        Button(unauthorized ? "Pair Again" : "Try Again", action: unauthorized ? onPairAgain : onRetry)
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                        if !unauthorized {
+                            if case .failed(let failure) = state, let diagnostic = failure.diagnostic {
+                                Text(diagnostic)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                    .textSelection(.enabled)
+                            }
+                            elapsed
+                            copyLogs
+                        }
+                    }
+                }
+                .frame(minHeight: geometry.size.height)
+            }
         }
     }
 
@@ -230,6 +331,19 @@ public struct WorktreeSidebarView: View {
 
     private func list(_ listing: WorktreeListing) -> some View {
         List {
+            if isRetryingRefresh {
+                Section {
+                } header: {
+                    ProgressView().frame(maxWidth: .infinity)
+                        .accessibilityLabel("Refreshing worktrees")
+                }
+            }
+            if case .stale = readResult {
+                Section {
+                } header: {
+                    refreshNotice
+                }
+            }
             ForEach(listing.sections) { section in
                 Section {
                     ForEach(section.rows) { row in
@@ -263,7 +377,42 @@ public struct WorktreeSidebarView: View {
                     .font(.footnote)
                 }
             }
+            if readResult != .notRead {
+                Section {
+                } footer: {
+                    Text(readResult.footer(at: now))
+                }
+            }
         }
+        .refreshable { await onRefresh() }
+    }
+
+    private var refreshNotice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(readResult.refreshNotice(at: now))
+            Button("Try Again", action: onRetry).buttonStyle(.borderless)
+        }
+        .font(.footnote)
+        .textCase(nil)
+    }
+
+    private func emptyResult(_ content: some View) -> some View {
+        content
+            .safeAreaInset(edge: .top) {
+                if isRetryingRefresh {
+                    ProgressView().accessibilityLabel("Refreshing worktrees")
+                } else if case .stale = readResult {
+                    refreshNotice.padding(24)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if readResult != .notRead {
+                    Text(readResult.footer(at: now))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(24)
+                }
+            }
     }
 
     /// A value-based navigation link rather than a callback: the link supplies the disclosure

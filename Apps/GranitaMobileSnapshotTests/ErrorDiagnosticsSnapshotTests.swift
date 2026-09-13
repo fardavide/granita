@@ -56,6 +56,12 @@ struct ErrorDiagnosticsSnapshotTests {
                 WorktreeSidebarView(
                     macName: "Davide's MacBook Pro",
                     state: .failed(.unreachable(diagnostic: diagnostic)),
+                    readStage: .reading(.unknown),
+                    readTiming: .notStarted,
+                    readResult: .notRead,
+                    isRetryingRefresh: false,
+                    reduceMotion: false,
+                    now: Date(timeIntervalSince1970: 1_800_000_000),
                     logCopyState: subject.logCopyState,
                     mode: .groupedByProject,
                     showsQuietWorktrees: false,
@@ -66,6 +72,8 @@ struct ErrorDiagnosticsSnapshotTests {
                     onSetPinned: { _, _ in },
                     onDelete: { _ in },
                     onRetry: {},
+                    onRefresh: {},
+                    onPairAgain: {},
                     onCopyLogs: {}
                 )
             }

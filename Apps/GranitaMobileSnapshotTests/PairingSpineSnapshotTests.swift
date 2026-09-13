@@ -218,7 +218,7 @@ private func theSpine(
         // So the destination names itself, the way `PairingStep` is public so a step can be put on
         // the path. It appears in exactly one baseline. In the other four the Mac is not remembered,
         // and this sentence turning up in any of them is the picture saying so.
-        readingARememberedMac: { mac in
+        readingARememberedMac: { mac, _ in
             Text("The worktrees on \(mac.name), reached without pairing.")
                 .font(.title3)
                 .multilineTextAlignment(.center)
@@ -228,7 +228,7 @@ private func theSpine(
         // Reached by spending a credential rather than by a push, so no baseline here lands on it —
         // and it is required, which is the point: the two ways out of the spine are declared
         // together, and neither can quietly be given a different measure from the other.
-        readingAJustPairedMac: { mac in
+        readingAJustPairedMac: { mac, _ in
             Text("The worktrees on \(mac.name), reached by pairing.")
                 .font(.title3)
                 .multilineTextAlignment(.center)

@@ -41,8 +41,10 @@ import CoreDiffDomain
 public struct WorktreeSidebarScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let opening: (WorktreeID, String, String) -> Opened
+    private let onPairAgain: () -> Void
 
     /// Whether this screen should claim its rows' taps itself.
     ///
@@ -58,6 +60,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
     public init(
         model: ClientWorktreesModel,
         claimsRowTaps: Bool = true,
+        onPairAgain: @escaping () -> Void,
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
@@ -67,29 +70,40 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         _model = State(initialValue: model)
         self.claimsRowTaps = claimsRowTaps
         self.opening = opening
+        self.onPairAgain = onPairAgain
     }
 
     public var body: some View {
         // `let` rather than a second computed property, so the sheet, the alert and their closures
         // stay exactly where they were before `claimsRowTaps` existed — moving them into a property
         // referenced from both branches below would relocate lines a review has no reason to touch.
-        let sidebar = WorktreeSidebarView(
-            macName: model.macName,
-            state: model.state,
-            logCopyState: model.logCopyState,
-            mode: model.mode,
-            showsQuietWorktrees: model.showsQuietWorktrees,
-            removing: model.removing,
-            onChooseMode: model.show,
-            onShowQuietWorktrees: model.showQuietWorktrees,
-            onRename: model.beginRenaming,
-            onSetPinned: { pinned, worktree in
-                Task { await model.setPinned(pinned, on: worktree) }
-            },
-            onDelete: model.beginDeleting,
-            onRetry: { Task { await model.load() } },
-            onCopyLogs: { Task { await model.copyLogs() } }
-        )
+        let sidebar = TimelineView(.periodic(from: .now, by: 1)) { _ in
+            WorktreeSidebarView(
+                macName: model.macName,
+                state: model.state,
+                readStage: model.readStage,
+                readTiming: model.readTiming,
+                readResult: model.readResult,
+                isRetryingRefresh: model.isRetryingRefresh,
+                reduceMotion: reduceMotion,
+                now: model.currentTime,
+                logCopyState: model.logCopyState,
+                mode: model.mode,
+                showsQuietWorktrees: model.showsQuietWorktrees,
+                removing: model.removing,
+                onChooseMode: model.show,
+                onShowQuietWorktrees: model.showQuietWorktrees,
+                onRename: model.beginRenaming,
+                onSetPinned: { pinned, worktree in
+                    Task { await model.setPinned(pinned, on: worktree) }
+                },
+                onDelete: model.beginDeleting,
+                onRetry: { Task { await model.load(trigger: .retry) } },
+                onRefresh: { await model.load(trigger: .pullToRefresh) },
+                onPairAgain: onPairAgain,
+                onCopyLogs: { Task { await model.copyLogs() } }
+            )
+        }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
             WorktreeRenameSheet(
                 subject: subject,
@@ -129,6 +143,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             Text(prompt.message)
         }
         .task { await model.load() }
+        .onDisappear { model.cancelLoading() }
 
         if claimsRowTaps {
             // **Declared beside the rows that link to it**, which is the placement that stops a link
@@ -136,6 +151,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             // a row that did nothing at all. See `CLAUDE.md` and `.ai/docs/decisions.md`.
             sidebar.navigationDestination(for: WorktreeID.self) { worktree in
                 opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
+                    .onAppear { model.cancelLoading() }
             }
         } else {
             sidebar

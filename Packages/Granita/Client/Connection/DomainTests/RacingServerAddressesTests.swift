@@ -9,6 +9,104 @@ import CorePairingDomain
 struct RacingServerAddressesTests {
 
     @Test
+    func `given an unremembered Mac without local networking when resolving with progress then local discovery is never reported or attempted`() async {
+        // given
+        let scenario = Scenario(remembering: [:], localNetworkAvailability: .unavailable)
+
+        // when
+        await #expect(throws: ServerAddressResolutionFailure.self) {
+            try await scenario.sut.address(
+                of: DiscoveredServer(id: BonjourInstanceName(rawValue: "Mac without an available local route"), name: "Unavailable local Mac"),
+                reporting: { stage in await scenario.progress.record(stage) }
+            )
+        }
+
+        // then
+        #expect(await scenario.progress.stages.contains(.finding(.local)) == false)
+        #expect(scenario.addresses.lookups == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given local and tailnet routes sharing an address when only the local probe verifies then progress identifies the local winner`() async throws {
+        // given
+        let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Mac with shared route address"), name: "Shared route Mac")
+        let sharedAddress = ServerAddress(host: "100.114.83.62", port: 8_737)
+        let scenario = Scenario(
+            remembering: [server.id: RememberedMac(
+                device: PairedDevice(token: PairingToken(rawValue: "shared-route-phone-token"), deviceId: DeviceId(rawValue: "shared-route-phone"), serverInstanceId: ServerInstanceId(rawValue: "shared-route-server")),
+                fingerprint: SpkiFingerprint(rawValue: "shared-route-mac-key"), fallbackAddress: sharedAddress, wakeAddresses: []
+            )],
+            localNetworkAvailability: .available,
+            suspendingLocalLookup: true,
+            resolving: .success(sharedAddress),
+            healthSequentialAnswers: [
+                .failure(.unreachable(diagnostic: "The tailnet probe failed")),
+                .success(HealthResponse(name: "Shared route Mac", apiVersion: 1, serverVersion: "0.11.3", tailnetEndpoint: nil, wakeAddresses: []))
+            ],
+            resumingLocalLookupDuringHealth: true
+        )
+
+        // when
+        let address = try await scenario.sut.address(of: server, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(address == sharedAddress)
+        #expect(await scenario.health.invocations.count == 2)
+        #expect(await scenario.progress.stages.last == .reading(.local))
+    }
+
+    @Test
+    func `given a remembered Mac without a tailnet fallback on Wi-Fi when resolving with progress then its local route is pinned before reading`() async throws {
+        // given
+        let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Local review Mac"), name: "Local review Mac")
+        let localAddress = ServerAddress(host: "local-review-mac.local", port: 61_082)
+        let fingerprint = SpkiFingerprint(rawValue: "local-review-mac-public-key")
+        let scenario = Scenario(
+            remembering: [server.id: RememberedMac(
+                device: PairedDevice(token: PairingToken(rawValue: "local-review-phone-token"), deviceId: DeviceId(rawValue: "local-review-phone"), serverInstanceId: ServerInstanceId(rawValue: "local-review-server")),
+                fingerprint: fingerprint, fallbackAddress: nil, wakeAddresses: []
+            )],
+            localNetworkAvailability: .available,
+            resolving: .success(localAddress)
+        )
+
+        // when
+        let address = try await scenario.sut.address(of: server, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(address == localAddress)
+        #expect(await scenario.health.invocations == [FakePinnedServerHealthChecking.Invocation(address: localAddress, fingerprint: fingerprint)])
+        #expect(await scenario.progress.stages == [.finding(.local), .verifying, .reading(.local)])
+    }
+
+    @Test
+    func `given a remembered tailnet Mac on cellular when resolving with progress then finding verification and reading are reported in order`() async throws {
+        // given
+        let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Remote review Mac"), name: "Remote review Mac")
+        let tailnetAddress = ServerAddress(host: "100.92.61.84", port: 8_737)
+        let scenario = Scenario(
+            remembering: [server.id: RememberedMac(
+                device: PairedDevice(token: PairingToken(rawValue: "remote-review-phone-token"), deviceId: DeviceId(rawValue: "remote-review-phone"), serverInstanceId: ServerInstanceId(rawValue: "remote-review-server")),
+                fingerprint: SpkiFingerprint(rawValue: "remote-review-server-key"), fallbackAddress: tailnetAddress, wakeAddresses: []
+            )],
+            localNetworkAvailability: .unavailable
+        )
+
+        // when
+        let address = try await scenario.sut.address(of: server, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(address == tailnetAddress)
+        #expect(await scenario.progress.stages == [.finding(.tailnet), .verifying, .reading(.tailnet)])
+    }
+
+    @Test
     func `given a remembered tailnet Mac on cellular when resolving then its pinned route is used without asking Bonjour`() async throws {
         // given
         let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Remote MacBook Pro"), name: "Remote MacBook Pro")
@@ -236,17 +334,21 @@ struct RacingServerAddressesTests {
         let health: FakePinnedServerHealthChecking
         let waking: FakeMacWaking
         let timing: FakeConnectionTimingRecording
+        let progress: FakeWorktreeReadProgressRecording
 
-        init(remembering: [BonjourInstanceName: RememberedMac], localNetworkAvailability: LocalNetworkAvailability, suspendingLocalLookup: Bool = false, resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .failure(.unreachable(diagnostic: "Bonjour must not be asked on cellular")), healthAnswers: [ServerAddress: Result<HealthResponse, ApiFailure>] = [:], healthWaitsForCalls: [ServerAddress: ServerAddress] = [:], usingWakeRetries: Bool = false, storeRefusing: RememberedMacStoreFailure? = nil) {
+        init(remembering: [BonjourInstanceName: RememberedMac], localNetworkAvailability: LocalNetworkAvailability, suspendingLocalLookup: Bool = false, resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .failure(.unreachable(diagnostic: "Bonjour must not be asked on cellular")), healthAnswers: [ServerAddress: Result<HealthResponse, ApiFailure>] = [:], healthSequentialAnswers: [Result<HealthResponse, ApiFailure>] = [], healthWaitsForCalls: [ServerAddress: ServerAddress] = [:], resumingLocalLookupDuringHealth: Bool = false, usingWakeRetries: Bool = false, storeRefusing: RememberedMacStoreFailure? = nil) {
             timing = FakeConnectionTimingRecording()
+            progress = FakeWorktreeReadProgressRecording()
             addresses = FakeBonjourResolver(answering: resolving, suspendingLookup: suspendingLocalLookup)
             waking = FakeMacWaking()
             health = FakePinnedServerHealthChecking(
                 answering: HealthResponse(name: "Granita", apiVersion: 1, serverVersion: "0.11.2", tailnetEndpoint: nil, wakeAddresses: []),
                 answers: healthAnswers,
+                sequentialAnswers: healthSequentialAnswers,
                 waitingFor: healthWaitsForCalls,
                 beforeAnswering: { [addresses] in
-                    if suspendingLocalLookup { await addresses.waitUntilAsked() }
+                    if suspendingLocalLookup && addresses.lookups == 0 { await addresses.waitUntilAsked() }
+                    if resumingLocalLookupDuringHealth { addresses.resumeLookup() }
                 }
             )
             let macs = storeRefusing.map(FakeRememberedMacStore.init(refusing:)) ?? FakeRememberedMacStore(holding: remembering)

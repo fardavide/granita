@@ -31,4 +31,8 @@ public final class PairingSpineNavigation {
     public func paired(with mac: PairedMac) {
         path = NavigationPath([mac])
     }
+
+    public func pairAgain(with server: DiscoveredServer) {
+        path = NavigationPath([PairingAgain(server: server)])
+    }
 }

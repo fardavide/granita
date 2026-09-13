@@ -166,7 +166,7 @@ private func theSidebar(
     in layout: SnapshotLayout
 ) -> some View {
     NavigationStack {
-        WorktreeSidebarScreen(model: model) { _, displayName, _ in
+        WorktreeSidebarScreen(model: model, onPairAgain: {}) { _, displayName, _ in
             WorktreeDiffScreen(worktreeName: displayName, model: diff)
         }
     }
@@ -181,6 +181,7 @@ private func aModel(writeFailure: ApiFailure? = nil) -> ClientWorktreesModel {
         repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: writeFailure),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
         copyingLogs: FakeDiagnosticLogsCopying(),
+        announcing: FakeWorktreeReadAnnouncing(),
         now: { aFixedMoment }
     )
 }

@@ -27,8 +27,8 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
 
     private let model: ClientConnectionModel
     private let phone: ThisPhone
-    private let readingARememberedMac: (DiscoveredServer) -> Remembered
-    private let readingAJustPairedMac: (PairedMac) -> JustPaired
+    private let readingARememberedMac: (DiscoveredServer, @escaping () -> Void) -> Remembered
+    private let readingAJustPairedMac: (PairedMac, @escaping () -> Void) -> JustPaired
 
     /// - Parameter path: where the stack opens. The app opens at the Mac list; the snapshot suite
     ///   opens at whichever push it is photographing, which is what lets a baseline assert that a
@@ -37,8 +37,8 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
         model: ClientConnectionModel,
         phone: ThisPhone,
         startingAt path: NavigationPath,
-        @ViewBuilder readingARememberedMac: @escaping (DiscoveredServer) -> Remembered,
-        @ViewBuilder readingAJustPairedMac: @escaping (PairedMac) -> JustPaired
+        @ViewBuilder readingARememberedMac: @escaping (DiscoveredServer, @escaping () -> Void) -> Remembered,
+        @ViewBuilder readingAJustPairedMac: @escaping (PairedMac, @escaping () -> Void) -> JustPaired
     ) {
         _navigation = State(initialValue: PairingSpineNavigation(startingAt: path))
         self.model = model
@@ -57,11 +57,23 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
                 // A Mac this phone has paired with before opens its worktrees, and nothing in
                 // between: the Keychain read, the Bonjour lookup and the pinned session all happen
                 // behind the list's own loading state.
-                readingARememberedMac: readingARememberedMac
+                readingARememberedMac: { server in
+                    readingARememberedMac(server, { navigation.pairAgain(with: server) })
+                }
             )
             // **The one destination the discovery screen does not declare for itself**, because the
             // value on the path is not one of its rows: it is the Mac a pairing just produced.
-            .navigationDestination(for: PairedMac.self, destination: readingAJustPairedMac)
+            .navigationDestination(for: PairedMac.self) { mac in
+                readingAJustPairedMac(mac, {
+                    navigation.pairAgain(with: DiscoveredServer(id: mac.instance, name: mac.name))
+                })
+            }
+            .navigationDestination(for: PairingAgain.self) { destination in
+                PairingEntryScreen(
+                    model: model, server: destination.server, phone: phone,
+                    path: $navigation.path, onPaired: navigation.paired(with:)
+                )
+            }
         }
     }
 }

@@ -141,6 +141,19 @@ Scripts/adopt-mac-baselines.py <dir>
 - Reference PNGs are **16-bit Display P3**. `sips` and other 8-bit tooling truncate them silently and
   will report two different images as identical.
 
+## Native activity at accessibility sizes
+
+On 13 September 2026, an uncontended CI comparison failed only the accessibility-size-5 dark
+loading frame: the enlarged native spinner's phase exceeded the unchanged 0.999 area budget.
+Local view inspection established that its image view animates sixteen native frames. Limiting
+the SwiftUI host's frame interval did not stop that UIKit animation.
+
+For accessibility loading captures, stop the native image animation on its first frame and pause
+that image layer during layout. Preserve the stock indicator, actual Dynamic Type size, normal
+window rendering and safe area. This is test-only capture control; production activity continues
+to animate. Never weaken the image thresholds or replace the spinner with a drawing to absorb
+phase drift. Re-record only those owned loading frames and require the recorder's comparison pass.
+
 ## Never run two `make snapshots-ios` at once, and what it looks like when you do
 
 Two `xcodebuild test` invocations against one derived-data path race each other. Observed on

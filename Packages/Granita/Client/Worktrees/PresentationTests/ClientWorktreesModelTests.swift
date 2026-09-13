@@ -39,6 +39,388 @@ struct ClientWorktreesModelTests {
 
     // MARK: - Reading
 
+    @Test(arguments: [
+        ApiFailure.unauthorized,
+        .unreachable(diagnostic: "The cancelled request timed out")
+    ])
+    func `given a Mac refuses after cancellation when the cancelled read ends then that refusal stays absent`(
+        failure: ApiFailure
+    ) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "cancelled response", project: "granita")],
+            readFailure: failure,
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await scenario.repository.releaseHeldRead()
+        await load.value
+
+        // then
+        #expect(scenario.sut.state == .noProjects)
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.announcing.announcements.isEmpty)
+    }
+
+    @Test(arguments: [
+        (WorktreeReadTrigger.appearance, false),
+        (.pullToRefresh, false),
+        (.retry, true)
+    ])
+    func `given worktrees were read when another read is pending then only retry reports additional activity`(
+        trigger: WorktreeReadTrigger,
+        expectedActivity: Bool
+    ) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingSecondRead: true
+        )
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load(trigger: trigger) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // then
+        #expect(scenario.sut.isRetryingRefresh == expectedActivity)
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+        #expect(!scenario.sut.isRetryingRefresh)
+    }
+
+    @Test
+    func `given a list was read when refresh fails then that failure is announced once`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out")
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.announcing.announcements == [
+            .arrived(worktreeCount: 1),
+            .refreshFailed
+        ])
+    }
+
+    @Test
+    func `given routes report duplicates and regressions when reading then each advancing stage and arrival is announced once`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [
+                .finding(.local),
+                .finding(.local),
+                .verifying,
+                .verifying,
+                .finding(.localAndTailnet),
+                .reading(.tailnet)
+            ]
+        )
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.announcing.announcements == [
+            .stage(.finding(.local), macName: "Mac Studio"),
+            .stage(.verifying, macName: "Mac Studio"),
+            .stage(.reading(.tailnet), macName: "Mac Studio"),
+            .arrived(worktreeCount: 1)
+        ])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given two overlapping reads when the cancelled first read completes late then the second attempt remains pending with its own stage and timing`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "replacement read", project: "granita")],
+            reportingReadStages: [.finding(.tailnet)],
+            reportingSecondReadStages: [.reading(.local)],
+            suspendedReadNumbers: [1, 2],
+            ignoringReadCancellation: true
+        )
+        let first = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+        let second = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        first.cancel()
+        await first.value
+
+        // then
+        #expect(await scenario.repository.cancelledReads == 1)
+        #expect(scenario.sut.state == .loading)
+        #expect(scenario.sut.readStage == .reading(.local))
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.sut.readTiming == .running(started: aMoment))
+        await scenario.repository.releaseHeldRead()
+        await second.value
+        #expect(scenario.rows.map(\.displayName) == ["replacement read"])
+        #expect(scenario.sut.readResult == .read(at: aMoment, route: .local))
+    }
+
+    @Test(arguments: [WorktreeReadStage.verifying, .finding(.localAndTailnet)])
+    func `given worktree reading started when another route reports an earlier stage then reading remains visible`(lateStage: WorktreeReadStage) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "monotonic reading", project: "granita")],
+            reportingReadStages: [.reading(.tailnet), lateStage],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == .reading(.tailnet))
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given discovery is pending when a cancelled read reports verification late then its stage stays unchanged`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "late cancelled progress", project: "granita")],
+            reportingReadStages: [.finding(.tailnet)],
+            reportingAfterReadStages: [.verifying],
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(scenario.sut.readStage == .finding(.tailnet))
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
+    func `given a stale local list when retry is pending then the failure clears and the previous receipt stays`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out"),
+            reportingReadStages: [.reading(.local)],
+            suspendedReadNumbers: [3]
+        )
+        await scenario.sut.load()
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 3)
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.read(at: aMoment, route: .local))
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+    }
+
+    @Test
+    func `given a local read receipt when refresh is unauthorized then the receipt is cleared`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unauthorized,
+            reportingReadStages: [.reading(.local)]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given a local list when refresh cannot reach the Mac then its previous receipt becomes stale`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out"),
+            reportingReadStages: [.reading(.local)]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.stale(
+            at: aMoment,
+            route: .local,
+            failure: .unreachable(diagnostic: "Refresh timed out")
+        ))
+        #expect(scenario.rows.map(\.displayName) == ["loading feedback"])
+    }
+
+    @Test
+    func `given a local route when the worktrees arrive then the receipt records its time and route`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.reading(.local)]
+        )
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == WorktreeReadResult.read(at: aMoment, route: .local))
+    }
+
+    @Test
+    func `given verification failed when another attempt finds the Mac then the new attempt shows discovery`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheFirstRead: .unreachable(diagnostic: "Verification timed out"),
+            reportingReadStages: [.verifying],
+            reportingSecondReadStages: [.finding(.tailnet)],
+            suspendingSecondRead: true
+        )
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.finding(.tailnet))
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+    }
+
+    @Test
+    func `given a successful list read when timing is read then the attempt has finished`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "loading feedback", project: "granita")])
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readTiming == WorktreeReadTiming.finished(started: aMoment, ended: aMoment))
+    }
+
+    @Test
+    func `given the first read is pending when timing is read then it starts at the attempt's clock time`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readTiming == WorktreeReadTiming.running(started: aMoment))
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given a Mac answers after cancellation when the cancelled read ends then its rows stay absent`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "cancelled response", project: "granita")],
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
+    func `given an initial read is pending when loading is cancelled then the read ends without blaming the Mac`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingReads: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(await scenario.repository.cancelledReads == 1)
+        #expect(scenario.sut.state == .noProjects)
+        #expect(scenario.announcing.announcements.isEmpty)
+    }
+
+    @Test
+    func `given identity verification started when another route is finding the Mac then verification stays visible`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.verifying, .finding(.localAndTailnet)],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.verifying)
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given a Mac verifying its identity when the list is pending then verification is visible while loading`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.verifying],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.verifying)
+        #expect(scenario.sut.state == .loading)
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
     @Test
     func `given a refused worktree list when logs are copied then that failure reaches the report`() async throws {
         // given
@@ -132,6 +514,55 @@ struct ClientWorktreesModelTests {
 
         // then
         #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a loaded list when refresh cannot reach the Mac then the previous rows remain`() async throws {
+        // given
+        let scenario = Scenario(
+            worktrees: [
+                aWorktree(named: "diff scroll", project: "granita"),
+                aWorktree(named: "loading feedback", project: "granita")
+            ],
+            refusesTheSecondRead: .unreachable(diagnostic: "Connection timed out")
+        )
+        await scenario.sut.load()
+        try #require(scenario.rows.count == 2)
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.rows.map(\.displayName) == ["diff scroll", "loading feedback"])
+    }
+
+    @Test
+    func `given a loaded list when refresh is unauthorized then the refusal replaces the rows`() async throws {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unauthorized
+        )
+        await scenario.sut.load()
+        try #require(scenario.rows.map(\.displayName) == ["loading feedback"])
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given an injected clock when current time is read then the loading screen uses that clock`() {
+        // given
+        let scenario = Scenario(worktrees: [])
+
+        // when
+        let time = scenario.sut.currentTime
+
+        // then
+        #expect(time == aMoment)
     }
 
     // MARK: - The toolbar menu
@@ -880,6 +1311,7 @@ struct ClientWorktreesModelTests {
         let repository: FakeGranitaRepository
         let preferences: FakeWorktreeListPreferences
         let copyingLogs: FakeDiagnosticLogsCopying
+        let announcing: FakeWorktreeReadAnnouncing
 
         /// Empty for every state that is not a list, so a test that expected rows and got a refusal
         /// fails on the rows rather than on a pattern match three lines earlier.
@@ -910,7 +1342,15 @@ struct ClientWorktreesModelTests {
             worktrees: [Worktree],
             readFailure: ApiFailure? = nil,
             refusesTheFirstRead: ApiFailure? = nil,
+            refusesTheSecondRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
+            reportingReadStages: [WorktreeReadStage] = [],
+            reportingAfterReadStages: [WorktreeReadStage] = [],
+            reportingSecondReadStages: [WorktreeReadStage]? = nil,
+            suspendingReads: Bool = false,
+            suspendingSecondRead: Bool = false,
+            suspendedReadNumbers: Set<Int> = [],
+            ignoringReadCancellation: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
         ) {
@@ -918,15 +1358,25 @@ struct ClientWorktreesModelTests {
                 worktrees: worktrees,
                 readFailure: readFailure,
                 writeFailure: writeFailure,
-                refusesTheFirstRead: refusesTheFirstRead
+                refusesTheFirstRead: refusesTheFirstRead,
+                refusesTheSecondRead: refusesTheSecondRead,
+                reportingReadStages: reportingReadStages,
+                reportingAfterReadStages: reportingAfterReadStages,
+                reportingSecondReadStages: reportingSecondReadStages,
+                suspendingReads: suspendingReads,
+                suspendingSecondRead: suspendingSecondRead,
+                suspendedReadNumbers: suspendedReadNumbers,
+                ignoringReadCancellation: ignoringReadCancellation
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
+            announcing = FakeWorktreeReadAnnouncing()
             sut = ClientWorktreesModel(
                 macName: "Mac Studio",
                 repository: repository,
                 preferences: preferences,
                 copyingLogs: copyingLogs,
+                announcing: announcing,
                 now: { aMoment }
             )
         }

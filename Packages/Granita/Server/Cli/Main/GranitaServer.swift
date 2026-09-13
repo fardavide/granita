@@ -45,12 +45,20 @@ struct GranitaServer {
         }
 
         let store = JsonDocumentStore(fileUrl: arguments.storeUrl)
+        let profiler = WorktreeReadProfiler()
+        let processGit = ProcessGitClient(
+            executablePath: gitExecutablePath(),
+            outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
+            timeout: ProcessGitClient.defaultTimeout
+        )
+        let client: any GitClient
+        if arguments.wantsWorktreeProfile {
+            client = MeasuredGitClient(client: processGit, reporting: { await profiler.record($0) })
+        } else {
+            client = processGit
+        }
         let git = LoggingGitClient(
-            client: ProcessGitClient(
-                executablePath: gitExecutablePath(),
-                outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
-                timeout: ProcessGitClient.defaultTimeout
-            ),
+            client: client,
             diagnostics: VerbosityFilteringDiagnostics(
                 wrapped: OsLogDiagnostics(),
                 verbosity: UserDefaultsVerboseLogging(defaults: .standard)
@@ -70,15 +78,31 @@ struct GranitaServer {
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
         await sessions.refresh()
 
+        let registry = WorktreeRegistry(
+            store: store,
+            service: service,
+            suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
+        )
+        if arguments.wantsWorktreeProfile {
+            do {
+                let projects = await store.state().projects.filter(\.isVisible)
+                let profile = try await profiler.read(enabledProjectCount: projects.count) {
+                    () async throws(ApiError) -> [Worktree] in
+                    try await registry.worktrees(inProject: nil)
+                }
+                print(profile.text)
+            } catch {
+                log("could not profile worktrees: \(error)")
+                exit(1)
+            }
+            return
+        }
+
         let pairing = Pairing(store: store, now: { Date() })
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
 
         let dependencies = ApiDependencies(
-            registry: WorktreeRegistry(
-                store: store,
-                service: service,
-                suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
-            ),
+            registry: registry,
             service: service,
             store: store,
             pairing: pairing,
@@ -253,6 +277,7 @@ private struct Arguments {
     let projectToAdd: String?
     let wantsToken: Bool
     let wantsPairing: Bool
+    let wantsWorktreeProfile: Bool
     let storeUrl: URL
 
     static let usage = """
@@ -263,6 +288,8 @@ private struct Arguments {
           --issue-token         Print a bearer token for driving the API by hand, then exit.
           --pair                Keep printing a granita://pair link and six-word code, so a
                                 device can pair over TLS without the menu bar app.
+          --profile-worktrees   Measure one worktree read and its git calls, then exit without
+                                opening a listener. Use --store for an isolated project list.
           --insecure-http       Serve plain HTTP instead of advertising over Bonjour with TLS,
                                 and require no token. Off by default, never reachable from the UI.
           --port <n>            Port for --insecure-http. Default \(Branding.defaultPort).
@@ -284,6 +311,7 @@ private struct Arguments {
         projectToAdd = value(after: "--add-project")
         wantsToken = arguments.contains("--issue-token")
         wantsPairing = arguments.contains("--pair")
+        wantsWorktreeProfile = arguments.contains("--profile-worktrees")
         storeUrl = value(after: "--store").map { URL(filePath: $0) }
             ?? URL(filePath: NSHomeDirectory())
                 .appending(path: "Library/Application Support", directoryHint: .isDirectory)

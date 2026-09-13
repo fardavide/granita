@@ -200,15 +200,19 @@ clean: ## Remove build output and the generated fixture repositories
 
 .PHONY: resolve
 resolve: ## Refresh Package.resolved for the Xcode graph (run before committing after `swift test`)
-	@# Xcode writes the project/package union into the workspace's lockfile. SwiftPM writes only
-	@# the package graph into the committed file, so copy the freshly resolved union back before
-	@# validating it. Xcode Cloud disables automatic resolution and needs those Xcode-only pins.
+	@# Xcode writes the project/package union into either the workspace's lockfile or the canonical
+	@# package file. SwiftPM writes only the package graph, so copy the workspace output when created
+	@# and validate the canonical union. Xcode Cloud needs the Xcode-only pins with resolution disabled.
 	@# Into a throwaway derived data path, deliberately. With a warm one there is nothing to
 	@# resolve, so xcodebuild does not rewrite the file and silently leaves whatever `swift build`
 	@# last wrote — which is the stripped version this target exists to undo.
 	xcodebuild -resolvePackageDependencies -project $(PROJECT) -scheme GranitaMobile \
 		-derivedDataPath "$$(mktemp -d)/resolve" > /dev/null
-	cp $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved $(PACKAGE)/Package.resolved
+	@if [ -f $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved ]; then \
+		cp $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved $(PACKAGE)/Package.resolved; \
+	else \
+		echo "Xcode wrote the resolved graph directly to $(PACKAGE)/Package.resolved."; \
+	fi
 	@python3 -c "import json;d=json.load(open('$(PACKAGE)/Package.resolved'));\
 		pins=d['pins'];\
 		ok=any('snapshot' in p['identity'] for p in pins);\

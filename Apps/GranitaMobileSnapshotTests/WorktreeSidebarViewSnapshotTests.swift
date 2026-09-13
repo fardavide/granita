@@ -43,6 +43,12 @@ struct WorktreeSidebarViewSnapshotTests {
                 WorktreeSidebarView(
                     macName: subject.macName,
                     state: subject.state,
+                    readStage: subject.readStage,
+                    readTiming: subject.readTiming,
+                    readResult: subject.readResult,
+                    isRetryingRefresh: subject.isRetryingRefresh,
+                    reduceMotion: subject.reduceMotion,
+                    now: aFixedMoment,
                     logCopyState: .ready,
                     mode: subject.mode,
                     showsQuietWorktrees: subject.showsQuietWorktrees,
@@ -53,15 +59,19 @@ struct WorktreeSidebarViewSnapshotTests {
                     onSetPinned: { _, _ in },
                     onDelete: { _ in },
                     onRetry: {},
+                    onRefresh: {},
+                    onPairAgain: {},
                     onCopyLogs: {}
                 )
             }
+            .dynamicTypeSize(subject.dynamicTypeSize)
             .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)
             // Leading rather than centred, because that is the edge the column is against. What is
             // beside it on a real iPad is the detail column, which is the split screen's own suite.
             .frame(maxWidth: .infinity, alignment: .leading),
             layout: layout,
-            named: subject.name
+            named: subject.name,
+            freezesActivity: subject.state == .loading && subject.dynamicTypeSize.isAccessibilitySize
         )
     }
 }
@@ -77,6 +87,12 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
     let mode: WorktreeListMode
     let showsQuietWorktrees: Bool
     let removing: Set<WorktreeID>
+    let readStage: WorktreeReadStage
+    let readTiming: WorktreeReadTiming
+    let readResult: WorktreeReadResult
+    let isRetryingRefresh: Bool
+    let dynamicTypeSize: DynamicTypeSize
+    let reduceMotion: Bool
 
     var testDescription: String { name }
 
@@ -90,7 +106,13 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         state: WorktreeSidebarState,
         mode: WorktreeListMode,
         showsQuietWorktrees: Bool,
-        removing: Set<WorktreeID> = []
+        removing: Set<WorktreeID> = [],
+        readStage: WorktreeReadStage = .finding(.unknown),
+        readTiming: WorktreeReadTiming = .notStarted,
+        readResult: WorktreeReadResult = .notRead,
+        isRetryingRefresh: Bool = false,
+        dynamicTypeSize: DynamicTypeSize = .large,
+        reduceMotion: Bool = false
     ) {
         self.name = name
         self.macName = macName
@@ -98,9 +120,304 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         self.mode = mode
         self.showsQuietWorktrees = showsQuietWorktrees
         self.removing = removing
+        self.readStage = readStage
+        self.readTiming = readTiming
+        self.readResult = readResult
+        self.isRetryingRefresh = isRetryingRefresh
+        self.dynamicTypeSize = dynamicTypeSize
+        self.reduceMotion = reduceMotion
     }
 
     static let all: [SidebarCase] = [
+        SidebarCase(
+            name: "no-projects-stale",
+            state: .noProjects,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .stale(at: aFixedMoment.addingTimeInterval(-840), route: .local, failure: .unreachable(diagnostic: "The empty-project refresh timed out"))
+        ),
+
+        SidebarCase(
+            name: "all-quiet-stale",
+            state: .allQuiet(worktreeCount: 9, projectNames: ["aura", "granita"]),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .stale(at: aFixedMoment.addingTimeInterval(-840), route: .tailnet, failure: .unreachable(diagnostic: "The quiet-worktree refresh timed out"))
+        ),
+
+        SidebarCase(
+            name: "no-projects-retry-progress",
+            state: .noProjects,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local),
+            readTiming: .running(started: aFixedMoment),
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local),
+            isRetryingRefresh: true
+        ),
+
+        SidebarCase(
+            name: "failure-response-accessibility3",
+            state: .failed(.unreachable(diagnostic: """
+            The worktree response timed out.
+            NSURLErrorDomain
+            Code: -1001
+            Request: GET /v1/worktrees
+            Response: none
+            URLSession task: failed
+            Connection: closed
+            Underlying error: network read timed out
+            """)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.unknown),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment),
+            dynamicTypeSize: .accessibility3
+        ),
+
+        SidebarCase(
+            name: "failure-connecting-finished",
+            state: .failed(.unreachable(diagnostic: "The Mac did not answer the connection check.")),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.tailnet),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "refresh-retry-in-flight",
+            state: .listing(WorktreeListing(
+                of: Array(aBusyMac.prefix(1)),
+                mode: .groupedByProject,
+                showingQuiet: false,
+                now: aFixedMoment
+            )),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local),
+            readTiming: .running(started: aFixedMoment),
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local),
+            isRetryingRefresh: true
+        ),
+
+        SidebarCase(
+            name: "loading-long-reading-tailnet-accessibility3",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.tailnet),
+            readTiming: .running(started: aFixedMoment.addingTimeInterval(-42)),
+            dynamicTypeSize: .accessibility3
+        ),
+
+        SidebarCase(
+            name: "loading-long-reading-tailnet-accessibility5",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.tailnet),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment),
+            dynamicTypeSize: .accessibility5
+        ),
+
+        SidebarCase(
+            name: "loading-reduced-motion",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment),
+            reduceMotion: true
+        ),
+
+        SidebarCase(
+            name: "listing-reduced-motion",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .local),
+            reduceMotion: true
+        ),
+
+        SidebarCase(
+            name: "no-projects-read",
+            state: .noProjects,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .tailnet)
+        ),
+
+        SidebarCase(
+            name: "all-quiet-read",
+            state: .allQuiet(worktreeCount: 9, projectNames: ["aura", "granita"]),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local)
+        ),
+
+        SidebarCase(
+            name: "one-row-read-fresh",
+            state: .listing(WorktreeListing(of: aBusyMac.filter(\.isPinned), mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .tailnet)
+        ),
+
+        SidebarCase(
+            name: "one-row-read-stale",
+            state: .listing(WorktreeListing(of: aBusyMac.filter(\.isPinned), mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .stale(at: aFixedMoment.addingTimeInterval(-840), route: .local, failure: .unreachable(diagnostic: "The refresh timed out"))
+        ),
+
+        SidebarCase(
+            name: "read-local",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local)
+        ),
+
+        SidebarCase(
+            name: "read-tailnet",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .tailnet)
+        ),
+
+        SidebarCase(
+            name: "read-unknown-route",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .unknown)
+        ),
+
+        SidebarCase(
+            name: "refresh-failed",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .stale(
+                at: aFixedMoment.addingTimeInterval(-840),
+                route: .local,
+                failure: .unreachable(diagnostic: "The refresh timed out")
+            )
+        ),
+
+        SidebarCase(
+            name: "loading-finding-local",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.local)
+        ),
+
+        SidebarCase(
+            name: "loading-finding-tailnet",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.tailnet)
+        ),
+
+        SidebarCase(
+            name: "loading-verifying",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .verifying
+        ),
+
+        SidebarCase(
+            name: "loading-reading-local",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local)
+        ),
+
+        SidebarCase(
+            name: "loading-reading-tailnet",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.tailnet)
+        ),
+
+        SidebarCase(
+            name: "loading-reading-unknown-route",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.unknown)
+        ),
+
+        SidebarCase(
+            name: "loading-long-finding-local",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.local),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "loading-long-finding-tailnet",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.tailnet),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "loading-long-finding-both",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.localAndTailnet),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "loading-long-verifying",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .verifying,
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "loading-long-reading-local",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local),
+            readTiming: .running(started: aFixedMoment.addingTimeInterval(-42))
+        ),
+
+        SidebarCase(
+            name: "loading-long-reading-tailnet",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.tailnet),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
+        SidebarCase(
+            name: "loading-long-reading-unknown-route",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.unknown),
+            readTiming: .finished(started: aFixedMoment.addingTimeInterval(-42), ended: aFixedMoment)
+        ),
+
         // The list as design §2 draws it: one Pinned section above the projects, a pinned row
         // carrying the project name no other grouped row does, a machine-generated name that has to
         // read as a machine string, and the footer that says what is being hidden.
@@ -205,6 +522,14 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         // A request that has neither answered nor failed. Unlike a Bonjour browse this one finishes,
         // so a progress view is not a promise this screen cannot keep.
         SidebarCase(name: "loading", state: .loading, mode: .groupedByProject, showsQuietWorktrees: false),
+
+        SidebarCase(
+            name: "loading-finding-both",
+            state: .loading,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .finding(.localAndTailnet)
+        ),
 
         // A Mac called what Macs are actually called. The title is the reader's only answer to
         // "which machine am I reading", so what it does when the name is longer than the column is

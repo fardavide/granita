@@ -32,7 +32,7 @@ public actor RememberedMacs {
     /// be reached or is too old to say, which are the same thing to the caller.
     private let healthOf: @Sendable (ServerAddress, SpkiFingerprint) async -> HealthResponse?
 
-    private var reached: [BonjourInstanceName: any GranitaRepository] = [:]
+    private var reached: [BonjourInstanceName: ReachedMac] = [:]
 
     /// Macs already backfilled this run, so a Mac with genuinely no addresses is asked once rather
     /// than on every reconnection.
@@ -56,8 +56,16 @@ public actor RememberedMacs {
     /// that is what makes the state recoverable: the caller forgets it on exactly that answer, and
     /// the next tap on its row goes to the pairing screens instead of here.
     func connection(to server: DiscoveredServer) async throws(ApiFailure) -> any GranitaRepository {
+        try await connection(to: server, reporting: { _ in })
+    }
+
+    func connection(
+        to server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> any GranitaRepository {
         if let reached = reached[server.id] {
-            return reached
+            await progress(.reading(reached.route))
+            return reached.repository
         }
 
         let remembered: RememberedMac?
@@ -86,8 +94,11 @@ public actor RememberedMacs {
         }
 
         let address: ServerAddress
+        let observation = WorktreeReadProgressRelay(reporting: progress)
         do {
-            address = try await addresses.address(of: server)
+            address = try await addresses.address(of: server, reporting: { stage in
+                await observation.report(stage)
+            })
         } catch {
             switch error {
             case .unreachable(let diagnostic):
@@ -95,6 +106,7 @@ public actor RememberedMacs {
                     throw ApiFailure.unreachable(diagnostic: diagnostic)
                 }
                 address = fallbackAddress
+                await observation.report(.reading(.unknown))
             case .localNetworkDenied:
                 guard let fallbackAddress = remembered.fallbackAddress else {
                     // The one refusal a reader can fix, and the sentence the sidebar draws does not
@@ -105,6 +117,7 @@ public actor RememberedMacs {
                     )
                 }
                 address = fallbackAddress
+                await observation.report(.reading(.unknown))
             }
         }
 
@@ -118,7 +131,7 @@ public actor RememberedMacs {
             wakeAddresses: remembered.wakeAddresses
         )
         let connection = connect(paired)
-        reached[server.id] = connection
+        reached[server.id] = ReachedMac(repository: connection, route: await observation.route)
         await refreshMetadata(of: paired)
         return connection
     }
@@ -177,6 +190,27 @@ public actor RememberedMacs {
         reached[mac] = nil
         try? await store.forget(mac)
     }
+
+    private struct ReachedMac: Sendable {
+        let repository: any GranitaRepository
+        let route: WorktreeConnectionRoute
+    }
+}
+
+private actor WorktreeReadProgressRelay {
+
+    private(set) var route: WorktreeConnectionRoute = .unknown
+
+    private let reporting: @Sendable (WorktreeReadStage) async -> Void
+
+    init(reporting: @escaping @Sendable (WorktreeReadStage) async -> Void) {
+        self.reporting = reporting
+    }
+
+    func report(_ stage: WorktreeReadStage) async {
+        if case .reading(let route) = stage { self.route = route }
+        await reporting(stage)
+    }
 }
 
 // MARK: -
@@ -214,6 +248,17 @@ public struct RememberedMacRepository: GranitaRepository {
     public func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
         do {
             return try await macs.connection(to: server).worktrees(inProject: project)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func worktrees(
+        inProject project: ProjectID?,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> [Worktree] {
+        do {
+            return try await macs.connection(to: server, reporting: progress).worktrees(inProject: project)
         } catch {
             throw await noted(error)
         }

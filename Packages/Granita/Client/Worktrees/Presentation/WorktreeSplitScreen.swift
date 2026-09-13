@@ -27,6 +27,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
     /// `Presentation` and this target may not see one — see `WorktreeSidebarScreen`, which carries
     /// the whole argument.
     private let opening: (WorktreeID, String, String) -> Opened
+    private let onPairAgain: () -> Void
 
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -34,6 +35,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
 
     public init(
         model: ClientWorktreesModel,
+        onPairAgain: @escaping () -> Void,
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // **Pinned in `@State`, and here that is a fix rather than a precaution.** The composition
@@ -47,6 +49,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
         // reason.
         _model = State(initialValue: model)
         self.opening = opening
+        self.onPairAgain = onPairAgain
     }
 
     public var body: some View {
@@ -59,7 +62,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
         // Compact is the phone, and it is also an iPad in a narrow multitasking width — which is why
         // the question asked is the width and not the device.
         if horizontalSizeClass == .compact {
-            WorktreeSidebarScreen(model: model, opening: opening)
+            WorktreeSidebarScreen(model: model, onPairAgain: onPairAgain, opening: opening)
         } else {
             twoColumns
         }
@@ -74,7 +77,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
             // view's and the detail column's declarations below, with nowhere in the sidebar column
             // to push the result. That is exactly the bug a tap on a real Mac found: the row
             // highlighted and nothing opened. See `WorktreeSidebarScreen`'s doc comment.
-            WorktreeSidebarScreen(model: model, claimsRowTaps: false, opening: opening)
+            WorktreeSidebarScreen(model: model, claimsRowTaps: false, onPairAgain: onPairAgain, opening: opening)
                 .navigationSplitViewColumnWidth(WorktreeSidebarView.widthInASplitView)
                 // The stock sidebar chrome — translucent material, vibrant selection — rather than
                 // the plain list style `List` defaults to. Scoped to this column only, so the
@@ -122,6 +125,7 @@ private extension View {
         // See `WorktreeSidebarScreen`, which carries the whole argument.
         navigationDestination(for: WorktreeID.self) { worktree in
             opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
+                .onAppear { model.cancelLoading() }
         }
     }
 }

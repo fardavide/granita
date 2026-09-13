@@ -57,10 +57,11 @@ public struct GranitaMobileScene: Scene {
                 startingAt: NavigationPath(),
                 // A Mac this phone has paired with before looks its address and its key up on the
                 // first request, behind the list's own loading state.
-                readingARememberedMac: { server in
+                readingARememberedMac: { server, pairAgain in
                     Self.worktrees(
                         of: server.name,
-                        over: RememberedMacRepository(reading: server, through: Self.rememberedMacs)
+                        over: RememberedMacRepository(reading: server, through: Self.rememberedMacs),
+                        onPairAgain: pairAgain
                     )
                 },
                 // **Through the reconnection, not straight over the address pairing returned.**
@@ -70,13 +71,14 @@ public struct GranitaMobileScene: Scene {
                 // as long as the screen is up. Going through `RememberedMacs` means an unreachable
                 // read drops the address and the next one resolves again, which is what makes
                 // waking a Mac from this screen work at all.
-                readingAJustPairedMac: { mac in
+                readingAJustPairedMac: { mac, pairAgain in
                     Self.worktrees(
                         of: mac.name,
                         over: RememberedMacRepository(
                             reading: DiscoveredServer(id: mac.instance, name: mac.name),
                             through: Self.rememberedMacs
-                        )
+                        ),
+                        onPairAgain: pairAgain
                     )
                 }
             )
@@ -219,15 +221,17 @@ public struct GranitaMobileScene: Scene {
     /// The repository is built by the caller and shared by both screens, so the diff a reader opens
     /// speaks over the session the list was read through rather than opening a second one.
     @ViewBuilder
-    private static func worktrees(of macName: String, over repository: any GranitaRepository) -> some View {
+    private static func worktrees(of macName: String, over repository: any GranitaRepository, onPairAgain: @escaping () -> Void) -> some View {
         WorktreeSplitScreen(
             model: ClientWorktreesModel(
                 macName: macName,
                 repository: repository,
                 preferences: UserDefaultsWorktreeListPreferences(defaults: .standard),
                 copyingLogs: copyingLogs,
+                announcing: VoiceOverWorktreeReadAnnouncements(),
                 now: Date.init
-            )
+            ),
+            onPairAgain: onPairAgain
         ) { worktree, displayName, projectName in
             // **The second link in this app whose destination is a module away**, and it is here for
             // the same reason the first is: `ClientWorktreesPresentation` may see any `Domain` and

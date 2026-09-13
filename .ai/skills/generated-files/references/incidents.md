@@ -85,7 +85,10 @@ The workspace resolved file was not created in those runs. On 12 September 2026,
 app-hosted connection-test target in the project, isolated `make resolve` runs instead wrote
 30 pins to `Granita.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, leaving
 the canonical package file at 26 pins. The target now copies that freshly resolved union back
-before its existing full-graph validation. The workspace file is ignored as a runtime cache;
+before its existing full-graph validation. On 13 September 2026 an isolated run again wrote the
+complete 30-pin union directly to the canonical package file and created no workspace lockfile.
+The target therefore copies the workspace output when present and otherwise validates the
+canonical output. The workspace file is ignored as a runtime cache;
 the package file remains committed. CI cache keys must still use committed inputs, not the
 workspace cache, which is absent on a fresh checkout.
 

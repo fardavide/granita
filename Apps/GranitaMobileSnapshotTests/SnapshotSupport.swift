@@ -220,6 +220,7 @@ func assertScreenSnapshot(
     _ view: some View,
     layout: SnapshotLayout,
     named name: String,
+    freezesActivity: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -236,6 +237,34 @@ func assertScreenSnapshot(
     // Draining here is only safe because every suite is `.serialized` now. The version that did this
     // while sixteen suites were unserialised took 22 unrelated baselines down.
     drainTheKeyboard()
+
+    if freezesActivity {
+        // Accessibility sizes enlarge the native spinner enough for its changing phase to exceed
+        // the image drift budget. Capture its first native animation frame at the reader's actual
+        // text size, while keeping the host window's normal rendering and safe area.
+        let controller = ActivitySnapshotHostingController(rootView: AnyView(probingSafeArea(
+            of: view.environment(\.locale, Locale(identifier: "en_US")),
+            named: "\(name)-\(layout.name)"
+        )))
+        assertSnapshot(
+            of: controller as UIViewController,
+            as: .image(
+                on: layout.configuration,
+                drawHierarchyInKeyWindow: true,
+                precision: 0.999,
+                perceptualPrecision: 0.87,
+                traits: UITraitCollection(userInterfaceStyle: layout.style)
+            ),
+            named: "\(name)-\(layout.name)",
+            fileID: fileID,
+            file: file,
+            testName: testName,
+            line: line,
+            column: column
+        )
+        drainTheKeyboard()
+        return
+    }
 
     assertSnapshot(
         // **Pinned, and it has to be.** A grouping separator is a locale's decision, and the first
@@ -264,6 +293,29 @@ func assertScreenSnapshot(
     )
 
     drainTheKeyboard()
+}
+
+@MainActor
+private final class ActivitySnapshotHostingController: UIHostingController<AnyView> {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard let root = view else { return }
+        var remaining = [root]
+        while let current = remaining.popLast() {
+            if let indicator = current as? UIActivityIndicatorView {
+                for subview in indicator.subviews {
+                    guard let image = subview as? UIImageView else { continue }
+                    let frames = image.animationImages ?? image.image?.images
+                    guard let frame = frames?.first else { continue }
+                    image.stopAnimating()
+                    image.image = frame
+                    image.layer.speed = 0
+                    image.layer.timeOffset = 0
+                }
+            }
+            remaining.append(contentsOf: current.subviews)
+        }
+    }
 }
 
 /// Waits out the keyboard a render may have raised, so the next render does not inherit its geometry.

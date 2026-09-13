@@ -40,7 +40,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack {
-                WorktreeSplitScreen(model: model) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff)
                 }
             },
@@ -78,7 +78,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([chosen]))) {
-                WorktreeSplitScreen(model: model) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff)
                 }
             },
@@ -112,7 +112,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([removed]))) {
-                WorktreeSplitScreen(model: model) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff)
                 }
             },
@@ -131,6 +131,7 @@ private func aLoadableModel() -> ClientWorktreesModel {
         repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: nil),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
         copyingLogs: FakeDiagnosticLogsCopying(),
+        announcing: FakeWorktreeReadAnnouncing(),
         now: { aFixedMoment }
     )
 }
