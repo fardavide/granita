@@ -15,6 +15,30 @@ import CorePairingDomain
 struct RememberedMacsTests {
 
     @Test
+    func `given a remembered Mac reached through a verified local route when cached worktrees are read then that route remains in progress without resolving again`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            resolving: .success(ServerAddress(host: "100.112.69.85", port: 8_737)),
+            reportingResolutionStages: [.finding(.local), .verifying, .reading(.local)]
+        )
+        let repository: any GranitaRepository = scenario.sut
+        _ = try await repository.worktrees(inProject: nil, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // when
+        let worktrees = try await repository.worktrees(inProject: nil, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(worktrees == [aWorktree])
+        #expect(scenario.addresses.lookups == 1)
+        #expect(await scenario.progress.stages == [.finding(.local), .verifying, .reading(.local), .reading(.local)])
+    }
+
+    @Test
     func `given a remembered Mac resolver reporting a local route when its worktrees are read through the repository contract then the caller receives each loading stage`() async throws {
         // given
         let scenario = Scenario(

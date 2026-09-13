@@ -32,7 +32,7 @@ public actor RememberedMacs {
     /// be reached or is too old to say, which are the same thing to the caller.
     private let healthOf: @Sendable (ServerAddress, SpkiFingerprint) async -> HealthResponse?
 
-    private var reached: [BonjourInstanceName: any GranitaRepository] = [:]
+    private var reached: [BonjourInstanceName: ReachedMac] = [:]
 
     /// Macs already backfilled this run, so a Mac with genuinely no addresses is asked once rather
     /// than on every reconnection.
@@ -64,8 +64,8 @@ public actor RememberedMacs {
         reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
     ) async throws(ApiFailure) -> any GranitaRepository {
         if let reached = reached[server.id] {
-            await progress(.reading(.unknown))
-            return reached
+            await progress(.reading(reached.route))
+            return reached.repository
         }
 
         let remembered: RememberedMac?
@@ -94,8 +94,11 @@ public actor RememberedMacs {
         }
 
         let address: ServerAddress
+        let observation = WorktreeReadProgressRelay(reporting: progress)
         do {
-            address = try await addresses.address(of: server, reporting: progress)
+            address = try await addresses.address(of: server, reporting: { stage in
+                await observation.report(stage)
+            })
         } catch {
             switch error {
             case .unreachable(let diagnostic):
@@ -126,7 +129,7 @@ public actor RememberedMacs {
             wakeAddresses: remembered.wakeAddresses
         )
         let connection = connect(paired)
-        reached[server.id] = connection
+        reached[server.id] = ReachedMac(repository: connection, route: await observation.route)
         await refreshMetadata(of: paired)
         return connection
     }
@@ -184,6 +187,27 @@ public actor RememberedMacs {
     func forget(_ mac: BonjourInstanceName) async {
         reached[mac] = nil
         try? await store.forget(mac)
+    }
+
+    private struct ReachedMac: Sendable {
+        let repository: any GranitaRepository
+        let route: WorktreeConnectionRoute
+    }
+}
+
+private actor WorktreeReadProgressRelay {
+
+    private(set) var route: WorktreeConnectionRoute = .unknown
+
+    private let reporting: @Sendable (WorktreeReadStage) async -> Void
+
+    init(reporting: @escaping @Sendable (WorktreeReadStage) async -> Void) {
+        self.reporting = reporting
+    }
+
+    func report(_ stage: WorktreeReadStage) async {
+        if case .reading(let route) = stage { self.route = route }
+        await reporting(stage)
     }
 }
 

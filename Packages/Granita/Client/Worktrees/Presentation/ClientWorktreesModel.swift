@@ -27,6 +27,7 @@ public final class ClientWorktreesModel {
 
     public private(set) var state: WorktreeSidebarState = .loading
     public private(set) var readStage: WorktreeReadStage = .finding(.unknown)
+    public private(set) var readTiming: WorktreeReadTiming = .notStarted
     public private(set) var logCopyState: DiagnosticCopyState = .ready
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
@@ -59,6 +60,7 @@ public final class ClientWorktreesModel {
     public private(set) var writeFailure: WorktreeWriteRefusal?
 
     private var worktrees: [Worktree] = []
+    private var reading: ReadTask = .idle
     private let repository: any GranitaRepository
     private let preferences: any WorktreeListPreferences
     private let copyingLogs: any DiagnosticLogsCopying
@@ -112,6 +114,30 @@ public final class ClientWorktreesModel {
     /// opening a worktree while this is still loading cancels it — and reporting that as *Could not
     /// read your Mac* is the app blaming the Mac for something the app did.
     public func load() async {
+        let started = now()
+        readStage = .finding(.unknown)
+        readTiming = .running(started: started)
+        let task = Task { await performLoad() }
+        reading = .running(task)
+        defer {
+            reading = .idle
+            readTiming = .finished(started: started, ended: now())
+        }
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    public func cancelLoading() {
+        switch reading {
+        case .idle: break
+        case .running(let task): task.cancel()
+        }
+    }
+
+    private func performLoad() async {
         // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
         // that: blanking on every read photographed a spinner on screens that had already loaded,
         // because a screen re-runs its `.task` every time it appears — so coming back to the
@@ -121,9 +147,14 @@ public final class ClientWorktreesModel {
             state = .loading
         }
         do {
-            worktrees = try await repository.worktrees(inProject: nil, reporting: { stage in
+            let answer = try await repository.worktrees(inProject: nil, reporting: { stage in
                 await self.record(stage)
             })
+            guard Task.isCancelled == false else {
+                state = arrangement
+                return
+            }
+            worktrees = answer
             state = arrangement
         } catch .cancelled {
             state = arrangement
@@ -338,5 +369,10 @@ public final class ClientWorktreesModel {
     /// show two worktrees touched together as a minute apart.
     private var arrangement: WorktreeSidebarState {
         WorktreeSidebarState(of: worktrees, mode: mode, showingQuiet: showsQuietWorktrees, now: now())
+    }
+
+    private enum ReadTask {
+        case idle
+        case running(Task<Void, Never>)
     }
 }

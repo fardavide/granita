@@ -40,6 +40,96 @@ struct ClientWorktreesModelTests {
     // MARK: - Reading
 
     @Test
+    func `given verification failed when another attempt finds the Mac then the new attempt shows discovery`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheFirstRead: .unreachable(diagnostic: "Verification timed out"),
+            reportingReadStages: [.verifying],
+            reportingSecondReadStages: [.finding(.tailnet)],
+            suspendingSecondRead: true
+        )
+        await scenario.sut.load()
+
+        // when
+        let retry = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.finding(.tailnet))
+        await scenario.repository.releaseHeldRead()
+        await retry.value
+    }
+
+    @Test
+    func `given a successful list read when timing is read then the attempt has finished`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "loading feedback", project: "granita")])
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readTiming == WorktreeReadTiming.finished(started: aMoment, ended: aMoment))
+    }
+
+    @Test
+    func `given the first read is pending when timing is read then it starts at the attempt's clock time`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readTiming == WorktreeReadTiming.running(started: aMoment))
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given a Mac answers after cancellation when the cancelled read ends then its rows stay absent`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "cancelled response", project: "granita")],
+            suspendingReads: true,
+            ignoringReadCancellation: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
+    func `given an initial read is pending when loading is cancelled then the read ends without blaming the Mac`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            suspendingReads: true
+        )
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        scenario.sut.cancelLoading()
+        await load.value
+
+        // then
+        #expect(await scenario.repository.cancelledReads == 1)
+        #expect(scenario.sut.state == .noProjects)
+    }
+
+    @Test
     func `given identity verification started when another route is finding the Mac then verification stays visible`() async {
         // given
         let scenario = Scenario(
@@ -989,7 +1079,10 @@ struct ClientWorktreesModelTests {
             refusesTheSecondRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
             reportingReadStages: [WorktreeReadStage] = [],
+            reportingSecondReadStages: [WorktreeReadStage]? = nil,
             suspendingReads: Bool = false,
+            suspendingSecondRead: Bool = false,
+            ignoringReadCancellation: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
         ) {
@@ -1000,7 +1093,10 @@ struct ClientWorktreesModelTests {
                 refusesTheFirstRead: refusesTheFirstRead,
                 refusesTheSecondRead: refusesTheSecondRead,
                 reportingReadStages: reportingReadStages,
-                suspendingReads: suspendingReads
+                reportingSecondReadStages: reportingSecondReadStages,
+                suspendingReads: suspendingReads,
+                suspendingSecondRead: suspendingSecondRead,
+                ignoringReadCancellation: ignoringReadCancellation
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
