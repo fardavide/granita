@@ -24,6 +24,13 @@ public struct RacingServerAddresses: ServerAddressResolving {
     }
 
     public func address(of server: DiscoveredServer) async throws(ServerAddressResolutionFailure) -> ServerAddress {
+        try await address(of: server, reporting: { _ in })
+    }
+
+    public func address(
+        of server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ServerAddressResolutionFailure) -> ServerAddress {
         let remembered: RememberedMac?
         do {
             remembered = try await macs.remembered(server.id)
@@ -31,15 +38,32 @@ public struct RacingServerAddresses: ServerAddressResolving {
             throw .unreachable(diagnostic: "the remembered Mac could not be read")
         }
         guard let remembered, let address = remembered.fallbackAddress else {
+            await progress(.finding(.local))
             guard await localNetwork.availability() == .available else {
                 await timing.record(.finished(.localDiscovery, duration: .zero, outcome: .skipped))
                 throw .unreachable(diagnostic: "Wi-Fi is unavailable and this Mac has no saved remote address")
             }
-            return try await discover(server)
+            let address = try await discover(server)
+            guard let remembered else {
+                await progress(.reading(.unknown))
+                return address
+            }
+            let verified = await verify(address, remembered: remembered, stage: .localVerification, reporting: progress)
+            let resolved = try verified.get()
+            await progress(.reading(.local))
+            return resolved
         }
-        let result = await withTaskGroup(of: Result<ServerAddress, ServerAddressResolutionFailure>.self) { group in
-            group.addTask { await verify(address, remembered: remembered, stage: .tailnetVerification) }
-            group.addTask { await localAddress(of: server, remembered: remembered) }
+        let localAvailable = await localNetwork.availability() == .available
+        await progress(.finding(localAvailable ? .localAndTailnet : .tailnet))
+        let result = await withTaskGroup(of: Result<(address: ServerAddress, route: WorktreeConnectionRoute), ServerAddressResolutionFailure>.self) { group in
+            group.addTask {
+                await verify(address, remembered: remembered, stage: .tailnetVerification, reporting: progress)
+                    .map { (address: $0, route: .tailnet) }
+            }
+            group.addTask {
+                await localAddress(of: server, remembered: remembered, reporting: progress)
+                    .map { (address: $0, route: .local) }
+            }
             var lastFailure = ServerAddressResolutionFailure.unreachable(diagnostic: "no route completed pinned HTTPS verification")
             for await result in group {
                 switch result {
@@ -52,17 +76,19 @@ public struct RacingServerAddresses: ServerAddressResolving {
             }
             return .failure(lastFailure)
         }
-        return try result.get()
+        let resolved = try result.get()
+        await progress(.reading(resolved.route))
+        return resolved.address
     }
 
-    private func localAddress(of server: DiscoveredServer, remembered: RememberedMac) async -> Result<ServerAddress, ServerAddressResolutionFailure> {
+    private func localAddress(of server: DiscoveredServer, remembered: RememberedMac, reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void) async -> Result<ServerAddress, ServerAddressResolutionFailure> {
         guard await localNetwork.availability() == .available else {
             await timing.record(.finished(.localDiscovery, duration: .zero, outcome: .skipped))
             return .failure(.unreachable(diagnostic: "Wi-Fi is unavailable for local discovery"))
         }
         do {
             let address = try await discover(server)
-            return await verify(address, remembered: remembered, stage: .localVerification)
+            return await verify(address, remembered: remembered, stage: .localVerification, reporting: progress)
         } catch {
             return .failure(error)
         }
@@ -81,9 +107,10 @@ public struct RacingServerAddresses: ServerAddressResolving {
         }
     }
 
-    private func verify(_ address: ServerAddress, remembered: RememberedMac, stage: ConnectionStage) async -> Result<ServerAddress, ServerAddressResolutionFailure> {
+    private func verify(_ address: ServerAddress, remembered: RememberedMac, stage: ConnectionStage, reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void) async -> Result<ServerAddress, ServerAddressResolutionFailure> {
         let started = ContinuousClock.now
         await timing.record(.started(stage))
+        await progress(.verifying)
         do {
             _ = try await health.health(at: address, pinnedTo: remembered.fingerprint)
             await timing.record(.finished(stage, duration: elapsedSince(started), outcome: .succeeded))

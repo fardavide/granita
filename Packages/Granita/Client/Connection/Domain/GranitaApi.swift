@@ -49,6 +49,11 @@ public protocol GranitaRepository: Sendable {
     /// Every worktree, or only one project's.
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree]
 
+    func worktrees(
+        inProject project: ProjectID?,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> [Worktree]
+
     /// Renames or pins, and answers with the worktree as it now stands.
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree
 
@@ -94,4 +99,15 @@ public protocol GranitaRepository: Sendable {
         contentHash: String,
         in worktree: WorktreeID
     ) async throws(ApiFailure)
+}
+
+extension GranitaRepository {
+
+    public func worktrees(
+        inProject project: ProjectID?,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> [Worktree] {
+        await progress(.reading(.unknown))
+        return try await worktrees(inProject: project)
+    }
 }

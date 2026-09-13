@@ -56,7 +56,15 @@ public actor RememberedMacs {
     /// that is what makes the state recoverable: the caller forgets it on exactly that answer, and
     /// the next tap on its row goes to the pairing screens instead of here.
     func connection(to server: DiscoveredServer) async throws(ApiFailure) -> any GranitaRepository {
+        try await connection(to: server, reporting: { _ in })
+    }
+
+    func connection(
+        to server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> any GranitaRepository {
         if let reached = reached[server.id] {
+            await progress(.reading(.unknown))
             return reached
         }
 
@@ -87,7 +95,7 @@ public actor RememberedMacs {
 
         let address: ServerAddress
         do {
-            address = try await addresses.address(of: server)
+            address = try await addresses.address(of: server, reporting: progress)
         } catch {
             switch error {
             case .unreachable(let diagnostic):
@@ -214,6 +222,17 @@ public struct RememberedMacRepository: GranitaRepository {
     public func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
         do {
             return try await macs.connection(to: server).worktrees(inProject: project)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func worktrees(
+        inProject project: ProjectID?,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> [Worktree] {
+        do {
+            return try await macs.connection(to: server, reporting: progress).worktrees(inProject: project)
         } catch {
             throw await noted(error)
         }

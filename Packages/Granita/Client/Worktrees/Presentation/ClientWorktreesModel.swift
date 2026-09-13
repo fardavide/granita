@@ -26,6 +26,7 @@ public final class ClientWorktreesModel {
     public let macName: String
 
     public private(set) var state: WorktreeSidebarState = .loading
+    public private(set) var readStage: WorktreeReadStage = .finding(.unknown)
     public private(set) var logCopyState: DiagnosticCopyState = .ready
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
@@ -120,12 +121,16 @@ public final class ClientWorktreesModel {
             state = .loading
         }
         do {
-            worktrees = try await repository.worktrees(inProject: nil)
+            worktrees = try await repository.worktrees(inProject: nil, reporting: { stage in
+                await self.record(stage)
+            })
             state = arrangement
         } catch .cancelled {
             state = arrangement
+        } catch .unauthorized {
+            state = .failed(.unauthorized)
         } catch {
-            state = .failed(error)
+            state = state.isArrangeable ? arrangement : .failed(error)
         }
     }
 
@@ -321,6 +326,11 @@ public final class ClientWorktreesModel {
     private func rearrange() {
         guard state.isArrangeable else { return }
         state = arrangement
+    }
+
+    private func record(_ stage: WorktreeReadStage) {
+        if case .verifying = readStage, case .finding = stage { return }
+        readStage = stage
     }
 
     /// The clock is read once per arrangement rather than per row, so every age on screen is

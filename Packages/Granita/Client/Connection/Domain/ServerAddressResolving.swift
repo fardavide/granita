@@ -11,6 +11,24 @@
 public protocol ServerAddressResolving: Sendable {
 
     func address(of server: DiscoveredServer) async throws(ServerAddressResolutionFailure) -> ServerAddress
+
+    func address(
+        of server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ServerAddressResolutionFailure) -> ServerAddress
+}
+
+extension ServerAddressResolving {
+
+    public func address(
+        of server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ServerAddressResolutionFailure) -> ServerAddress {
+        await progress(.finding(.unknown))
+        let address = try await address(of: server)
+        await progress(.reading(.unknown))
+        return address
+    }
 }
 
 // MARK: -

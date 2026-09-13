@@ -15,6 +15,26 @@ import CorePairingDomain
 struct RememberedMacsTests {
 
     @Test
+    func `given a remembered Mac resolver reporting a local route when its worktrees are read through the repository contract then the caller receives each loading stage`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            resolving: .success(ServerAddress(host: "100.106.72.93", port: 8_737)),
+            reportingResolutionStages: [.finding(.local), .verifying, .reading(.local)]
+        )
+        let repository: any GranitaRepository = scenario.sut
+
+        // when
+        let worktrees = try await repository.worktrees(inProject: nil, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(worktrees == [aWorktree])
+        #expect(await scenario.progress.stages == [.finding(.local), .verifying, .reading(.local)])
+    }
+
+    @Test
     func `given a Mac paired with before when it is read then no code is asked for`() async throws {
         // given — the whole point. The pairing is in the Keychain under the name the browse offered,
         // and that is all it takes: nothing here spends a credential, and nothing asks for one.
@@ -491,6 +511,7 @@ private struct Scenario {
     let macs: FakeRememberedMacStore
     let addresses: FakeBonjourResolver
     let mac: FakeMacBehindAPairing
+    let progress: FakeWorktreeReadProgressRecording
 
     /// Every Mac a session was opened for, which is what the pin, the token and the address are
     /// asserted through: none of the three is readable off a repository once it exists.
@@ -502,6 +523,7 @@ private struct Scenario {
         remembering: [BonjourInstanceName: RememberedMac] = [:],
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
+        reportingResolutionStages: [WorktreeReadStage] = [],
         refusing readFailure: ApiFailure? = nil,
         healthUnavailable isHealthUnavailable: Bool = false,
         servingHealth healthResponse: HealthResponse? = nil,
@@ -509,7 +531,8 @@ private struct Scenario {
     ) {
         macs = refusal.map(FakeRememberedMacStore.init(refusing:))
             ?? FakeRememberedMacStore(holding: remembering)
-        addresses = FakeBonjourResolver(answering: resolving)
+        addresses = FakeBonjourResolver(answering: resolving, reportingStages: reportingResolutionStages)
+        progress = FakeWorktreeReadProgressRecording()
         let connections = OpenedConnections()
         self.connections = connections
         // One instance rather than one per connection, so a test can read what reached the Mac

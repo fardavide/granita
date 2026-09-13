@@ -14,6 +14,7 @@ final class FakeBonjourResolver: ServerAddressResolving {
     var cancelledLookups: Int { cancelled.withLock { $0 } }
 
     private let answering: Result<ServerAddress, ServerAddressResolutionFailure>
+    private let reportingStages: [WorktreeReadStage]
     private let asked = Mutex(0)
     private let cancelled = Mutex(0)
     private let isSuspended: Bool
@@ -22,8 +23,9 @@ final class FakeBonjourResolver: ServerAddressResolving {
     private let suspendedLookup: AsyncStream<Void>
     private let suspendedLookupContinuation: AsyncStream<Void>.Continuation
 
-    init(answering: Result<ServerAddress, ServerAddressResolutionFailure>, suspendingLookup: Bool = false) {
+    init(answering: Result<ServerAddress, ServerAddressResolutionFailure>, suspendingLookup: Bool = false, reportingStages: [WorktreeReadStage] = []) {
         self.answering = answering
+        self.reportingStages = reportingStages
         isSuspended = suspendingLookup
         let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         lookupStarted = started.stream
@@ -36,6 +38,10 @@ final class FakeBonjourResolver: ServerAddressResolving {
     func waitUntilAsked() async {
         var events = lookupStarted.makeAsyncIterator()
         _ = await events.next()
+    }
+
+    func resumeLookup() {
+        suspendedLookupContinuation.yield(())
     }
 
     func address(of server: DiscoveredServer) async throws(ServerAddressResolutionFailure) -> ServerAddress {
@@ -53,5 +59,12 @@ final class FakeBonjourResolver: ServerAddressResolving {
         case .success(let address): return address
         case .failure(let failure): throw failure
         }
+    }
+
+    func address(of server: DiscoveredServer, reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void) async throws(ServerAddressResolutionFailure) -> ServerAddress {
+        for stage in reportingStages {
+            await progress(stage)
+        }
+        return try await address(of: server)
     }
 }

@@ -40,6 +40,45 @@ struct ClientWorktreesModelTests {
     // MARK: - Reading
 
     @Test
+    func `given identity verification started when another route is finding the Mac then verification stays visible`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.verifying, .finding(.localAndTailnet)],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.verifying)
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
+    func `given a Mac verifying its identity when the list is pending then verification is visible while loading`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            reportingReadStages: [.verifying],
+            suspendingReads: true
+        )
+
+        // when
+        let load = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.readStage == WorktreeReadStage.verifying)
+        #expect(scenario.sut.state == .loading)
+        await scenario.repository.releaseHeldRead()
+        await load.value
+    }
+
+    @Test
     func `given a refused worktree list when logs are copied then that failure reaches the report`() async throws {
         // given
         let failure = ApiFailure.unauthorized
@@ -132,6 +171,43 @@ struct ClientWorktreesModelTests {
 
         // then
         #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a loaded list when refresh cannot reach the Mac then the previous rows remain`() async throws {
+        // given
+        let scenario = Scenario(
+            worktrees: [
+                aWorktree(named: "diff scroll", project: "granita"),
+                aWorktree(named: "loading feedback", project: "granita")
+            ],
+            refusesTheSecondRead: .unreachable(diagnostic: "Connection timed out")
+        )
+        await scenario.sut.load()
+        try #require(scenario.rows.count == 2)
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.rows.map(\.displayName) == ["diff scroll", "loading feedback"])
+    }
+
+    @Test
+    func `given a loaded list when refresh is unauthorized then the refusal replaces the rows`() async throws {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "loading feedback", project: "granita")],
+            refusesTheSecondRead: .unauthorized
+        )
+        await scenario.sut.load()
+        try #require(scenario.rows.map(\.displayName) == ["loading feedback"])
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
     }
 
     // MARK: - The toolbar menu
@@ -910,7 +986,10 @@ struct ClientWorktreesModelTests {
             worktrees: [Worktree],
             readFailure: ApiFailure? = nil,
             refusesTheFirstRead: ApiFailure? = nil,
+            refusesTheSecondRead: ApiFailure? = nil,
             writeFailure: ApiFailure? = nil,
+            reportingReadStages: [WorktreeReadStage] = [],
+            suspendingReads: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
         ) {
@@ -918,7 +997,10 @@ struct ClientWorktreesModelTests {
                 worktrees: worktrees,
                 readFailure: readFailure,
                 writeFailure: writeFailure,
-                refusesTheFirstRead: refusesTheFirstRead
+                refusesTheFirstRead: refusesTheFirstRead,
+                refusesTheSecondRead: refusesTheSecondRead,
+                reportingReadStages: reportingReadStages,
+                suspendingReads: suspendingReads
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
