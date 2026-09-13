@@ -111,6 +111,11 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
 - **Assert what ships.** Wrap the view the way the composition root wraps it, or the baseline
   silently stops covering whatever the wrapper draws.
 - **One parameterised test, not twenty functions**, so adding a state is one line.
+- **A snapshot test may take a short descriptive name instead of a `given … when … then` sentence**,
+  and one whose baselines are published — `ReadmeScreenshotTests` — must. The test's name is the
+  baseline's filename prefix, so a sentence becomes the larger half of a path a person has to read
+  and type into `README.md`. The existing suites predate this and keep their sentences; prefer the
+  short name when adding a suite.
 - **Prove a new suite can fail before trusting it.** Change a string the baseline captures, confirm
   red, revert, confirm green. A snapshot test that cannot fail is a decoration, and it looks exactly
   like one that works.
