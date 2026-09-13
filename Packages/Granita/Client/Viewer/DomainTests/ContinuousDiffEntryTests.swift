@@ -13,13 +13,24 @@ import CoreDiffDomain
 struct ContinuousDiffEntryTests {
 
     @Test
-    func `given a file nobody has seen when it reserves space then it uses the Mac's own estimate`() {
-        // given — the server counted the diff lines while it had the comparison open, which is the
-        // one place the number is cheap.
-        let entry = ContinuousDiffEntry.awaiting(aChangedFile(estimatedLineCount: 34))
+    func `given a file nobody has seen when it reserves space then it draws a short skeleton`() {
+        // given — the server's count is of *diff lines*, and a drawn file is those plus a torn
+        // expander wherever the diff skipped something. Nothing on the wire says how many, so a box
+        // sized from the count alone reserves hundreds of points to land in the wrong place.
+        let entry = ContinuousDiffEntry.awaiting(aChangedFile(estimatedLineCount: 340))
 
         // when - then
-        #expect(entry.reservedRows == 34)
+        #expect(entry.reservedRows == ContinuousDiffEntry.skeletonRows)
+    }
+
+    @Test
+    func `given a file smaller than the skeleton when it reserves space then it takes only what it has`() {
+        // given — a skeleton taller than the file it stands for is the same lie in the other
+        // direction, so the cap is a ceiling rather than a fixed height.
+        let entry = ContinuousDiffEntry.awaiting(aChangedFile(estimatedLineCount: 2))
+
+        // when - then
+        #expect(entry.reservedRows == 2)
     }
 
     @Test
@@ -57,12 +68,12 @@ struct ContinuousDiffEntryTests {
     func `given a file whose batch was refused when it reserves space then it holds the estimate it always had`() {
         // given — design §9's one hard requirement of the third case: the box a failed file draws
         // into is the box it was already drawing into. A failure that answered differently here
-        // would change the height on the way in, which is the reflow the whole screen is built to
-        // forbid, arriving from the one direction nobody could press.
+        // would change the height on the way in, which is the one height change on this screen that
+        // nobody pressed for and nothing announces.
         let entry = ContinuousDiffEntry.failed(aChangedFile(estimatedLineCount: 34))
 
         // when - then
-        #expect(entry.reservedRows == 34)
+        #expect(entry.reservedRows == ContinuousDiffEntry.skeletonRows)
         #expect(entry.reservedRows == ContinuousDiffEntry.awaiting(aChangedFile(estimatedLineCount: 34)).reservedRows)
     }
 

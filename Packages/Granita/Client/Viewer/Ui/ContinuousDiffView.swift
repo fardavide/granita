@@ -165,12 +165,19 @@ public struct ContinuousDiffView: View {
             // scopes to that section, so 0.5.2 cross-faded the bar into the header while the rest of
             // the scroll snapped to its new place, which is the jump wearing a fade. One scope over
             // the whole stack is also what makes the two halves of the swap one gesture rather than
-            // two. Keyed on nothing but the collapse flags, so a diff arriving still lands without
-            // dragging the scroll around. The curve is stated once, in `Animation.disclosure`.
+            // two. The curve is stated once, in `Animation.disclosure`.
+            //
+            // **A diff arriving is keyed here too now, and it used to be deliberately excluded.** The
+            // old comment read "so a diff arriving still lands without dragging the scroll around",
+            // which was right while a file reserved its own height and the swap moved nothing. It
+            // reserves four rows now, so the real content *does* change the height — and a height
+            // that changes without moving is the jump this whole section exists to prevent, arriving
+            // from the one direction that used to be exempt.
             //
             // Under `.scrollTargetLayout()` rather than over it: the marker wants the stack itself,
             // and a jump landing on a file is a different gesture from a file opening under a thumb.
             .animation(.disclosure, value: entries.map(\.collapse.isCollapsed))
+            .animation(.disclosure, value: entries.map(\.isReady))
         }
         // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
         // build called `proxy.scrollTo` from a watch on the target, and the baseline came back with
@@ -309,6 +316,11 @@ public struct ContinuousDiffView: View {
                     rows: entry.reservedRows,
                     pointSize: pointSize
                 )
+                // **The skeleton fades out where the code fades in**, rather than one replacing the
+                // other in a frame. Paired with the height animation on the stack above, what the
+                // reader sees is a file arriving; without it, the same two facts arrive as a flicker
+                // and a jump.
+                .transition(.opacity)
             case .failed(let file):
                 // The same block with the sweep stopped and the bars at half weight, which on a
                 // screen where four other cards are moving makes the one that has stopped visible
@@ -337,6 +349,7 @@ public struct ContinuousDiffView: View {
                     onTapGutter: onTapGutter,
                     onLongPressGutter: onLongPressGutter
                 )
+                .transition(.opacity)
             }
         }
     }
