@@ -110,9 +110,13 @@ public struct ContinuousDiffView: View {
         self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
         self.isWaitingLong = isWaitingLong
-        // Seeded with the jump when there is one and with the first file otherwise, so the position
-        // is a value this view stated rather than one the scroll settled on by itself.
-        _scrolledTo = State(initialValue: jumpTarget ?? state.firstFile)
+        // **Seeded with the jump, and with nothing at all when there is no jump.** Seeding the first
+        // file instead asked `scrollPosition` to align it to the top of the scroll view's *frame*,
+        // which begins under the navigation bar while the content is already inset by that same safe
+        // area — so the file the reader opens on sat 92pt down a page of empty grey, on every phone
+        // and every iPad. Nothing asked for that position: it was stated in order not to be settled,
+        // and the settled one was right.
+        _scrolledTo = State(initialValue: jumpTarget)
         self.onReading = onReading
         self.onJumped = onJumped
         self.onSetViewed = onSetViewed
