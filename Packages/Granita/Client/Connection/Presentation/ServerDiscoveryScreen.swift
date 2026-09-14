@@ -45,7 +45,7 @@ public struct ServerDiscoveryScreen<RememberedMacScreen: View>: View {
             state: model.discovery,
             logCopyState: model.logCopyState,
             onSearchAgain: model.searchAgain,
-            onOpenSettings: openSettings,
+            onOpenSettings: { model.openSettings(.localNetwork) },
             onCopyLogs: { Task { await model.copyLogs(context: .discovery(model.discovery)) } }
         )
         // **Declared here, beside the rows that link to it, and that placement is the fix.** The

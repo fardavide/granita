@@ -52,7 +52,8 @@ public struct GranitaMobileScene: Scene {
                     // And wrapped again here, because the browse can be a step ahead of the
                     // machine: a Mac woken a moment ago resolves to nothing until it is back.
                     addresses: Self.addresses,
-                    copyingLogs: Self.copyingLogs
+                    copyingLogs: Self.copyingLogs,
+                    settings: SystemSettingsOpener()
                 ),
                 phone: Self.phone,
                 startingAt: NavigationPath(),
@@ -121,7 +122,7 @@ public struct GranitaMobileScene: Scene {
 
     private static let copyingLogs = CopyDiagnosticLogs(
         report: connectionLogs,
-        pasteboard: UiKitDiagnosticPasteboard()
+        pasteboard: SystemDiagnosticPasteboard()
     )
 
     /// What only this machine can answer, read once for the same reason.
@@ -256,7 +257,7 @@ public struct GranitaMobileScene: Scene {
                     projectName: projectName,
                     repository: repository,
                     commentStore: UserDefaultsReviewCommentStore(defaults: .standard),
-                    pasteboard: UiKitReviewPasteboard(),
+                    pasteboard: SystemReviewPasteboard(),
                     // **One lexer for the app, not one per worktree.** Building it loads and
                     // evaluates the whole highlight.js bundle, and its `JSContext` cannot be shared
                     // across threads — so it is an actor held here for the process's lifetime, the

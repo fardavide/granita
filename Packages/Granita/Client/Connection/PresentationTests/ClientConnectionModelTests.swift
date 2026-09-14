@@ -11,6 +11,38 @@ import CorePairingDomain
 @Suite("Client connection model")
 struct ClientConnectionModelTests {
 
+    // MARK: - Opening the pane that carries the missing switch
+
+    /// **The pane is the question, not whether the call happened.** Three screens offer this control
+    /// and they do not all mean the same switch: a browse the local network refused and six words that
+    /// could not resolve both mean Local Network, and a camera the reader turned off means Camera. On
+    /// iOS the difference costs nothing because the app has one page; on macOS the two are separate
+    /// panes of Privacy & Security, so a screen passing the wrong one sends the reader somewhere by a
+    /// button that appeared to work.
+    @Test
+    func `given a camera the reader turned off when settings are opened then the camera pane is asked for`() {
+        // given
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.openSettings(.camera)
+
+        // then
+        #expect(scenario.settings.panes == [.camera])
+    }
+
+    @Test
+    func `given a browse the local network refused when settings are opened then the local network pane is asked for`() {
+        // given
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.openSettings(.localNetwork)
+
+        // then
+        #expect(scenario.settings.panes == [.localNetwork])
+    }
+
     // MARK: - Copying local diagnostics
 
     @Test
@@ -967,6 +999,7 @@ private struct Scenario {
     let copyingLogs: FakeDiagnosticLogsCopying
     let joining: FakeMacJoining
     let scanner: FakeCodeScanner
+    let settings: FakeSystemSettingsOpening
 
     let sut: ClientConnectionModel
 
@@ -999,6 +1032,7 @@ private struct Scenario {
             remembering: remembering
         )
         scanner = FakeCodeScanner(reading: codes)
+        settings = FakeSystemSettingsOpening()
         // The real scanner runs until a code is found or the reader walks away, so a test that wants
         // to look at what a foreign QR left behind has to make the run finite. Stopping it before it
         // starts does that and drops nothing: every code is still delivered, and the loop then ends.
@@ -1012,6 +1046,7 @@ private struct Scenario {
             scanner: scanner,
             addresses: FakeServerAddressResolver(answering: address),
             copyingLogs: copyingLogs,
+            settings: settings,
             hintReturnsAfter: hint
         )
     }

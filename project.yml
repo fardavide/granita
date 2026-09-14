@@ -94,9 +94,14 @@ targets:
         # Bonjour registration starts failing or re-prompting for no visible reason.
         CODE_SIGN_STYLE: Automatic
 
+  # **Three destinations from one target, and the Mac one is native SwiftUI rather than Catalyst.**
+  # The whole Client package graph already compiles for macOS — `swift build` builds it on the host
+  # so `make test` needs no simulator — so what was missing was never the code but a destination to
+  # build it for. Running this on a Mac before now meant Apple's "Designed for iPad" translation of
+  # the unmodified iPadOS binary. See `.ai/docs/decisions.md` and issue #73.
   GranitaMobile:
     type: application
-    supportedDestinations: [iOS, iPadOS]
+    supportedDestinations: [iOS, iPadOS, macOS]
     sources:
       - Apps/GranitaMobile
     dependencies:
@@ -169,6 +174,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile
         PRODUCT_NAME: Granita
         CODE_SIGN_STYLE: Automatic
+        # **The multicast entitlement above is iOS-only, and a Mac profile cannot carry it.** The
+        # generated file is one file for the whole target, so the Mac destination is pointed at an
+        # empty one by SDK rather than sharing it — signing refuses an entitlement no profile grants,
+        # and it refuses it at the end of a build rather than at the start. The Mac needs nothing in
+        # its place: broadcast is ungated there, and the app is unsandboxed like its menu bar sibling.
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Apps/GranitaMobile/GranitaMobileMac.entitlements
         # 1,2 = iPhone and iPad. With iPhone alone iPadOS runs the app in compatibility mode: a
         # fixed iPhone-shaped window that cannot be resized, with no multitasking.
         TARGETED_DEVICE_FAMILY: "1,2"
