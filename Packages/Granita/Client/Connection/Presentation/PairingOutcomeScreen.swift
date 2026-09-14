@@ -42,7 +42,7 @@ struct PairingOutcomeScreen: View {
             onTryAgain: { Task { await model.spendAgain(on: server, as: phone.device) } },
             onSaveTokenAgain: { Task { await model.saveTokenAgain() } },
             onOpenTestFlight: openTestFlight,
-            onOpenSettings: openSettings,
+            onOpenSettings: { model.openSettings(.localNetwork) },
             onCopyLogs: { Task { await model.copyLogs(context: .pairing(model.pairing)) } }
         )
         #if !os(macOS)

@@ -39,6 +39,7 @@
 		7E43CF11D8E3A8E933415A49 /* identity.p12.base64 in Resources */ = {isa = PBXBuildFile; fileRef = FA0D14E342A11D975CD831F8 /* identity.p12.base64 */; };
 		8794F825EDF08F11196C05CF /* DiffFailureBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0D0CB644B6AE6A744C295A /* DiffFailureBarSnapshotTests.swift */; };
 		8A5AE7E674E3117242BFE682 /* ProjectsSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */; };
+		8CD7BD51C534328F037A68C0 /* FakeSystemSettingsOpening.swift in Sources */ = {isa = PBXBuildFile; fileRef = D091EDEC0B618663C17BD257 /* FakeSystemSettingsOpening.swift */; };
 		8CFBBC9DE14C23D70908A986 /* ConnectionLogViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4317F6CE05A15B740CB4D63B /* ConnectionLogViewSnapshotTests.swift */; };
 		8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */; };
 		8D957603285B9B07B48A4D18 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D8BA25970E39E480588A658 /* Assets.xcassets */; };
@@ -134,6 +135,7 @@
 		6EBD9439AF37818ED0CF7923 /* FakeDiagnosticLogsCopying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeDiagnosticLogsCopying.swift; sourceTree = "<group>"; };
 		7112491BEBC76E3C9E10C345 /* ServerDiscoveryViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDiscoveryViewSnapshotTests.swift; sourceTree = "<group>"; };
 		7376A3169FBA4CAD37D3A846 /* PairingWordsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingWordsViewSnapshotTests.swift; sourceTree = "<group>"; };
+		7C5DC6224FB1E4AEC955912F /* GranitaMobileMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GranitaMobileMac.entitlements; sourceTree = "<group>"; };
 		8A2E57A0D14A99FC00986648 /* DiagnosticClipboardIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticClipboardIntegrationTests.swift; sourceTree = "<group>"; };
 		8B8C72B250B4997EC1C445BA /* WorktreeSplitScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSplitScreenSnapshotTests.swift; sourceTree = "<group>"; };
 		9199F61D59B2B2B7BBF8D1F0 /* GranitaMobileConnectionTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileConnectionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -152,6 +154,7 @@
 		C11FFC228F9E6F34066874BD /* GranitaMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GranitaMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepositoriesSheetSnapshotTests.swift; sourceTree = "<group>"; };
 		C77CD613CBDF5A03306382D2 /* GranitaMacSnapshotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranitaMacSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D091EDEC0B618663C17BD257 /* FakeSystemSettingsOpening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSystemSettingsOpening.swift; sourceTree = "<group>"; };
 		D0FB3B0BE8F6837D2FEBD448 /* ReadmeScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadmeScreenshotTests.swift; sourceTree = "<group>"; };
 		D3BC98CD00B6E3ADAEC253C8 /* PairingOutcomeViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingOutcomeViewSnapshotTests.swift; sourceTree = "<group>"; };
 		DEB6CE5128C49CA378339D91 /* PairingScannerViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingScannerViewSnapshotTests.swift; sourceTree = "<group>"; };
@@ -219,6 +222,7 @@
 				1D8BA25970E39E480588A658 /* Assets.xcassets */,
 				ABDB44F88B738911C79CBB37 /* GranitaMobile.entitlements */,
 				0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */,
+				7C5DC6224FB1E4AEC955912F /* GranitaMobileMac.entitlements */,
 				4A5172EA1B9F586605B64A14 /* Info.plist */,
 			);
 			path = GranitaMobile;
@@ -268,6 +272,7 @@
 				682FAD294D9C10F0B38995DD /* FakePairingSource.swift */,
 				AF0BBEF4534DF066084F9A26 /* FakeReviewCommentStore.swift */,
 				671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */,
+				D091EDEC0B618663C17BD257 /* FakeSystemSettingsOpening.swift */,
 				ABD95D5288CD43102F5B06BD /* FakeWorktreeReadAnnouncing.swift */,
 				026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */,
 				51403CA6C39240D759A48F28 /* FileSelectorViewSnapshotTests.swift */,
@@ -602,6 +607,7 @@
 				6571CB6925C31A657D504ACC /* FakePairingSource.swift in Sources */,
 				FDB3B8D464BEAF518D2C785F /* FakeReviewCommentStore.swift in Sources */,
 				995346EDCFE3C27F21791772 /* FakeReviewPasteboard.swift in Sources */,
+				8CD7BD51C534328F037A68C0 /* FakeSystemSettingsOpening.swift in Sources */,
 				1ECA875228F326D5BBD1F46D /* FakeWorktreeReadAnnouncing.swift in Sources */,
 				8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */,
 				118220695C6969CCFBE990DF /* FileSelectorViewSnapshotTests.swift in Sources */,
@@ -725,6 +731,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Apps/GranitaMobile/GranitaMobile.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Apps/GranitaMobile/GranitaMobileMac.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -738,10 +745,11 @@
 				MARKETING_VERSION = 0.12.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
+				"PRODUCT_NAME[sdk=macosx*]" = "Granita Client";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -784,6 +792,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Apps/GranitaMobile/GranitaMobile.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Apps/GranitaMobile/GranitaMobileMac.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -797,10 +806,11 @@
 				MARKETING_VERSION = 0.12.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
+				"PRODUCT_NAME[sdk=macosx*]" = "Granita Client";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -910,7 +920,7 @@
 				);
 				MARKETING_VERSION = 0.12.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
-				PRODUCT_NAME = Granita;
+				PRODUCT_NAME = "Granita Server";
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -936,7 +946,7 @@
 				);
 				MARKETING_VERSION = 0.12.2;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
-				PRODUCT_NAME = Granita;
+				PRODUCT_NAME = "Granita Server";
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
@@ -1012,7 +1022,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac.snapshottests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Granita Server.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita Server";
 			};
 			name = Debug;
 		};
@@ -1029,7 +1039,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac.snapshottests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Granita Server.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita Server";
 			};
 			name = Release;
 		};

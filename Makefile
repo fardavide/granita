@@ -42,10 +42,14 @@ test: ## Run the package test suite — no simulator, no Xcode
 	cd $(PACKAGE) && swift test
 
 .PHONY: build
-build: ## Compile-check the package and both apps
+build: ## Compile-check the package and both apps, on all three destinations
 	cd $(PACKAGE) && swift build
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac    -destination '$(MAC_GENERIC)' -quiet $(UNSIGNED)
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
+	@# The Client's third destination. `swift build` above already compiles every Client target for
+	@# macOS — it is the host — so what this adds is the app shell, its assets and its plist, which
+	@# is exactly the half that was riding "Designed for iPad" before issue #73.
+	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(MAC_GENERIC)' -quiet $(UNSIGNED)
 
 .PHONY: coverage
 coverage: ## Run the coverage gate locally — CI's verdict on five of the six values
@@ -160,7 +164,7 @@ run-mac: ## Build and launch the menu bar app, signed for this machine
 	@# which is most of what there is to see here.
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac -configuration Debug \
 		-destination 'platform=macOS' -derivedDataPath .build/mac -quiet
-	open .build/mac/Build/Products/Debug/Granita.app
+	open ".build/mac/Build/Products/Debug/Granita Server.app"
 
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures

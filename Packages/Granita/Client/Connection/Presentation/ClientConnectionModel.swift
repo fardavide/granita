@@ -91,6 +91,7 @@ public final class ClientConnectionModel {
     private let scanner: any CodeScanning
     private let addresses: any ServerAddressResolving
     private let copyingLogs: any DiagnosticLogsCopying
+    private let settings: any SystemSettingsOpening
 
     /// How long the hint stays replaced by the capsule that says a code was not ours.
     private let hintReturnsAfter: Duration
@@ -101,7 +102,8 @@ public final class ClientConnectionModel {
         camera: any CameraAuthorizing,
         scanner: any CodeScanning,
         addresses: any ServerAddressResolving,
-        copyingLogs: any DiagnosticLogsCopying
+        copyingLogs: any DiagnosticLogsCopying,
+        settings: any SystemSettingsOpening
     ) {
         self.init(
             browsing: browsing,
@@ -110,6 +112,7 @@ public final class ClientConnectionModel {
             scanner: scanner,
             addresses: addresses,
             copyingLogs: copyingLogs,
+            settings: settings,
             hintReturnsAfter: .seconds(2)
         )
     }
@@ -123,6 +126,7 @@ public final class ClientConnectionModel {
         scanner: any CodeScanning,
         addresses: any ServerAddressResolving,
         copyingLogs: any DiagnosticLogsCopying,
+        settings: any SystemSettingsOpening,
         hintReturnsAfter: Duration
     ) {
         self.browsing = browsing
@@ -131,7 +135,19 @@ public final class ClientConnectionModel {
         self.scanner = scanner
         self.addresses = addresses
         self.copyingLogs = copyingLogs
+        self.settings = settings
         self.hintReturnsAfter = hintReturnsAfter
+    }
+
+    /// Sends the reader to the switch a screen has just told them is off.
+    ///
+    /// **Which pane is the screen's to say, not the model's**, because the three that offer this are
+    /// three different refusals: a browse the local network refused, six words that could not resolve
+    /// because of the same, and a camera the reader turned off. On iOS all three land on the app's own
+    /// page and the argument selects nothing; on macOS it selects between two panes of Privacy &
+    /// Security, which is why the argument exists at all.
+    public func openSettings(_ pane: SystemSettingsPane) {
+        settings.open(pane)
     }
 
     public func copyLogs(context: DiagnosticContext) async {

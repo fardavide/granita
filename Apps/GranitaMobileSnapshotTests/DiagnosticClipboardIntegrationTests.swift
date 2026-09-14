@@ -29,7 +29,7 @@ struct DiagnosticClipboardIntegrationTests {
         init(report: String) {
             sut = CopyDiagnosticLogs(
                 report: FakeDiagnosticReportProviding(report: report),
-                pasteboard: UiKitDiagnosticPasteboard()
+                pasteboard: SystemDiagnosticPasteboard()
             )
         }
     }

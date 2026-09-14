@@ -38,7 +38,7 @@ struct PairingScannerScreen: View {
             macName: server.name,
             state: model.pairing,
             onEnterWords: showTheWordsInstead,
-            onOpenSettings: openSettings
+            onOpenSettings: { model.openSettings(.camera) }
         ) {
             CameraPreviewView(session: phone.cameraSession)
         }

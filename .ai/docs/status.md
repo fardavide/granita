@@ -2,6 +2,69 @@
 
 Where the project is. Update this when a slice lands.
 
+**The Client builds for macOS natively, and four dead controls came with the destination.** The
+target is the two-line half of [issue #73](https://github.com/fardavide/granita/issues/73):
+`supportedDestinations` gains `macOS`, `make build` gains a fourth invocation so the sanctioned
+command is what checks it, and the Mac destination compiled clean on the first run. **The
+portability half was already done and nobody had noticed** — `swift build` compiles the entire
+Client graph for macOS today, because it is the host, which is what lets `make test` run with no
+simulator. What was missing was never portability. It was a destination.
+
+**What the destination broke was four premises written as behaviour.** Each of the four carried a
+comment saying, in its own words, *nothing on macOS ever constructs this*; each was true; each
+stopped being true the moment the target existed. *Copy review* turned green having copied nothing,
+*Open Settings* did nothing on all three screens that offer it, *Copy Logs* threw, and the
+viewfinder — which design §5 orders first, so it is the primary way into this product — drew a black
+rectangle and never said why. All four are built now.
+
+**The settings opener needed an argument rather than a branch, and the argument moved it out of the
+view layer.** iOS carries every switch on the app's own page; macOS splits Local Network from Camera,
+so a Mac that ignored the difference would answer a reader whose camera is off with a Local Network
+switch. It had been a free function in a `Presentation` module excusing itself as *"nothing for a fake
+to stand in for"* — true of the act, false of the choice beside it the moment there were two panes to
+choose between. **The coverage gate is what forced it rather than the rule**: the Snapshot row is
+measured over the view layers alone, so twenty lines of URL mapping there are twenty no baseline can
+execute, and the row fell on a branch that lowered the project's uncovered total. It is a
+`SystemSettingsOpening` seam now — pane in `Domain`, URLs in `Data`, one method on the model beside
+`copyLogs` — and the view layer ends the slice smaller than it started. All in
+[`decisions.md`](decisions.md).
+
+**Both pasteboards left the exempt set on the way past.** They are named boards rather than the
+general one, so a test writes, reads back and releases its own and `make test` never touches the
+developer's clipboard — which is what the exemption had been buying. *Did pressing Copy put on the
+pasteboard the string the row actually shows* has an answer for the first time, on both platforms.
+
+**There are two Mac apps now, so there are two names.** Both targets set `PRODUCT_NAME: Granita`,
+which cost nothing while the platforms were disjoint and refuses the build graph outright the moment
+both target macOS — *Multiple commands produce `Granita.app`*. It is a product fact rather than a
+build quirk, since a reader cannot have two identically named apps in /Applications either. Davide's
+call: the menu bar app is **Granita Server**, the Mac Client is **Granita Client**, and **the phone
+and iPad keep `Granita`** — which is why the Client's is an SDK-conditional override rather than a
+rename, since that app is on TestFlight and nothing about the collision reaches it.
+
+**The local gate agreed with CI only once the graph was cold**, and that is the lesson worth keeping.
+`make coverage` passed on this branch while CI failed on the same commit, because the macOS pass
+reused derived data from before the Client had a Mac destination and never computed the conflict. **A
+change that adds a destination or a target cannot be verified by an incremental local build.**
+
+**What this is not: chrome, and publication.** The Mac window is the iPad's — the back-chevron, the
+sidebar, the toolbar — and no section of [`design.md`](design.md) covers a Client screen as a Mac
+window. Davide's call is that this one is settled **in prose rather than through a design round
+trip**, and that section is not written yet. Nothing here publishes a Mac Client either: Xcode Cloud
+archives the Client for iOS only, which is why a destination can land before its chrome exists
+without shipping half a screen to anybody. **No version bump and no changelog entry**, for 0.5.0's
+reason exactly: nothing here is something a reader can do yet, and merging publishes.
+
+**Verification.** 1,485 package tests in 140 suites pass, up from 1,476 in 138 — ten added, one
+removed with the refusal it asserted. `make build` passes on all four destinations, unsigned:
+package, `GranitaMac`, the Client on iOS and the Client on macOS, with no error and no warning the
+iOS destination does not also emit. All six coverage values hold against main at `59e4fae` — unit
+97.2%/94.5%, snapshot 97.1%/97.8%, all-test 97.9%/95.3%, with 203 uncovered lines, six fewer than
+the baseline. The Mac destination is pointed at an empty entitlements file by SDK, because the
+multicast entitlement is iOS-only and a Mac profile cannot carry it. No release has been published,
+and none of the four controls has been pressed on a Mac — that is the device afternoon's list, and
+it is the only thing that can answer whether they work.
+
 **Version 0.12.1 — the skeleton is short, and the diff arrives rather than replacing it.** Davide
 read 0.12.0 and reversed design §9's opening premise: *"we cannot predict the size of the expanders,
 so it actually doesn't match correctly the final height."* He is right and the arithmetic was never

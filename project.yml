@@ -63,7 +63,11 @@ targets:
     info:
       path: Apps/GranitaMac/Info.plist
       properties:
-        CFBundleDisplayName: Granita
+        # **Named for its half of the product, because there are two Mac apps now.** This one serves
+        # the diffs; the Client reads them, and as of issue #73 it has a Mac destination of its own.
+        # Two apps called Granita cannot both sit in /Applications, and the build system says so
+        # first — see the Client's own `PRODUCT_NAME` override. Davide's call, 14 September 2026.
+        CFBundleDisplayName: Granita Server
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # Menu bar only: no Dock icon, no main window.
@@ -85,7 +89,7 @@ targets:
       groups: [shared]
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac
-        PRODUCT_NAME: Granita
+        PRODUCT_NAME: Granita Server
         # Notarisation requires the hardened runtime. Exec'ing /usr/bin/git is unaffected by it —
         # the binary is Apple-signed.
         ENABLE_HARDENED_RUNTIME: YES
@@ -94,9 +98,14 @@ targets:
         # Bonjour registration starts failing or re-prompting for no visible reason.
         CODE_SIGN_STYLE: Automatic
 
+  # **Three destinations from one target, and the Mac one is native SwiftUI rather than Catalyst.**
+  # The whole Client package graph already compiles for macOS — `swift build` builds it on the host
+  # so `make test` needs no simulator — so what was missing was never the code but a destination to
+  # build it for. Running this on a Mac before now meant Apple's "Designed for iPad" translation of
+  # the unmodified iPadOS binary. See `.ai/docs/decisions.md` and issue #73.
   GranitaMobile:
     type: application
-    supportedDestinations: [iOS, iPadOS]
+    supportedDestinations: [iOS, iPadOS, macOS]
     sources:
       - Apps/GranitaMobile
     dependencies:
@@ -116,7 +125,11 @@ targets:
     info:
       path: Apps/GranitaMobile/Info.plist
       properties:
-        CFBundleDisplayName: Granita
+        # **Follows `PRODUCT_NAME` rather than repeating it**, because that setting is now
+        # SDK-conditional: this resolves to `Granita` on a phone and an iPad and to `Granita Client`
+        # on a Mac, which is the one place the two apps have to be told apart. A literal here would
+        # put the phone's name under the Mac app's icon.
+        CFBundleDisplayName: $(PRODUCT_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
@@ -168,7 +181,27 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile
         PRODUCT_NAME: Granita
+        # **Two apps cannot both be `Granita.app`, and on macOS these two now are.** The menu bar app
+        # takes that name and this one had it too, which cost nothing while the platforms were
+        # disjoint: different SDKs, different build directories, no collision. Building both for macOS
+        # puts two `create directory` commands on one bundle path in a single Products directory, and
+        # the build system refuses the graph outright — "Multiple commands produce Granita.app" — which
+        # is the honest answer rather than a build-system quirk, since a reader cannot have two
+        # identically named apps in /Applications either. The bundle identifiers already differ.
+        #
+        # **Davide named both halves rather than only this one**, on 14 September 2026: the menu bar
+        # app is *Granita Server* and this is *Granita Client*. **The phone and the iPad keep
+        # `Granita`**, which is why this is an SDK-conditional override rather than a rename — that
+        # app is on TestFlight, its name is on a home screen, and nothing about the collision reaches
+        # it.
+        "PRODUCT_NAME[sdk=macosx*]": Granita Client
         CODE_SIGN_STYLE: Automatic
+        # **The multicast entitlement above is iOS-only, and a Mac profile cannot carry it.** The
+        # generated file is one file for the whole target, so the Mac destination is pointed at an
+        # empty one by SDK rather than sharing it — signing refuses an entitlement no profile grants,
+        # and it refuses it at the end of a build rather than at the start. The Mac needs nothing in
+        # its place: broadcast is ungated there, and the app is unsandboxed like its menu bar sibling.
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Apps/GranitaMobile/GranitaMobileMac.entitlements
         # 1,2 = iPhone and iPad. With iPhone alone iPadOS runs the app in compatibility mode: a
         # fixed iPhone-shaped window that cannot be resized, with no multitasking.
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -204,9 +237,10 @@ targets:
     settings:
       base:
         # Same override and same reason as the iOS bundle: PRODUCT_NAME renames the product to
-        # `Granita`, so XcodeGen's target-derived default points at a bundle that is never built.
-        # BUNDLE_EXECUTABLE_FOLDER_PATH is `Contents/MacOS` on macOS.
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita"
+        # `Granita Server`, so XcodeGen's target-derived default points at a bundle that is never
+        # built. BUNDLE_EXECUTABLE_FOLDER_PATH is `Contents/MacOS` on macOS. **Spelled out rather
+        # than built from `$(PRODUCT_NAME)`**, which here means this test bundle's own name.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Granita Server.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita Server"
         BUNDLE_LOADER: "$(TEST_HOST)"
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mac.snapshottests
         # Needed the moment anything in this scheme is signed, which the UI test bundle below is.
@@ -221,7 +255,7 @@ targets:
   # loaded into the app — it is a separate runner that launches it — so XcodeGen derives
   # `TEST_TARGET_NAME` from the target dependency below and derives `TEST_HOST` only for unit test
   # bundles. `TEST_TARGET_NAME` takes the *target* name rather than the product name, so the
-  # `PRODUCT_NAME: Granita` rename that forces the override above cannot bite here. Adding a
+  # `PRODUCT_NAME: Granita Server` rename that forces the override above cannot bite here. Adding a
   # TEST_HOST to "match" the bundle above is the wrong repair for any failure this target has.
   GranitaMacUiTests:
     type: bundle.ui-testing

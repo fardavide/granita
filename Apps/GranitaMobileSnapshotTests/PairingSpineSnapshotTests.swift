@@ -253,6 +253,7 @@ private func aModel(
         camera: FakeCameraAuthorization(current: camera),
         scanner: FakeCodeScanner(),
         addresses: FakeServerAddressResolver(answering: resolving),
-        copyingLogs: FakeDiagnosticLogsCopying()
+        copyingLogs: FakeDiagnosticLogsCopying(),
+        settings: FakeSystemSettingsOpening()
     )
 }
