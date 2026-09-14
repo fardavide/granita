@@ -222,11 +222,16 @@ if [ -z "$MAC_SNAPSHOT_PROFILE" ]; then
 fi
 
 MAC_PRODUCTS="${MAC_DERIVED}/Build/Products/Debug"
+# **`Granita Server`, with the space, since issue #73 gave the Client a Mac destination of its own.**
+# Two targets cannot both produce `Granita.app` in one products directory, so the menu bar app took
+# the name that says which half it is. This is the third place the old spelling was written out rather
+# than derived, and none of the three fails until it is run — so if this ever reports finding no
+# product, check `PRODUCT_NAME` in project.yml before anything else.
 MAC_SNAPSHOT_OBJECTS=()
 for candidate in \
-    "${MAC_PRODUCTS}/Granita.app/Contents/MacOS/Granita.debug.dylib" \
-    "${MAC_PRODUCTS}/Granita.app/Contents/MacOS/Granita" \
-    "${MAC_PRODUCTS}/Granita.app/Contents/PlugIns/GranitaMacSnapshotTests.xctest/Contents/MacOS/GranitaMacSnapshotTests"
+    "${MAC_PRODUCTS}/Granita Server.app/Contents/MacOS/Granita Server.debug.dylib" \
+    "${MAC_PRODUCTS}/Granita Server.app/Contents/MacOS/Granita Server" \
+    "${MAC_PRODUCTS}/Granita Server.app/Contents/PlugIns/GranitaMacSnapshotTests.xctest/Contents/MacOS/GranitaMacSnapshotTests"
 do
     if [ -f "$candidate" ]; then
         MAC_SNAPSHOT_OBJECTS+=(-object "$candidate")

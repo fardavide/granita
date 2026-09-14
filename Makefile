@@ -164,7 +164,7 @@ run-mac: ## Build and launch the menu bar app, signed for this machine
 	@# which is most of what there is to see here.
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac -configuration Debug \
 		-destination 'platform=macOS' -derivedDataPath .build/mac -quiet
-	open .build/mac/Build/Products/Debug/Granita.app
+	open ".build/mac/Build/Products/Debug/Granita Server.app"
 
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures

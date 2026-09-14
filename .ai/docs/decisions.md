@@ -6152,3 +6152,43 @@ destination can merge before its chrome exists without shipping half a screen to
 **The multicast entitlement does not cross.** It is iOS-only and a Mac profile cannot carry it, so the
 Mac destination is pointed at an empty entitlements file by SDK. It needs nothing in its place:
 broadcast is ungated on macOS, and the Client is unsandboxed like its menu bar sibling.
+
+### The two Mac apps needed two names, and the build system asked before anyone did
+
+Both targets set `PRODUCT_NAME: Granita`. That cost nothing while the platforms were disjoint —
+different SDKs, different products directories, no collision anyone could hit. Building both for
+macOS puts two `create directory` commands on one bundle path in a single products directory, and the
+build graph is refused outright: *Multiple commands produce `Granita.app`*. The bundle identifiers
+already differed; the file name did not.
+
+**This is a product fact rather than a build-system quirk**, which is why it was not worked around: a
+reader cannot have two identically named apps in /Applications either, and the day the Mac Client is
+distributed is the day that stops being hypothetical. Davide named both halves on 14 September 2026 —
+**the menu bar app is *Granita Server*, the Mac Client is *Granita Client*.**
+
+**The phone and the iPad keep `Granita`**, which is why the Client's is an SDK-conditional override
+rather than a rename. That app is on TestFlight, its name is on a home screen, and nothing about the
+collision reaches it. `CFBundleDisplayName` follows `$(PRODUCT_NAME)` rather than repeating a literal,
+so the two resolve per platform from one place — a second literal is how the phone's name ends up
+under the Mac app's icon.
+
+**Three references had the old product name spelled out, and the third is the one worth naming.** Two
+were found by reading: the Mac snapshot bundle's `TEST_HOST`, which cannot use `$(PRODUCT_NAME)`
+because in a test target that means the *test bundle's* name, and `make run-mac`'s `open`. The third
+was found by a red gate — `measure-coverage.sh` locates the Mach-O objects to read counters from by
+writing the bundle path out, so the macOS pass built and ran and then reported *found no built product
+to read coverage from*. **That failure mode is worth remembering: the rename does not break the build,
+it breaks the measurement**, and the message names a directory rather than a product name. If it ever
+appears again, check `PRODUCT_NAME` before anything else.
+
+### The local gate agreed with CI only once the graph was cold
+
+`make coverage` passed on this branch before the collision was introduced into it and **kept passing
+after**, while CI failed on the same commit. The difference was warm derived data: the macOS pass
+reused a build graph from before the Client had a Mac destination, so the two-targets-one-bundle
+conflict was never computed. CI starts empty and computed it immediately.
+
+The rule that falls out is narrow and worth keeping: **a change that adds a destination or a target
+cannot be verified by an incremental local build.** `make build` and a warm `make coverage` are
+evidence about the code, not about the graph. Deleting `build/derived` before the run is what made the
+local answer match the runner's — both the failure and, after the rename, the pass.

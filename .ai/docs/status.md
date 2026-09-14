@@ -34,6 +34,19 @@ general one, so a test writes, reads back and releases its own and `make test` n
 developer's clipboard — which is what the exemption had been buying. *Did pressing Copy put on the
 pasteboard the string the row actually shows* has an answer for the first time, on both platforms.
 
+**There are two Mac apps now, so there are two names.** Both targets set `PRODUCT_NAME: Granita`,
+which cost nothing while the platforms were disjoint and refuses the build graph outright the moment
+both target macOS — *Multiple commands produce `Granita.app`*. It is a product fact rather than a
+build quirk, since a reader cannot have two identically named apps in /Applications either. Davide's
+call: the menu bar app is **Granita Server**, the Mac Client is **Granita Client**, and **the phone
+and iPad keep `Granita`** — which is why the Client's is an SDK-conditional override rather than a
+rename, since that app is on TestFlight and nothing about the collision reaches it.
+
+**The local gate agreed with CI only once the graph was cold**, and that is the lesson worth keeping.
+`make coverage` passed on this branch while CI failed on the same commit, because the macOS pass
+reused derived data from before the Client had a Mac destination and never computed the conflict. **A
+change that adds a destination or a target cannot be verified by an incremental local build.**
+
 **What this is not: chrome, and publication.** The Mac window is the iPad's — the back-chevron, the
 sidebar, the toolbar — and no section of [`design.md`](design.md) covers a Client screen as a Mac
 window. Davide's call is that this one is settled **in prose rather than through a design round
