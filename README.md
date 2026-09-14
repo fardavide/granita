@@ -66,11 +66,11 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.12.2** — a worktree opens on its diff, not on 92pt of empty grey above the first file.
 - **0.12.1** — an unarrived file draws a short placeholder, and the diff moves into place instead of
   snapping.
 - **0.12.0** — a file you are waiting for says so; one your Mac refused says that instead, with a bar
   offering the one action that helps.
-- **0.11.4** — opening a Mac says what it is waiting for, and refreshing keeps your worktrees.
 
 [Every release](CHANGELOG.md).
 

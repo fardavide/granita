@@ -7,6 +7,15 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.12.2 — 2026-09-14
+- **A worktree opens on its diff instead of on a band of empty grey.** The first file sat 92pt down
+  the page — a third of the visible code on a phone — and one flick of the scroll hid the evidence,
+  which is why it survived every release since the screen was built. The screen told itself to put
+  the first file at the top of the scroll's frame, and the frame begins under the navigation bar,
+  where the content is already inset by exactly that much: the same measurement, applied twice.
+- **Nothing about jumping to a file changed.** Tapping a file in the list still puts it where it
+  always did; the only position that stopped being asserted is the one nobody asked for.
+
 ### 0.12.1 — 2026-09-13
 - **A file that has not arrived draws a short placeholder instead of a full-height one.** 0.12.0
   sized it from the line count your Mac reports, which cannot include the expanders a drawn file
