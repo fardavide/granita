@@ -133,6 +133,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        # Required for notarised distribution outside the Mac App Store, and what Finder shows as
+        # the app's category. Ignored on a phone, where the App Store record carries the category
+        # instead — the menu bar app has carried this key since it shipped, for the same reason.
+        LSApplicationCategoryType: public.app-category.developer-tools
         UILaunchScreen: {}
         NSLocalNetworkUsageDescription: >-
           Granita finds your Mac on your local network so you can read the diffs it serves.
@@ -196,6 +200,14 @@ targets:
         # it.
         "PRODUCT_NAME[sdk=macosx*]": Granita Client
         CODE_SIGN_STYLE: Automatic
+        # **Notarisation requires the Hardened Runtime**, and this app is bound for Developer ID
+        # rather than the Mac App Store — `SPEC.md` §2 puts both Mac apps outside the store. Scoped
+        # to the Mac SDK because the setting means nothing on a phone.
+        #
+        # It is not free: the Hardened Runtime denies AVCapture by default, so the camera entitlement
+        # goes in `GranitaMobileMac.entitlements` in the same breath. Turning this on without it
+        # ships a viewfinder that draws nothing.
+        "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
         # **The multicast entitlement above is iOS-only, and a Mac profile cannot carry it.** The
         # generated file is one file for the whole target, so the Mac destination is pointed at an
         # empty one by SDK rather than sharing it — signing refuses an entitlement no profile grants,
