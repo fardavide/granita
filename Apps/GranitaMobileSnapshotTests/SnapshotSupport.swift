@@ -82,16 +82,20 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
         ).codePointSize
     }
 
+    static let iPhoneLight = SnapshotLayout(name: "iPhone-light", configuration: .iPhone13Pro, style: .light)
+    static let iPhoneDark = SnapshotLayout(name: "iPhone-dark", configuration: .iPhone13Pro, style: .dark)
+    static let iPadLight = SnapshotLayout(name: "iPad-light", configuration: .iPadPro11, style: .light)
+    static let iPadDark = SnapshotLayout(name: "iPad-dark", configuration: .iPadPro11, style: .dark)
+
     /// iPhone and iPad, light and dark. Four renderings per state.
     ///
     /// The device configurations describe size and safe-area traits, not a specific simulator — the
     /// tests run on whatever simulator CI pins, and the layout is what is being asserted.
-    static let all: [SnapshotLayout] = [
-        SnapshotLayout(name: "iPhone-light", configuration: .iPhone13Pro, style: .light),
-        SnapshotLayout(name: "iPhone-dark", configuration: .iPhone13Pro, style: .dark),
-        SnapshotLayout(name: "iPad-light", configuration: .iPadPro11, style: .light),
-        SnapshotLayout(name: "iPad-dark", configuration: .iPadPro11, style: .dark)
-    ]
+    ///
+    /// **Named individually above because one suite wants a few of them rather than all four.** The
+    /// README publishes a curated set — a phone in both appearances, an iPad in one — and picking
+    /// those out of this array by index would tie a documented image to a position in a list.
+    static let all: [SnapshotLayout] = [iPhoneLight, iPhoneDark, iPadLight, iPadDark]
 }
 
 // MARK: - What the previous case left behind

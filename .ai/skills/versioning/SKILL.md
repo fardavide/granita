@@ -40,8 +40,13 @@ within a release train, meaning across every build sharing one `MARKETING_VERSIO
 
 ## The changelog moves with the version
 
-Every bump carries a matching entry in the `## Changelog` section of `README.md`, in the same pull
-request. Newest first, heading exactly `### <version> — <YYYY-MM-DD>` with an em dash.
+Every bump carries a matching entry at the top of `CHANGELOG.md`, in the same pull request. Newest
+first, heading exactly `### <version> — <YYYY-MM-DD>` with an em dash.
+
+**Then add one line to `README.md`'s `What's new`, and drop the oldest so three remain.** One line —
+the release's single most user-visible change, in a sentence. It is a teaser for a reader who will
+never open the changelog, and the README is kept short on purpose, so anything longer than a line
+belongs only in `CHANGELOG.md`. Never say there what the changelog does not.
 
 Entries are **user-facing**: what changed for someone reading diffs on their phone, not what changed
 in the code. A bold lead-in sentence per bullet, then the explanation. If a change has no
