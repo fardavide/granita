@@ -127,6 +127,28 @@ struct WorktreeDiffScreenSnapshotTests {
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-refused-mark")
     }
 
+    /// **The read this screen used to do in silence.** Coming back to a worktree re-runs the
+    /// `.task` that fetches the whole file list, and the files already drawn deliberately stay
+    /// drawn while it runs — so until this baseline existed there was no picture in which anything
+    /// said a request was out.
+    ///
+    /// What it holds is that the only difference from `a-change-set` is in the bar: the scroll is
+    /// untouched, because a reflow is what `SPEC.md` §10 forbids and an indicator inserted into the
+    /// list would be one.
+    @Test(arguments: SnapshotLayout.all)
+    func `given the file list is being read again when the screen is rendered then the toolbar says so`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let (model, refresh) = await aRefreshingViewerModel(in: layout)
+        // Cancelled on every path, because a read still parked when this returns is a read the next
+        // suite renders against — and these suites share one window.
+        defer { refresh.cancel() }
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "the-file-list-is-refreshing")
+    }
+
     // MARK: - Design §9's two states inside a reserved card
 
     /// **The ordinary shape of a refused batch: several stopped blocks and one bar.**

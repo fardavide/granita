@@ -69,8 +69,28 @@ public final class ClientWorktreesModel {
         }
     }
 
+    /// Whether a read **nobody asked for** is running over worktrees already on screen.
+    ///
+    /// **The one refresh with nowhere to report itself.** A pull carries the list's own indicator
+    /// and *Try Again* puts design §8's progress view above the rows, so both of those are already
+    /// visible where the reader's attention is. An appearance read has neither: a `.task` re-runs
+    /// every time this screen comes back, the rows it is about to replace stay exactly where they
+    /// are, and the whole Mac is re-read — 5.843 seconds on the profiled five projects — with
+    /// nothing anywhere saying so.
+    ///
+    /// **`readResult` is what separates it from the first read**, rather than the trigger: until one
+    /// read has landed the screen is the full loading state, which is already a spinner and a
+    /// sentence, and a second spinner in the toolbar beside it would be the app saying one thing
+    /// twice.
+    /// **Stored rather than derived, because a threshold is a fact about time passing** and a
+    /// computed property has nothing to observe. `UnaskedForRefresh.announcementDelay` carries why
+    /// there is a threshold at all.
+    public private(set) var isAutomaticallyRefreshing = false
+
     private var worktrees: [Worktree] = []
     private var reading: ReadTask = .idle
+    private var announcingRefresh: Task<Void, Never>?
+    private let announcementDelay: Duration
     private var announcedPhase: ReadPhase = .notAnnounced
     private var readTrigger: WorktreeReadTrigger = .appearance
     private let repository: any GranitaRepository
@@ -85,8 +105,10 @@ public final class ClientWorktreesModel {
         preferences: any WorktreeListPreferences,
         copyingLogs: any DiagnosticLogsCopying,
         announcing: any WorktreeReadAnnouncing,
+        announcementDelay: Duration = UnaskedForRefresh.announcementDelay,
         now: @escaping @Sendable () -> Date
     ) {
+        self.announcementDelay = announcementDelay
         self.macName = macName
         self.repository = repository
         self.preferences = preferences
@@ -136,12 +158,21 @@ public final class ClientWorktreesModel {
         readStage = .finding(.unknown)
         announcedPhase = .notAnnounced
         readTiming = .running(started: started)
+        // **Only a read nobody asked for, and only over worktrees already on screen.** A pull
+        // carries the list's own indicator and a retry puts design §8's progress view above the
+        // rows; the first read has the whole screen. Decided after the line above that ages a stale
+        // receipt, so what is tested is whether anything has ever been read rather than whether the
+        // last attempt failed.
+        if trigger == .appearance, readResult != .notRead {
+            announcingRefresh = sayingTheRefreshIsWorthShowing(attempt: attempt)
+        }
         let task = Task { await performLoad(attempt: attempt) }
         reading = .running(attempt, task)
         defer {
             if ownsRead(attempt) {
                 reading = .idle
                 readTiming = .finished(started: started, ended: now())
+                stopAnnouncingTheRefresh()
             }
         }
         await withTaskCancellationHandler {
@@ -152,6 +183,7 @@ public final class ClientWorktreesModel {
     }
 
     public func cancelLoading() {
+        stopAnnouncingTheRefresh()
         switch reading {
         case .idle: break
         case .running(_, let task): task.cancel()
@@ -420,6 +452,26 @@ public final class ClientWorktreesModel {
             announcedPhase = phase
             announcing.announce(.stage(stage, macName: macName))
         }
+    }
+
+    /// Waits out the threshold and then, if this read is still the current one and still running,
+    /// puts the spinner beside the title.
+    ///
+    /// **The attempt is checked on the far side of the sleep**, because half a second is long enough
+    /// for the reader to leave and come back: without it a replaced read's timer would announce a
+    /// refresh that belongs to nothing.
+    private func sayingTheRefreshIsWorthShowing(attempt: UUID) -> Task<Void, Never> {
+        Task { [weak self, announcementDelay] in
+            try? await Task.sleep(for: announcementDelay)
+            guard Task.isCancelled == false, let self, ownsRead(attempt) else { return }
+            isAutomaticallyRefreshing = true
+        }
+    }
+
+    private func stopAnnouncingTheRefresh() {
+        announcingRefresh?.cancel()
+        announcingRefresh = nil
+        isAutomaticallyRefreshing = false
     }
 
     private func ownsRead(_ attempt: UUID) -> Bool {

@@ -245,6 +245,32 @@ The footer switches from *Read <age>, over Tailscale/on this network.* to *Showi
 the list with Pair Again, because its rows no longer have a usable credential.
 Rejected: an alert hiding the old list, and a permanent diagnostic toolbar button.
 
+### A read nobody asked for is reported beside the title *(Davide, 15 September 2026)*
+
+The two reads above are ones the reader performs, and both keep the treatment returned here: a pull
+uses the list's own activity indicator, and *Try Again* over retained content shows a stock progress
+view above the rows. **Neither covered the read that happens on its own.** Both the worktree list and
+the diff screen re-read from their own `.task`, so every return to either screen fetches again while
+the previous answer stays on screen — and that was invisible.
+
+A small stock progress view now turns **immediately to the right of the navigation title**, the Mac's
+name on the list and the worktree's on the diff. Rejected: the leading slot, which is the back
+button's side and the far end of the bar from the name the spinner is about; and a progress view
+above the rows, which is right for *Try Again* — the reader is waiting on a control they pressed —
+and wrong here, because it pushes every row down to make space for a read they did not ask for.
+
+Reaching the title slot means drawing the title in a principal toolbar item rather than leaving it to
+`.navigationTitle`. The title modifier stays anyway: the split view takes the sidebar column's header
+from it and a pushed screen takes its back-button label from it, and neither reads a principal item.
+Truncation is unchanged and still per-screen — middle for a Bonjour device name, tail for a generated
+worktree directory.
+
+**It waits half a second before appearing, and the threshold is the design rather than a tuning.**
+These reads mostly answer well inside it on a LAN, so announcing every one puts a spinner into the
+bar and takes it out again each time the reader presses Back — motion they did not cause, reporting a
+wait they never had. It is not §8's ten seconds, which says *this is taking unusually long* about a
+wait already on screen; this says *there is a wait at all*.
+
 ### Accessibility and transitions carry the same facts
 
 Use semantic colors and text styles; loading copy wraps without truncation. Combine the stage

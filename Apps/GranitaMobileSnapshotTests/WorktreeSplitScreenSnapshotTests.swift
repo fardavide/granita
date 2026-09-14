@@ -87,6 +87,42 @@ struct WorktreeSplitScreenSnapshotTests {
         )
     }
 
+    /// **The fullest the navigation bar ever gets, and the one layout nothing else photographs.**
+    ///
+    /// Every other baseline of these screens renders them as the root of their own stack, so there is
+    /// nothing to go back to and SwiftUI draws no chevron; the two that show the refresh spinner are
+    /// among them. This is the combination a reader actually produces by pressing Back into a
+    /// worktree they have already opened: the system's own leading chevron, the worktree's name and
+    /// the spinner in the title slot, and *3 files* trailing — four things competing for 390pt.
+    ///
+    /// It is worth a picture because the title is the part that gives way. The spinner is drawn
+    /// beside the name rather than in a slot of its own, so anything it costs comes out of the name,
+    /// and the name is what says which worktree is being read.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a chosen worktree being read again when the screen is rendered then the bar holds all of it`(
+        layout: SnapshotLayout
+    ) async throws {
+        // given
+        let model = aLoadableModel()
+        await model.load()
+        let (diff, refresh) = await aRefreshingViewerModel(in: layout)
+        // A read still parked when this returns is a read the next suite renders against, and every
+        // suite here shares one window.
+        defer { refresh.cancel() }
+        let chosen = try #require(aBusyMac.first).id
+
+        // when - then
+        assertScreenSnapshot(
+            NavigationStack(path: .constant(NavigationPath([chosen]))) {
+                WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+                    WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
+                }
+            },
+            layout: layout,
+            named: "split-with-a-worktree-being-read-again"
+        )
+    }
+
     /// **The word that appears when the screen and its destination are not reading the same list.**
     ///
     /// `displayName(of:)` falls back to *This worktree* whenever the chosen row is not in the state

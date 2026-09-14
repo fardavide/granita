@@ -7,6 +7,18 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.13.0 — 2026-09-15
+- **You can now see when Granita is fetching from your Mac.** Both the worktree list and a
+  worktree's file list re-read every time you come back to them, and until now they did it in
+  complete silence — the rows you were looking at were the old ones for as long as the read took,
+  with nothing anywhere saying so. A small spinner now turns beside the Mac's name, or the
+  worktree's, for as long as that read is running.
+- **It waits half a second before appearing.** Most of these reads answer faster than that on a
+  local network, and a spinner that flickered into the title bar every single time you pressed Back
+  would be reporting a wait you never had.
+- **Pulling to refresh and pressing Try Again are unchanged.** Those are reads you asked for, and
+  they keep the feedback they already had.
+
 ### 0.12.2 — 2026-09-14
 - **A worktree opens on its diff instead of on a band of empty grey.** The first file sat 92pt down
   the page — a third of the visible code on a phone — and one flick of the scroll hid the evidence,

@@ -6,6 +6,7 @@ import ClientWorktreesPresentation
 import CoreDiffDomain
 import Foundation
 import SwiftUI
+import Synchronization
 
 /// Diff lines a real repository would produce, for the screens design §4 draws.
 ///
@@ -731,7 +732,9 @@ func aChangedFile(
 /// It exists so the split screen's own baselines photograph **the real destination** rather than a
 /// stand-in: what those pictures are for is that a chosen row leads somewhere, and a stub behind the
 /// row would assert that a stub leads somewhere.
-struct FakeDiffRepository: GranitaRepository {
+/// A class rather than a struct, and only so it can count: a `Mutex` is non-copyable, and the read
+/// ordinal has to survive being handed to a model as an existential.
+final class FakeDiffRepository: GranitaRepository {
 
     let files: [FileChange]
     let diffs: [FileID: FileDiff]
@@ -739,9 +742,25 @@ struct FakeDiffRepository: GranitaRepository {
     /// What every batch comes back with, when it comes back refused.
     let refusal: ApiFailure?
 
-    init(entries: [ContinuousDiffEntry], refusing refusal: ApiFailure? = nil) {
+    /// How many change-set reads answer before the rest park until they are cancelled.
+    ///
+    /// **Parked rather than spun**, and the difference took four suites down: a
+    /// `while … { await Task.yield() }` gate never stops being runnable, so a read left open for a
+    /// baseline keeps the cooperative pool busy for the rest of the run — and because every suite
+    /// here shares one window, the renders after it came back blank. A sleep suspends and wakes on
+    /// cancellation, which is what the caller does once the shutter has closed.
+    let readsAnsweringAtAll: Int
+
+    private let readOrdinals = Mutex<Int>(0)
+
+    init(
+        entries: [ContinuousDiffEntry],
+        refusing refusal: ApiFailure? = nil,
+        answeringOnly readsAnsweringAtAll: Int = .max
+    ) {
         files = entries.map(\.file)
         self.refusal = refusal
+        self.readsAnsweringAtAll = readsAnsweringAtAll
         diffs = Dictionary(
             uniqueKeysWithValues: entries.compactMap { entry in
                 guard case .ready(let diff) = entry.content else { return nil }
@@ -751,7 +770,14 @@ struct FakeDiffRepository: GranitaRepository {
     }
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
-        WorktreeChanges(
+        let ordinal = readOrdinals.withLock { count in
+            count += 1
+            return count
+        }
+        if ordinal > readsAnsweringAtAll {
+            try? await Task.sleep(for: .seconds(60 * 60))
+        }
+        return WorktreeChanges(
             revision: "9d41e0c7",
             stats: ChangeStats(filesChanged: files.count, insertions: 83, deletions: 6),
             files: files,
@@ -825,18 +851,49 @@ func aLoadedViewerModel(of entries: [ContinuousDiffEntry], in layout: SnapshotLa
 /// into what it answers, and `WorktreeDiffScreen` reports the one it is drawing in from a `.task`
 /// that a synchronous render never lets finish — so the model is told here instead, and every
 /// baseline photographs the palette its own appearance asks for.
+/// The same model with a second read of the file list still in flight, which is the state the
+/// toolbar reports and the one a reader lands in every time they come back to a worktree.
+///
+/// **The read is parked rather than released**, because a baseline only needs it to still be
+/// running when the shutter opens and a released one would settle into the resting screen this
+/// suite already has. **The task comes back with it, and cancelling it is not optional**: a read
+/// left open outlives the test, and every suite here shares one window.
+@MainActor
+func aRefreshingViewerModel(in layout: SnapshotLayout) async -> (ClientViewerModel, Task<Void, Never>) {
+    let model = await aLoadedViewerModel(
+        of: aChangeSetPartlyArrived,
+        holding: [],
+        in: layout,
+        answeringOnly: 1,
+        // Announced at once here, because the threshold is what every *other* baseline in this
+        // suite relies on to stay resting — this is the one picture that is about the spinner.
+        announcingRefreshAfter: .zero
+    )
+    let refresh = Task { await model.load() }
+    while model.isRefreshing == false {
+        await Task.yield()
+    }
+    return (model, refresh)
+}
+
 @MainActor
 func aLoadedViewerModel(
     of entries: [ContinuousDiffEntry],
     holding comments: [ReviewComment],
     in layout: SnapshotLayout,
-    refusing refusal: ApiFailure? = nil
+    refusing refusal: ApiFailure? = nil,
+    answeringOnly readsAnsweringAtAll: Int = .max,
+    announcingRefreshAfter refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay
 ) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
         worktreeName: "TLS pinning",
         projectName: "granita",
-        repository: FakeDiffRepository(entries: entries, refusing: refusal),
+        repository: FakeDiffRepository(
+            entries: entries,
+            refusing: refusal,
+            answeringOnly: readsAnsweringAtAll
+        ),
         // In memory rather than this simulator's defaults: a baseline must photograph the same
         // screen on the tenth run as on the first, and a store that persists would carry whatever
         // the last recording wrote into the next one.
@@ -853,7 +910,8 @@ func aLoadedViewerModel(
         announcing: SilentDiffReadAnnouncements(),
         // Nothing here waits, so the threshold is never reached and the rows keep their first word.
         // The second one has a subject of its own in the scroll's suite, set directly.
-        longWait: DiffFileWait.longWait
+        longWait: DiffFileWait.longWait,
+        refreshAnnouncementDelay: refreshAnnouncementDelay
     )
     await model.load()
     await model.reading(0)

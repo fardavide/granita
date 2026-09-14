@@ -192,6 +192,80 @@ struct ClientViewerModelTests {
         #expect(refusing.sut.state == .loading)
     }
 
+    // MARK: - Reading the file list again
+
+    /// **The read a reader never asked for, which until now happened in silence.** This screen's
+    /// `.task` re-runs every time it appears, so coming back to a worktree fetches the whole change
+    /// set again while the old one stays on screen — and nothing anywhere said so.
+    @Test
+    func `given a change set on screen when it is read again then that read is reported`() async {
+        // given — the first read answers so there is something to refresh over; the one after it
+        // waits, which is the only moment this can be asserted in. The threshold is zero, because
+        // what it does has a test of its own below.
+        let scenario = Scenario(
+            files: aChangeSet(of: 3),
+            suspendingReadsAfter: 1,
+            refreshAnnouncementDelay: .zero
+        )
+        await scenario.sut.load()
+        #expect(scenario.sut.isRefreshing == false)
+
+        // when
+        let refresh = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+        while scenario.sut.isRefreshing == false {
+            await Task.yield()
+        }
+
+        // then — the files stay exactly where they were while it runs, which is what makes the
+        // toolbar the only place this read can be seen at all.
+        #expect(scenario.sut.isRefreshing)
+        let filesStillOnScreen: Int = switch scenario.sut.state {
+        case .reading(let entries): entries.count
+        case .loading, .nothingChanged, .failed: 0
+        }
+        #expect(filesStillOnScreen == 3)
+        await scenario.repository.releaseSuspendedRead()
+        await refresh.value
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    /// **A re-read that answers quickly is never announced**, which is what stops a spinner
+    /// appearing and vanishing in the bar every time a reader comes back to a worktree.
+    @Test
+    func `given a re-read that answers quickly when it ends then nothing was ever shown beside the name`() async {
+        // given — a threshold no read in this test can reach, against a Mac that answers at once.
+        let scenario = Scenario(files: aChangeSet(of: 3), refreshAnnouncementDelay: .seconds(60))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    /// The first read has the whole screen already, so nothing says the same thing again above it.
+    @Test
+    func `given nothing has been read yet when the first read is pending then it is not called a refresh`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 3),
+            suspendingReadsAfter: 0,
+            refreshAnnouncementDelay: .zero
+        )
+
+        // when
+        let first = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 1)
+
+        // then
+        #expect(scenario.sut.state == .loading)
+        #expect(scenario.sut.isRefreshing == false)
+        await scenario.repository.releaseSuspendedRead()
+        await first.value
+    }
+
     // MARK: - Which files get fetched, which is SPEC §10's rule being spent
 
     @Test
@@ -1103,6 +1177,8 @@ private struct Scenario {
         isTruncated: Bool = false,
         copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
         holdingDiffs: Bool = false,
+        suspendingReadsAfter: Int = .max,
+        refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay,
         longWait: Duration = DiffFileWait.longWait,
         alsoAnswering stranger: FileChange? = nil
     ) {
@@ -1121,6 +1197,7 @@ private struct Scenario {
             linesAnswer: linesAnswer,
             refusesTheFirstRead: refusesTheFirstRead,
             holdingDiffs: holdingDiffs,
+            suspendingReadsAfter: suspendingReadsAfter,
             alsoAnswering: stranger
         )
         copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
@@ -1139,7 +1216,8 @@ private struct Scenario {
             highlighter: FakeSyntaxHighlighter(),
             copyingLogs: copyingLogs,
             announcing: announcing,
-            longWait: longWait
+            longWait: longWait,
+            refreshAnnouncementDelay: refreshAnnouncementDelay
         )
     }
 }

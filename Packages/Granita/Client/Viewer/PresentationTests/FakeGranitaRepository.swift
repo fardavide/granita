@@ -49,6 +49,16 @@ final class FakeGranitaRepository: GranitaRepository {
     private let holds: Bool
     private let released = Mutex<Bool>(false)
 
+    /// How many change-set reads answer immediately before the rest wait to be let go.
+    ///
+    /// **Separate from `holds`, because the two suspend different halves of the screen.** A held
+    /// batch is a file in flight inside a list that has already arrived; a suspended change set is
+    /// the list itself being fetched. Which read suspends is the whole parameter: `0` holds the
+    /// first, so a test can assert on the loading screen, and `1` lets the first answer and holds
+    /// the one after it, which is the refresh.
+    private let readsAnsweringImmediately: Int
+    private let suspendedReadReleased = Mutex<Bool>(false)
+
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
     private let windows = Mutex<[LineWindow]>([])
@@ -61,8 +71,10 @@ final class FakeGranitaRepository: GranitaRepository {
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
         refusesTheFirstRead: ApiFailure? = nil,
         holdingDiffs holds: Bool = false,
+        suspendingReadsAfter readsAnsweringImmediately: Int = .max,
         alsoAnswering stranger: FileChange? = nil
     ) {
+        self.readsAnsweringImmediately = readsAnsweringImmediately
         self.changeSet = changeSet
         self.hunks = hunks
         self.diffFailure = diffFailure
@@ -78,16 +90,32 @@ final class FakeGranitaRepository: GranitaRepository {
         released.withLock { $0 = true }
     }
 
+    /// Lets a suspended change-set read answer.
+    func releaseSuspendedRead() {
+        suspendedReadReleased.withLock { $0 = true }
+    }
+
+    /// Returns once `count` change-set reads have been asked for, so a test can assert on a screen
+    /// with one of them still in flight rather than on the one it settles into.
+    func waitUntilReadStarted(count: Int) async {
+        while reads.withLock({ $0 }) < count {
+            await Task.yield()
+        }
+    }
+
     /// **Refuses the first read and answers afterwards when asked to**, which is the only way to put
     /// one model through a failure and then a retry — and the retry is what a reader presses when a
     /// screen has gone wrong, so it is the path worth holding to its behaviour.
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
-        let isFirst = reads.withLock { count in
+        let ordinal = reads.withLock { count in
             count += 1
-            return count == 1
+            return count
         }
-        if let refusesTheFirstRead, isFirst {
+        if let refusesTheFirstRead, ordinal == 1 {
             throw refusesTheFirstRead
+        }
+        while ordinal > readsAnsweringImmediately, suspendedReadReleased.withLock({ $0 }) == false {
+            await Task.yield()
         }
         return try changeSet.get()
     }
