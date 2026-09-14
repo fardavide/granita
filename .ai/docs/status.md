@@ -2,6 +2,31 @@
 
 Where the project is. Update this when a slice lands.
 
+**The two Mac apps have a delivery path, and the Hardened Runtime nearly took the camera with it.**
+The half of [issue #73](https://github.com/fardavide/granita/issues/73) that has been open longest.
+Nothing here chose the route — `SPEC.md` §2 did, by making both Mac apps unsandboxed, which puts both
+outside the Mac App Store and therefore outside TestFlight, whose macOS path needs an App Store-signed
+build. Developer ID plus notarisation is the only door left.
+
+**Notarisation requires the Hardened Runtime, and the Hardened Runtime denies AVCapture** — to every
+app, not only sandboxed ones, unless `com.apple.security.device.camera` says otherwise, and the denial
+arrives as a session producing no frames rather than as an error. So the entitlement lands in the same
+commit as the setting. **What makes it worth recording is when it would have been found**: `make
+build` signs nothing, every snapshot photographs a still rather than a camera, and the scanner is in
+`UNREACHABLE_FILES` because a host process has no camera — not one gate here would have gone red, and
+the first evidence would have been a notarised build with a viewfinder drawing nothing. That is the
+defect 0.13's slice removed from that screen, re-entering through the door marked *distribution*.
+
+The setting is scoped by SDK rather than by configuration, deliberately: a signed Debug build carries
+the Hardened Runtime too, so `make run-client-mac` — new, beside `run-mac` — is denied the camera in
+exactly the way a notarised build would be. Scoping it to Release would have left the fault visible
+only in the build nobody runs before shipping. All in [`decisions.md`](decisions.md).
+
+**What is left is not code.** A Developer ID Application certificate has never been issued for this
+account, so nothing here has ever been notarised, and the two workflows are server-side state on the
+App Store Connect record. Both are in "Configuration Davide still owns", with the repository side
+marked done.
+
 **The Client builds for macOS natively, and four dead controls came with the destination.** The
 target is the two-line half of [issue #73](https://github.com/fardavide/granita/issues/73):
 `supportedDestinations` gains `macOS`, `make build` gains a fourth invocation so the sanctioned
@@ -1282,8 +1307,20 @@ sets up delivery.
   privacy trap requires.
 - ~~Bundle identifier, App Store Connect record, internal tester group, agreements, Apple's GitHub
   app, and the iOS Xcode Cloud workflow.~~ Done — build 1 reached TestFlight.
-- A **second Xcode Cloud workflow for the Mac app**, archiving with Developer ID and notarising.
-  Not started; the Mac app runs locally in the meantime.
+- **A Developer ID Application certificate, and it is the gate rather than a step.** Nothing in this
+  repository has ever been notarised, no workflow configuration changes that, and both Mac apps now
+  need it rather than one. Everything below is blocked on it.
+- **Two Xcode Cloud workflows for the two Mac apps**, both archiving with Developer ID and
+  notarising — `GranitaMac` on the `GranitaMac` scheme, and `GranitaMobile` on the **`GranitaMobile`
+  scheme with the platform set to macOS**, which is the same scheme the iOS workflow already uses and
+  the reason that one must not be edited. Neither is started. **The repository side is done**: both
+  schemes are shared and committed, both apps carry the Hardened Runtime, the Mac Client carries the
+  camera entitlement the Hardened Runtime makes necessary and `LSApplicationCategoryType`, and
+  `ci_scripts/ci_pre_xcodebuild.sh` is generic — it rewrites versions by build setting, so a third
+  workflow needs no change to it.
+- **Neither Mac app can go to TestFlight**, which is not a configuration choice to revisit: that
+  route needs an App Store-signed build and both apps are deliberately unsandboxed. See
+  [`decisions.md`](decisions.md).
 - The first project folder to add.
 
 

@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<!-- Hand-written, unlike the iOS file beside it, which XcodeGen generates from project.yml.
+	     XcodeGen writes one entitlements file per target; the Mac destination needs a different one,
+	     so it is pointed here by SDK and maintained by hand. A key added in project.yml will not
+	     reach this file. -->
+
+	<!-- **The Hardened Runtime revokes camera access unless this says otherwise, and the failure is
+	     silent in the build that ships.** Notarisation requires the Hardened Runtime, the Hardened
+	     Runtime denies AVCapture by default even to an unsandboxed app, and the denial arrives as a
+	     session that produces no frames rather than as an error — which is the viewfinder drawing
+	     nothing, the exact defect issue #73 removed from this screen on the way in. A Debug build
+	     signed to run locally has no Hardened Runtime and works without this, so the one build that
+	     needs it is the one nobody runs before shipping. -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
+
+	<!-- Deliberately no App Sandbox key, which is the same call the menu bar app makes and is what
+	     keeps Developer ID distribution possible: `SPEC.md` §2 puts both Mac apps outside the Mac App
+	     Store, signed and notarised. There is no `com.apple.security.network.client` here for that
+	     reason — it is a sandbox entitlement and grants nothing without one. -->
+</dict>
 </plist>

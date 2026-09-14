@@ -166,6 +166,27 @@ run-mac: ## Build and launch the menu bar app, signed for this machine
 		-destination 'platform=macOS' -derivedDataPath .build/mac -quiet
 	open ".build/mac/Build/Products/Debug/Granita Server.app"
 
+.PHONY: run-client-mac
+run-client-mac: ## Build and launch the Mac Client, signed for this machine
+	@# **The one check that catches a dead control**, and the Client's Mac destination has had none:
+	@# every gate this repository runs photographs a screen or asserts a model, and neither presses
+	@# anything. Four seams were rewritten for this platform in the slice that added it and not one of
+	@# them has been pressed on a Mac.
+	@#
+	@# Signed and Debug for the same reason `run-mac` is: macOS 15+ tracks program identity by code
+	@# signature for local network privacy, and an ad-hoc "Sign to Run Locally" identity makes the
+	@# system lose the app across rebuilds — which shows up as the browse finding nothing, with
+	@# nothing saying why. This app browses, so it is the same trap.
+	@#
+	@# **This does exercise the Hardened Runtime**, which is worth knowing because it is the reason
+	@# the camera entitlement exists: the setting is scoped by SDK rather than by configuration, so
+	@# both Debug and Release carry it on a Mac, and a signed build here is denied AVCapture in
+	@# exactly the way a notarised one would be. A viewfinder that draws nothing when launched this
+	@# way is the entitlement, not the code. What this still cannot answer is notarisation itself.
+	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -configuration Debug \
+		-destination 'platform=macOS' -derivedDataPath .build/mac-client -quiet
+	open ".build/mac-client/Build/Products/Debug/Granita Client.app"
+
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures
 	./Scripts/make-fixture-repo.sh
