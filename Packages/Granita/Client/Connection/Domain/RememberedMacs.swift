@@ -1,3 +1,5 @@
+import Foundation
+
 import CoreApiDomain
 import CoreDiffDomain
 import CorePairingDomain
@@ -314,6 +316,18 @@ public struct RememberedMacRepository: GranitaRepository {
         do {
             return try await macs.connection(to: server)
                 .lines(of: file, in: worktree, side: side, start: start, count: count)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func image(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide
+    ) async throws(ApiFailure) -> Data {
+        do {
+            return try await macs.connection(to: server).image(of: file, in: worktree, side: side)
         } catch {
             throw await noted(error)
         }

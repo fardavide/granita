@@ -15,13 +15,36 @@ thirty seconds old and declines otherwise.
 way back and a read costs a wake packet at a sleeping Mac. A list read four seconds ago is still true
 however long the glance took; one read ten minutes ago is not, whether the app was away for all of
 that or for two seconds of it. The open diff is deliberately excluded on `SPEC.md` §10's own
-argument — re-reading a change set replaces every entry under a reader who may be halfway down it.
-All in [`decisions.md`](decisions.md), with the treatment in [design §8](design.md).
+argument — re-reading a change set replaces every entry under a reader who may be halfway down it,
+and since 0.14.0 drops both sides of every picture they were looking at. All in
+[`decisions.md`](decisions.md), with the treatment in [design §8](design.md).
 
 **What no gate here can see is the two-line wiring.** Five model tests cover the threshold and the
 three refusals, but there is no Ui test target, a snapshot never changes a scene phase, and the
 model's tests call the entry point directly. Backgrounding the app and bringing it back is the only
-check that reaches `scenePhase` itself, and it has not been run.
+check that reaches `scenePhase` itself.
+
+**A changed picture is now a diff rather than a shut row, and that is 0.14.0.** Every image in a
+change set was a collapsed bar reading `binary · no diff to show` with no chevron on it, for every
+release the diff screen has had — which on the branch that re-records snapshot baselines makes the
+one file worth looking at the one file that cannot be opened. Davide asked for it on 15 September
+2026 and settled the layout in the same sentence: side by side in the card, and the detail behind a
+tap. Holding the full-screen picture swaps it for its other version in the same pixels, which is the
+only way two screenshots differing in one place compare on a phone.
+
+**Three things about it are worth knowing before touching it.** Whether a file is a picture is
+decided from its **path** on both ends and never from git's binary flag, because git reports an
+untracked PNG as neither — and an untracked PNG is exactly what a re-recorded baseline is. The
+working copy is the one side git cannot answer for, so the server opens the file itself, behind the
+first protocol in `Server/Worktrees/Data`. And both sides refuse at a ceiling rather than truncating,
+which forced a second transport ceiling for `show`: Granita's own iPad baselines are 6.4 MB apiece
+and the diff family's is 2. All in [`decisions.md`](decisions.md), with the screen calls and Davide's
+design waiver in [design §4](design.md).
+
+**What it has not had is a finger on it.** The card and the full screen have committed baselines in
+all four layouts, the model's open, hold, release and retry are unit-tested, and neither of those
+presses anything — which is the gap this repository has been caught by before. It is on the device
+list below.
 
 **The two Mac apps have a delivery path, and the Hardened Runtime nearly took the camera with it.**
 The half of [issue #73](https://github.com/fardavide/granita/issues/73) that has been open longest.
@@ -1407,6 +1430,16 @@ version that has not moved.
   `presentationBackgroundInteraction` delivers that is a thumb's answer; and **the bar for a file
   over 500 lines, because it is the one control here that is also a fetch** — pressing it must turn
   the bar into a header and then fill it, and nothing that runs on this machine can watch that happen.
+- **Press a picture, and then hold it.** 0.14.0's image diff is three gestures no test kind here can
+  reach: a tap on a frame that opens a full-screen cover, a press-and-hold that swaps the picture for
+  its other version, and the *Try Again* on a frame the Mac refused. Each is asserted at the model
+  and photographed at rest in four layouts, which between them prove that the state exists and that
+  the screen draws it — and neither presses anything. **The hold is the one to watch**: it is a
+  `DragGesture` of zero distance over a `scaledToFit` image inside a cover, and whether a thumb
+  landing on the letterboxing above a portrait screenshot swaps the picture is exactly the kind of
+  answer a raster cannot give. **The second is what a 6 MB picture costs when a card is laid out** —
+  ImageIO subsamples it to the frame's own size, which should make it cheap and has been measured on
+  nothing.
 - **Press an expand control twice inside one round trip.** Both presses compute their window before
   either lands, so both ask for the same lines and both splice them — twenty lines of context
   appearing twice, with the gutter numbers saying so. It is **not guarded**, deliberately: the guard

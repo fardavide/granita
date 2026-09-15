@@ -7,7 +7,7 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
-### 0.13.1 — 2026-09-15
+### 0.14.1 — 2026-09-16
 - **The worktree list refreshes when you come back to the app.** It already re-read every time you
   returned to the *screen*, but a screen that was in front of you when you put the phone down never
   goes away and so never comes back — which meant the list you found after lunch was the list you
@@ -20,6 +20,25 @@ app is built by hand.
   Mac's name, after the same half-second wait, with your rows staying put and operable throughout.
 - **An open diff is unchanged.** Re-reading a change set replaces every file in it, and doing that
   under someone halfway down a scroll would move the code they were reading.
+
+### 0.14.0 — 2026-09-15
+- **A changed screenshot now shows you both screenshots.** Until now every picture in a change set
+  was a shut row reading `binary · no diff to show`, with no way to open it — which on a branch whose
+  point was re-recording snapshot baselines meant the one thing you wanted to look at was the one
+  thing you could not. A changed image draws the committed version and the working one side by side,
+  in the card where a source file draws its hunks.
+- **Tap either one to see it at the size of the screen, and hold to see the other.** Side by side on
+  a phone gives each version about 170 points, which tells you *that* something moved; the picture
+  itself is a tap away, and keeping your finger down swaps it for the other version in exactly the
+  same pixels. That is the only way two screenshots differing in one place can be compared on a
+  phone. A file that was added or deleted has just the one picture and does not offer the hold.
+- **A picture that is still coming, or that your Mac would not send, says which.** Empty grey frames
+  are the one thing a picture viewer must never leave you with. A side still arriving says so, one
+  your Mac refused says so and carries its own *Try Again*, and one that arrived and will not decode
+  says that instead — three different problems with three different answers.
+- **Screenshots up to 12 MB.** Big enough for an iPad baseline, which is what this was built for.
+  Anything larger is refused outright rather than shown in half, because half a picture is not a
+  smaller picture.
 
 ### 0.13.0 — 2026-09-15
 - **You can now see when Granita is fetching from your Mac.** Both the worktree list and a

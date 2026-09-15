@@ -66,10 +66,11 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
-- **0.13.1** — the worktree list refreshes when you come back to the app, not just when you come back
+- **0.14.1** — the worktree list refreshes when you come back to the app, not just when you come back
   to the screen.
-- **0.13.0** — a small spinner beside the Mac's name says when Granita is fetching from it.
-- **0.12.2** — a worktree opens on its diff, not on 92pt of empty grey above the first file.
+- **0.14.0** — a changed screenshot shows both versions side by side; tap for full screen, hold to
+  swap.
+- **0.13.0** — a spinner beside the name says when a worktree list or a file list is being re-read.
 
 [Every release](CHANGELOG.md).
 

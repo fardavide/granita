@@ -15,10 +15,12 @@ import ServerGitDomain
 public struct WorktreeService: Sendable {
 
     private let git: any GitClient
+    private let files: any WorktreeFileReading
     private let limits: WorktreeLimits
 
-    public init(git: any GitClient, limits: WorktreeLimits) {
+    public init(git: any GitClient, files: any WorktreeFileReading, limits: WorktreeLimits) {
         self.git = git
+        self.files = files
         self.limits = limits
     }
 
@@ -226,6 +228,53 @@ public struct WorktreeService: Sendable {
         return (Array(all[from..<to]), to >= all.count)
     }
 
+    /// One side of a picture, whole or not at all.
+    ///
+    /// **The two sides come from two different places and that asymmetry is the method.** The
+    /// committed side is a blob and `show` prints it; the working copy is not in the object database
+    /// at all, so it is read off disk through the one seam this service has for that. A caller asking
+    /// for a side the file does not have — the committed side of a file that has just arrived — gets
+    /// git's own refusal, which is the honest answer rather than an empty picture.
+    ///
+    /// **Never a prefix.** `fileDiff` above truncates and says so, because half a diff is still half
+    /// a diff; half a PNG is a decoder drawing nothing under a card claiming the picture arrived. So
+    /// both sides refuse at the ceiling instead, and the committed side refuses on the transport's
+    /// own cut-off too — a blob that came back trimmed is indistinguishable from a corrupt one.
+    public func imageBytes(
+        of path: RepositoryRelativePath,
+        side: DiffSide,
+        in worktree: RepositoryLocation
+    ) async throws(WorktreeImageError) -> Data {
+        switch side {
+        case .old:
+            let output: GitOutput
+            do {
+                let revision = try await revisionToCompareAgainst(in: worktree)
+                output = try await git.run(.fileContent(path: path, at: revision), in: worktree)
+            } catch {
+                throw .git(error)
+            }
+            guard output.isTruncated == false,
+                  output.standardOutput.count <= limits.maximumImageBytes else {
+                throw .tooLarge
+            }
+            return output.standardOutput
+
+        case .new:
+            do {
+                return try await files.bytes(of: path, in: worktree, upTo: limits.maximumImageBytes)
+            } catch {
+                // Switched rather than caught per pattern, because only a `switch` is checked for
+                // exhaustiveness — a fourth reason the disk could refuse would otherwise compile and
+                // arrive at the phone as whatever the enclosing context makes of an unhandled error.
+                switch error {
+                case .tooLarge: throw .tooLarge
+                case .unreadable(let reason): throw .unreadable(reason: reason)
+                }
+            }
+        }
+    }
+
     // MARK: - Assembly
 
     private func tracked(
@@ -404,6 +453,23 @@ public struct WorktreeChangeSet: Hashable, Sendable {
     }
 }
 
+/// Why one side of a picture is not coming.
+///
+/// Its own type rather than a `GitError` case, because two of the three have nothing to do with git:
+/// the working copy is read off disk, and the ceiling is this product's rather than the tool's.
+public enum WorktreeImageError: Error, Hashable, Sendable {
+
+    /// git refused, or the checkout is gone. Carries git's own words, like everything else here.
+    case git(GitError)
+
+    /// The working copy could not be opened — deleted under the read, most often.
+    case unreadable(reason: String)
+
+    /// Bigger than this Mac hands over in one piece. See ``WorktreeFileError/tooLarge`` for why it
+    /// carries no number.
+    case tooLarge
+}
+
 /// SPEC §5.4's ceilings, so a repository nobody expected cannot take the Mac down.
 public struct WorktreeLimits: Hashable, Sendable {
 
@@ -411,15 +477,36 @@ public struct WorktreeLimits: Hashable, Sendable {
     public let maximumDiffLines: Int
     public let truncatedDiffLines: Int
 
-    public init(maximumChangedFiles: Int, maximumDiffLines: Int, truncatedDiffLines: Int) {
+    /// The largest picture either side of a comparison will hand over.
+    ///
+    /// **Measured against the files this exists for rather than guessed.** Granita's own iPad
+    /// snapshot baselines are 6.4 MB apiece, and reviewing those from the phone is the whole reason
+    /// image diffs were built — so the diff family's 2 MB ceiling would have refused precisely the
+    /// change sets the feature was asked for. Twelve leaves room for a 3× phone capture and a 2× iPad
+    /// one in the same card without letting a video-sized asset through.
+    ///
+    /// **It must stay below the transport's own ceiling for reading a committed blob**, which is
+    /// `ProcessGitClient.fileContentLimitBytes`. Above it, a picture inside this budget could still
+    /// come back trimmed, and a trimmed picture is refused rather than drawn — so the two numbers
+    /// crossing would show as images this Mac says it will serve and then will not.
+    public let maximumImageBytes: Int
+
+    public init(
+        maximumChangedFiles: Int,
+        maximumDiffLines: Int,
+        truncatedDiffLines: Int,
+        maximumImageBytes: Int
+    ) {
         self.maximumChangedFiles = maximumChangedFiles
         self.maximumDiffLines = maximumDiffLines
         self.truncatedDiffLines = truncatedDiffLines
+        self.maximumImageBytes = maximumImageBytes
     }
 
     public static let standard = WorktreeLimits(
         maximumChangedFiles: 1_000,
         maximumDiffLines: 20_000,
-        truncatedDiffLines: 2_000
+        truncatedDiffLines: 2_000,
+        maximumImageBytes: 12 * 1024 * 1024
     )
 }

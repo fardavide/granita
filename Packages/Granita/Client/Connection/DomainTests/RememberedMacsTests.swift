@@ -763,6 +763,11 @@ private actor FakeMacBehindAPairing: GranitaRepository {
         return FileLines(lines: [], eof: false)
     }
 
+    func image(of file: FileID, in worktree: WorktreeID, side: DiffSide) async throws(ApiFailure) -> Data {
+        try note(.image(file, worktree, side))
+        return Data()
+    }
+
     func markViewed(
         _ viewed: Bool,
         file: FileID,
@@ -792,6 +797,7 @@ enum Route: CaseIterable, Sendable {
     case changes
     case lines
     case diffs
+    case image
     case markViewed
 
     func read(from repository: RememberedMacRepository) async throws(ApiFailure) {
@@ -810,6 +816,8 @@ enum Route: CaseIterable, Sendable {
             _ = try await repository.lines(of: aFile, in: aWorktree.id, side: .old, start: 1, count: 20)
         case .diffs:
             _ = try await repository.diffs(of: [aFile], in: aWorktree.id, contextLines: 3)
+        case .image:
+            _ = try await repository.image(of: aFile, in: aWorktree.id, side: .old)
         case .markViewed:
             try await repository.markViewed(true, file: aFile, contentHash: "8a1c0f2", in: aWorktree.id)
         }
@@ -825,6 +833,7 @@ private enum MacRequest: Hashable, Sendable {
     case changes(WorktreeID)
     case diffs([FileID], WorktreeID, Int)
     case lines(FileID, WorktreeID, DiffSide, Int, Int)
+    case image(FileID, WorktreeID, DiffSide)
     case markViewed(Bool, FileID, String, WorktreeID)
 }
 

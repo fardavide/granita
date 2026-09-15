@@ -92,6 +92,10 @@ struct ErrorDiagnosticsSnapshotTests {
                     onSetViewed: { _, _ in },
                     onSetOpen: { _, _ in },
                     onExpand: { _, _, _ in },
+                    // Nothing to report: this subject is the failure screen, which draws no files at
+                    // all and therefore no pictures.
+                    onOpenImage: { _, _ in },
+                    onRetryImage: { _, _ in },
                     onRetry: {},
                     onCopyLogs: {}
                 )

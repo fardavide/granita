@@ -58,6 +58,14 @@ public struct ContinuousDiffView: View {
     /// the snapshot suite could not see.
     private let highlighted: [FileID: HighlightedFile]
 
+    /// Every changed picture's two sides, filed by the file they belong to.
+    ///
+    /// **Handed in for the reason `highlighted` is, and it matters more here**: a `.task` inside the
+    /// card would fetch in the app and fetch nothing in a baseline, so the one file kind whose whole
+    /// content is what arrived over the network would be the one kind the snapshot suite photographs
+    /// empty. A file that is not a picture has no entry.
+    private let images: [FileID: DiffImage]
+
     /// Whether the gutter takes gestures. False while a sheet is up — see `DiffFileLines`.
     private let acceptsTargeting: Bool
 
@@ -76,6 +84,8 @@ public struct ContinuousDiffView: View {
     private let onExpand: (ContextDirection, Int, FileID) -> Void
     private let onTapGutter: (DiffLinePosition, FileID) -> Void
     private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
+    private let onOpenImage: (DiffSide, FileID) -> Void
+    private let onRetryImage: (DiffSide, FileID) -> Void
     private let onOpenReview: () -> Void
     private let onRetry: () -> Void
     private let onCopyLogs: () -> Void
@@ -88,6 +98,7 @@ public struct ContinuousDiffView: View {
         comments: [ReviewedComment] = [],
         pending: PendingComment? = nil,
         highlighted: [FileID: HighlightedFile] = [:],
+        images: [FileID: DiffImage] = [:],
         acceptsTargeting: Bool = true,
         isWaitingLong: Bool = false,
         onReading: @escaping (Int) -> Void,
@@ -97,6 +108,13 @@ public struct ContinuousDiffView: View {
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
         onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        // **No default, unlike the two gutter gestures above.** A no-op default on a callback that
+        // is the whole of what a control does is a dead control with a place to hide: a caller that
+        // forgets one ships a picture you can tap and a *Try Again* you can press, both of which
+        // answer with silence, and nothing anywhere would say so. The gutter's two are a different
+        // shape — a scroll with no comments in it genuinely has nothing to report.
+        onOpenImage: @escaping (DiffSide, FileID) -> Void,
+        onRetryImage: @escaping (DiffSide, FileID) -> Void,
         onOpenReview: @escaping () -> Void = {},
         onRetry: @escaping () -> Void,
         onCopyLogs: @escaping () -> Void
@@ -108,6 +126,7 @@ public struct ContinuousDiffView: View {
         self.comments = comments
         self.pending = pending
         self.highlighted = highlighted
+        self.images = images
         self.acceptsTargeting = acceptsTargeting
         self.isWaitingLong = isWaitingLong
         // **Seeded with the jump, and with nothing at all when there is no jump.** Seeding the first
@@ -124,6 +143,8 @@ public struct ContinuousDiffView: View {
         self.onExpand = onExpand
         self.onTapGutter = onTapGutter
         self.onLongPressGutter = onLongPressGutter
+        self.onOpenImage = onOpenImage
+        self.onRetryImage = onRetryImage
         self.onOpenReview = onOpenReview
         self.onRetry = onRetry
         self.onCopyLogs = onCopyLogs
@@ -337,23 +358,40 @@ public struct ContinuousDiffView: View {
                     pointSize: pointSize
                 )
             case .ready(let diff):
-                DiffFileContent(
-                    diff: diff,
-                    pointSize: pointSize,
-                    // The rails are drawn from the comments that still resolve; a stale one has the
-                    // row above instead. Handed the raw comments because `CommentRail` is what
-                    // decides which of them this file's hunks can place.
-                    comments: comments.filter { $0.isStale == false }.map(\.comment),
-                    pending: pending,
-                    // Nothing at all until this file's first side lands, which is every file for the
-                    // first beat and a refused one forever.
-                    highlighted: highlighted[entry.id] ?? .none,
-                    acceptsTargeting: acceptsTargeting,
-                    onExpand: onExpand,
-                    onTapGutter: onTapGutter,
-                    onLongPressGutter: onLongPressGutter
-                )
-                .transition(.opacity)
+                // **A picture draws pictures where a file draws hunks, and it has none to draw.**
+                // Git answers `Binary files … differ` for a PNG, so this card's `FileDiff` is a real
+                // answer with an empty body — before this existed the whole file was a collapsed bar
+                // reading `binary · no diff to show` with no chevron on it, which is the smallest
+                // possible lie about a file with two pictures behind it. The bytes arrive beside the
+                // diff rather than inside it, which is why the branch is a lookup here rather than a
+                // case on the content.
+                if let image = images[entry.id] {
+                    DiffImageBody(
+                        file: diff.file,
+                        image: image,
+                        onOpen: onOpenImage,
+                        onRetry: onRetryImage
+                    )
+                    .transition(.opacity)
+                } else {
+                    DiffFileContent(
+                        diff: diff,
+                        pointSize: pointSize,
+                        // The rails are drawn from the comments that still resolve; a stale one has
+                        // the row above instead. Handed the raw comments because `CommentRail` is
+                        // what decides which of them this file's hunks can place.
+                        comments: comments.filter { $0.isStale == false }.map(\.comment),
+                        pending: pending,
+                        // Nothing at all until this file's first side lands, which is every file for
+                        // the first beat and a refused one forever.
+                        highlighted: highlighted[entry.id] ?? .none,
+                        acceptsTargeting: acceptsTargeting,
+                        onExpand: onExpand,
+                        onTapGutter: onTapGutter,
+                        onLongPressGutter: onLongPressGutter
+                    )
+                    .transition(.opacity)
+                }
             }
         }
     }

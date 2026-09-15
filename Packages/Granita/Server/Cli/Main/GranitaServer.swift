@@ -14,6 +14,7 @@ import ServerIdentityDomain
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 
 /// Composition root for the terminal. The menu bar app embeds the same backend in-process; this
@@ -64,7 +65,7 @@ struct GranitaServer {
                 verbosity: UserDefaultsVerboseLogging(defaults: .standard)
             )
         )
-        let service = WorktreeService(git: git, limits: .standard)
+        let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
 
         if let path = arguments.projectToAdd {
             await add(project: path, to: store, using: service)

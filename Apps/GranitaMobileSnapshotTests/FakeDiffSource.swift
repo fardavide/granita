@@ -546,6 +546,44 @@ nonisolated let aChangeSetWithAOneLineFile: [ContinuousDiffEntry] = [
     )
 ]
 
+/// A re-recorded snapshot baseline beside the source file that moved it.
+///
+/// **The picture's diff is a real answer with no hunks in it**, which is exactly what the Mac sends
+/// for a PNG: git prints `Binary files a/… and b/… differ` and the parser finds nothing to put in
+/// it. Before the card existed that landed as an empty file; it is what the two frames are drawn
+/// instead of, so the entry has to be `ready` for the card to be reached at all.
+///
+/// The bytes are not in here. They arrive through the two requests the model makes once this lands,
+/// which is the path the app takes and the only one that exercises it.
+nonisolated let aChangeSetWithAPicture: [ContinuousDiffEntry] = [
+    .ready(
+        FileDiff(
+            file: aChangedFile(
+                path: "Apps/GranitaMobileSnapshotTests/__Snapshots__/the-drawer-is-up-iPhone-light.png",
+                status: .modified,
+                insertions: 0,
+                deletions: 0,
+                estimatedLineCount: 0,
+                isBinary: true
+            ),
+            hunks: [],
+            oldLineCount: 0,
+            newLineCount: 0,
+            isTruncated: false,
+            truncationReason: nil
+        )
+    ),
+    .awaiting(
+        aChangedFile(
+            path: "Packages/Granita/Client/Viewer/Ui/FileSelectorView.swift",
+            status: .modified,
+            insertions: 12,
+            deletions: 3,
+            estimatedLineCount: 15
+        )
+    )
+]
+
 private nonisolated let aConflictedFileHunk = Hunk(
     index: 0,
     oldStart: 61,
@@ -816,6 +854,23 @@ final class FakeDiffRepository: GranitaRepository {
         count: Int
     ) async throws(ApiFailure) -> FileLines {
         throw .fileGone
+    }
+
+    /// A drawable picture per side, so a baseline photographs two real pictures rather than two
+    /// failure frames.
+    ///
+    /// **Refused when the side is not one this file has**, which is the fake behaving like the Mac
+    /// rather than being lenient: a card asking for a side `ImageSides` says is absent would then
+    /// photograph green where the app photographs a refusal.
+    func image(of file: FileID, in worktree: WorktreeID, side: DiffSide) async throws(ApiFailure) -> Data {
+        if let refusal {
+            throw refusal
+        }
+        guard let change = files.first(where: { $0.id == file }),
+              ImageSides.forStatus(change.status).contains(side) else {
+            throw .fileGone
+        }
+        return SnapshotPicture.bytes(for: side)
     }
 
     func markViewed(

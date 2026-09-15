@@ -12,6 +12,7 @@ import ServerGitDomain
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 
 /// The whole server, wired the way the executable wires it, over a real fixture repository.
@@ -51,7 +52,7 @@ struct ApiScenario {
             outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
             timeout: ProcessGitClient.defaultTimeout
         ))
-        let service = WorktreeService(git: git, limits: .standard)
+        let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
 
         pairing = Pairing(store: store, now: { Date() })
         connectionLog = InMemoryConnectionLog(now: { Date() })
@@ -193,6 +194,32 @@ struct DisposableRepository {
         worktree = RepositoryLocation(path: listed[1])
     }
 
+    /// Commits a file of arbitrary bytes into the **primary** checkout.
+    ///
+    /// The primary one rather than the linked worktree, because that is the checkout whose HEAD the
+    /// commit lands on — a worktree cut before the commit is on another branch and would report the
+    /// file as untracked, which is a different case from the one a caller asking for this wants.
+    func commit(_ path: String, bytes: Data, message: String) throws {
+        let url = URL(filePath: location.path).appending(path: path, directoryHint: .notDirectory)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try bytes.write(to: url)
+        try Self.git(["add", "--", path], in: URL(filePath: location.path))
+        try Self.git(["commit", "--quiet", "-m", message], in: URL(filePath: location.path))
+    }
+
+    /// Replaces a file in the primary checkout's working tree, leaving the commit alone.
+    func write(_ path: String, bytes: Data) throws {
+        let url = URL(filePath: location.path).appending(path: path, directoryHint: .notDirectory)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try bytes.write(to: url)
+    }
+
     /// Marks the worktree as one git will not remove under a single `--force`, which is what Claude
     /// Code does to every worktree it creates.
     func lockTheWorktree() throws {
@@ -287,6 +314,7 @@ extension ApiScenario {
                 outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
                 timeout: ProcessGitClient.defaultTimeout
             ),
+            files: LocalWorktreeFiles(),
             limits: .standard
         )
         return ApiDependencies(
