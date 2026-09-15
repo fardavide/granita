@@ -75,6 +75,15 @@ public final class ClientViewerModel {
     /// Whether the batch the reader asked for again is still running.
     public private(set) var isRetryingDiffs = false
 
+    /// Whether the file list is being read again over a change set already on screen.
+    ///
+    /// **The diff screen's half of the silence the worktree list had.** `load()` runs from a
+    /// `.task`, so every return to this screen re-reads the whole change set — and because content
+    /// on screen deliberately stays on screen while it is re-read, that read has never been visible
+    /// at all. It is not the first read, which has the spinner and the sentence design §8 gives it
+    /// and nothing to keep.
+    public private(set) var isRefreshing = false
+
     /// Whether the reader has already pressed once and been refused a second time.
     public private(set) var hasTriedDiffsAgain = false
 
@@ -269,6 +278,10 @@ public final class ClientViewerModel {
     /// this word lives in had no way to be held open.
     private let longWait: Duration
 
+    /// How long an unasked-for re-read runs before the toolbar says so.
+    /// `UnaskedForRefresh.announcementDelay` is the shared value and carries the argument.
+    private let refreshAnnouncementDelay: Duration
+
     public init(
         worktree: WorktreeID,
         worktreeName: String,
@@ -279,8 +292,10 @@ public final class ClientViewerModel {
         highlighter: any SyntaxHighlighter,
         copyingLogs: any DiagnosticLogsCopying,
         announcing: any DiffReadAnnouncing,
-        longWait: Duration
+        longWait: Duration,
+        refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay
     ) {
+        self.refreshAnnouncementDelay = refreshAnnouncementDelay
         self.worktree = worktree
         self.worktreeName = worktreeName
         self.projectName = projectName
@@ -323,6 +338,23 @@ public final class ClientViewerModel {
         // `ClientWorktreesModel`, which carries the argument and the baselines that settled it.
         if case .failed = state {
             state = .loading
+        }
+        // **Decided after the line above rather than before it**, so a retry from the failure screen
+        // counts as the first read it is: that screen has just been replaced by the spinner and the
+        // sentence, and a second spinner in the toolbar beside them would say one thing twice.
+        //
+        // **Announced on a threshold rather than at once**, for the reason
+        // `UnaskedForRefresh.announcementDelay` carries: this screen re-reads on every appearance,
+        // and a spinner that appears and vanishes each time a reader comes back is motion reporting
+        // a wait they never had.
+        let announces = switch state {
+        case .loading, .failed: false
+        case .nothingChanged, .reading: true
+        }
+        let announcing = announces ? sayingTheRefreshIsWorthShowing() : nil
+        defer {
+            announcing?.cancel()
+            isRefreshing = false
         }
         do {
             let changes = try await repository.changes(in: worktree)
@@ -909,6 +941,14 @@ public final class ClientViewerModel {
     ///
     /// **Cancelled by the `defer` that ends the batch**, so a request that answers inside the
     /// threshold never writes anything and the ordinary screen never sees the word at all.
+    private func sayingTheRefreshIsWorthShowing() -> Task<Void, Never> {
+        Task { [weak self, refreshAnnouncementDelay] in
+            try? await Task.sleep(for: refreshAnnouncementDelay)
+            guard Task.isCancelled == false else { return }
+            self?.isRefreshing = true
+        }
+    }
+
     private func sayingTheWaitIsLong() -> Task<Void, Never> {
         Task { [weak self, longWait] in
             try? await Task.sleep(for: longWait)

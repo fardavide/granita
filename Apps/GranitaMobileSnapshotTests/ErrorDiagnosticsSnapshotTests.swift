@@ -60,6 +60,7 @@ struct ErrorDiagnosticsSnapshotTests {
                     readTiming: .notStarted,
                     readResult: .notRead,
                     isRetryingRefresh: false,
+                    isAutomaticallyRefreshing: false,
                     reduceMotion: false,
                     now: Date(timeIntervalSince1970: 1_800_000_000),
                     logCopyState: subject.logCopyState,

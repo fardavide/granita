@@ -95,6 +95,79 @@ struct ClientWorktreesModelTests {
         #expect(!scenario.sut.isRetryingRefresh)
     }
 
+    @Test(arguments: [
+        (WorktreeReadTrigger.appearance, true),
+        (.pullToRefresh, false),
+        (.retry, false)
+    ])
+    func `given worktrees were read when another read is pending then only an unasked-for one reports beside the title`(
+        trigger: WorktreeReadTrigger,
+        expectedActivity: Bool
+    ) async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "toolbar feedback", project: "granita")],
+            suspendingSecondRead: true,
+            // Zero, so the wait this property exists to hide is not the thing under test here.
+            // What the wait itself does has a test of its own below.
+            announcementDelay: .zero
+        )
+        await scenario.sut.load()
+
+        // when
+        let refresh = Task { await scenario.sut.load(trigger: trigger) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+        while scenario.sut.isAutomaticallyRefreshing == false, expectedActivity {
+            await Task.yield()
+        }
+
+        // then
+        #expect(scenario.sut.isAutomaticallyRefreshing == expectedActivity)
+        #expect(scenario.rows.map(\.displayName) == ["toolbar feedback"])
+        await scenario.repository.releaseHeldRead()
+        await refresh.value
+        #expect(!scenario.sut.isAutomaticallyRefreshing)
+    }
+
+    /// **A refresh that answers quickly is never announced at all**, which is what keeps a spinner
+    /// from appearing and vanishing in the bar every time the reader comes back from a worktree.
+    @Test
+    func `given a refresh that answers quickly when it ends then nothing was ever shown beside the title`() async {
+        // given — a delay no read in this test can reach, against a Mac that answers at once.
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "quick refresh", project: "granita")],
+            announcementDelay: .seconds(60)
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.load(trigger: .appearance)
+
+        // then
+        #expect(!scenario.sut.isAutomaticallyRefreshing)
+        #expect(scenario.rows.map(\.displayName) == ["quick refresh"])
+    }
+
+    /// The first read has the whole screen, so the toolbar says nothing over the top of it.
+    @Test
+    func `given nothing has been read yet when the first read is pending then nothing reports beside the title`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "first read", project: "granita")],
+            suspendingReads: true
+        )
+
+        // when
+        let first = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // then
+        #expect(scenario.sut.state == .loading)
+        #expect(!scenario.sut.isAutomaticallyRefreshing)
+        await scenario.repository.releaseHeldRead()
+        await first.value
+    }
+
     @Test
     func `given a list was read when refresh fails then that failure is announced once`() async {
         // given
@@ -1352,7 +1425,8 @@ struct ClientWorktreesModelTests {
             suspendedReadNumbers: Set<Int> = [],
             ignoringReadCancellation: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
-            preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences()
+            preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences(),
+            announcementDelay: Duration = UnaskedForRefresh.announcementDelay
         ) {
             repository = FakeGranitaRepository(
                 worktrees: worktrees,
@@ -1377,6 +1451,7 @@ struct ClientWorktreesModelTests {
                 preferences: preferences,
                 copyingLogs: copyingLogs,
                 announcing: announcing,
+                announcementDelay: announcementDelay,
                 now: { aMoment }
             )
         }

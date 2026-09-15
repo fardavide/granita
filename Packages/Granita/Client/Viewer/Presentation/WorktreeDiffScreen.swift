@@ -72,7 +72,14 @@ public struct WorktreeDiffScreen: View {
             // sixteen characters, and an agent's session summary is a sentence rather than a word.
             .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar { selectorColumnToggle }
+            // **In with the toggle rather than in a modifier of its own.** A `.toolbar` whose
+            // content builder resolves to nothing replaces the bar instead of adding nothing to it,
+            // and this screen's own baselines came back with no navigation bar at all when the
+            // spinner had one to itself. The three below each always produce an item.
+            .toolbar {
+                selectorColumnToggle
+                titleWithActivity
+            }
             .toolbar { filesButton }
             .toolbar { reviewToggle }
             // **One sheet for all three, because only one of them can ever present.** The setter is
@@ -414,6 +421,43 @@ public struct WorktreeDiffScreen: View {
                     Image(systemName: "sidebar.leading")
                 }
                 .accessibilityLabel(isSelectorColumnOpen ? "Hide the file list" : "Show the file list")
+            }
+        }
+    }
+
+    /// The file list being read again, said in the one place on this screen that costs the diff
+    /// nothing.
+    ///
+    /// **The same control the worktree list gets, for the same reason.** This screen loads from its
+    /// own `.task`, so returning to a worktree fetches the whole change set again while the files
+    /// already drawn deliberately stay drawn — and until now that read was invisible.
+    ///
+    /// **Leading, beside the worktree's name rather than beside *12 files*.** The trailing slot
+    /// carries the count and the review's chip, which are two things the reader aims a thumb at; a
+    /// spinner arriving and leaving there would shift both of them sideways every time this screen
+    /// came back. Anything inserted into the scroll instead is `SPEC.md` §10's reflow.
+    /// The worktree's name, with the file list being read again turning just after it.
+    ///
+    /// **`.principal`, for the reason `WorktreeSidebarView` carries in full**: the leading slot is
+    /// the back button's and the trailing slot holds *12 files* and the review's chip, so the title
+    /// slot is the only place *beside the name* actually is. The item is always present and only the
+    /// spinner inside it comes and goes, which is what keeps the bar from being rebuilt.
+    ///
+    /// Tail truncation rather than the sidebar's middle, which is design §2's split and not an
+    /// inconsistency: a Mac is named at its end and a generated worktree directory is a mnemonic
+    /// prefix in front of a ULID, so here the front is the half worth keeping.
+    private var titleWithActivity: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 6) {
+                Text(worktreeName)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if model.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Reading the file list again")
+                }
             }
         }
     }

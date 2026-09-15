@@ -47,6 +47,7 @@ struct WorktreeSidebarViewSnapshotTests {
                     readTiming: subject.readTiming,
                     readResult: subject.readResult,
                     isRetryingRefresh: subject.isRetryingRefresh,
+                    isAutomaticallyRefreshing: subject.isAutomaticallyRefreshing,
                     reduceMotion: subject.reduceMotion,
                     now: aFixedMoment,
                     logCopyState: .ready,
@@ -91,6 +92,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
     let readTiming: WorktreeReadTiming
     let readResult: WorktreeReadResult
     let isRetryingRefresh: Bool
+    let isAutomaticallyRefreshing: Bool
     let dynamicTypeSize: DynamicTypeSize
     let reduceMotion: Bool
 
@@ -111,6 +113,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         readTiming: WorktreeReadTiming = .notStarted,
         readResult: WorktreeReadResult = .notRead,
         isRetryingRefresh: Bool = false,
+        isAutomaticallyRefreshing: Bool = false,
         dynamicTypeSize: DynamicTypeSize = .large,
         reduceMotion: Bool = false
     ) {
@@ -124,6 +127,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         self.readTiming = readTiming
         self.readResult = readResult
         self.isRetryingRefresh = isRetryingRefresh
+        self.isAutomaticallyRefreshing = isAutomaticallyRefreshing
         self.dynamicTypeSize = dynamicTypeSize
         self.reduceMotion = reduceMotion
     }
@@ -198,6 +202,33 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             readTiming: .running(started: aFixedMoment),
             readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local),
             isRetryingRefresh: true
+        ),
+
+        // The read nobody asked for: the rows sit exactly where the previous case leaves them and
+        // the only difference is in the bar. Photographed beside `refresh-retry-in-flight`, whose
+        // progress view is *in* the list and has pushed the first section down a row — which is the
+        // distinction this state exists to make, and the reason both are here rather than one.
+        SidebarCase(
+            name: "refresh-unasked-for",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readStage: .reading(.local),
+            readTiming: .running(started: aFixedMoment),
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local),
+            isAutomaticallyRefreshing: true
+        ),
+
+        // The same read against a Mac whose name already fills the 320pt sidebar, because the
+        // spinner takes its space out of the leading edge and the title is what gives way.
+        SidebarCase(
+            name: "refresh-unasked-for-long-mac-name",
+            macName: "Davide's 16-inch MacBook Pro",
+            state: .listing(WorktreeListing(of: aBusyMac, mode: .groupedByProject, showingQuiet: false, now: aFixedMoment)),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment.addingTimeInterval(-840), route: .local),
+            isAutomaticallyRefreshing: true
         ),
 
         SidebarCase(

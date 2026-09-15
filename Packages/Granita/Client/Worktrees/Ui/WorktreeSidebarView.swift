@@ -29,6 +29,7 @@ public struct WorktreeSidebarView: View {
     private let readTiming: WorktreeReadTiming
     private let readResult: WorktreeReadResult
     private let isRetryingRefresh: Bool
+    private let isAutomaticallyRefreshing: Bool
     private let reduceMotion: Bool
     private let now: Date
     private let logCopyState: DiagnosticCopyState
@@ -60,6 +61,7 @@ public struct WorktreeSidebarView: View {
         readTiming: WorktreeReadTiming,
         readResult: WorktreeReadResult,
         isRetryingRefresh: Bool,
+        isAutomaticallyRefreshing: Bool,
         reduceMotion: Bool,
         now: Date,
         logCopyState: DiagnosticCopyState,
@@ -82,6 +84,7 @@ public struct WorktreeSidebarView: View {
         self.readTiming = readTiming
         self.readResult = readResult
         self.isRetryingRefresh = isRetryingRefresh
+        self.isAutomaticallyRefreshing = isAutomaticallyRefreshing
         self.reduceMotion = reduceMotion
         self.now = now
         self.logCopyState = logCopyState
@@ -131,7 +134,13 @@ public struct WorktreeSidebarView: View {
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .toolbar { arrangement }
+        // **One modifier holding both, and never one each.** Several modifiers of the same kind on
+        // one view is the shape where only one takes effect — the same reason this unit drives two
+        // prompts from one `.alert`.
+        .toolbar {
+            arrangement
+            titleWithActivity
+        }
         .animation(reduceMotion ? nil : .default, value: logCopyState)
         .animation(reduceMotion ? nil : .default, value: state)
         .animation(reduceMotion ? nil : .default, value: readResult)
@@ -214,6 +223,54 @@ public struct WorktreeSidebarView: View {
                     )
                 } label: {
                     Label("Arrange", systemImage: "ellipsis.circle")
+                }
+            }
+        }
+    }
+
+    /// The read nobody pressed, reported where reporting it costs the list nothing.
+    ///
+    /// **Beside the Mac's name rather than above the rows, and that is the whole point of it.**
+    /// Design §8 gives *Try Again* a progress view at the top of the list, which inserts a row and
+    /// pushes every worktree down to make space — the right trade when the reader pressed a control
+    /// and is waiting on its answer, and an unasked-for shove when the read started merely because
+    /// this screen came back. The toolbar has a slot standing empty and nothing in the list moves.
+    ///
+    /// **`.navigation` rather than `.principal`.** Putting the spinner in the title slot means
+    /// drawing the title too, which gives up `.navigationTitle` — and with it the inline treatment
+    /// this screen bought the Mac's full name with, and the string the iPad's sidebar column takes
+    /// its own header from.
+    /// The Mac's name, with the read nobody asked for turning just after it.
+    ///
+    /// **`.principal`, because the indicator belongs against the name and nothing else in the bar
+    /// is.** The leading slot is the back button's side — the far end of the bar from the thing the
+    /// spinner is about — and the trailing slot belongs to Arrange. The title slot is the only place
+    /// *beside the name* actually is, and reaching it means drawing the title here rather than
+    /// leaving it to `.navigationTitle`.
+    ///
+    /// **`.navigationTitle` stays anyway**, because it is not only what the bar draws: the split
+    /// view takes this column's header from it and a pushed screen takes its back-button label from
+    /// it, and neither reads a principal item.
+    ///
+    /// **The item is always here and only the spinner comes and goes**, which is not a style choice:
+    /// a `ToolbarItem` that appears and disappears changes what the bar is made of, and a bar
+    /// rebuilt while it is being laid out comes back with nothing in it at all. A title that is
+    /// always drawn is what keeps the slot occupied between reads.
+    ///
+    /// Middle truncation, which is design §1's rule for a Bonjour device name and not a default: two
+    /// Macs in one house differ at the end of their names, so tail truncation drops precisely the
+    /// half that says which one this is.
+    private var titleWithActivity: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            HStack(spacing: 6) {
+                Text(macName)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if isAutomaticallyRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Refreshing worktrees")
                 }
             }
         }

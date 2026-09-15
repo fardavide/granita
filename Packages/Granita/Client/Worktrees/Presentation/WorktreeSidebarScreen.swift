@@ -85,6 +85,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 readTiming: model.readTiming,
                 readResult: model.readResult,
                 isRetryingRefresh: model.isRetryingRefresh,
+                isAutomaticallyRefreshing: model.isAutomaticallyRefreshing,
                 reduceMotion: reduceMotion,
                 now: model.currentTime,
                 logCopyState: model.logCopyState,
