@@ -42,6 +42,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private let opening: (WorktreeID, String, String) -> Opened
     private let onPairAgain: () -> Void
@@ -144,6 +145,19 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             Text(prompt.message)
         }
         .task { await model.load() }
+        // **The `.task` above cannot cover coming back to the app**, and that is the whole reason
+        // this modifier exists: it re-runs when the view appears, and a view that was on screen when
+        // the app went away never went away — so it never appears again, and the list a reader came
+        // back to was the one they left.
+        //
+        // Every return is offered and the model turns most of them down: whether the rows have aged
+        // enough to be worth a read is its decision, where a test can ask about it, rather than a
+        // rule written into a view nothing here can drive. The phase check stays out here because
+        // `ScenePhase` is SwiftUI's and a view model has no business knowing it.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await model.returnedToForeground() }
+        }
         .onDisappear { model.cancelLoading() }
 
         if claimsRowTaps {

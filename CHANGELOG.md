@@ -7,6 +7,20 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.13.1 — 2026-09-15
+- **The worktree list refreshes when you come back to the app.** It already re-read every time you
+  returned to the *screen*, but a screen that was in front of you when you put the phone down never
+  goes away and so never comes back — which meant the list you found after lunch was the list you
+  left, with nothing but the age in the footer to say so.
+- **A glance elsewhere still costs nothing.** It only re-reads when what is on screen was read more
+  than thirty seconds ago, so pulling down Control Center and letting it go leaves your Mac alone —
+  it may well be asleep, and a read wakes it. Anything older than that is re-read, whether you were
+  away for a minute or for two seconds of a much longer sitting.
+- **It reports itself the way any other unasked-for read does** — the same small spinner beside the
+  Mac's name, after the same half-second wait, with your rows staying put and operable throughout.
+- **An open diff is unchanged.** Re-reading a change set replaces every file in it, and doing that
+  under someone halfway down a scroll would move the code they were reading.
+
 ### 0.13.0 — 2026-09-15
 - **You can now see when Granita is fetching from your Mac.** Both the worktree list and a
   worktree's file list re-read every time you come back to them, and until now they did it in

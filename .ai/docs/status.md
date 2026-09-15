@@ -2,6 +2,27 @@
 
 Where the project is. Update this when a slice lands.
 
+**The worktree list re-reads when the app comes back, which is the half of "every appearance" that
+never happened.** 0.13.0 made the automatic read visible and rested, like everything before it, on
+both reading screens re-reading from their own `.task`. That covers returning to a *screen*. It does
+not cover returning to the *app*: a view that was on screen when the phone was put down never
+disappeared, so it never appears again and the `.task` never re-runs — the list found after lunch was
+the list left behind, with only the footer's age to say so. The sidebar screen now watches
+`scenePhase` and offers every return to the model, which re-reads when the answer on screen is over
+thirty seconds old and declines otherwise.
+
+**The threshold ages the answer rather than the absence**, because backgrounding is the involuntary
+way back and a read costs a wake packet at a sleeping Mac. A list read four seconds ago is still true
+however long the glance took; one read ten minutes ago is not, whether the app was away for all of
+that or for two seconds of it. The open diff is deliberately excluded on `SPEC.md` §10's own
+argument — re-reading a change set replaces every entry under a reader who may be halfway down it.
+All in [`decisions.md`](decisions.md), with the treatment in [design §8](design.md).
+
+**What no gate here can see is the two-line wiring.** Five model tests cover the threshold and the
+three refusals, but there is no Ui test target, a snapshot never changes a scene phase, and the
+model's tests call the entry point directly. Backgrounding the app and bringing it back is the only
+check that reaches `scenePhase` itself, and it has not been run.
+
 **The two Mac apps have a delivery path, and the Hardened Runtime nearly took the camera with it.**
 The half of [issue #73](https://github.com/fardavide/granita/issues/73) that has been open longest.
 Nothing here chose the route — `SPEC.md` §2 did, by making both Mac apps unsandboxed, which puts both
