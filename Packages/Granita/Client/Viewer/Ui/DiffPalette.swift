@@ -17,7 +17,9 @@ extension Color {
     /// white rows is 10pt of white. The review draws the files as cards on a grouped page and the
     /// gap as the page showing through, which is one colour rather than a rule per boundary — and it
     /// is also what keeps the gap correct when a file below is shut, opened, or still arriving.
-    static var diffPage: Color {
+    /// Public because a baseline has to wrap a view the way the scroll wraps it: a card photographed
+    /// on the default background is a picture of a layout that never ships.
+    public static var diffPage: Color {
         #if canImport(UIKit)
         Color(uiColor: .systemGroupedBackground)
         #else
@@ -36,7 +38,8 @@ extension Color {
     /// other. The grouped pair is the one that holds in both: white on grey in light, `#1C1C1E` on
     /// black in dark. It is also what a reader already reads a grouped list as, which is what §4's
     /// files are.
-    static var diffCard: Color {
+    /// Public for the reason ``diffPage`` is.
+    public static var diffCard: Color {
         #if canImport(UIKit)
         Color(uiColor: .secondarySystemGroupedBackground)
         #else

@@ -1,6 +1,7 @@
 import ClientViewerDomain
 import ClientViewerPresentation
 import ClientViewerUi
+import CoreDiffDomain
 import SwiftUI
 import Testing
 
@@ -305,6 +306,47 @@ struct WorktreeDiffScreenSnapshotTests {
 
         // when - then
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-comment-adrift")
+    }
+
+    /// **A picture in the scroll, which is the only place the card is photographed in situ.**
+    ///
+    /// `DiffImageCardSnapshotTests` renders the body on its own; this is the branch that chooses it
+    /// — a file whose `FileDiff` has no hunks in it because git answered `Binary files … differ`,
+    /// drawn as two frames rather than as the empty card that branch replaced.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a changed picture when the screen is rendered then its card draws both versions`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetWithAPicture, in: layout)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-changed-picture")
+    }
+
+    /// **The cover is up in this one, and you cannot see it — which is the same assertion the
+    /// drawer's baseline makes.** A hosted view presents into a window of its own and the raster
+    /// does not include it, so what this holds is the screen the reader comes back to when they
+    /// press Done, and that the diff behind a cover is undimmed and unchanged.
+    ///
+    /// What it does hold that no other picture does is that the presentation is **built**: the
+    /// binding resolves, the model still has the bytes, and the file is still in the change set to
+    /// take a name from. A cover that could not build its content is a tap that opens a blank
+    /// screen, and the raster of the screen behind it is the only evidence available here. The
+    /// gesture itself is a thumb's answer and is in `status.md`.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a picture is open when the screen is rendered then the diff behind it is undisturbed`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetWithAPicture, in: layout)
+        let picture = FileID(
+            repositoryRelativePath: "Apps/GranitaMobileSnapshotTests/__Snapshots__/the-drawer-is-up-iPhone-light.png"
+        )
+        model.openImage(.new, of: picture)
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "a-picture-is-open")
     }
 }
 

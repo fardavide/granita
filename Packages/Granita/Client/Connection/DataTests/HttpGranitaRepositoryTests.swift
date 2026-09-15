@@ -271,6 +271,49 @@ struct HttpGranitaRepositoryTests {
     }
 
     @Test
+    func `given one side of a picture when it is read then the bytes arrive undecoded`() async throws {
+        // given — bytes that are not text and would not survive a round trip through JSON, which is
+        // the reason this route does not use one.
+        let bytes = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0xFF, 0x00, 0xC3])
+        let scenario = Scenario(status: 200, body: bytes)
+
+        // when
+        let read = try await scenario.sut.image(
+            of: FileID(rawValue: "9999"),
+            in: WorktreeID(rawValue: "aaaa1111bbbb2222cccc3333dddd4444"),
+            side: .old
+        )
+
+        // then
+        #expect(read == bytes)
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(
+            request.url.path() == "/v1/worktrees/aaaa1111bbbb2222cccc3333dddd4444/files/9999/image"
+        )
+        #expect(request.url.query() == "side=old")
+    }
+
+    @Test
+    func `given a picture the Mac will not serve when it is read then the refusal is the shared one`(
+    ) async throws {
+        // given — a route that answers with bytes still refuses in the one shape every other route
+        // refuses in, or the phone would need a second table to read it by.
+        let scenario = Scenario(
+            status: 413,
+            json: #"{"error":{"code":"tooLarge","message":"that picture is larger than this Mac serves"}}"#
+        )
+
+        // when - then
+        await #expect(throws: ApiFailure.tooLarge) {
+            try await scenario.sut.image(
+                of: FileID(rawValue: "9999"),
+                in: WorktreeID(rawValue: "aaaa1111bbbb2222cccc3333dddd4444"),
+                side: .new
+            )
+        }
+    }
+
+    @Test
     func `given a file the reader has read when it is marked then the content it was read at travels`() async throws {
         // given — a mark against anything else is refused, so sending the hash is not optional.
         let scenario = Scenario(status: 204, body: Data())

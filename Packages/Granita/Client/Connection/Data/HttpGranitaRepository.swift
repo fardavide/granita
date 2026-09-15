@@ -107,6 +107,17 @@ public struct HttpGranitaRepository: GranitaRepository {
         )
     }
 
+    public func image(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide
+    ) async throws(ApiFailure) -> Data {
+        try await client.bytes(
+            "/v1/worktrees/\(worktree.rawValue)/files/\(file.rawValue)/image",
+            query: [URLQueryItem(name: "side", value: side.rawValue)]
+        )
+    }
+
     public func markViewed(
         _ viewed: Bool,
         file: FileID,

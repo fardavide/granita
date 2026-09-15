@@ -16,6 +16,10 @@ public enum CollapsedFileReason: Hashable, Sendable {
     case tooLong(lines: Int)
 
     /// Nothing behind it, ever.
+    ///
+    /// **A picture is not one of these**, however firmly git calls it binary. There is something
+    /// behind an image file — two somethings, usually — and a bar saying otherwise over a chevron
+    /// that is not there is the opposite of true.
     case binary
 
     /// A file that moved and did not change. Carries the **filename** it moved from rather than the
@@ -93,7 +97,14 @@ public enum FileCollapsing {
     /// file; the mark comes next, because it is this product's one job and a reader who has read a
     /// long file does not need to be told how long it was.
     private static func automaticReason(of file: FileChange) -> CollapsedFileReason? {
-        if file.isBinary {
+        // **The path is asked before the flag is**, and the order is the whole change: an image is
+        // binary as far as git is concerned, and answering `.binary` for one would shut the card this
+        // screen now has something to draw in — with no chevron, so nothing could open it again.
+        //
+        // Asked of the path rather than of `isBinary` for a second reason too: an untracked file is
+        // never reported binary, because the change set builds those from `ls-files` and never diffs
+        // them. A screenshot an agent has just written is exactly that file.
+        if ImageFormat.forPath(file.path) == nil, file.isBinary {
             return .binary
         }
         if file.status == .renamed,

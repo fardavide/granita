@@ -68,6 +68,12 @@ Immediately after, because everything past `--` is a pathspec.
   or draining stdout to completion before touching stderr — hangs hard on exactly the large diffs
   the size guards exist for.
 - **Enforce the output cap by cancelling the drain**, not by letting the buffer fill.
+- **The cap is per command family, and `show` has its own.** Everything else here is parsed line by
+  line, so a prefix loses the tail and the caller says so; `show <rev>:<path>` is handed on whole —
+  to an image decoder, or to the splice context expansion performs — and a prefix of a file is wrong
+  rather than short. It gets 16 MB against the diff family's 2, and the product's own picture ceiling
+  sits **below** it: above the transport's number, a picture inside the budget could still arrive
+  trimmed, and a trimmed blob is indistinguishable from a corrupt one.
 - **Never `killpg`.** The child shares our process group, so killing the group signals the menu bar
   app itself. On a 10 s timeout: `terminate()`, wait 500 ms, then `SIGKILL` the pid.
 
@@ -118,3 +124,16 @@ worktree and substitute the empty tree object `4b825dc642cb6eb9a060e54bf8d69288f
 
 Never read and hash file bytes yourself. The worktree blob object id comes from a single batched
 `git hash-object --stdin-paths` over the changed paths; for a deleted file it is the all-zero id.
+
+## The working copy is the one thing git cannot hand over
+
+Every side of every comparison is in the object database and comes back from `show` — except the
+working copy, and there is no read-only spelling that puts it there. `show :path` reads the **index**,
+which for an edited file is the old content; `hash-object -w` would write to a repository this
+product never writes to; a `GIT binary patch` decodes only through a deflate stream.
+
+So exactly one reader opens a file directly, behind a protocol in `Server/Worktrees/Domain`, and it
+exists for pictures alone — text never needs it, because a diff already carries the working copy's
+lines. **Do not widen it.** The rule above still stands for hashing, and this is not an exception to
+it: the path it joins came from git's own account of the checkout, resolved against the registry,
+never from a request.

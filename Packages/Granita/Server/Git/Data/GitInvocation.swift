@@ -81,6 +81,24 @@ enum GitInvocation {
         }
     }
 
+    /// How many bytes of standard output this command may produce before it is cut off.
+    ///
+    /// **One command answers with a file rather than with a report, and the two want different
+    /// ceilings.** Everything else here is parsed line by line, so a prefix loses the tail and the
+    /// caller says so; `show <rev>:<path>` is handed on whole — to a decoder, or to the splice
+    /// context expansion performs — and a prefix of a file is wrong rather than short. The number is
+    /// `ProcessGitClient`'s because it is a property of running the binary, not of spelling it.
+    static func outputLimitBytes(for command: GitCommand, whenDiffing limit: Int) -> Int {
+        switch command {
+        case .fileContent:
+            ProcessGitClient.fileContentLimitBytes
+        case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .headCommit, .worktrees,
+             .untrackedPaths, .worktreeStatus, .trackedChanges, .trackedStats, .fileDiff,
+             .untrackedFileDiff, .removeWorktree, .hashWorktreeFiles:
+            limit
+        }
+    }
+
     private static func subcommandArguments(for command: GitCommand) -> [[UInt8]] {
         switch command {
         case .version:

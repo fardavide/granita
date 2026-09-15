@@ -8,6 +8,7 @@ import CorePairingDomain
 import ServerApiDomain
 import ServerGitData
 import ServerStoreDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 
 @testable import ServerApiPresentation
@@ -102,6 +103,7 @@ struct RequestDiagnosticsTests {
                     outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
                     timeout: ProcessGitClient.defaultTimeout
                 ),
+                files: LocalWorktreeFiles(),
                 limits: .standard
             )
             diagnostics = FakeDiagnostics()

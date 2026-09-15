@@ -3,6 +3,7 @@ import Testing
 
 import ServerGitDomain
 import ServerMacDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 @testable import ServerMacData
 
@@ -315,7 +316,9 @@ struct FileSystemProjectFoldersTests {
                 status: isDirty ? Data("1 .M N... 100644 100644 100644 aaa bbb edited.swift\0".utf8) : Data(),
                 failure: failure
             )
-            sut = FileSystemProjectFolders(service: WorktreeService(git: git, limits: .standard))
+            sut = FileSystemProjectFolders(
+                service: WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
+            )
         }
 
         func makeDirectory(at relativePath: String) throws -> URL {

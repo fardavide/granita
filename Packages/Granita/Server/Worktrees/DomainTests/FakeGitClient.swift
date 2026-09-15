@@ -19,6 +19,10 @@ actor FakeGitClient: GitClient {
     /// whole**, with `fatal: Unable to hash <path>` and exit 128, however many good paths were in it.
     private let unhashablePaths: Set<String>
 
+    /// Commands whose answer comes back cut off at the transport's ceiling, which is a different
+    /// outcome from a refusal: git exited normally and what arrived is a prefix.
+    private let truncated: Set<GitCommand>
+
     private(set) var received: [GitCommand] = []
 
     /// Where each command was run, in step with ``received``.
@@ -31,12 +35,14 @@ actor FakeGitClient: GitClient {
         outputs: [GitCommand: Data],
         failures: [GitCommand: GitError],
         unhashablePaths: Set<String> = [],
-        anyFileDiff: Data = Data()
+        anyFileDiff: Data = Data(),
+        truncated: Set<GitCommand> = []
     ) {
         self.outputs = outputs
         self.failures = failures
         self.unhashablePaths = unhashablePaths
         self.anyFileDiff = anyFileDiff
+        self.truncated = truncated
     }
 
     func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
@@ -71,9 +77,12 @@ actor FakeGitClient: GitClient {
         // caller under test, and a test that has to restate it asserts the plumbing twice.
         switch command {
         case .fileDiff, .untrackedFileDiff:
-            return GitOutput(standardOutput: anyFileDiff, isTruncated: false)
+            return GitOutput(standardOutput: anyFileDiff, isTruncated: truncated.contains(command))
         default:
-            return GitOutput(standardOutput: outputs[command] ?? Data(), isTruncated: false)
+            return GitOutput(
+                standardOutput: outputs[command] ?? Data(),
+                isTruncated: truncated.contains(command)
+            )
         }
     }
 }

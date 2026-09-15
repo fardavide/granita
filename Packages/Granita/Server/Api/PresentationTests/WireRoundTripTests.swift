@@ -203,6 +203,45 @@ struct WireRoundTripTests {
         #expect(read.lines.lines.isEmpty == false)
     }
 
+    @Test
+    func `given a changed picture when the phone reads both sides then the bytes survive the wire`(
+    ) async throws {
+        // given — the one route on this API that is not JSON, so it is the one route no amount of
+        // Codable agreement proves anything about. Two PNG signatures with different tails, over a
+        // repository this test owns.
+        let committed = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0xC0, 0xFF, 0xEE])
+        let working = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x7F, 0x80, 0xFE])
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        try repository.commit("Apps/Snapshots/home.png", bytes: committed, message: "add a picture")
+        try repository.write("Apps/Snapshots/home.png", bytes: working)
+
+        let scenario = try ApiScenario(at: repository.location, requiresAuthentication: false)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject(at: repository.location)
+
+        // when
+        let read = try await scenario.application.test(.router) { client in
+            let mac = HttpGranitaRepository(
+                macAt: macAddress,
+                token: PairingToken(rawValue: "unused when authentication is off"),
+                transport: RouterTransport.over(client)
+            )
+            let worktree = try #require(try await mac.worktrees(inProject: nil).first(where: \.isPrimary))
+            let changes = try await mac.changes(in: worktree.id)
+            let picture = try #require(changes.files.first { $0.path.hasSuffix("home.png") })
+            return (
+                old: try await mac.image(of: picture.id, in: worktree.id, side: .old),
+                new: try await mac.image(of: picture.id, in: worktree.id, side: .new)
+            )
+        }
+
+        // then — byte for byte on both sides. A transport that decoded the body as text, or a route
+        // that answered with the same side twice, fails here and nowhere else.
+        #expect(read.old == committed)
+        #expect(read.new == working)
+    }
+
     // MARK: - The one route that destroys something
 
     @Test

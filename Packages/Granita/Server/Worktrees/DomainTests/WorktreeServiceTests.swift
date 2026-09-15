@@ -178,7 +178,12 @@ struct WorktreeServiceTests {
             numstat: numstat,
             untracked: [],
             status: [],
-            limits: WorktreeLimits(maximumChangedFiles: 3, maximumDiffLines: 20_000, truncatedDiffLines: 2_000)
+            limits: WorktreeLimits(
+                maximumChangedFiles: 3,
+                maximumDiffLines: 20_000,
+                truncatedDiffLines: 2_000,
+                maximumImageBytes: WorktreeLimits.standard.maximumImageBytes
+            )
         )
 
         // when
@@ -295,7 +300,12 @@ struct WorktreeServiceTests {
             untracked: [],
             status: [],
             fileDiff: diff,
-            limits: WorktreeLimits(maximumChangedFiles: 1_000, maximumDiffLines: 3, truncatedDiffLines: 3)
+            limits: WorktreeLimits(
+                maximumChangedFiles: 1_000,
+                maximumDiffLines: 3,
+                truncatedDiffLines: 3,
+                maximumImageBytes: WorktreeLimits.standard.maximumImageBytes
+            )
         )
         let file = try #require(
             try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first
@@ -556,7 +566,9 @@ struct WorktreeServiceTests {
                 unhashablePaths: unhashablePaths,
                 anyFileDiff: Data(fileDiff.utf8)
             )
-            sut = WorktreeService(git: git, limits: limits)
+            // Never reached: nothing this suite asks for is a picture, and the working copy is the
+            // one thing git cannot answer for. `WorktreeImageTests` is where it is driven.
+            sut = WorktreeService(git: git, files: FakeWorktreeFileReading(), limits: limits)
         }
     }
 }

@@ -66,11 +66,10 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.14.0** — a changed screenshot shows both versions side by side; tap for full screen, hold to
+  swap.
+- **0.13.0** — a spinner beside the name says when a worktree list or a file list is being re-read.
 - **0.12.2** — a worktree opens on its diff, not on 92pt of empty grey above the first file.
-- **0.12.1** — an unarrived file draws a short placeholder, and the diff moves into place instead of
-  snapping.
-- **0.12.0** — a file you are waiting for says so; one your Mac refused says that instead, with a bar
-  offering the one action that helps.
 
 [Every release](CHANGELOG.md).
 

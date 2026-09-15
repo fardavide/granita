@@ -34,6 +34,17 @@ struct GranitaHttpClient: Sendable {
         try decode(returning, from: try await perform(.get, path, query: query, body: nil))
     }
 
+    /// A GET whose answer is not JSON.
+    ///
+    /// **The only shape here that does not decode**, and the reason is that its subject is a picture:
+    /// base64 inside a JSON document is a third more wire and a whole pass on the phone to undo, for
+    /// bytes an image decoder takes as they are. Everything else about the call is identical — the
+    /// contract version, the bearer, and the same refusal table — which is what keeps this from being
+    /// a second client.
+    func bytes(_ path: String, query: [URLQueryItem] = []) async throws(ApiFailure) -> Data {
+        try await perform(.get, path, query: query, body: nil)
+    }
+
     func post<Value: Decodable>(
         _ path: String,
         body: some Encodable,
