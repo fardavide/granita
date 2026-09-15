@@ -166,6 +166,48 @@ public struct WorktreeDiffScreen: View {
         )
     }
 
+    /// The opened picture, as a binding the cover can put away.
+    ///
+    /// The setter is written out rather than handed `model.closeImage` for the reason `sheetBinding`
+    /// names: a method reference in a `Binding`'s setter makes swiftc emit a reabstraction thunk and
+    /// abort. A closure that calls the same method compiles.
+    private var openedImageBinding: Binding<OpenedImage?> {
+        Binding(
+            get: { model.openedImage },
+            set: { opened in
+                if opened == nil {
+                    model.closeImage()
+                }
+            }
+        )
+    }
+
+    /// One picture at the size of the screen, and its other side under a thumb.
+    ///
+    /// **Nothing at all when the side is no longer in hand**, which is a change set landing under an
+    /// open cover: the bytes went with the old one, and a cover left up over nothing would be a
+    /// screen the reader has to guess their way out of. The model answering nil closes it.
+    @ViewBuilder private func openedPicture(_ opened: OpenedImage) -> some View {
+        if let shown = model.openedImageSide {
+            ImageComparisonView(
+                name: DiffFilePath.name(of: name(of: opened.file)),
+                sides: shown.image.sides,
+                side: shown.side,
+                bytes: shown.bytes,
+                onCompare: { model.compareImage($0) },
+                onDone: { model.closeImage() }
+            )
+        } else {
+            Color.clear.onAppear { model.closeImage() }
+        }
+    }
+
+    /// The path of one file in the change set, or nothing readable when it has gone.
+    private func name(of file: FileID) -> String {
+        guard case .reading(let entries) = model.state else { return "" }
+        return entries.first { $0.id == file }?.file.path ?? ""
+    }
+
     /// Which sheet is up, and the presentation each one needs.
     ///
     /// **The composer keeps the diff live behind it and the review does not**, which is design §7.2
@@ -252,6 +294,7 @@ public struct WorktreeDiffScreen: View {
             // composing run left a reader holding a row with nothing in the gutter to say which.
             pending: model.draft.pending ?? model.draft.held,
             highlighted: model.highlighted,
+            images: model.images,
             // The strip stops being a target while a sheet is up, because the composer's own detent
             // keeps the diff behind it live — and a gesture that lands there is one the draft has
             // nothing to do with. The scroll still moves; only the aim goes.
@@ -264,6 +307,8 @@ public struct WorktreeDiffScreen: View {
             onExpand: { way, hunk, file in Task { await model.expand(way, hunk: hunk, in: file) } },
             onTapGutter: { row, file in model.tappedGutter(row, in: file) },
             onLongPressGutter: { row, file in model.longPressedGutter(row, in: file) },
+            onOpenImage: { side, file in model.openImage(side, of: file) },
+            onRetryImage: { side, file in Task { await model.retryImage(side, of: file) } },
             onOpenReview: { model.showReview() },
             onRetry: { Task { await model.load() } },
             onCopyLogs: { Task { await model.copyLogs() } }
@@ -292,6 +337,29 @@ public struct WorktreeDiffScreen: View {
         // rather than on the model, so an arriving diff does not restart them.
         .animation(.disclosure, value: model.draft.heldEnd)
         .animation(.disclosure, value: model.comments.isEmpty)
+        // **On the diff pane rather than on the screen, and that is load-bearing on one platform.**
+        // A picture is presented over the pane it belongs to, which is true either way; on macOS it
+        // is also the only way it can be presented at all. There is no full-screen cover there, so it
+        // falls back to a sheet — and two `.sheet` modifiers on **one** view is the shape where only
+        // the first ever fires, which is this project's own note about several modifiers of a kind.
+        // A different view in the hierarchy is a different presentation slot.
+        #if os(macOS)
+        .sheet(item: openedImageBinding) { opened in
+            openedPicture(opened)
+                // A cover has the screen; a sheet has to be told, or the Mac opens a panel sized to
+                // its content and a screenshot is its content.
+                .frame(minWidth: 560, minHeight: 480)
+        }
+        #else
+        // **A cover rather than a fourth sheet.** A picture is what the reader came to look at, so it
+        // takes the screen whole — a sheet would give back a corner of the diff and 30pt of inset at
+        // exactly the moment the diff has stopped being the subject. It is also what lets the drawer
+        // stay up behind it: a reader who reached this file from the selector taps a picture with the
+        // list still at half height, and neither presentation has to take the other down.
+        .fullScreenCover(item: openedImageBinding) { opened in
+            openedPicture(opened)
+        }
+        #endif
     }
 
     /// The state a held row leaves the reader in, explained where their thumb already is.

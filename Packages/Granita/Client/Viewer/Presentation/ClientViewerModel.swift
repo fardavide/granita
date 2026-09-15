@@ -48,6 +48,17 @@ public final class ClientViewerModel {
     /// drawing forever.
     public private(set) var highlighted: [FileID: HighlightedFile] = [:]
 
+    /// Each changed picture's two sides, filed by the file they belong to.
+    ///
+    /// **Beside the diffs rather than inside them**, which is the same call `highlighted` makes and
+    /// for the same two reasons. A `FileDiff` is the Mac's answer about one file, and bytes fetched
+    /// by two further requests are not part of it; and a side arriving has to be able to redraw one
+    /// card without the entry it belongs to being rebuilt, which is what a separate dictionary keyed
+    /// by the file buys.
+    ///
+    /// Empty is the ordinary first state. A file that is not a picture never gets an entry at all.
+    public private(set) var images: [FileID: DiffImage] = [:]
+
     /// Everything the reader has said about this worktree, in the order the scroll draws it.
     ///
     /// **Read from the store when the model is built rather than when the screen loads**, because a
@@ -119,6 +130,22 @@ public final class ClientViewerModel {
     /// baseline can see — a presented state no test can set is a screen photographed with its main
     /// affordance shut.
     public private(set) var sheet: ViewerSheet?
+
+    /// The picture the reader has opened full screen, if one is open.
+    ///
+    /// **Not a fourth `ViewerSheet` case**, because it is not a sheet: it covers the screen whole,
+    /// over a scroll that is no longer the subject, and it can be opened while a sheet is up — a
+    /// reader who reached this file from the selector taps its picture with the drawer still at half
+    /// height. One slot each, so neither has to take the other down.
+    public private(set) var openedImage: OpenedImage?
+
+    /// Whether a finger is down on the opened picture, which is what swaps it for its other side.
+    ///
+    /// **The model's rather than the view's, for the reason every other presentation flag here is.**
+    /// A `@GestureState` inside the cover is a state no test can set and no baseline can photograph,
+    /// and this gesture is the whole of how two screenshots get compared — so the one state worth
+    /// asserting would have been the one nothing could see.
+    public private(set) var isComparingImage = false
 
     /// The gesture design §7.1 draws, as the state machine `Domain` owns.
     ///
@@ -230,6 +257,14 @@ public final class ClientViewerModel {
     /// in flight when the screen went dark arrives holding a key nothing is waiting for and is
     /// dropped rather than drawn in the wrong colours.
     private var asked: Set<HighlightKey> = []
+
+    /// Every picture side already requested, so a scroll reporting a position per frame asks for each
+    /// of them exactly once.
+    ///
+    /// A question rather than an answer, which is what `asked` above is and for the same reason: a
+    /// side that has landed is not fetched twice, and a side that was refused is not either — the
+    /// bar at the bottom of the screen is what asks again.
+    private var askedForImages: Set<ImageRequest> = []
 
     /// The appearance the screen is drawing in, which is an environment value and therefore reported
     /// rather than known.
@@ -364,6 +399,19 @@ public final class ClientViewerModel {
             // screen no longer draws — memory nothing can reach.
             highlighted = [:]
             asked = []
+            // **The pictures go with them, and they are the expensive half.** A megabyte apiece held
+            // under a file identifier the scroll no longer draws is memory nothing can reach and
+            // nothing will free — which on a change set of re-recorded baselines is most of what this
+            // screen is holding.
+            //
+            // **Seeded here rather than when a diff lands**, so a picture's card has two frames to
+            // draw the instant its `FileDiff` arrives. Filled in later, the card spends a frame as
+            // an empty file — a real diff with no hunks in it, which is what git answers for a PNG —
+            // and the reader sees the row collapse to nothing and then grow two frames.
+            images = Dictionary(uniqueKeysWithValues: changes.files.compactMap { file in
+                DiffImage.awaiting(file).map { (file.id, $0) }
+            })
+            askedForImages = []
             // A new change set is a new set of requests, so a refusal from the old one describes
             // files this screen no longer draws — and its bar would count blank cards that are gone.
             diffFailure = nil
@@ -595,6 +643,58 @@ public final class ClientViewerModel {
             return
         }
         await highlight()
+    }
+
+    /// Opens one side of a picture over the whole screen.
+    ///
+    /// **Only a side that is actually in hand opens.** A card draws a frame for a picture still on
+    /// its way and another for one the Mac refused, and neither has anything to show at full screen
+    /// — so those frames are not controls, and this guard is what makes that true from both ends
+    /// rather than only in the view that happens to draw them today.
+    public func openImage(_ side: DiffSide, of file: FileID) {
+        guard case .arrived = images[file]?.side(side) else { return }
+        openedImage = OpenedImage(file: file, side: side)
+        isComparingImage = false
+    }
+
+    /// The reader's finger going down on the opened picture, and coming back up.
+    public func compareImage(_ isComparing: Bool) {
+        isComparingImage = isComparing
+    }
+
+    /// Puts the opened picture away.
+    ///
+    /// **It lets go of the hold with it.** A cover dismissed mid-press never sees the gesture end, so
+    /// without this the next picture opened would come up already showing its other side — which
+    /// reads as the card and the full screen disagreeing about which version this is.
+    public func closeImage() {
+        openedImage = nil
+        isComparingImage = false
+    }
+
+    /// Which side the opened picture is drawing, and the bytes to draw.
+    ///
+    /// **Resolved here rather than in the cover**, because it is two rules meeting — what the reader
+    /// opened, and whether they are holding — and a view that resolved them would be the only place
+    /// either could be asked about.
+    public var openedImageSide: (image: DiffImage, side: DiffSide, bytes: Data)? {
+        guard let openedImage, let image = images[openedImage.file] else { return nil }
+        let side = image.shownSide(opened: openedImage.side, isComparing: isComparingImage)
+        guard case .arrived(let bytes)? = image.side(side) else { return nil }
+        return (image, side, bytes)
+    }
+
+    /// Asks the Mac again for one side of a picture it refused, which is the only control that card
+    /// offers.
+    ///
+    /// **Its own control rather than the bar at the bottom of the screen.** That bar counts cards
+    /// left blank by a refused *batch* of diffs, and a picture that failed leaves no card blank — the
+    /// file arrived, its header is there, and one of its two frames is saying so. One request failed
+    /// carrying one side, so there is one thing to press and it is on the frame that failed.
+    public func retryImage(_ side: DiffSide, of file: FileID) async {
+        guard let held = images[file], held.sides.contains(side) else { return }
+        images[file] = held.replacing(side, with: .awaiting)
+        await loadImage(ImageRequest(file: file, side: side))
     }
 
     /// Shows the lines a hunk skipped, on the side the reader pressed.
@@ -917,6 +1017,56 @@ public final class ClientViewerModel {
         // because a review is a handful of comments.
         comments = ReviewedComment.ordered(comments, against: entries)
         await highlight()
+        await fetchImages(of: wanted)
+    }
+
+    /// The pictures among a batch, one side at a time, with each card filling in as its side lands.
+    ///
+    /// **Sequential where the diffs are batched, and the reason is size.** A diff is a few kilobytes;
+    /// a re-recorded iPad baseline is six megabytes, and a five-file window can hold ten of them. In
+    /// flight at once that is most of a change set held in memory to draw two cards — so they are
+    /// asked for in the order the reader is scrolling, which puts the picture under their thumb first
+    /// and lets the rest arrive behind them.
+    ///
+    /// A file that is not a picture never gets an entry, and a file drawn shut is stepped over the
+    /// same way the lexer steps over one: nobody has opened it, and this is the expensive fetch.
+    private func fetchImages(of wanted: [FileID]) async {
+        for file in wanted {
+            guard let entry = entries.first(where: { $0.id == file }),
+                  entry.collapse.isCollapsed == false,
+                  let seeded = images[file] else { continue }
+            for side in seeded.pending {
+                let request = ImageRequest(file: file, side: side)
+                guard askedForImages.contains(request) == false else { continue }
+                // Recorded before the await rather than after it, so a second pass over this file —
+                // the reader opening it while a batch is landing — does not put the same question.
+                askedForImages.insert(request)
+                await loadImage(request)
+            }
+        }
+    }
+
+    private func loadImage(_ request: ImageRequest) async {
+        let answer: DiffImageSide
+        do {
+            answer = .arrived(
+                try await repository.image(of: request.file, in: worktree, side: request.side)
+            )
+        } catch .cancelled {
+            // **The app's own doing, so the frame is not marked failed.** A `.task` is torn down
+            // whenever its view goes away, and a picture reading *couldn’t read this* because the
+            // reader pressed Back is the app blaming the Mac for something the app did. Forgetting
+            // the question is what lets the next visit ask it again.
+            askedForImages.remove(request)
+            return
+        } catch {
+            answer = .refused(error)
+        }
+        // Found again rather than reused: a change set landing while this was in flight empties the
+        // whole dictionary, and writing here would put back a picture of a file the scroll no longer
+        // draws — under an identifier nothing would ever free.
+        guard let held = images[request.file] else { return }
+        images[request.file] = held.replacing(request.side, with: answer)
     }
 
     /// Moves every file of a refused batch into the case that has somewhere to say so.
@@ -1071,6 +1221,16 @@ public enum ViewerSheet: Hashable, Sendable, Identifiable {
 }
 
 // MARK: -
+
+/// One side of one file, which is the whole address of a picture request.
+///
+/// A pair rather than a file, because the two sides come back separately and either may fail on its
+/// own — the committed side of a file that was renamed and edited fails where the working copy does
+/// not, and a set keyed by the file alone could not remember which.
+private struct ImageRequest: Hashable {
+    let file: FileID
+    let side: DiffSide
+}
 
 /// How much surrounding context each diff is fetched with. Three, which is git's own default and
 /// what design §4's collapsed-context rule assumes.

@@ -209,6 +209,10 @@ actor FakeGranitaRepository: GranitaRepository {
         throw .fileGone
     }
 
+    func image(of file: FileID, in worktree: WorktreeID, side: DiffSide) async throws(ApiFailure) -> Data {
+        throw .fileGone
+    }
+
     func markViewed(
         _ viewed: Bool,
         file: FileID,

@@ -1240,6 +1240,84 @@ header.
 
 *Should feel like* a review tool. The phone version should feel like the same tool, carried.
 
+### A picture diffs as two pictures, and the detail is one tap away
+
+> **Built without a design, on Davide's call** *(15 September 2026, 0.14.0)*. §4 had no picture in it
+> at all: a binary file was a collapsed bar reading `binary · no diff to show` with no chevron, and a
+> PNG is binary as far as git is concerned. The `design-handoff` rule says no pull request touching a
+> screen opens before its frames exist; Davide waived it the same way he waived it for syntax
+> highlighting, and settled the one call that would have been the return's: *"Side by side are fine.
+> If you want to see the detail, you're supposed to tap to see it full screen."* What follows is
+> therefore this repository's own calls, written down here for the same reason a return would be.
+
+**The card draws both versions side by side, and neither of them is readable.** That is the point
+rather than a compromise: each frame is about 170pt wide on a phone, which is enough to see *that*
+something moved and nothing like enough to read a screenshot. What a reader needs from the scroll is
+to know which of forty pictures is worth opening; what they need from the picture is the picture, and
+that is a different screen.
+
+> Rejected: stacking them full width, which reads one screenshot better and puts the two versions a
+> scroll apart — the one comparison the card exists to make, made impossible by the layout that shows
+> each of them best. Rejected: the working copy alone with the committed one behind a press, which is
+> cheapest on scroll height and never tells a reader skimming that there is a second version at all.
+
+**Each frame is capped at 220pt and letterboxes rather than crops.** A screenshot is portrait, and
+two portrait frames at their natural height are most of a screen spent on one file in a change set of
+forty. Cropping would hide the part that changed, which on a screenshot test is usually the bottom.
+
+**A file with one side draws one frame at the full width of the card**, and the caption says `added`
+or `deleted` rather than `after`. Two frames with one of them empty is a card claiming the picture
+failed to arrive.
+
+**The captions are the collapsed bar's register** — lower case, a fact about the file rather than a
+sentence addressed to the reader — and they say what happened rather than which side it is:
+`before` and `after` are what a reader is comparing.
+
+**Every frame says which of four states it is in**, and three of them are not a picture. A side still
+coming says `reading from your Mac`, the collapsed bar's own words for the same wait. A side the Mac
+refused says `couldn’t read this picture` **and carries a Try Again** — the failure bar at the bottom
+of the screen counts cards left blank by a refused *batch of diffs*, and a refused picture leaves no
+card blank, so that bar never appears for one and this is the only control there is. A side that
+arrived and will not decode says `this isn’t a picture this phone can draw`, which is a different
+problem with a different remedy: a reader who cannot tell it from a refusal retries the wrong one
+forever.
+
+**Only a side that is in hand is a control.** The three frames above are drawn and are not tappable,
+which is the rule about controls that do nothing applied where it is easiest to break — an empty grey
+rectangle looks exactly like a picture that has not painted yet.
+
+### Full screen, and the other version under a thumb
+
+**A cover rather than a sheet.** The picture is what the reader came for, so it takes the screen
+whole; a sheet gives back a corner of the diff and 30pt of inset at the moment the diff has stopped
+being the subject. On macOS, where there is no cover, it is a sheet with a stated minimum size — and
+it hangs off the diff pane rather than the screen, because two `.sheet` modifiers on one view is the
+shape where only the first ever fires.
+
+**Holding swaps the picture for its other side; letting go brings it back.** Davide asked for exactly
+this — *"keep the finger to see the other variant, so you can easily tap to see the other version"* —
+and it is the only way two screenshots differing in one place can be compared on a phone: same
+pixels, swapped under the thumb. A caption says which one is on screen, and `hold to compare` sits
+under it.
+
+**A one-sided picture does not offer the hold, and the hint is absent rather than greyed.** There is
+nothing to swap to, and a gesture that does nothing has nowhere to put the explanation a disabled
+control would carry.
+
+> The gesture is a `DragGesture` of zero minimum distance rather than a `LongPressGesture`, which has
+> no event for the finger coming up — that would be a toggle rather than a comparison. The whole
+> picture takes the press, letterboxing included, or it would work in the middle of a portrait
+> screenshot and not at its edges.
+
+**Which side is on screen is the model's, not the view's.** A `@GestureState` inside the cover would
+have made the swap a thing only a finger could produce — so the one state this feature exists for
+would have been the one nothing could photograph. The held frame is a committed baseline.
+
+**Pinch to zoom is not built**, and that is a decision rather than an omission: the picture is fitted
+to the screen, which for a phone baseline is about life size, and Davide's own framing was that the
+tap is what the detail is for. If reading an iPad baseline on a phone turns out to need it, it is a
+separate slice with a gesture of its own.
+
 ## §5 — Pairing *(M4, built in 0.1.0)*
 
 Reviewed on 25 August 2026 against 0.0.19, at the same two layouts as §1–§4. Four screens, twelve

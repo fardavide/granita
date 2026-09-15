@@ -24,6 +24,10 @@ final class FakeGranitaRepository: GranitaRepository {
     /// decides about expansion, so it is the thing worth recording rather than the text.
     var windowsAskedFor: [LineWindow] { windows.withLock { $0 } }
 
+    /// Every picture side asked for, in order. Which sides left the phone is the assertion — a file
+    /// that has only just arrived must never have its committed side asked for at all.
+    var imagesAskedFor: [ImageRead] { imageReads.withLock { $0 } }
+
     private let changeSet: Result<WorktreeChanges, ApiFailure>
 
     /// What the first read answers with, when the point of the test is what the second one does.
@@ -59,9 +63,17 @@ final class FakeGranitaRepository: GranitaRepository {
     private let readsAnsweringImmediately: Int
     private let suspendedReadReleased = Mutex<Bool>(false)
 
+    /// What each picture side answers with, or a refusal for the whole of them.
+    private let imageAnswer: Result<Data, ApiFailure>
+
+    /// How many picture reads answer before the rest refuse, so one card can fail beside one that
+    /// did not — which is the state the per-frame control exists for.
+    private let imagesAnsweringBeforeRefusing: Int
+
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
     private let windows = Mutex<[LineWindow]>([])
+    private let imageReads = Mutex<[ImageRead]>([])
 
     init(
         changeSet: Result<WorktreeChanges, ApiFailure>,
@@ -69,6 +81,8 @@ final class FakeGranitaRepository: GranitaRepository {
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
+        imageAnswer: Result<Data, ApiFailure> = .success(Data([0x89, 0x50, 0x4E, 0x47])),
+        imagesAnsweringBeforeRefusing: Int = .max,
         refusesTheFirstRead: ApiFailure? = nil,
         holdingDiffs holds: Bool = false,
         suspendingReadsAfter readsAnsweringImmediately: Int = .max,
@@ -80,6 +94,8 @@ final class FakeGranitaRepository: GranitaRepository {
         self.diffFailure = diffFailure
         self.viewedFailure = viewedFailure
         self.linesAnswer = linesAnswer
+        self.imageAnswer = imageAnswer
+        self.imagesAnsweringBeforeRefusing = imagesAnsweringBeforeRefusing
         self.refusesTheFirstRead = refusesTheFirstRead
         self.holds = holds
         self.stranger = stranger
@@ -157,6 +173,21 @@ final class FakeGranitaRepository: GranitaRepository {
         return try linesAnswer.get()
     }
 
+    func image(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide
+    ) async throws(ApiFailure) -> Data {
+        let ordinal = imageReads.withLock { reads in
+            reads.append(ImageRead(file: file, side: side))
+            return reads.count
+        }
+        guard ordinal <= imagesAnsweringBeforeRefusing else { throw .gitFailure(message: "git exited 128") }
+        // The bytes are distinguished by the side so a test can tell which one a card is drawing,
+        // which is the whole question the hold gesture asks.
+        return try imageAnswer.get() + Data([side == .old ? 0x01 : 0x02])
+    }
+
     // MARK: - Not reached from the diff screen
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
@@ -190,4 +221,11 @@ struct ViewedWrite: Hashable, Sendable {
     let isViewed: Bool
     let file: FileID
     let contentHash: String
+}
+
+/// One picture side, as it left the phone.
+struct ImageRead: Hashable, Sendable {
+
+    let file: FileID
+    let side: DiffSide
 }

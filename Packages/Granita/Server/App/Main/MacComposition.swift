@@ -18,6 +18,7 @@ import ServerMacPresentation
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 
 /// Everything the menu bar app is made of, wired once.
@@ -70,7 +71,7 @@ final class MacComposition {
             ),
             diagnostics: diagnostics
         )
-        let service = WorktreeService(git: git, limits: .standard)
+        let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
         let log = InMemoryConnectionLog(now: { Date() })
         let pairing = Pairing(store: store, now: { Date() })

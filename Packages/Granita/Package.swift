@@ -474,6 +474,22 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // The one place in the server that opens a file it was asked about. Everything else reaches
+        // the disk through git, which resolves paths itself inside a checkout it was handed; a
+        // picture's working copy is not in the object database and has to be read directly.
+        .target(
+            name: "ServerWorktreesData",
+            dependencies: ["ServerWorktreesDomain", "ServerGitDomain", "CoreDiffDomain"],
+            path: "Server/Worktrees/Data",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ServerWorktreesDataTests",
+            dependencies: ["ServerWorktreesData", "ServerWorktreesDomain", "ServerGitDomain"],
+            path: "Server/Worktrees/DataTests",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "ServerSessionsData",
             dependencies: ["ServerWorktreesDomain", "CoreDiffDomain"],
@@ -569,6 +585,7 @@ let package = Package(
                 "ServerGitData",
                 "ServerStoreData",
                 "ServerSessionsData",
+                "ServerWorktreesData",
                 // The phone's client, against the Mac's routes, in one process. The wire contract
                 // now has one definition in `Core` and both halves name it, which is a claim no
                 // suite that sees only one half can check — so the one place the two meet is a
@@ -627,6 +644,7 @@ let package = Package(
                 "ServerMacData",
                 "ServerMacDomain",
                 "ServerGitDomain",
+                "ServerWorktreesData",
                 "ServerWorktreesDomain"
             ],
             path: "Server/Mac/DataTests",
@@ -709,6 +727,7 @@ let package = Package(
                 "ServerGitData",
                 "ServerSessionsData",
                 "ServerWatchData",
+                "ServerWorktreesData",
                 "CorePairingDomain"
             ],
             path: "Server/App/Main",
@@ -734,6 +753,7 @@ let package = Package(
                 "ServerGitData",
                 "ServerSessionsData",
                 "ServerWatchData",
+                "ServerWorktreesData",
                 "CorePairingDomain",
                 "CoreDiffDomain"
             ],

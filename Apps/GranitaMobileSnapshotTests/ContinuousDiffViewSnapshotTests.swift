@@ -40,6 +40,10 @@ struct ContinuousDiffViewSnapshotTests {
                 onSetViewed: { _, _ in },
                 onSetOpen: { _, _ in },
                 onExpand: { _, _, _ in },
+                // Nothing to report: none of these subjects holds a picture, so no frame is drawn
+                // and neither of these can be reached from the raster.
+                onOpenImage: { _, _ in },
+                onRetryImage: { _, _ in },
                 onRetry: {},
                 onCopyLogs: {}
             )

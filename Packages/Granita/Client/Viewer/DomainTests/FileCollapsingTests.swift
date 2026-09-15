@@ -85,6 +85,35 @@ struct FileCollapsingTests {
     }
 
     @Test
+    func `given a picture when its collapse is asked for then it opens like any other file`() {
+        // given — git calls a PNG binary, and there are two pictures behind this one.
+        let file = aChangedFile(path: "Apps/Snapshots/home-iPhone-light.png", isBinary: true)
+
+        // when
+        let collapse = FileCollapsing.state(of: file, openedByTheReader: nil)
+
+        // then — no `binary` bar, and a chevron, because there is something behind it to disclose.
+        #expect(collapse.isCollapsed == false)
+        #expect(collapse.isCollapsible)
+        #expect(collapse.reason == nil)
+    }
+
+    @Test
+    func `given a picture the reader has read when its collapse is asked for then the mark still shuts it`() {
+        // given — the picture is not the reason it is shut; the reader's own mark is, and that is
+        // the one reason this product exists for.
+        let file = aChangedFile(path: "Apps/Snapshots/home.png", isBinary: true, isViewed: true)
+
+        // when
+        let collapse = FileCollapsing.state(of: file, openedByTheReader: nil)
+
+        // then
+        #expect(collapse.isCollapsed)
+        #expect(collapse.isCollapsible)
+        #expect(collapse.reason == .viewed)
+    }
+
+    @Test
     func `given a rename that changed nothing when its collapse is asked for then it says what it was called`() {
         // given
         let file = aChangedFile(

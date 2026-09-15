@@ -8,6 +8,7 @@ import ServerApiDomain
 import ServerApiPresentation
 import ServerGitData
 import ServerStoreDomain
+import ServerWorktreesData
 import ServerWorktreesDomain
 
 /// `/v1/pair` from the outside: the one route an unpaired phone may reach, and therefore the one
@@ -209,6 +210,7 @@ struct PairingRouteTests {
                     outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
                     timeout: ProcessGitClient.defaultTimeout
                 ),
+                files: LocalWorktreeFiles(),
                 limits: .standard
             )
             application = Application(

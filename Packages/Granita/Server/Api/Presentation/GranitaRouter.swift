@@ -298,6 +298,68 @@ public enum GranitaRouter {
             }
         }
 
+        // **The one route that answers with bytes rather than with JSON**, because its subject is a
+        // picture and a picture wrapped in base64 inside a JSON document is a third more wire and a
+        // whole decode pass on the phone for nothing.
+        //
+        // Which sides exist is decided from the file's status on both ends — `ImageSides` is a `Core`
+        // function precisely so the phone knows not to ask for the committed side of a file that has
+        // just arrived. A phone that asks anyway gets git's own refusal rather than an empty picture.
+        authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/image") { request, context -> Response in
+            let id = try worktreeId(from: context)
+            let file = try fileId(from: context)
+            let resolved = try await dependencies.registry.resolve(id)
+            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            guard let path = changes.paths[file], let current = changes.files.first(where: { $0.id == file })
+            else {
+                throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
+            }
+
+            // **Refused on what the path claims rather than on what git called binary**, which is the
+            // same rule the phone applies: an untracked file is never reported binary, so a screenshot
+            // an agent has just written would otherwise be the one picture this route would not serve.
+            guard let format = ImageFormat.forPath(current.path) else {
+                throw ApiError(.badRequest, message: "that file is not a picture this Mac can serve")
+            }
+
+            let side = DiffSide(rawValue: request.uri.queryParameters["side"].map(String.init) ?? "new") ?? .new
+            // A rename's two sides live at two paths and the committed one only exists at the old
+            // one, so asking for `HEAD:<new path>` fails outright — the same trap the lines route
+            // documents, reached here by a file that was moved and edited in one go.
+            let readFrom = side == .old ? (changes.oldPaths[file] ?? path) : path
+
+            let bytes: Data
+            do {
+                bytes = try await dependencies.service.imageBytes(
+                    of: readFrom,
+                    side: side,
+                    in: resolved.location
+                )
+            } catch let refusal as WorktreeImageError {
+                // A `switch` rather than three `catch` patterns, because this closure may throw
+                // anything: a pattern list the compiler does not check for exhaustiveness would let a
+                // fourth reason escape as an empty 500, which is the one answer a reader three rooms
+                // away can do nothing with.
+                switch refusal {
+                case .git(let failure):
+                    throw gitFailure(failure)
+                case .tooLarge:
+                    throw ApiError(
+                        .tooLarge,
+                        message: "that picture is larger than this Mac serves in one piece"
+                    )
+                case .unreadable(let reason):
+                    throw ApiError(.fileGone, message: "that file could not be read: \(reason)")
+                }
+            }
+
+            return Response(
+                status: .ok,
+                headers: [.contentType: format.mediaType],
+                body: ResponseBody(byteBuffer: ByteBuffer(bytes: bytes))
+            )
+        }
+
         authenticated.post("/v1/worktrees/:worktreeId/files/:fileId/viewed") { request, context -> Response in
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)

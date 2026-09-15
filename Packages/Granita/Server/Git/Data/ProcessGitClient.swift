@@ -15,6 +15,19 @@ public struct ProcessGitClient: GitClient {
     /// SPEC §5.4's ceiling on a single file's diff. Beyond it the client shows a prefix and says so.
     public static let defaultOutputLimitBytes = 2 * 1024 * 1024
 
+    /// The ceiling for printing one committed file whole, which is a different question from a diff.
+    ///
+    /// **A prefix is a usable answer for a diff and a useless one for a blob.** Everything else here
+    /// is read to be parsed line by line, so cutting it off costs the tail; `show <rev>:<path>` is
+    /// read to be handed over intact — as a picture to draw, or as the file context expansion splices
+    /// from — and a prefix of either is wrong rather than short. Granita's own iPad baselines are
+    /// 6.4 MB apiece, so the diff ceiling would have cut every one of them in half.
+    ///
+    /// It has to stay **above** `WorktreeLimits.maximumImageBytes`, which is what the product refuses
+    /// at: the service can only tell a picture over budget from a picture that was trimmed if nothing
+    /// inside the budget is ever trimmed.
+    public static let fileContentLimitBytes = 16 * 1024 * 1024
+
     /// SPEC §5.1's budget for one invocation.
     public static let defaultTimeout = Duration.seconds(10)
 
@@ -135,7 +148,10 @@ public struct ProcessGitClient: GitClient {
     ) async throws -> Outcome {
         try await withThrowingTaskGroup(of: Drained.self, returning: Outcome.self) { group in
             group.addTask {
-                let read = try await Self.collect(execution.standardOutput, limit: outputLimitBytes)
+                let read = try await Self.collect(
+                    execution.standardOutput,
+                    limit: GitInvocation.outputLimitBytes(for: command, whenDiffing: outputLimitBytes)
+                )
                 if read.isTruncated {
                     // Stopping the read is only half of enforcing the cap. Git is still writing,
                     // and a pipe nobody empties blocks it forever, so the process goes too.

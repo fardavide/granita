@@ -1,3 +1,5 @@
+import Foundation
+
 import CoreApiDomain
 import CoreDiffDomain
 import CorePairingDomain
@@ -88,6 +90,20 @@ public protocol GranitaRepository: Sendable {
         start: Int,
         count: Int
     ) async throws(ApiFailure) -> FileLines
+
+    /// One side of a changed picture, as the bytes the Mac holds.
+    ///
+    /// **Bytes rather than a decoded image**, because decoding is a framework's job and this is the
+    /// layer that draws the line between what arrived and what can be drawn: a `.png` holding
+    /// something else is one card saying so rather than a repository inventing a failure.
+    ///
+    /// Which sides exist is `ImageSides`, decided from the file's status on both ends — so a caller
+    /// never asks for the committed side of a file that has just arrived.
+    func image(
+        of file: FileID,
+        in worktree: WorktreeID,
+        side: DiffSide
+    ) async throws(ApiFailure) -> Data
 
     /// Marks a file read, against the content that was read.
     ///
