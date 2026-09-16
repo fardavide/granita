@@ -6358,3 +6358,56 @@ ten six-megabyte transfers in flight is most of a change set held in memory to d
 the reader's own scroll order, so the picture under their thumb arrives first.
 
 The screen calls are in [design §4](design.md), including the waiver that let them be made here.
+
+## Xcode Cloud resolves its own dependencies, and the committed lockfile drifts on purpose
+
+The 0.14.0 archive failed with nothing in this repository having changed:
+
+    Could not resolve package dependencies: an out-of-date resolved file was detected …
+    Running resolver because the following dependencies were added: 'swift-issue-reporting'
+
+**Xcode Cloud builds with automatic dependency resolution disabled, which means it does not
+resolve** — it validates the committed `Package.resolved` against the manifests and refuses the
+build when they disagree. So any change to the dependency *graph* that nobody here made breaks the
+archive, and the archive is the release.
+
+What changed was a rename upstream. `swift-snapshot-testing` is declared `from: 1.19.4` and its own
+`swift-custom-dump` dependency `from: 1.3.3`; pointfreeco renamed `xctest-dynamic-overlay` to
+`swift-issue-reporting`, and a rename is a **new package identity**, so a newly published transitive
+version added one. The committed file named the old identity and could not have named the new one:
+it was written before the rename existed.
+
+### Every check was green while the archive was not
+
+The gate that exists for this cannot see it. GitHub's runners resolve automatically, so all seven
+required checks passed on [#93](https://github.com/fardavide/granita/pull/93) — including two that
+build both apps — against a resolved file Xcode Cloud would reject twenty minutes later. **A green
+pull request is not evidence the release will build**, and this is the one failure mode where that
+is true.
+
+### The fix is a `ci_post_clone.sh`, and the alternative it beat
+
+Apple runs `ci_scripts/ci_post_clone.sh` after the clone and **before** resolution, which is the
+only hook early enough — `ci_pre_xcodebuild.sh` runs after resolution has already failed. It calls
+`xcodebuild -resolvePackageDependencies`, handing the job back to the machine that is building.
+
+**Rejected: hand-writing the resolved file.** It is generated, and a developer's toolchain does not
+resolve the graph a clean runner does — this one still answers `xctest-dynamic-overlay` from a
+local mirror of the pre-rename repository, so the file Xcode Cloud wants cannot be produced here at
+all. A lockfile edited by hand stops describing anything.
+
+**Rejected: pinning the snapshot library to an exact version.** It does not reach the problem.
+Whatever `swift-snapshot-testing` is pinned to, it declares its own dependency with `from:`, so the
+transitive graph keeps floating and the next rename lands the same way.
+
+**Not rejected, Davide's to click:** turning automatic resolution back on in the Xcode Cloud
+workflow settings. Same outcome with no repository change, and nothing recording the decision.
+
+### What it costs
+
+**The committed `Package.resolved` drifts from what ships, and that is the trade rather than an
+oversight.** This repository is deliberate to the point of counting its three dependencies, so a
+lockfile that stops describing the release is a real loss — it is accepted because the alternative
+is an archive that an upstream release can break on any morning, and a build cannot be
+un-published. A variant that fails the build when resolution changes the file was offered and not
+taken; if the drift starts mattering, that is where to go.
