@@ -6359,6 +6359,148 @@ the reader's own scroll order, so the picture under their thumb arrives first.
 
 The screen calls are in [design §4](design.md), including the waiver that let them be made here.
 
+## The committed lockfile describes a graph that cannot exist, and a `ci_post_clone.sh` did not fix it
+
+The 0.14.0 archive failed with nothing in this repository having changed:
+
+    Could not resolve package dependencies: an out-of-date resolved file was detected …
+    Running resolver because the following dependencies were added: 'swift-issue-reporting'
+
+**Xcode Cloud builds with automatic dependency resolution disabled, which means it does not
+resolve** — it validates the committed `Package.resolved` against the manifests and refuses the
+build when they disagree. So any change to the dependency *graph* that nobody here made breaks the
+archive, and the archive is the release.
+
+What changed was a rename upstream. `swift-snapshot-testing` is declared `from: 1.19.4` and its own
+`swift-custom-dump` dependency `from: 1.3.3`; pointfreeco renamed `xctest-dynamic-overlay` to
+`swift-issue-reporting`, and a rename is a **new package identity**, so a newly published transitive
+version added one. The committed file named the old identity and could not have named the new one:
+it was written before the rename existed.
+
+### Every check was green while the archive was not
+
+The gate that exists for this cannot see it. GitHub's runners resolve automatically, so all seven
+required checks passed on [#93](https://github.com/fardavide/granita/pull/93) — including two that
+build both apps — against a resolved file Xcode Cloud would reject twenty minutes later. **A green
+pull request is not evidence the release will build**, and this is the one failure mode where that
+is true.
+
+### The committed file describes a graph that cannot exist
+
+`swift-custom-dump` **1.7.3** declares `swift-issue-reporting`, verified against the tag on GitHub
+rather than against a checkout. The committed `Package.resolved` pins custom-dump at exactly 1.7.3
+**and** pins `xctest-dynamic-overlay` at 1.13.1. No resolution produces that pairing, so the file is
+not merely stale — it is describing something that is not a possible graph, and Xcode Cloud is right
+to refuse it.
+
+**The resolver that wrote it is the one that is wrong, and it is the one this repository pins.** A
+scratch package depending on nothing but `swift-snapshot-testing` at Granita's own range, resolved by
+plain SwiftPM with no workspace, no lockfile and no project state, produces the same pairing — so it
+is not Xcode, not a cache and not the workspace. Cleared in order and to no effect: the package's
+`.build`, the project's `SourcePackages`, SwiftPM's global cached clone of the pre-rename repository,
+and its global manifest cache.
+
+`swift-issue-reporting` is `xctest-dynamic-overlay` **renamed**, carrying its whole history, so the
+old URL redirects and both names reach one repository with `1.x` and `2.x` tags on it. Asked for
+`from: "2.1.0"`, Swift 6.3.3 (Xcode 26.6) pins **1.13.1 under the old name** — a version that cannot
+satisfy the constraint it was resolving. That is a resolver fault, not a graph.
+
+**Which makes the real cause a toolchain mismatch.** This machine is Xcode 26.6, and
+`.github/actions/select-xcode` pins CI to 26.6 deliberately, "to keep environment-sensitive output
+reproducible". Xcode Cloud chooses its own version in the workflow settings, and a resolver that gets
+this right is what reports `swift-issue-reporting` as *added*. Cloud is not disagreeing with the
+repository; it is disagreeing with a bug the repository's pinned toolchain committed to a file.
+
+So the targeted fix is **to pin Xcode Cloud to 26.6 as well**, which is the pin that already exists
+everywhere else and is the version the baselines were recorded against. Upgrading the repository to
+Cloud's newer Xcode instead is the other direction, and it is a deliberate bump with re-recorded
+baselines rather than a fix for this.
+
+### Every check was green while the archive was not, twice
+
+The gate that exists for this cannot see it. GitHub's runners resolve automatically, so all seven
+required checks passed on [#93](https://github.com/fardavide/granita/pull/93) and again on
+[#94](https://github.com/fardavide/granita/pull/94) — including the two that build both apps —
+against a resolved file Xcode Cloud rejected minutes later. **A green pull request is not evidence
+the release will build.** That is the durable lesson here whatever fixes the resolution.
+
+### A `ci_post_clone.sh` was tried and removed
+
+Apple runs `ci_scripts/ci_post_clone.sh` after the clone, which looked like the hook early enough to
+resolve before the validation — `ci_pre_xcodebuild.sh` runs after resolution has already failed. It
+called `xcodebuild -resolvePackageDependencies`, handing the job to the machine doing the building.
+It merged as `e059fdd`, and the next archive reported:
+
+    Running ci_post_clone.sh script failed (exited with code 74)
+
+**So it ran, and `xcodebuild -resolvePackageDependencies` refused.** The script is `set -eu`, so 74 is
+xcodebuild's own status. That is the answer to the question the hook was built on: with automatic
+resolution disabled, Xcode Cloud does not merely decline to resolve *on its own* — it declines to
+resolve **at all**, including when asked explicitly. There is no hook early enough, because earliness
+was never what was in the way.
+
+It therefore did not just fail to help; it added a second failure, ahead of the first and with a
+number instead of a sentence. Removed on Davide's instruction the same night: *"Please get rid of the
+ci script if not necessary."* **The lesson worth keeping is that the setting is not a preference about
+when resolution happens — it is a refusal to resolve**, so every fix has to be a file that is already
+correct when the clone lands, or the setting itself.
+
+**Rejected: hand-writing the resolved file.** It is generated, and a file edited by hand stops
+describing anything — the same rule that forbids hand-editing the pbxproj.
+
+**Rejected: pinning the snapshot library to an exact version.** It does not reach the problem.
+Whatever `swift-snapshot-testing` is pinned to, it declares its own dependency with `from:`, so the
+transitive graph keeps floating and the next rename lands the same way.
+
+**Rejected: turning automatic resolution back on in the Xcode Cloud workflow.** It unblocks the
+release in a click and it hides the fault rather than fixing it — Cloud would then resolve a graph
+the committed lockfile does not describe, on a toolchain the repository does not pin, and nothing
+anywhere would record either. Kept as the emergency lever, not as the answer.
+
+## A refused picture says which refusal, and the apps are run before a pull request
+
+0.14.0 shipped image diffs and Davide's first read of one showed every frame saying *couldn't read
+this picture*, with a `Try Again` that appeared to do nothing. Neither was an image-diff defect.
+
+**The Mac was four minor versions behind the phone.** `/Applications/Granita.app` was 0.10.1 while
+the phone had 0.14.0 from TestFlight; 0.10.1 serves no picture route, so every request answered 404.
+The two halves ship separately — TestFlight for the phone, a notarised download for the Mac — so a
+phone newer than its Mac is the ordinary state of this product between releases rather than an edge
+case, and **nothing in the repository was wrong**. No gate could have seen it: the versions on the
+machine are not something a check runs against.
+
+**`Try Again` was working, and that was the second half of the defect.** It reset the frame,
+re-asked a route that does not exist, failed instantly and returned to the same sentence — which
+reads as inert, and moved the scroll slightly because the frame loses its button while it retries. A
+control that cannot change the answer is the dead control this project treats as its worst defect,
+arriving through a door nobody was watching.
+
+### The frame owed a reason and did not give one
+
+Design §9 already required a failed card to say **why**. The picture frame printed one sentence for
+every failure, so *your Mac is asleep*, *git refused* and *your Mac is too old for this* were
+indistinguishable — and the last of those is the only one whose remedy is not pressing a button.
+`DiffImageRefusal` now maps each refusal to its own words, and `notUnderstood` — a 404 with no
+refusal body, which is exactly what an older Mac answers on a route it has never had — says *your
+Mac is too old to send pictures*. Where pressing cannot help, the button is **absent** rather than
+disabled. The copy is in [design §4](design.md).
+
+### Running the apps is part of opening a pull request
+
+Seven required checks were green on the release that shipped this, and the feature failed on the
+first tap. Davide: *"Start the new app, and you should always do it when making a PR."* The rule is
+in the `build-and-test` skill, with the two commands and the version check that would have found
+this in seconds. **A green check is evidence the code compiles and renders; it is never evidence
+anybody can use it**, which is the dead-control rule restated for the one case where both halves of
+the product are involved and neither is at fault.
+
+### A filtered build reports the filter's status
+
+The same session read a failing snapshot suite as green four times, because the run was piped
+through `grep | head` and the exit code belongs to the last segment. Bare runs found seven failing
+suites, six of them order-dependent flakiness that passes on CI. The rule was already in the
+`running-commands` skill and is now stated in terms of the consequence rather than of tidiness.
+
 ## Coming back to the app re-reads the worktree list, and it is the answer that is aged
 
 The spinner-beside-the-title entry above rests on both reading screens re-reading from their own
@@ -6368,13 +6510,14 @@ screen when the app went to the background never disappeared, so it never appear
 background for a while, I would expect that when I reopen it, it refreshes"* — and it had been true
 since the list existed.
 
-The sidebar screen now watches `scenePhase` and offers every return to the front to the model, which
-turns most of them down. Three refusals, each a read that would be wrong rather than merely wasteful:
-a read already running (`load(trigger:)` cancels what is in flight, so a return that did not check
-would tear down a read most of the way through answering the same question); nothing ever read (that
-screen is showing its failure and its *Try Again*, and a read under it is a control pressing itself);
-and an answer still fresh. A refused *refresh* is on the other side of the second one and does
-re-read — those rows are on screen with an age against them, and settling that age is the point.
+The sidebar screen now watches `scenePhase` and offers every phase to the model, which turns most of
+them down. Four refusals, each a read that would be wrong rather than merely wasteful: the app going
+away rather than arriving; a read already running (`load(trigger:)` cancels what is in flight, so a
+return that did not check would tear down a read most of the way through answering the same
+question); nothing ever read (that screen is showing its failure and its *Try Again*, and a read
+under it is a control pressing itself); and an answer still fresh. A refused *refresh* is on the
+other side of the third one and does re-read — those rows are on screen with an age against them,
+and settling that age is the point.
 
 ### The threshold measures the answer, not the absence
 
@@ -6398,9 +6541,10 @@ sharpen that: a file's two sides are fetched once and held, and a re-read would 
 ### The phase check is in the view and the staleness decision is not
 
 `ScenePhase` is SwiftUI's, and a view model that knew about it would be a `Presentation` type
-reaching for a framework to answer a question about time. The `onChange` filters to `.active` and
-makes one call; everything worth asserting — the three refusals and the threshold — is on the model,
-where the five tests that cover it can reach it. **What no gate here can see is the wiring itself**:
-there is no Ui test target, a snapshot photographs a screen without ever changing its scene phase,
-and the model's tests call the entry point directly. That two-line seam is checked by putting the app
-in the background and bringing it back, and by nothing else.
+reaching for a framework to answer a question about time. The `onChange` makes one call and carries
+no branch, which is `swift-testing`'s rule rather than a preference: a `guard` there is a branch
+nothing in this repository can drive, so the comparison travels as its answer and the refusal it
+expressed became the model's first guard. **What no gate here can see is the wiring itself** — there
+is no Ui test target, a snapshot photographs a screen without ever changing its scene phase, and the
+model's tests call the entry point directly. That one line is checked by putting the app in the
+background and bringing it back, and by nothing else.

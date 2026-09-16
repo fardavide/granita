@@ -25,7 +25,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.reading(0)
 
         // then — committed first, which is the order the card draws them in.
-        #expect(await scenario.repository.imagesAskedFor.map(\.side) == [.old, .new])
+        #expect(scenario.repository.imagesAskedFor.map(\.side) == [.old, .new])
         let image = try #require(scenario.sut.images[scenario.fileIds[0]])
         #expect(image.format == .png)
         #expect(image.sides == .both)
@@ -43,7 +43,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.reading(0)
 
         // then — asking for the committed side would be a request the Mac can only refuse.
-        #expect(await scenario.repository.imagesAskedFor.map(\.side) == [.new])
+        #expect(scenario.repository.imagesAskedFor.map(\.side) == [.new])
     }
 
     @Test
@@ -57,7 +57,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.reading(0)
 
         // then
-        #expect(await scenario.repository.imagesAskedFor.isEmpty)
+        #expect(scenario.repository.imagesAskedFor.isEmpty)
         #expect(scenario.sut.images.isEmpty)
     }
 
@@ -73,7 +73,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.reading(0)
 
         // then
-        #expect(await scenario.repository.imagesAskedFor.isEmpty)
+        #expect(scenario.repository.imagesAskedFor.isEmpty)
     }
 
     @Test
@@ -89,7 +89,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.reading(0)
 
         // then
-        #expect(await scenario.repository.imagesAskedFor.count == 2)
+        #expect(scenario.repository.imagesAskedFor.count == 2)
     }
 
     // MARK: - What the answers become
@@ -143,8 +143,8 @@ struct ClientViewerImagesTests {
         await scenario.sut.retryImage(.new, of: scenario.fileIds[0])
 
         // then — asked a third time, whatever it answered.
-        #expect(await scenario.repository.imagesAskedFor.count == 3)
-        #expect(await scenario.repository.imagesAskedFor.last?.side == .new)
+        #expect(scenario.repository.imagesAskedFor.count == 3)
+        #expect(scenario.repository.imagesAskedFor.last?.side == .new)
     }
 
     @Test
@@ -158,7 +158,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.retryImage(.old, of: scenario.fileIds[0])
 
         // then
-        #expect(await scenario.repository.imagesAskedFor.count == 1)
+        #expect(scenario.repository.imagesAskedFor.count == 1)
     }
 
     @Test
@@ -171,7 +171,7 @@ struct ClientViewerImagesTests {
         await scenario.sut.retryImage(.new, of: scenario.fileIds[0])
 
         // then
-        #expect(await scenario.repository.imagesAskedFor.isEmpty)
+        #expect(scenario.repository.imagesAskedFor.isEmpty)
     }
 
     @Test
@@ -207,7 +207,7 @@ struct ClientViewerImagesTests {
         // then
         let image = try #require(scenario.sut.images[scenario.fileIds[0]])
         #expect(image.sides == .both)
-        #expect(await scenario.repository.imagesAskedFor.isEmpty)
+        #expect(scenario.repository.imagesAskedFor.isEmpty)
     }
 
     // MARK: - The full screen

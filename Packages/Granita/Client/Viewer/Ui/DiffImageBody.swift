@@ -106,27 +106,37 @@ public struct DiffImageBody: View {
             } else {
                 sentence("this isn’t a picture this phone can draw")
             }
-        case .refused:
-            refused(side)
+        case .refused(let failure):
+            refused(side, failure: failure)
         }
     }
 
-    /// The one control a frame offers, and it exists because the alternative is a picture that
-    /// silently never arrives.
+    /// What went wrong, and — only when pressing again could change it — the way to press again.
+    ///
+    /// **The reason is the part that was missing, and leaving it out cost a release.** This frame
+    /// used to print `couldn’t read this picture` and nothing else, so a phone talking to a Mac four
+    /// versions behind said the same thing as a Mac that was merely asleep, and the feature read as
+    /// broken rather than as out of date. `DiffImageRefusal` owns the words.
     ///
     /// **Per frame rather than in the bar at the bottom of the screen.** That bar counts cards left
     /// blank by a refused batch of diffs; a refused picture leaves no card blank — the file is there,
     /// its header is there, and one of its two frames is what failed. One request failed carrying one
     /// side, so there is one thing to press and it is on the thing that failed.
-    private func refused(_ side: DiffSide) -> some View {
+    ///
+    /// **And no button at all where pressing cannot help.** A *Try Again* against a Mac that has no
+    /// picture route re-asks a route that does not exist and fails instantly, which is a control that
+    /// does nothing wearing the one label that promises it does something.
+    private func refused(_ side: DiffSide, failure: ApiFailure) -> some View {
         VStack(spacing: 8) {
-            Text("couldn’t read this picture")
+            Text(DiffImageRefusal.sentence(for: failure))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button("Try Again") { onRetry(side, file.id) }
-                .font(.caption)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if DiffImageRefusal.isWorthRetrying(failure) {
+                Button("Try Again") { onRetry(side, file.id) }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
         }
         .multilineTextAlignment(.center)
         .padding(8)

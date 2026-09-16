@@ -5,24 +5,58 @@ when_to_use: Use when the user asks to build, test, verify, or prepare Granita f
 user-invocable: true
 ---
 
-Run these, in this order, and report the real output rather than a summary of it.
+Run each command bare, one per call. Never pipe a build or test run through `grep`, `tail` or `head`
+to read its result — the exit status becomes the filter's. Read the captured output instead.
+
+## Every change
 
 ```bash
 make test     # package test suite, on the host, no simulator
 make build    # compile-check the package and both app targets, unsigned
 ```
 
-**If the change adds code, run the gate too, before opening the pull request:**
+Report the real output, not a summary of it.
+
+## Before opening a pull request
+
+If the change adds code:
 
 ```bash
 make coverage # the same verdict CI gives — main's baseline, the same script, the same predicates
 ```
 
-It takes several minutes and it replaces a twenty-minute round trip. A row that falls is diagnosed
-by reading `build/coverage/{unit,snapshot,all}.json`, which it leaves behind — never by estimating
-which file moved. See the `swift-testing` skill for what to cover as you write it.
+Diagnose a fallen row by reading `build/coverage/{unit,snapshot,all}.json`, which it leaves behind.
+Do not estimate which file moved. Query those files with `jq`, never an interpreter. See the
+`swift-testing` skill for what to cover as you write it.
 
-`make help` lists everything else. The ones that matter day to day:
+If the change touches a screen:
+
+```bash
+make snapshots-ios  # phone baselines; run twice when adding a state — the first run writes, the second verifies
+```
+
+Then run both apps, whichever half the change touched:
+
+```bash
+make run-mac           # the menu bar server, signed for this machine
+make run-client-mac    # the Client on macOS — the one that can press things
+```
+
+Press the control the change adds. See the `design` skill's dead-control rule.
+
+## Before diagnosing any symptom
+
+Establish which versions are running. The two halves ship separately and a stale server answers a
+new client's routes with 404.
+
+```bash
+pgrep -fl -i granita
+defaults read /Applications/Granita.app/Contents/Info CFBundleShortVersionString
+```
+
+## Other commands
+
+`make help` lists everything. The ones that matter day to day:
 
 ```bash
 make project           # regenerate Granita.xcodeproj after editing project.yml
@@ -34,21 +68,20 @@ make run               # run the backend in a terminal
 
 ## Rules
 
-- **These are the sanctioned commands.** If one fails, that failure is the problem to solve — report
-  it with the exact output and hand back. Do not reach past it to a raw `xcodebuild` or `swift`
-  invocation to get a change through; that produces work that silently did not follow the project's
-  rules.
-- **Never hand-edit `project.pbxproj`.** Edit `project.yml` and run `make project`. The generated
-  project is committed, so the regenerated result is part of the change.
-- **`make build` builds unsigned deliberately.** A compile check needs no signed binary, and CI has
-  no identity.
-- **Verify before saying done.** "Builds and tests pass" is a claim; the command output is the
-  evidence. If tests fail, say so and show them.
+- Use these commands only. When one fails, report its exact output and hand back; never substitute a
+  raw `xcodebuild` or `swift` invocation.
+- Never hand-edit `project.pbxproj`. Edit `project.yml`, run `make project`, and commit the
+  regenerated project.
+- Never hand-edit `Packages/Granita/Package.resolved`. Different resolvers write different graphs
+  into it; check its diff before committing and drop churn that is not part of the change.
+- Leave `make build` unsigned.
+- Show the output before claiming a command passed. If tests fail, say so and quote them.
+- Run the apps before opening the pull request, not after a bug report.
 
 ## Landing a change
 
-`main` is PR-gated by the `protect-main` ruleset — squash only, linear history, all four checks
-green, and no bypass for anyone including Davide.
+`main` is PR-gated by the `protect-main` ruleset: squash only, linear history, all **seven** required
+checks green, no bypass for anyone including Davide.
 
 ```bash
 git switch -c <type>/<slice>
@@ -58,20 +91,13 @@ gh pr checks --watch      # exits non-zero on failure; this is the gate
 gh pr merge --squash
 ```
 
-- **If the merge is refused as out of date, use GitHub's own update:**
+- When the merge is refused as out of date, update the branch through GitHub:
 
   ```bash
   gh api -X PUT /repos/fardavide/granita/pulls/<n>/update-branch
   ```
 
-  That merges `main` into the branch. The merge commit never reaches `main`, because the squash
-  flattens it, so `required_linear_history` is satisfied — and nothing is rewritten, so no
-  force-push and no lease to go stale.
-
-  **Do not rebase-and-force-push a pull request branch.** It looks tidier and it is how this went
-  wrong once: a lease went stale during unrelated branch work, the force-push was rejected, and the
-  pull request had in fact already been merged. Rebasing is the right instinct for *local* work; for
-  a branch that already exists on the remote with checks attached to its head, it throws away the
-  checks and risks clobbering someone else's push.
-- `gh pr merge --admin` will fail. There is no bypass; the answer is to fix the red check.
-- Do not arm auto-merge. Watch the checks, then merge explicitly.
+- Never rebase or force-push a branch that is already on the remote with checks attached. It discards
+  the checks and can clobber another push. Rebase local work only.
+- Never run `gh pr merge --admin`. Fix the red check.
+- Never arm auto-merge. Watch the checks, then merge explicitly.

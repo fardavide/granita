@@ -1302,13 +1302,34 @@ sentence addressed to the reader — and they say what happened rather than whic
 `before` and `after` are what a reader is comparing.
 
 **Every frame says which of four states it is in**, and three of them are not a picture. A side still
-coming says `reading from your Mac`, the collapsed bar's own words for the same wait. A side the Mac
-refused says `couldn’t read this picture` **and carries a Try Again** — the failure bar at the bottom
-of the screen counts cards left blank by a refused *batch of diffs*, and a refused picture leaves no
-card blank, so that bar never appears for one and this is the only control there is. A side that
-arrived and will not decode says `this isn’t a picture this phone can draw`, which is a different
-problem with a different remedy: a reader who cannot tell it from a refusal retries the wrong one
-forever.
+coming says `reading from your Mac`, the collapsed bar's own words for the same wait. A side that
+arrived and will not decode says `this isn’t a picture this phone can draw`. And a side the Mac
+refused **says which refusal it was** — `your Mac is out of reach`, `your Mac couldn’t read it`,
+`this device is no longer paired`, `too big to send`, `this picture is gone`.
+
+> **The reason was missing in 0.14.0 and it cost the release** *(16 September 2026)*. The frame
+> printed `couldn’t read this picture` and nothing else. Davide's phone reached a Mac still serving
+> 0.13's API — no picture route at all — so every frame on every card printed that one sentence,
+> which named neither the cause nor the remedy, and a feature that worked perfectly read as broken:
+> *"every image shows 'couldn't read this picture', and 'Try again' does nothing"*. Design §9 already
+> required a failed card to say **why**; this card was the one place that rule was not followed, and
+> it was the place it was load-bearing.
+
+**The two halves ship separately, so *your Mac is too old to send pictures* is a state rather than an
+edge case.** TestFlight updates the phone and the Mac app is a notarised download that may be months
+behind, so a route the older Mac has never heard of answers 404 with no refusal body. That is the
+sentence that turns an afternoon of confusion into one action.
+
+**A frame carries Try Again only where pressing could change the answer**, and is otherwise absent
+rather than disabled. Against a Mac with no picture route, *Try Again* re-asks a route that does not
+exist and fails instantly — which is what "does nothing" looked like from the outside, and it is a
+dead control wearing the one label that promises it is not. Out of reach, a git failure or a rate
+limit keep the button; a version too old, a revoked pairing, a picture over the ceiling and a file
+that is gone do not.
+
+The failure bar at the bottom of the screen is still where a refused *batch of diffs* is explained.
+A refused picture leaves no card blank — the file is there, its header is there, one frame failed —
+so that bar never appears for one, and the frame is the whole of what the reader gets.
 
 **Only a side that is in hand is a control.** The three frames above are drawn and are not tappable,
 which is the rule about controls that do nothing applied where it is easiest to break — an empty grey
