@@ -42,6 +42,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
 
     @State private var model: ClientWorktreesModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private let opening: (WorktreeID, String, String) -> Opened
     private let onPairAgain: () -> Void
@@ -144,6 +145,18 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             Text(prompt.message)
         }
         .task { await model.load() }
+        // **The `.task` above cannot cover coming back to the app**, and that is the whole reason
+        // this modifier exists: it re-runs when the view appears, and a view that was on screen when
+        // the app went away never went away — so it never appears again, and the list a reader came
+        // back to was the one they left.
+        //
+        // Every phase is handed over and the model turns most of them down — not active, a read
+        // already running, nothing ever read, an answer still fresh. **One call and no branch**,
+        // which is the `swift-testing` rule and not a style preference: a `guard` here is a branch
+        // nothing in this repository can drive, since no Ui target exists and a snapshot renders a
+        // screen without ever changing its scene phase. `ScenePhase` stays out of the model, so the
+        // comparison travels as its answer rather than as itself.
+        .onChange(of: scenePhase) { _, phase in Task { await model.sceneBecame(active: phase == .active) } }
         .onDisappear { model.cancelLoading() }
 
         if claimsRowTaps {

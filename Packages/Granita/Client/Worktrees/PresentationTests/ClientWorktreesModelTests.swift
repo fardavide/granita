@@ -69,6 +69,7 @@ struct ClientWorktreesModelTests {
 
     @Test(arguments: [
         (WorktreeReadTrigger.appearance, false),
+        (.returnToForeground, false),
         (.pullToRefresh, false),
         (.retry, true)
     ])
@@ -97,6 +98,7 @@ struct ClientWorktreesModelTests {
 
     @Test(arguments: [
         (WorktreeReadTrigger.appearance, true),
+        (.returnToForeground, true),
         (.pullToRefresh, false),
         (.retry, false)
     ])
@@ -636,6 +638,122 @@ struct ClientWorktreesModelTests {
 
         // then
         #expect(time == aMoment)
+    }
+
+    // MARK: - Coming back to the app
+
+    /// **The screen's `.task` does not re-run when the app returns from the background**, which is
+    /// what these tests are about: a view that never disappeared never appears again, so until now
+    /// the list a reader came back to after lunch was the list they left.
+    @Test
+    func `given worktrees that have aged when the app comes back then they are read again`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "coming back", project: "granita")])
+        await scenario.sut.load()
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 2)
+    }
+
+    /// Going away is a phase change too, and it arrives here before the one that comes back. A read
+    /// started as the app leaves is a read iOS suspends and the reader never sees.
+    @Test
+    func `given worktrees that have aged when the app goes away then nothing is read`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "leaving", project: "granita")])
+        await scenario.sut.load()
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: false)
+
+        // then
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    /// **The threshold is what keeps a glance from costing a read.** A read wakes a sleeping Mac with
+    /// a magic packet and takes seconds against real projects, and pulling down Control Center and
+    /// letting it go is a backgrounding — so an answer that is still fresh is left alone.
+    @Test
+    func `given worktrees read moments ago when the app comes back then the Mac is left alone`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "brief glance", project: "granita")])
+        await scenario.sut.load()
+        scenario.clock.advance(by: 29)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    /// A list that is on screen is what goes stale. A screen that never got one is showing its
+    /// failure and its *Try Again*, and re-reading under that would be a control pressing itself.
+    @Test
+    func `given no list was ever read when the app comes back then nothing is read`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "never arrived", project: "granita")],
+            readFailure: .unreachable(diagnostic: "NWError -65563")
+        )
+        await scenario.sut.load()
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    /// A refused refresh left rows on screen with an age against them, and that age is exactly what
+    /// coming back should settle.
+    @Test
+    func `given a refresh that was refused when the app comes back then the stale rows are read again`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "stale rows", project: "granita")],
+            refusesTheSecondRead: .unreachable(diagnostic: "Refresh timed out")
+        )
+        await scenario.sut.load()
+        await scenario.sut.load(trigger: .pullToRefresh)
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 3)
+    }
+
+    /// **`load(trigger:)` cancels whatever is running before it starts**, so a return that did not
+    /// check would tear down a read that was already most of the way through answering the same
+    /// question — the reader having done nothing but come back.
+    @Test
+    func `given a read already running when the app comes back then it is not torn down`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "in flight", project: "granita")],
+            suspendingSecondRead: true
+        )
+        await scenario.sut.load()
+        scenario.clock.advance(by: 31)
+        let refresh = Task { await scenario.sut.load(trigger: .pullToRefresh) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 2)
+        #expect(await scenario.repository.cancelledReads == 0)
+        await scenario.repository.releaseHeldRead()
+        await refresh.value
     }
 
     // MARK: - The toolbar menu
@@ -1386,6 +1504,11 @@ struct ClientWorktreesModelTests {
         let copyingLogs: FakeDiagnosticLogsCopying
         let announcing: FakeWorktreeReadAnnouncing
 
+        /// Starts at the same fixed instant every test used to read directly, so a test that never
+        /// moves it behaves exactly as it did when the clock was a constant. Only the tests about a
+        /// list ageing while the app is away advance it.
+        let clock = MovableClock(from: aMoment)
+
         /// Empty for every state that is not a list, so a test that expected rows and got a refusal
         /// fails on the rows rather than on a pattern match three lines earlier.
         var sections: [WorktreeListSection] {
@@ -1445,6 +1568,7 @@ struct ClientWorktreesModelTests {
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
             announcing = FakeWorktreeReadAnnouncing()
+            let clock = clock
             sut = ClientWorktreesModel(
                 macName: "Mac Studio",
                 repository: repository,
@@ -1452,7 +1576,7 @@ struct ClientWorktreesModelTests {
                 copyingLogs: copyingLogs,
                 announcing: announcing,
                 announcementDelay: announcementDelay,
-                now: { aMoment }
+                now: { clock.reading }
             )
         }
     }

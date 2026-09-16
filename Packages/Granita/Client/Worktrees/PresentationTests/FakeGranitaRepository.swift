@@ -55,7 +55,11 @@ actor FakeGranitaRepository: GranitaRepository {
     /// behaviour on the same model rather than on a second one that was never in the failed state.
     private let refusesTheFirstRead: ApiFailure?
     private let refusesTheSecondRead: ApiFailure?
-    private var reads = 0
+
+    /// How many list reads have arrived. Readable because *not asking* and *asking and being
+    /// answered the same thing* leave the screen identical, and returning to a fresh list has to
+    /// mean the first.
+    private(set) var reads = 0
 
     init(
         worktrees: [Worktree],

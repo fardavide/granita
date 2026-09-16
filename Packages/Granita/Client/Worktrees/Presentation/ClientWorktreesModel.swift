@@ -163,7 +163,15 @@ public final class ClientWorktreesModel {
         // rows; the first read has the whole screen. Decided after the line above that ages a stale
         // receipt, so what is tested is whether anything has ever been read rather than whether the
         // last attempt failed.
-        if trigger == .appearance, readResult != .notRead {
+        //
+        // Coming back to the app is on the same side of this as coming back to the screen: the
+        // reader did not press anything either time, so both get the one indicator design §8 gives
+        // a read nobody asked for.
+        let isUnaskedFor = switch trigger {
+        case .appearance, .returnToForeground: true
+        case .pullToRefresh, .retry: false
+        }
+        if isUnaskedFor, readResult != .notRead {
             announcingRefresh = sayingTheRefreshIsWorthShowing(attempt: attempt)
         }
         let task = Task { await performLoad(attempt: attempt) }
@@ -180,6 +188,39 @@ public final class ClientWorktreesModel {
         } onCancel: {
             task.cancel()
         }
+    }
+
+    /// Re-reads a list that went stale while the app was somewhere else, and does nothing otherwise.
+    ///
+    /// **The screen's `.task` cannot cover this.** It re-runs each time the view appears, and a view
+    /// that was on screen when the app went to the background never went away — so it never appears
+    /// again, and until 0.14.0 the only thing that said the rows were old was the age in the footer.
+    ///
+    /// Three ways it declines, and each is a read that would be wrong rather than merely wasteful:
+    ///
+    /// - **A read is already running.** `load(trigger:)` cancels whatever is in flight before it
+    ///   starts, so a return that did not check would tear down a read most of the way through
+    ///   answering the same question, with the reader having done nothing but come back.
+    /// - **Nothing has ever been read.** That screen is showing its failure and its *Try Again*, and
+    ///   a read starting under it would be a control pressing itself. A refused *refresh* is the
+    ///   opposite case and does re-read: those rows are on screen with an age against them, and
+    ///   settling that age is the whole point.
+    /// - **The answer is still fresh.** `UnaskedForRefresh.staleAfter` carries why there is a
+    ///   threshold at all, and why it is measured against the answer rather than the time away.
+    /// **The phase arrives as a fact rather than being tested in the view.** A `guard` inside an
+    /// `onChange` is a branch nothing in this repository can drive — no Ui target exists, and a
+    /// snapshot renders a screen without ever changing its scene phase — so it lives here, where the
+    /// Unit row judges it and a test names it.
+    public func sceneBecame(active: Bool) async {
+        guard active else { return }
+        guard case .idle = reading else { return }
+        let readAt: Date
+        switch readResult {
+        case .notRead: return
+        case .read(let at, _), .stale(let at, _, _): readAt = at
+        }
+        guard Duration.seconds(now().timeIntervalSince(readAt)) >= UnaskedForRefresh.staleAfter else { return }
+        await load(trigger: .returnToForeground)
     }
 
     public func cancelLoading() {

@@ -271,6 +271,34 @@ bar and takes it out again each time the reader presses Back — motion they did
 wait they never had. It is not §8's ten seconds, which says *this is taking unusually long* about a
 wait already on screen; this says *there is a wait at all*.
 
+### Coming back to the app is a third way that read starts *(Davide, 15 September 2026)*
+
+The section above covers the read that happens on its own **when a screen appears**. It does not
+cover the other way back: a screen that was in front of the reader when the app went to the
+background never went away, so it never appears again and its `.task` never re-runs. The worktree
+list a reader returned to after lunch was the list they left.
+
+The list now re-reads when the app comes back to the front, and it is **the same read with the same
+treatment** — the small stock progress view beside the navigation title, after the same half-second
+threshold, over rows that stay where they are and stay operable. Nothing new is drawn, so no frame
+changes.
+
+**The threshold is measured against the answer on screen, not against the time spent away.**
+Backgrounding is the involuntary one of the two ways back — pulling Control Center down and letting
+it go is a backgrounding — and a read costs a magic packet at a possibly sleeping Mac and several
+seconds against real projects. What the reader wants settled is whether what they are looking at is
+still true: a list read four seconds ago is, however long the glance elsewhere took; a list read ten
+minutes ago is not, whether the app was away for all of that or for two seconds of it. Thirty
+seconds, because an agent lands a commit inside a minute. Rejected: re-reading every return, which
+spends a wake packet on a glance; and timing the absence instead, which leaves a list that went stale
+while the reader was looking at it exactly as stale.
+
+**The open diff is deliberately excluded.** Re-reading a change set replaces every entry in it,
+drops what has been lexed and re-fetches every batch, and doing that under a reader halfway down a
+scroll is the unasked-for movement `SPEC.md` §10 forbids — the same argument that rejected
+pull-to-refresh on that screen. Its appearance read stands, because a reader arriving at the diff is
+at the top of it.
+
 ### Accessibility and transitions carry the same facts
 
 Use semantic colors and text styles; loading copy wraps without truncation. Combine the stage
