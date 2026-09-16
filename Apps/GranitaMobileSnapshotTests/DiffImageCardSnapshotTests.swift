@@ -80,6 +80,23 @@ struct ImageCardCase: Sendable, CustomTestStringConvertible {
             new: .refused(.gitFailure(message: "git exited 128"))
         ),
 
+        // **The state 0.14.0 actually shipped into, and the one the first build could not say.** The
+        // phone reached a Mac still serving 0.13's API, which has no picture route, so every frame on
+        // every card printed *couldn’t read this picture* — a sentence that named neither the cause
+        // nor the remedy, and made a working feature read as broken.
+        //
+        // It is photographed with **no Try Again**, because pressing re-asks a route that does not
+        // exist. That absence is the assertion: a control that cannot help is absent rather than
+        // disabled, and here it is the difference between a reader updating their Mac and a reader
+        // pressing a button all afternoon.
+        ImageCardCase(
+            name: "the-mac-is-too-old",
+            path: "Apps/GranitaMobileSnapshotTests/__Snapshots__/home-iPhone-light.png",
+            status: .modified,
+            old: .refused(.notUnderstood(diagnostic: "the Mac refused with 404")),
+            new: .refused(.notUnderstood(diagnostic: "the Mac refused with 404"))
+        ),
+
         // A file claiming to be a PNG and holding something else, which is a different problem from
         // a refusal and has a different sentence — a reader who cannot tell them apart retries the
         // wrong one forever.
