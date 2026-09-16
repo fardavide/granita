@@ -114,6 +114,63 @@ public struct DiffImage: Hashable, Sendable {
     }
 }
 
+/// Why one side of a picture is not on screen, in the frame's own few words.
+///
+/// **It exists because the first build said `couldn’t read this picture` and nothing else**, and
+/// that cost a release. 0.14.0 shipped image diffs to a phone whose Mac was still serving 0.13's API
+/// — no picture route at all — so every frame on every card printed one sentence that named neither
+/// the cause nor the remedy, and the feature read as broken rather than as out of date. Design §9
+/// requires a failed card to say *why*; this card did not, and it is the one place the omission was
+/// load-bearing.
+///
+/// A frame is about 170pt wide, so these are fragments rather than the failure bar's two sentences —
+/// the collapsed bar's register, lower case, a fact about the file rather than an address to the
+/// reader. The bar at the bottom of the screen is still the place a *batch* failure is explained;
+/// this is one side of one picture, and the only thing it owes is which kind of wrong it is.
+public enum DiffImageRefusal {
+
+    /// **`notUnderstood` is the version-skew tell, and it is the whole reason this type has a case
+    /// the failure bar does not.** The two halves of this product ship separately — TestFlight for
+    /// the phone, a notarised download for the Mac — so a phone newer than its Mac is ordinary rather
+    /// than exotic, and on a route the older Mac has never heard of the answer is a 404 carrying no
+    /// refusal body. That is exactly what `notUnderstood` means, and *update the Mac* is a remedy no
+    /// amount of pressing *Try Again* will reach.
+    public static func sentence(for failure: ApiFailure) -> String {
+        switch failure {
+        case .notUnderstood:
+            "your Mac is too old to send pictures"
+        case .unreachable, .requestNotBuildable, .cancelled:
+            "your Mac is out of reach"
+        case .unauthorized, .pairingExpired:
+            "this device is no longer paired"
+        case .worktreeGone, .fileGone:
+            "this picture is gone"
+        case .tooLarge:
+            "too big to send"
+        case .rateLimited, .projectNotVisible, .staleContentHash, .worktreeNotDeletable,
+             .gitFailure, .badRequest, .unsupportedApiVersion:
+            "your Mac couldn’t read it"
+        }
+    }
+
+    /// Whether pressing again could plausibly change the answer.
+    ///
+    /// **A control that cannot help is absent rather than disabled**, which is this product's
+    /// standing rule and is the second half of what the release got wrong: *Try Again* was offered
+    /// against a Mac four versions behind, where it re-asked a route that does not exist, failed
+    /// instantly, and left the reader pressing a button that could never work.
+    public static func isWorthRetrying(_ failure: ApiFailure) -> Bool {
+        switch failure {
+        case .notUnderstood, .unauthorized, .pairingExpired, .unsupportedApiVersion, .tooLarge,
+             .worktreeGone, .fileGone, .projectNotVisible:
+            false
+        case .unreachable, .requestNotBuildable, .cancelled, .rateLimited, .staleContentHash,
+             .worktreeNotDeletable, .gitFailure, .badRequest:
+            true
+        }
+    }
+}
+
 /// The picture the reader has opened full screen.
 ///
 /// **On the model rather than in a view's own state**, which is this screen's standing rule: a

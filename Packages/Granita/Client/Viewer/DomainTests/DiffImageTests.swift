@@ -147,6 +147,58 @@ struct DiffImageTests {
         #expect(image.frames.map(\.side) == [.new])
     }
 
+    // MARK: - Why a frame is empty
+
+    @Test
+    func `given a Mac too old to serve pictures when a frame says why then it names the version`() {
+        // given — the release this rule exists for. The two halves ship separately, so a phone
+        // newer than its Mac is ordinary, and on a route the older Mac never had the answer is a 404
+        // carrying no refusal body — which is exactly `notUnderstood`.
+        let failure = ApiFailure.notUnderstood(diagnostic: "the Mac refused with 404")
+
+        // when - then
+        #expect(DiffImageRefusal.sentence(for: failure) == "your Mac is too old to send pictures")
+        // **And no Try Again.** Pressing re-asks a route that does not exist and fails instantly,
+        // which is a control that does nothing under the one label promising it does something.
+        #expect(DiffImageRefusal.isWorthRetrying(failure) == false)
+    }
+
+    @Test
+    func `given a Mac that is merely out of reach when a frame says why then pressing again is offered`() {
+        // given — the case that reads identically to the one above on screen unless the frame says
+        // which it is, and the two have opposite remedies.
+        let failure = ApiFailure.unreachable(diagnostic: "timed out")
+
+        // when - then
+        #expect(DiffImageRefusal.sentence(for: failure) == "your Mac is out of reach")
+        #expect(DiffImageRefusal.isWorthRetrying(failure))
+    }
+
+    @Test
+    func `given each way a picture can be refused when a frame says why then every one has words`() {
+        // given - when - then — spelled out rather than looped, so a case added to `ApiFailure`
+        // fails the switch at compile time and fails here if it is folded in wrongly.
+        #expect(DiffImageRefusal.sentence(for: .pairingExpired) == "this device is no longer paired")
+        #expect(DiffImageRefusal.sentence(for: .unauthorized) == "this device is no longer paired")
+        #expect(DiffImageRefusal.sentence(for: .fileGone) == "this picture is gone")
+        #expect(DiffImageRefusal.sentence(for: .worktreeGone) == "this picture is gone")
+        #expect(DiffImageRefusal.sentence(for: .tooLarge) == "too big to send")
+        #expect(DiffImageRefusal.sentence(for: .gitFailure(message: "exit 128")) == "your Mac couldn’t read it")
+        #expect(DiffImageRefusal.sentence(for: .rateLimited) == "your Mac couldn’t read it")
+    }
+
+    @Test
+    func `given a refusal pressing cannot mend when it is judged then no control is offered`() {
+        // given - when - then — the rule is that a control which cannot help is absent rather than
+        // disabled, so this is the list that decides whether a button is drawn at all.
+        #expect(DiffImageRefusal.isWorthRetrying(.pairingExpired) == false)
+        #expect(DiffImageRefusal.isWorthRetrying(.unsupportedApiVersion) == false)
+        #expect(DiffImageRefusal.isWorthRetrying(.tooLarge) == false)
+        #expect(DiffImageRefusal.isWorthRetrying(.fileGone) == false)
+        #expect(DiffImageRefusal.isWorthRetrying(.gitFailure(message: "exit 128")))
+        #expect(DiffImageRefusal.isWorthRetrying(.rateLimited))
+    }
+
     // MARK: - What the full screen draws
 
     @Test
