@@ -150,14 +150,13 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         // the app went away never went away — so it never appears again, and the list a reader came
         // back to was the one they left.
         //
-        // Every return is offered and the model turns most of them down: whether the rows have aged
-        // enough to be worth a read is its decision, where a test can ask about it, rather than a
-        // rule written into a view nothing here can drive. The phase check stays out here because
-        // `ScenePhase` is SwiftUI's and a view model has no business knowing it.
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            Task { await model.returnedToForeground() }
-        }
+        // Every phase is handed over and the model turns most of them down — not active, a read
+        // already running, nothing ever read, an answer still fresh. **One call and no branch**,
+        // which is the `swift-testing` rule and not a style preference: a `guard` here is a branch
+        // nothing in this repository can drive, since no Ui target exists and a snapshot renders a
+        // screen without ever changing its scene phase. `ScenePhase` stays out of the model, so the
+        // comparison travels as its answer rather than as itself.
+        .onChange(of: scenePhase) { _, phase in Task { await model.sceneBecame(active: phase == .active) } }
         .onDisappear { model.cancelLoading() }
 
         if claimsRowTaps {

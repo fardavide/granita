@@ -653,10 +653,26 @@ struct ClientWorktreesModelTests {
         scenario.clock.advance(by: 31)
 
         // when
-        await scenario.sut.returnedToForeground()
+        await scenario.sut.sceneBecame(active: true)
 
         // then
         #expect(await scenario.repository.reads == 2)
+    }
+
+    /// Going away is a phase change too, and it arrives here before the one that comes back. A read
+    /// started as the app leaves is a read iOS suspends and the reader never sees.
+    @Test
+    func `given worktrees that have aged when the app goes away then nothing is read`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "leaving", project: "granita")])
+        await scenario.sut.load()
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: false)
+
+        // then
+        #expect(await scenario.repository.reads == 1)
     }
 
     /// **The threshold is what keeps a glance from costing a read.** A read wakes a sleeping Mac with
@@ -670,7 +686,7 @@ struct ClientWorktreesModelTests {
         scenario.clock.advance(by: 29)
 
         // when
-        await scenario.sut.returnedToForeground()
+        await scenario.sut.sceneBecame(active: true)
 
         // then
         #expect(await scenario.repository.reads == 1)
@@ -689,7 +705,7 @@ struct ClientWorktreesModelTests {
         scenario.clock.advance(by: 31)
 
         // when
-        await scenario.sut.returnedToForeground()
+        await scenario.sut.sceneBecame(active: true)
 
         // then
         #expect(await scenario.repository.reads == 1)
@@ -709,7 +725,7 @@ struct ClientWorktreesModelTests {
         scenario.clock.advance(by: 31)
 
         // when
-        await scenario.sut.returnedToForeground()
+        await scenario.sut.sceneBecame(active: true)
 
         // then
         #expect(await scenario.repository.reads == 3)
@@ -731,7 +747,7 @@ struct ClientWorktreesModelTests {
         await scenario.repository.waitUntilReadStarted(count: 2)
 
         // when
-        await scenario.sut.returnedToForeground()
+        await scenario.sut.sceneBecame(active: true)
 
         // then
         #expect(await scenario.repository.reads == 2)

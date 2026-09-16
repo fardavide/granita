@@ -207,7 +207,12 @@ public final class ClientWorktreesModel {
     ///   settling that age is the whole point.
     /// - **The answer is still fresh.** `UnaskedForRefresh.staleAfter` carries why there is a
     ///   threshold at all, and why it is measured against the answer rather than the time away.
-    public func returnedToForeground() async {
+    /// **The phase arrives as a fact rather than being tested in the view.** A `guard` inside an
+    /// `onChange` is a branch nothing in this repository can drive — no Ui target exists, and a
+    /// snapshot renders a screen without ever changing its scene phase — so it lives here, where the
+    /// Unit row judges it and a test names it.
+    public func sceneBecame(active: Bool) async {
+        guard active else { return }
         guard case .idle = reading else { return }
         let readAt: Date
         switch readResult {
