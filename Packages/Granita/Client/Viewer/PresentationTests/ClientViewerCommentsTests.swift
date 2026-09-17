@@ -255,7 +255,7 @@ struct ClientViewerCommentsTests {
     // MARK: - The document
 
     @Test
-    func `given a review and a note when the feedback is asked for then both are in it under the worktree's name`() async {
+    func `given a review and a note when the feedback is asked for then both are in it`() async {
         // given
         let scenario = Scenario()
         await scenario.load()
@@ -271,12 +271,16 @@ struct ClientViewerCommentsTests {
 
         // then
         #expect(document == """
-            Review of uncommitted changes — granita, worktree TLS pinning, 8 files
+            Review of uncommitted changes
 
             Two small things.
 
-            Sources/File0.swift:2
-            > let question = 6 * 9
+            ---
+
+            A. Sources/File0.swift:2
+            ```swift
+            let question = 6 * 9
+            ```
             This wants a name.
             """)
     }
@@ -297,7 +301,7 @@ struct ClientViewerCommentsTests {
         let document = scenario.sut.feedback(note: nil)
 
         // then
-        #expect(document.contains("worktree TLS pinning, 8 files\n\nSources/File0.swift:2"))
+        #expect(document.contains("Review of uncommitted changes\n\n---\n\nA. Sources/File0.swift:2"))
     }
 
     // MARK: - The gesture, and what it opens
@@ -656,15 +660,19 @@ struct ClientViewerCommentsTests {
 
         // then — **a literal rather than `sut.feedback(...)`.** Asserting against the model's own
         // call runs `ReviewFeedback.document` on both sides of the comparison, so deleting the
-        // heading, the path line or the `> ` prefix would change them together and leave this green:
-        // a test that mirrors the mapper instead of catching it.
+        // heading, the path line, the label or the fence would change them together and leave this
+        // green: a test that mirrors the mapper instead of catching it.
         #expect(scenario.pasteboard.copied == """
-            Review of uncommitted changes — granita, worktree TLS pinning, 8 files
+            Review of uncommitted changes
 
             Two small things.
 
-            Sources/File0.swift:2
-            > let question = 6 * 9
+            ---
+
+            A. Sources/File0.swift:2
+            ```swift
+            let question = 6 * 9
+            ```
             This wants a name.
             """)
     }
@@ -772,6 +780,7 @@ private func aStoredComment(on file: String, at line: Int, saying text: String) 
         ),
         path: "Sources/\(file).swift",
         lines: CommentedLines(side: .new, first: line, last: line),
+        language: "swift",
         quotedLines: ["+let answer = 42"],
         text: text
     )
@@ -830,8 +839,6 @@ private struct Scenario {
         pasteboard = FakeReviewPasteboard()
         sut = ClientViewerModel(
             worktree: aWorktree,
-            worktreeName: "TLS pinning",
-            projectName: "granita",
             repository: FakeGranitaRepository(
                 changeSet: .success(changes),
                 hunks: Dictionary(uniqueKeysWithValues: files.map { ($0.id, [aHunk]) }),

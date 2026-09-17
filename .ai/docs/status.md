@@ -2,6 +2,42 @@
 
 Where the project is. Update this when a slice lands.
 
+**The copied review is Markdown again, and each comment has a name — that is 0.14.2.** The excerpt
+goes over in a fenced block tagged with the file's language rather than behind a `> ` on every line;
+the comments are lettered `A.`, `B.`, `C.` in document order and separated by a rule; and the heading
+is down to `Review of uncommitted changes`, having named the project, the worktree and the file count
+since the feature existed. Davide asked for all of it on 16 September 2026, and the labels serve a
+flow he described in the same breath: he copies the document and then clears the review, so from that
+moment the labels are the only handle either side has on a comment — *"the user will see the points in
+the prompt that he gives to the agent, and that should become its reference."* The heading went on a
+different argument, about where the text lands rather than what it says: it is pasted into a session
+already running in that checkout. It is the second reversal of the Markdown call and narrower than it
+looks; §7 overturned **headings**, and fences went with them by association. In
+[`decisions.md`](decisions.md), with the departure recorded against [design §7.6](design.md).
+
+**A patch rather than a minor, which is Davide's own call on it** — *"if we just improve the prompt,
+it should be a patch version… it's just a small improvement"*. Nothing here lets a reader do
+something they could not: the review was already written, already copied, already pasted. The
+`versioning` skill's tie-break says the same thing from the other side, that a minor spent on a patch
+spends a number meant to mean something.
+
+**Two thirds of that request is not built, and it is blocked on the same missing surface as
+[#70](https://github.com/fardavide/granita/issues/70).** Whether the labels are letters or figures is
+meant to be the reader's choice, and the document's opening line is meant to be a saved instruction
+they can edit — both are settings, and **the phone has no Settings screen at all**. Davide scoped
+that work wider in the same exchange: the settings are editable from the phone *and* from the Mac and
+synced between them, and they land alongside
+[#64](https://github.com/fardavide/granita/issues/64), which moves the review comments themselves off
+the phone's user defaults. That is a wire change, a contract bump and a design round trip — a slice of
+its own, and the next one. 0.14.2 letters the comments and states the default at one call site until
+then.
+
+**One loose end this left**, small and worth doing when something else touches that file: the
+worktree sidebar still resolves the project's name and hands it to the closure that opens a diff, and
+nothing takes it any more — the exported heading was its only reader. `GranitaMobileScene` ignores it
+by name. Removing the parameter touches `WorktreeSidebarScreen`, `WorktreeSplitScreen` and their
+tests, which is wider than a patch about a prompt should reach.
+
 **The worktree list re-reads when the app comes back, which is the half of "every appearance" that
 never happened.** 0.13.0 made the automatic read visible and rested, like everything before it, on
 both reading screens re-reading from their own `.task`. That covers returning to a *screen*. It does

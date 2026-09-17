@@ -2017,7 +2017,8 @@ sentence — *they are not stored on the Mac* — is the whole reason it exists.
 starts at the first file with no heading and no placeholder, because an agent reading one treats it as
 an instruction to go and find a note.
 
-The exported document, as drawn:
+The exported document, as drawn — **and this is not what 0.14.2 builds**; the departure is two
+paragraphs below:
 
 ```
 Review of uncommitted changes — swiftly, worktree main, 12 files
@@ -2032,6 +2033,55 @@ Four decisions inside it: **full repository-relative paths**, because the reader
 and a shell is; **document order**, so the agent walks the tree once; **the excerpt quoted with `> `**
 and snapshotted when the comment was written, which is what makes a stale comment still worth sending;
 and **no trace of a skipped note**.
+
+> **Four of this frame's calls are overturned as of 0.14.2, all four by Davide on 16 September
+> 2026.** *"I want to use a proper code block instead of a quote block"*, with *"an identifier for
+> the language, like the standard Markdown pattern"*; a rule between comments, because *"otherwise
+> it's a little bit difficult to read the prompt"*; and the heading reduced to its first four words,
+> because the project, the worktree and the file count *"are contexts that the session already has"*.
+>
+> The first overturns this section's own overturning of Markdown, and it is narrower than it looks:
+> §7's argument is about **headings**, which say *this is important* to a renderer and nothing to a
+> parser, and it was applied to fences by association. A fence is a delimiter rather than decoration,
+> and the `> ` it replaces was the expensive prefix — one on every line, which an agent strips before
+> the excerpt matches the file, for the same reason `CommentSelection` already refuses to carry git's
+> `+`/`-`. Headings did not come back. The full argument, the measured fence that survives a quoted
+> Markdown file, and where the language tag is snapshotted are in [`decisions.md`](decisions.md). The
+> same block, as built:
+>
+> ````
+> Review of uncommitted changes
+>
+> ---
+>
+> A. SwiftlyCore/Sources/About/Presentation/Models/AboutState.swift:6
+> (these lines are no longer in the current diff)
+> ```swift
+> public struct AboutUiModel: Equatable, Sendable {
+> ```
+> Sendable here needs a test, not just a conformance.
+> ````
+>
+> **The caveat stays outside the fence**, because it is this app talking about the code rather than a
+> line of it, and a sentence of English inside a `swift` block is the one thing a fence promises will
+> not be there.
+>
+> **The rule is the one separator that is not a paragraph break.** A blank line already divides the
+> parts inside a comment, so four comments separated by one more blank line run together; `---` is
+> unambiguous. The first rule also divides the note from the comments, which earns its place on the
+> same argument — the note is about the change as a whole and everything below it is about lines.
+>
+> **The heading losing its three facts is the one call here that costs something**, and it is worth
+> naming: this frame's argument was that the agent has one of the three in hand and not the other
+> two. Davide's answer is about *where the text lands* rather than what it contains — it is pasted
+> into a session already running in that checkout, so the line spent three facts on what that session
+> can already see.
+>
+> **Whether the labels are letters or figures is the reader's choice and the control for it is not
+> built.** It belongs on a Settings surface the phone does not have — the same one
+> [#70](https://github.com/fardavide/granita/issues/70) waits on — together with a saved opening text
+> replacing this document's first line. Letters until then, which is what Davide's own instruction
+> names. **This is the second thing to ask Design for**, after §7.7's composing column.
 
 > **One line in the document is ours rather than the review's.** A run named on the old side says
 > `(these lines were removed — the numbers are from before the change)`. The frames' own example could

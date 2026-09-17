@@ -1206,8 +1206,6 @@ private struct Scenario {
         // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
         sut = ClientViewerModel(
             worktree: aWorktree,
-            worktreeName: "TLS pinning",
-            projectName: "granita",
             repository: repository,
             commentStore: FakeReviewCommentStore(),
             pasteboard: FakeReviewPasteboard(),

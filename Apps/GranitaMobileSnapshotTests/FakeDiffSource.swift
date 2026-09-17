@@ -942,8 +942,6 @@ func aLoadedViewerModel(
 ) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
-        worktreeName: "TLS pinning",
-        projectName: "granita",
         repository: FakeDiffRepository(
             entries: entries,
             refusing: refusal,
@@ -1002,6 +1000,7 @@ nonisolated let aReviewOfTheFirstFile: [ReviewComment] = [
         ),
         path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
         lines: CommentedLines(side: .new, first: 138, last: 138),
+        language: "swift",
         quotedLines: ["    /// Reads the Mac's health before spending anything."],
         text: "This comment is now wrong — it also spends the code."
     ),
@@ -1013,6 +1012,7 @@ nonisolated let aReviewOfTheFirstFile: [ReviewComment] = [
         ),
         path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
         lines: CommentedLines(side: .new, first: 140, last: 140),
+        language: "swift",
         quotedLines: [
             "\tlet request = Request(path: \"/v1/health\")",
             "        let trust = try await verify(cert)"
@@ -1039,6 +1039,7 @@ nonisolated let aReviewWithOneCommentAdrift: [ReviewComment] = aReviewOfTheFirst
         ),
         path: "Packages/Granita/Client/Connection/Data/HttpServerPairing.swift",
         lines: CommentedLines(side: .new, first: 906, last: 906),
+        language: "swift",
         quotedLines: ["    private let session: URLSession"],
         text: "This wants to be injected rather than built here."
     )

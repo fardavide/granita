@@ -195,6 +195,7 @@ private func aComment(
         anchor: CommentAnchor(file: file, first: from, last: to),
         path: "Sources/Api.swift",
         lines: CommentedLines(side: .new, first: 12, last: 12),
+        language: "swift",
         quotedLines: ["let refreshed = true"],
         text: "Why?"
     )

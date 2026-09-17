@@ -7,6 +7,24 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.14.2 — 2026-09-17
+- **The review you copy now quotes your code as code.** Every excerpt used to go over with a `> ` in
+  front of each line, which is a character the agent has to strip off before it can search the file
+  for what you handed it. It is a fenced code block now, tagged with the file's language, so the
+  agent reads it the way it reads anything else — and so do you, if you paste it somewhere that
+  renders.
+- **Each comment is lettered, so you can talk about one.** The document labels them `A.`, `B.`, `C.`
+  in the order you meet them scrolling. The point is the reply: ask your agent to answer each point
+  by its letter and you can follow what it did without matching paths and line numbers back by eye —
+  which matters most after you clear the review, when the letters are the only handle left.
+- **A rule stands between comments**, because four of them with nothing but a blank line in between
+  read as one wall of text.
+- **The opening line is just `Review of uncommitted changes` now.** It used to name the project, the
+  worktree and how many files had changed — all three of which the session you paste into is already
+  sitting in.
+- **A quoted Markdown file cannot break the document any more.** If the lines you commented on
+  contain a code fence of their own, the block around them grows longer than anything inside it.
+
 ### 0.14.1 — 2026-09-16
 - **The worktree list refreshes when you come back to the app.** It already re-read every time you
   returned to the *screen*, but a screen that was in front of you when you put the phone down never

@@ -349,8 +349,6 @@ struct ClientViewerImagesTests {
             )
             sut = ClientViewerModel(
                 worktree: WorktreeID(rawValue: "b7c1e0a4f2d84391"),
-                worktreeName: "image diff",
-                projectName: "granita",
                 repository: repository,
                 commentStore: FakeReviewCommentStore(),
                 pasteboard: FakeReviewPasteboard(),

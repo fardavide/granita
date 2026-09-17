@@ -66,11 +66,12 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.14.2** — the copied review quotes code in a fenced block tagged with its language, and letters
+  each comment so you can ask your agent to reply point by point.
 - **0.14.1** — the worktree list refreshes when you come back to the app, not just when you come back
   to the screen.
 - **0.14.0** — a changed screenshot shows both versions side by side; tap for full screen, hold to
   swap.
-- **0.13.0** — a spinner beside the name says when a worktree list or a file list is being re-read.
 
 [Every release](CHANGELOG.md).
 
