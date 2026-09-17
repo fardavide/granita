@@ -234,7 +234,11 @@ public struct GranitaMobileScene: Scene {
                 now: Date.init
             ),
             onPairAgain: onPairAgain
-        ) { worktree, displayName, projectName in
+        // **The project's name is offered here and no longer taken.** It reached this closure for one
+        // reader — the exported review's heading — and 0.14.2 dropped that heading on Davide's own
+        // argument that a session pasted into already knows which checkout it is in. The sidebar
+        // still resolves and offers it; nothing on this side has a use for it now.
+        ) { worktree, displayName, _ in
             // **The second link in this app whose destination is a module away**, and it is here for
             // the same reason the first is: `ClientWorktreesPresentation` may see any `Domain` and
             // its own `Ui`, never a sibling `Presentation`. The sidebar declares the destination — it
@@ -250,11 +254,6 @@ public struct GranitaMobileScene: Scene {
                 worktreeName: displayName,
                 model: ClientViewerModel(
                     worktree: worktree,
-                    worktreeName: displayName,
-                    // Resolved beside the display name for the same reason: this closure runs on
-                    // every evaluation over a worktrees model that has read nothing, so a name looked
-                    // up here would be the fallback word on every worktree there is.
-                    projectName: projectName,
                     repository: repository,
                     commentStore: UserDefaultsReviewCommentStore(defaults: .standard),
                     pasteboard: SystemReviewPasteboard(),

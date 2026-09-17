@@ -282,23 +282,6 @@ public final class ClientViewerModel {
 
     private let worktree: WorktreeID
 
-    /// What the review calls the worktree it is of, which is the only thing in the exported document
-    /// that is not one of the comments.
-    ///
-    /// Held here rather than passed to the call that builds the document: the model is per worktree
-    /// and this is a fact about that worktree, so a screen handing it back on every invocation would
-    /// be a second copy of something already decided.
-    private let worktreeName: String
-
-    /// The repository this checkout is of, which the exported review names and nothing else here
-    /// does.
-    ///
-    /// **Handed in rather than looked up**, because it is not on the wire this screen reads: a change
-    /// set carries a revision, stats and files and no project, so the only source is the worktree the
-    /// reader tapped — which is the sidebar's to resolve, beside the display name, for the reason its
-    /// own doc comment gives.
-    private let projectName: String
-
     private let repository: any GranitaRepository
     private let commentStore: any ReviewCommentStore
     private let pasteboard: any ReviewPasteboard
@@ -319,8 +302,6 @@ public final class ClientViewerModel {
 
     public init(
         worktree: WorktreeID,
-        worktreeName: String,
-        projectName: String,
         repository: any GranitaRepository,
         commentStore: any ReviewCommentStore,
         pasteboard: any ReviewPasteboard,
@@ -332,8 +313,6 @@ public final class ClientViewerModel {
     ) {
         self.refreshAnnouncementDelay = refreshAnnouncementDelay
         self.worktree = worktree
-        self.worktreeName = worktreeName
-        self.projectName = projectName
         self.repository = repository
         self.commentStore = commentStore
         self.pasteboard = pasteboard
@@ -947,12 +926,14 @@ public final class ClientViewerModel {
     /// it.
     public func feedback(note: String?) -> String {
         ReviewFeedback.document(
-            project: projectName,
-            worktree: worktreeName,
-            // What the reader is being asked about, which is the change set rather than the review:
-            // "12 files" is the size of the read the comments came out of.
-            fileCount: entries.count,
             note: note,
+            // **Stated here, and it is the setting that is not built yet rather than a preference
+            // this screen owns.** Davide asked for the style to be the reader's choice, saved
+            // alongside the review's opening text; both live on a Settings surface the phone does not
+            // have, and building one is its own slice. Letters until then, because the instruction he
+            // wrote the feature for names them — *"give me a reply for each one of them using the
+            // identifier letter"*. One line to change when the setting arrives.
+            identifiers: .letters,
             comments: reviewed
         )
     }

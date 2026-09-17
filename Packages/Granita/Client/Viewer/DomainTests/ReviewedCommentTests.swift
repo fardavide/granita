@@ -213,6 +213,7 @@ private func anchored(
         anchor: CommentAnchor(file: file, first: first, last: first),
         path: "Sources/Api.swift",
         lines: CommentedLines(side: side, first: line, last: line),
+        language: "swift",
         quotedLines: ["let refreshed = true"],
         text: text
     )
@@ -233,6 +234,7 @@ private func aComment(
         ),
         path: "Sources/Api.swift",
         lines: CommentedLines(side: side, first: first, last: last),
+        language: "swift",
         quotedLines: ["let refreshed = true"],
         text: text
     )

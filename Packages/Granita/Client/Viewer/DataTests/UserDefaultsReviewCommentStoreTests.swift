@@ -70,6 +70,33 @@ struct UserDefaultsReviewCommentStoreTests {
     }
 
     @Test
+    func `given a comment saved before the fence was tagged when it is read then it has no language`() {
+        // given — what a review written by 0.14.1 and read by this release looks like: every field
+        // but `language`, which that release had no notion of. It must decode, because the reader who
+        // upgrades mid-review has an afternoon's work in here — and an untagged fence is exactly the
+        // right answer for a comment nothing ever claimed a language for.
+        let scenario = Scenario()
+        let stored = """
+            [{
+              "anchor": { "file": "the-file", "first": { "oldNumber": 40 }, "last": { "newNumber": 44 } },
+              "path": "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
+              "lines": { "side": "old", "first": 40, "last": 44 },
+              "quotedLines": ["    let legacy = true"],
+              "text": "Why did this go?"
+            }]
+            """
+        scenario.defaults.set(Data(stored.utf8), forKey: UserDefaultsReviewCommentStore.key(for: aWorktree))
+
+        // when
+        let comments = scenario.sut.comments(in: aWorktree)
+
+        // then
+        #expect(comments.count == 1)
+        #expect(comments.first?.language == nil)
+        #expect(comments.first?.text == "Why did this go?")
+    }
+
+    @Test
     func `given stored bytes no release ever wrote when they are read then there are no comments`() {
         // given — a defaults file edited by hand, or written by a version that spelled a comment
         // differently. A review that cannot be read is a review the reader has to write again, and
@@ -96,6 +123,7 @@ private func aComment(lines: CommentedLines, saying text: String) -> ReviewComme
         ),
         path: "Packages/Granita/Core/Diff/Domain/WordDiff.swift",
         lines: lines,
+        language: "swift",
         quotedLines: ["-    let legacy = true", "+    let legacy = false"],
         text: text
     )

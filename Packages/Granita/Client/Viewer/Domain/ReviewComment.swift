@@ -106,6 +106,19 @@ public struct ReviewComment: Hashable, Codable, Sendable, Identifiable {
 
     public let lines: CommentedLines
 
+    /// What the exported document's fence is tagged with, as the server named it for this file.
+    ///
+    /// **Snapshotted with everything else here, and absent rather than guessed.** It is the same
+    /// extension-derived hint the highlighter is given, so a fence and the colours the reader saw
+    /// agree by construction; a comment whose file has left the change set keeps the one it had.
+    /// Nothing claims a language for an extension that says nothing, and a fence tagged with a
+    /// language the file is not is worse for the agent than an untagged one.
+    ///
+    /// **Optional on the wire as well as in the type**, which is what lets a comment written before
+    /// 0.14.2 decode: the synthesised decoder reads an absent key as nothing, and an untagged fence
+    /// is exactly what such a comment should get.
+    public let language: String?
+
     /// The rows as they were drawn, each behind the marker git would have written for it.
     public let quotedLines: [String]
 
@@ -115,12 +128,14 @@ public struct ReviewComment: Hashable, Codable, Sendable, Identifiable {
         anchor: CommentAnchor,
         path: String,
         lines: CommentedLines,
+        language: String?,
         quotedLines: [String],
         text: String
     ) {
         self.anchor = anchor
         self.path = path
         self.lines = lines
+        self.language = language
         self.quotedLines = quotedLines
         self.text = text
     }

@@ -91,6 +91,7 @@ public enum CommentSelection {
             anchor: CommentAnchor(file: diff.file.id, first: ends.first, last: ends.last),
             path: diff.file.path,
             lines: lines,
+            language: diff.file.language,
             quotedLines: quotation(of: rows),
             text: text
         )

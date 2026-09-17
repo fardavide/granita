@@ -172,6 +172,7 @@ private func reviewed(
             ),
             path: path,
             lines: CommentedLines(side: .new, first: first, last: last),
+            language: "swift",
             quotedLines: ["func awaitItem() async throws -> Element {"],
             text: text
         ),
@@ -179,11 +180,18 @@ private func reviewed(
     )
 }
 
+/// Written out rather than produced by `ReviewFeedback`, because what this baseline photographs is
+/// the exact bytes the pasteboard will get: a fixture the exporter builds would photograph whatever
+/// the exporter does today, which is the one thing *Show text* exists to let a reader check.
 private let aDocument = """
-    Review of uncommitted changes — swiftly, worktree main, 12 files
+    Review of uncommitted changes
 
-    SwiftlyCore/Sources/About/Presentation/Models/AboutState.swift:6
+    ---
+
+    A. SwiftlyCore/Sources/About/Presentation/Models/AboutState.swift:6
     (these lines are no longer in the current diff)
-    > public struct AboutUiModel: Equatable, Sendable {
+    ```swift
+    public struct AboutUiModel: Equatable, Sendable {
+    ```
     Sendable here needs a test, not just a conformance.
     """
