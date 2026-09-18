@@ -3,6 +3,7 @@ import Foundation
 import CoreApiDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 
 /// Every Mac this phone has paired with before, and the one live connection to each.
 ///
@@ -347,6 +348,43 @@ public struct RememberedMacRepository: GranitaRepository {
         }
     }
 
+    public func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] {
+        do {
+            return try await macs.connection(to: server).review(in: worktree)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func putReview(
+        _ comments: [ReviewComment],
+        in worktree: WorktreeID
+    ) async throws(ApiFailure) {
+        do {
+            try await macs.connection(to: server).putReview(comments, in: worktree)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func reviewSettings() async throws(ApiFailure) -> ReviewSettings {
+        do {
+            return try await macs.connection(to: server).reviewSettings()
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings {
+        do {
+            return try await macs.connection(to: server).updateReviewSettings(patch)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
     /// What a failure means to what this phone remembers, handing the failure straight back.
     ///
     /// **It returns rather than throwing, and the `throw` stays at each of the seven call sites.** A
@@ -367,9 +405,13 @@ public struct RememberedMacRepository: GranitaRepository {
             await macs.lostContact(with: server.id)
         // Answers rather than faults, and a cancellation is not even that: none of them says
         // anything about where the Mac is or whether this phone may still talk to it.
+        // An absent route joins them: it says the Mac is older than the feature asking, which is
+        // nothing about where that Mac is or whether this phone may still talk to it. Forgetting the
+        // pairing over one would be the worst possible reading of it.
         case .pairingExpired, .rateLimited, .projectNotVisible, .worktreeGone, .worktreeNotDeletable,
              .fileGone, .staleContentHash, .gitFailure, .tooLarge, .badRequest,
-             .unsupportedApiVersion, .requestNotBuildable, .cancelled, .notUnderstood:
+             .unsupportedApiVersion, .requestNotBuildable, .cancelled, .notUnderstood,
+             .routeNotServed:
             break
         }
         return failure

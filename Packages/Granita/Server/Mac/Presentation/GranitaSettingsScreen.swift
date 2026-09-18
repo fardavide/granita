@@ -137,6 +137,26 @@ public struct GranitaSettingsScreen: View {
                 .task(id: model.serverState) { await model.offerPairing() }
             }
 
+            Tab("Review", systemImage: "text.quote", value: SettingsTab.review) {
+                ReviewSettingsPane(
+                    openingLine: Binding(
+                        get: { model.reviewOpeningLineDraft },
+                        set: { model.reviewOpeningLineDraft = $0 }
+                    ),
+                    identifier: model.reviewSettings.identifier,
+                    isOpeningLineDefault: model.reviewSettings.openingLine == nil,
+                    storedReviews: model.storedReviewCount,
+                    storedComments: model.storedReviewCommentCount,
+                    onChoose: { identifier in Task { await model.chooseReviewIdentifier(identifier) } },
+                    onCommitOpeningLine: { Task { await model.commitReviewOpeningLine() } },
+                    onReset: { Task { await model.resetReviewOpeningLine() } }
+                )
+                // Read on opening rather than at launch, for the reason Advanced's counts are: it is
+                // a disk read for a pane nobody has looked at, and worth re-doing every time this
+                // one is, because a phone may have written a review since.
+                .task { await model.loadReviewSettings() }
+            }
+
             Tab("Connections", systemImage: "point.3.connected.trianglepath.dotted", value: SettingsTab.connections) {
                 // The clock the rows are measured against. A row's elapsed time is a value the view
                 // is handed rather than one it derives, which is what lets a baseline photograph

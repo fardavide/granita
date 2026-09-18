@@ -129,8 +129,14 @@ let package = Package(
         // enumerations of one list is precisely how a rename becomes a refusal nothing can read.
         .target(
             name: "CoreApiDomain",
-            dependencies: ["CoreBrandingDomain"],
+            dependencies: ["CoreBrandingDomain", "CoreReviewDomain"],
             path: "Core/Api/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "CoreApiDomainTests",
+            dependencies: ["CoreApiDomain", "CoreReviewDomain"],
+            path: "Core/Api/DomainTests",
             swiftSettings: [swift6]
         ),
 
@@ -163,6 +169,23 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // What the two halves must agree on about a review: the comment a reader wrote and the two
+        // settings that shape the exported document. A Core module because the Mac stores both and
+        // the phone and the Mac each draw a control for them — a disagreement here is two surfaces
+        // claiming different things about one document.
+        .target(
+            name: "CoreReviewDomain",
+            dependencies: ["CoreDiffDomain"],
+            path: "Core/Review/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "CoreReviewDomainTests",
+            dependencies: ["CoreReviewDomain", "CoreDiffDomain"],
+            path: "Core/Review/DomainTests",
+            swiftSettings: [swift6]
+        ),
+
         .target(
             name: "CoreTreeDomain",
             dependencies: ["CoreDiffDomain"],
@@ -180,13 +203,26 @@ let package = Package(
 
         .target(
             name: "ClientConnectionDomain",
-            dependencies: ["CoreApiDomain", "CoreBrandingDomain", "CoreDiffDomain", "CorePairingDomain"],
+            dependencies: [
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                "CorePairingDomain",
+                "CoreReviewDomain"
+            ],
             path: "Client/Connection/Domain",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ClientConnectionDomainTests",
-            dependencies: ["ClientConnectionDomain", "CoreApiDomain", "CoreBrandingDomain"],
+            dependencies: [
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreBrandingDomain",
+                "CoreDiffDomain",
+                "CorePairingDomain",
+                "CoreReviewDomain"
+            ],
             path: "Client/Connection/DomainTests",
             swiftSettings: [swift6]
         ),
@@ -197,7 +233,8 @@ let package = Package(
                 "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
-                "CorePairingDomain"
+                "CorePairingDomain",
+                "CoreReviewDomain"
             ],
             path: "Client/Connection/Data",
             swiftSettings: [swift6]
@@ -242,7 +279,8 @@ let package = Package(
                 "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
-                "CorePairingDomain"
+                "CorePairingDomain",
+                "CoreReviewDomain"
             ],
             path: "Client/Connection/DataTests",
             swiftSettings: [swift6]
@@ -302,7 +340,8 @@ let package = Package(
                 "ClientWorktreesDomain",
                 "ClientConnectionDomain",
                 "CoreApiDomain",
-                "CoreDiffDomain"
+                "CoreDiffDomain",
+                "CoreReviewDomain"
             ],
             path: "Client/Worktrees/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
@@ -310,13 +349,13 @@ let package = Package(
 
         .target(
             name: "ClientViewerDomain",
-            dependencies: ["ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: ["ClientConnectionDomain", "CoreDiffDomain", "CoreReviewDomain", "CoreTreeDomain"],
             path: "Client/Viewer/Domain",
             swiftSettings: [swift6]
         ),
         .target(
             name: "ClientViewerData",
-            dependencies: ["ClientViewerDomain", "ClientConnectionDomain", "CoreDiffDomain"],
+            dependencies: ["ClientViewerDomain", "ClientConnectionDomain", "CoreDiffDomain", "CoreReviewDomain"],
             path: "Client/Viewer/Data",
             swiftSettings: [swift6]
         ),
@@ -326,6 +365,7 @@ let package = Package(
                 "ClientViewerDomain",
                 "ClientConnectionDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 "CoreTreeDomain",
                 // Highlighting turns diff text into attributed strings for rendering, which is
                 // Ui work. One Highlightr instance per background actor for the app lifetime —
@@ -345,6 +385,7 @@ let package = Package(
                 // implements it is what the graph refuses.
                 "ClientConnectionDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 "CoreTreeDomain"
             ],
             path: "Client/Viewer/Presentation",
@@ -352,13 +393,26 @@ let package = Package(
         ),
         .testTarget(
             name: "ClientViewerDomainTests",
-            dependencies: ["ClientViewerDomain", "ClientConnectionDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "ClientViewerDomain",
+                "ClientConnectionDomain",
+                "CoreDiffDomain",
+                "CoreReviewDomain",
+                "CoreTreeDomain"
+            ],
             path: "Client/Viewer/DomainTests",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ClientViewerDataTests",
-            dependencies: ["ClientViewerData", "ClientViewerDomain", "CoreDiffDomain"],
+            dependencies: [
+                "ClientViewerData",
+                "ClientViewerDomain",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreDiffDomain",
+                "CoreReviewDomain"
+            ],
             path: "Client/Viewer/DataTests",
             swiftSettings: [swift6]
         ),
@@ -369,9 +423,50 @@ let package = Package(
                 "ClientViewerDomain",
                 "ClientConnectionDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 "CoreTreeDomain"
             ],
             path: "Client/Viewer/PresentationTests",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+
+        // What the reader decided about the shape of a review, and the one screen that sets it.
+        // Its own feature rather than part of the viewer: the settings belong to a Mac rather than
+        // to a worktree, and the way in is the sidebar's menu rather than the diff's toolbar.
+        .target(
+            name: "ClientSettingsDomain",
+            dependencies: ["CoreReviewDomain"],
+            path: "Client/Settings/Domain",
+            swiftSettings: [swift6]
+        ),
+        .target(
+            name: "ClientSettingsUi",
+            dependencies: ["ClientSettingsDomain", "CoreReviewDomain"],
+            path: "Client/Settings/Ui",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .target(
+            name: "ClientSettingsPresentation",
+            dependencies: [
+                "ClientSettingsUi",
+                "ClientSettingsDomain",
+                "ClientConnectionDomain",
+                "CoreReviewDomain"
+            ],
+            path: "Client/Settings/Presentation",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .testTarget(
+            name: "ClientSettingsPresentationTests",
+            dependencies: [
+                "ClientSettingsPresentation",
+                "ClientSettingsDomain",
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreDiffDomain",
+                "CoreReviewDomain"
+            ],
+            path: "Client/Settings/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
@@ -383,6 +478,7 @@ let package = Package(
                 "CoreBrandingDomain",
                 "CoreDiffDomain",
                 "CorePairingDomain",
+                "CoreReviewDomain",
                 "ClientConnectionDomain",
                 "ClientConnectionData",
                 "ClientConnectionUi",
@@ -395,7 +491,8 @@ let package = Package(
                 // target: highlighting produces attributed strings for rendering, so `SPEC.md` §2
                 // pins the dependency to `ClientViewerUi` — and choosing the implementation behind a
                 // `Domain` protocol is a root's job wherever the implementation happens to live.
-                "ClientViewerUi"
+                "ClientViewerUi",
+                "ClientSettingsPresentation"
             ],
             path: "Client/App/Main",
             swiftSettings: [swift6, mainActorByDefault]
@@ -505,19 +602,19 @@ let package = Package(
 
         .target(
             name: "ServerStoreDomain",
-            dependencies: ["CoreDiffDomain"],
+            dependencies: ["CoreDiffDomain", "CoreReviewDomain"],
             path: "Server/Store/Domain",
             swiftSettings: [swift6]
         ),
         .target(
             name: "ServerStoreData",
-            dependencies: ["CoreBrandingDomain", "ServerStoreDomain", "CoreDiffDomain"],
+            dependencies: ["CoreBrandingDomain", "ServerStoreDomain", "CoreDiffDomain", "CoreReviewDomain"],
             path: "Server/Store/Data",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ServerStoreDataTests",
-            dependencies: ["ServerStoreData", "ServerStoreDomain", "CoreDiffDomain"],
+            dependencies: ["ServerStoreData", "ServerStoreDomain", "CoreDiffDomain", "CoreReviewDomain"],
             path: "Server/Store/DataTests",
             swiftSettings: [swift6]
         ),
@@ -560,6 +657,7 @@ let package = Package(
                 "ServerGitDomain",
                 "CorePairingDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services")
             ],
@@ -572,6 +670,7 @@ let package = Package(
                 "ServerApiPresentation",
                 "CoreApiDomain",
                 "CoreDiagnosticsDomain",
+                "CoreReviewDomain",
                 "ServerApiDomain",
                 "ServerIdentityDomain",
                 "ServerWorktreesDomain",
@@ -657,6 +756,8 @@ let package = Package(
                 "CoreBrandingDomain",
                 // The Devices tab draws a pairing link as a QR, so it names the link.
                 "CorePairingDomain",
+                // The Review tab draws the two settings and the sample they produce.
+                "CoreReviewDomain",
                 "ServerApiDomain",
                 "ServerMacDomain",
                 "ServerWorktreesDomain",
@@ -674,6 +775,7 @@ let package = Package(
                 "CorePairingDomain",
                 "CoreDiagnosticsDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 "ServerMacUi",
                 "ServerApiDomain",
                 "ServerMacDomain",
@@ -690,11 +792,13 @@ let package = Package(
                 "CorePairingDomain",
                 "CoreDiagnosticsDomain",
                 "CoreDiffDomain",
+                "CoreReviewDomain",
                 "ServerApiDomain",
                 "ServerMacDomain",
                 "ServerStoreDomain"
             ],
             path: "Server/Mac/PresentationTests",
+
             swiftSettings: [swift6, mainActorByDefault]
         ),
 

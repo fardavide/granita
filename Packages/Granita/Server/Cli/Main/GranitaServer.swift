@@ -99,6 +99,12 @@ struct GranitaServer {
             return
         }
 
+        // `SPEC.md` §9's startup housekeeping, before anything is served: drop the marks and reviews
+        // of worktrees an agent has since deleted, and cap the marks. Awaited rather than detached
+        // because it runs once and costs a git process per enabled project — the same processes the
+        // first request would spend anyway.
+        await registry.pruneStore()
+
         let pairing = Pairing(store: store, now: { Date() })
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
 

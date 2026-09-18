@@ -58,6 +58,14 @@ struct GranitaHttpClient: Sendable {
         _ = try await perform(.post, path, query: [], body: try encode(body))
     }
 
+    /// A route that replaces whatever is there with what is sent, and answers 204.
+    ///
+    /// PUT rather than POST because that is exactly what it does: the review sent is the review the
+    /// Mac then holds, so sending it twice leaves the same thing behind.
+    func put(_ path: String, body: some Encodable) async throws(ApiFailure) {
+        _ = try await perform(.put, path, query: [], body: try encode(body))
+    }
+
     /// A route that answers 204 and carries no body in either direction.
     func delete(_ path: String) async throws(ApiFailure) {
         _ = try await perform(.delete, path, query: [], body: nil)
@@ -106,6 +114,14 @@ struct GranitaHttpClient: Sendable {
     /// apart. The status only ever reaches a diagnostic string.
     private func refusal(status: Int, body: Data) -> ApiFailure {
         guard let refused = try? decoder.decode(Refusal.self, from: body) else {
+            // A bare 404 is a route this Mac does not serve, which is an older Mac rather than a
+            // refusal: every route the Mac *does* have answers a domain 404 with a code in the body.
+            // Told apart because the two need opposite things — one is a Mac to update and the other
+            // is a thing that went away — and because refusing the whole client over an absent route
+            // would cost the reader every screen that already works.
+            if status == 404 {
+                return .routeNotServed
+            }
             return .notUnderstood(
                 diagnostic: "the Mac refused with \(status) and a body this version could not read"
             )

@@ -62,7 +62,8 @@ struct WorktreeSidebarViewSnapshotTests {
                     onRetry: {},
                     onRefresh: {},
                     onPairAgain: {},
-                    onCopyLogs: {}
+                    onCopyLogs: {},
+                    onOpenSettings: {}
                 )
             }
             .dynamicTypeSize(subject.dynamicTypeSize)

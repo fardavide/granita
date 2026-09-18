@@ -4,6 +4,7 @@ import ClientViewerPresentation
 import ClientViewerUi
 import ClientWorktreesPresentation
 import CoreDiffDomain
+import CoreReviewDomain
 import Foundation
 import SwiftUI
 import Synchronization
@@ -881,6 +882,14 @@ final class FakeDiffRepository: GranitaRepository {
     ) async throws(ApiFailure) {
         throw .fileGone
     }
+
+    // A baseline never reaches the review's routes: the sheet is handed a store directly.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] { [] }
+    func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {}
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { .unset }
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings { .unset }
 }
 
 /// A viewer model that has already read its change set and fetched the first window.
@@ -942,6 +951,7 @@ func aLoadedViewerModel(
 ) async -> ClientViewerModel {
     let model = ClientViewerModel(
         worktree: WorktreeID(rawValue: "w-the-one-that-was-tapped"),
+        macName: "MacBook Pro",
         repository: FakeDiffRepository(
             entries: entries,
             refusing: refusal,

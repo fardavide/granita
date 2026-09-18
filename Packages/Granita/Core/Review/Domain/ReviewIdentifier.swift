@@ -9,7 +9,11 @@
 /// **Two styles rather than one**, because the reader is writing the instruction that goes with it —
 /// *reply to each point by its letter* and *reply to each numbered point* are both idioms an agent
 /// follows, and which one reads naturally depends on the sentence around it.
-public enum ReviewIdentifier: String, Hashable, Sendable, CaseIterable {
+///
+/// **`Codable` since the Mac began storing it, which makes the raw values a storage contract** rather
+/// than an implementation detail: they are written into a document a reader can open and a second
+/// device decodes them. Renaming a case silently reverts every reader who chose the other style.
+public enum ReviewIdentifier: String, Hashable, Codable, Sendable, CaseIterable {
 
     case letters
     case numbers

@@ -4,6 +4,7 @@ import Testing
 import ClientViewerData
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// Where a review lives between the reader writing it and the reader copying it.
 ///
@@ -67,6 +68,38 @@ struct UserDefaultsReviewCommentStoreTests {
 
         // then
         #expect(scenario.sut.comments(in: aWorktree) == [])
+    }
+
+    @Test
+    func `given only this phone when a review is pushed then it says the review is kept here`() async {
+        // given — there is no Mac behind this store. `MacReviewCommentStore` is what answers
+        // differently, by wrapping this one rather than replacing it.
+        let scenario = Scenario()
+
+        // when
+        let sync = await scenario.sut.push([], in: aWorktree)
+
+        // then — not a failure: a reader whose review lives only here is told the truth about where
+        // it is, which is the same sentence a Mac too old to hold one produces.
+        #expect(sync == .notStorable)
+    }
+
+    @Test
+    func `given only this phone when a review is reconciled then what it wrote is the whole review`(
+    ) async {
+        // given — nothing to merge with, so reconciling must return the review rather than nothing.
+        let scenario = Scenario()
+        let comment = aComment(
+            lines: CommentedLines(side: .new, first: 12, last: 12),
+            saying: "Mine alone."
+        )
+        scenario.sut.save([comment], in: aWorktree)
+
+        // when
+        let merged = await scenario.sut.reconcile(in: aWorktree)
+
+        // then
+        #expect(merged == [comment])
     }
 
     @Test

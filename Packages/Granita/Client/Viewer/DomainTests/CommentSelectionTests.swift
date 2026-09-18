@@ -1,6 +1,7 @@
 import Testing
 
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerDomain
 

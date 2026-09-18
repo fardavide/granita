@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CoreReviewDomain
 import ServerStoreDomain
 
 /// One JSON document, read once and replaced whole.
@@ -16,7 +17,7 @@ public actor JsonDocumentStore: Store {
     /// A document from the future is left alone rather than reinterpreted: reading it with today's
     /// rules and writing it back would silently drop every field a newer Granita added, and the
     /// fields most likely to be added are the ones a reader spent time producing.
-    private static let schemaVersion = 1
+    private static let schemaVersion = 2
 
     private let fileUrl: URL
     private var loaded: StoredState?
@@ -40,7 +41,9 @@ public actor JsonDocumentStore: Store {
             projects: projects,
             worktrees: current.worktrees,
             viewed: current.viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         )
         try write(current)
     }
@@ -55,7 +58,9 @@ public actor JsonDocumentStore: Store {
             },
             worktrees: current.worktrees,
             viewed: current.viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
@@ -69,7 +74,9 @@ public actor JsonDocumentStore: Store {
             projects: current.projects.filter { $0.id != id },
             worktrees: current.worktrees,
             viewed: current.viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
@@ -86,7 +93,9 @@ public actor JsonDocumentStore: Store {
             projects: current.projects,
             worktrees: worktrees,
             viewed: current.viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
@@ -101,22 +110,36 @@ public actor JsonDocumentStore: Store {
             projects: current.projects,
             worktrees: worktrees,
             viewed: current.viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
-    public func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {
+    public func setViewed(
+        _ isViewed: Bool,
+        file: FileID,
+        in worktree: WorktreeID,
+        contentHash: String,
+        at date: Date
+    ) throws(StoreError) {
         let current = state()
         var viewed = current.viewed
+        var marks = viewed[worktree] ?? [:]
         // Keyed by the content that was read. Unmarking is removal rather than a false, so the
         // document does not accumulate a row per file anyone ever looked at and changed their mind
         // about.
-        viewed[file] = isViewed ? contentHash : nil
+        marks[file] = isViewed ? ViewedMark(contentHash: contentHash, viewedAt: date) : nil
+        // And a worktree whose last mark went leaves no row either, so the prune below has less to
+        // do and the document does not keep a key per worktree anyone ever opened.
+        viewed[worktree] = marks.isEmpty ? nil : marks
         try write(StoredState(
             projects: current.projects,
             worktrees: current.worktrees,
             viewed: viewed,
-            devices: current.devices
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
@@ -126,7 +149,9 @@ public actor JsonDocumentStore: Store {
             projects: current.projects,
             worktrees: current.worktrees,
             viewed: current.viewed,
-            devices: current.devices.filter { $0.id != device.id } + [device]
+            devices: current.devices.filter { $0.id != device.id } + [device],
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
         ))
     }
 
@@ -136,11 +161,84 @@ public actor JsonDocumentStore: Store {
             projects: current.projects,
             worktrees: current.worktrees,
             viewed: current.viewed,
-            devices: current.devices.filter { $0.id != id }
+            devices: current.devices.filter { $0.id != id },
+            reviews: current.reviews,
+            reviewSettings: current.reviewSettings
+        ))
+    }
+
+    public func setReview(_ comments: [ReviewComment], in worktree: WorktreeID) throws(StoreError) {
+        let current = state()
+        var reviews = current.reviews
+        // An empty review is removal rather than an empty array, so clearing one leaves no row
+        // behind — the same rule an unmarked file follows, and what keeps the stored-review count
+        // on the Mac's own pane true.
+        reviews[worktree] = comments.isEmpty ? nil : comments
+        try write(StoredState(
+            projects: current.projects,
+            worktrees: current.worktrees,
+            viewed: current.viewed,
+            devices: current.devices,
+            reviews: reviews,
+            reviewSettings: current.reviewSettings
+        ))
+    }
+
+    public func prune(keeping worktrees: Set<WorktreeID>, markLimit: Int) throws(StoreError) {
+        let current = state()
+
+        var viewed = current.viewed.filter { worktrees.contains($0.key) }
+        let reviews = current.reviews.filter { worktrees.contains($0.key) }
+
+        // The cap, oldest first and across every worktree rather than per worktree: the limit is on
+        // the document, and a reader with one enormous worktree and nine small ones should not lose
+        // the small ones' marks to keep a per-worktree share the big one never uses.
+        let total = viewed.values.reduce(0) { $0 + $1.count }
+        if total > markLimit {
+            let ordered = viewed
+                .flatMap { worktree, marks in marks.map { (worktree, $0.key, $0.value) } }
+                .sorted { $0.2.viewedAt > $1.2.viewedAt }
+                .prefix(markLimit)
+            viewed = [:]
+            for (worktree, file, mark) in ordered {
+                viewed[worktree, default: [:]][file] = mark
+            }
+        }
+
+        guard viewed != current.viewed || reviews.count != current.reviews.count else { return }
+
+        try write(StoredState(
+            projects: current.projects,
+            worktrees: current.worktrees,
+            viewed: viewed,
+            devices: current.devices,
+            reviews: reviews,
+            reviewSettings: current.reviewSettings
+        ))
+    }
+
+    public func setReviewSettings(_ settings: ReviewSettings) throws(StoreError) {
+        let current = state()
+        try write(StoredState(
+            projects: current.projects,
+            worktrees: current.worktrees,
+            viewed: current.viewed,
+            devices: current.devices,
+            reviews: current.reviews,
+            reviewSettings: settings
         ))
     }
 
     public func reset() throws(StoreError) {
+        // The one deliberate act allowed to land on bytes this version cannot decode. Nothing is
+        // recoverable from them, and Advanced's "Reset all data" is the only repair a reader has for
+        // a damaged document — a reset that refused would leave them with no way out of it but a
+        // text editor. A document from a *newer* Granita is still refused: that one is readable, and
+        // by something the reader may well go back to.
+        if state().unreadable == .couldNotBeDecoded {
+            loaded = .empty
+        }
+
         // Through `write` like every other mutation, so the reset is atomic and lands on disk
         // rather than only in this actor. A reset that cleared memory and left the document alone
         // would restore everything it claimed to destroy at the next launch, which is the one
@@ -150,20 +248,38 @@ public actor JsonDocumentStore: Store {
 
     // MARK: - Disk
 
+    /// Nothing on disk is a first run. Anything else on disk that does not become state is damage or
+    /// the future, and the two are told apart before either is acted on.
     private func readFromDisk() -> StoredState {
         guard let data = try? Data(contentsOf: fileUrl) else { return .empty }
-        guard let envelope = try? JSONDecoder().decode(Envelope.self, from: data) else { return .empty }
-        guard envelope.schemaVersion <= Self.schemaVersion else {
-            var state = StoredState.empty
-            state.isFromUnreadableDocument = true
-            return state
+
+        // The version is decoded on its own, and first. It is the one field a later release is
+        // guaranteed to still spell the way this one does, so reading it cannot be made to fail by a
+        // shape that release changed — which is exactly the document this check exists to catch.
+        guard let document = try? JSONDecoder().decode(DocumentVersion.self, from: data) else {
+            return .unreadable(.couldNotBeDecoded)
         }
-        return envelope.state
+        guard document.schemaVersion <= Self.schemaVersion else {
+            return .unreadable(.writtenByANewerVersion)
+        }
+        guard let state = try? JSONDecoder().decode(StoredState.self, from: data) else {
+            return .unreadable(.couldNotBeDecoded)
+        }
+        return state
     }
 
     private func write(_ state: StoredState) throws(StoreError) {
-        guard state.isFromUnreadableDocument == false, self.state().isFromUnreadableDocument == false else {
-            throw .documentIsFromANewerVersion
+        // Whichever of the two knows there is something unreadable on disk, since a caller may hand
+        // in a fresh state built from one that was never read successfully.
+        if let reason = state.unreadable ?? self.state().unreadable {
+            switch reason {
+            case .writtenByANewerVersion:
+                throw .documentIsFromANewerVersion
+            case .couldNotBeDecoded:
+                throw .notWritable(
+                    reason: "the document on disk could not be read, so it was left as it is"
+                )
+            }
         }
         do {
             let encoder = JSONEncoder()
@@ -187,20 +303,13 @@ public actor JsonDocumentStore: Store {
     }
 
     /// The document, which is the state plus the version that wrote it.
-    private struct Envelope: Codable {
+    ///
+    /// Encode only. Reading goes through `DocumentVersion` and `StoredState` separately, because a
+    /// single type that decodes both would make the version unreadable in precisely the case the
+    /// version exists to describe: a document whose state this release cannot decode.
+    private struct Envelope: Encodable {
         let schemaVersion: Int
         let state: StoredState
-
-        init(schemaVersion: Int, state: StoredState) {
-            self.schemaVersion = schemaVersion
-            self.state = state
-        }
-
-        init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
-            state = try StoredState(from: decoder)
-        }
 
         func encode(to encoder: any Encoder) throws {
             try state.encode(to: encoder)
@@ -211,5 +320,10 @@ public actor JsonDocumentStore: Store {
         private enum CodingKeys: String, CodingKey {
             case schemaVersion
         }
+    }
+
+    /// The version alone, and nothing that a later release could have reshaped around it.
+    private struct DocumentVersion: Decodable {
+        let schemaVersion: Int
     }
 }

@@ -116,8 +116,8 @@ struct WorktreeAlertPromptTests {
     }
 
     @Test(arguments: [
-        (WorktreeWriteRefusal.edit(.unauthorized), "Your Mac would not make that change"),
-        (.deletion(.worktreeNotDeletable(message: "locked")), "Your Mac would not delete it"),
+        (WorktreeWriteRefusal.edit(.unauthorized), "Your Mac cannot make that change"),
+        (.deletion(.worktreeNotDeletable(message: "locked")), "Your Mac cannot delete it"),
         (.deletion(.unreachable(diagnostic: "NWError -65563")), "Granita could not tell whether it was deleted")
     ])
     func `given a refused write when the title is read then it says which write and how sure it is`(

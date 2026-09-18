@@ -2,6 +2,7 @@ import Foundation
 
 import ClientConnectionDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// A Mac that answers the read routes from a list a test hands it, and records what was written.
 ///
@@ -224,6 +225,26 @@ actor FakeGranitaRepository: GranitaRepository {
         in worktree: WorktreeID
     ) async throws(ApiFailure) {
         throw .fileGone
+    }
+
+    // The sidebar never reaches a review. Refusing rather than answering keeps that true: a test
+    // that started asking would fail here rather than quietly pass against an invented answer.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] {
+        throw .worktreeGone
+    }
+
+    func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {
+        throw .worktreeGone
+    }
+
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings {
+        throw .routeNotServed
+    }
+
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings {
+        throw .routeNotServed
     }
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// One hunk's diff lines with wrap off: the numbers and markers pinned, and the code scrolling under
 /// them.

@@ -152,7 +152,7 @@ private func theWorktreeSplit(in layout: SnapshotLayout) async -> some View {
     let diff = await aLoadedViewerModel(in: layout)
 
     return NavigationStack {
-        WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+        WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
             WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
         }
     }
@@ -180,6 +180,7 @@ private func theReviewSheet() throws -> some View {
         note: .constant(subject.note),
         hasSkippedNote: subject.hasSkippedNote,
         hasCopied: subject.hasCopied,
+        caption: subject.caption,
         document: subject.document,
         showsDocument: subject.showsDocument,
         onShowDocument: { _ in },

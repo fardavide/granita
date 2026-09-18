@@ -7,6 +7,28 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.15.0 — 2026-09-18
+- **Your review now lives on your Mac, not on the phone you wrote it on.** Comments used to be kept
+  only on the device that typed them, so a new phone or a reinstall lost them and a second device
+  could not see them at all. They are stored beside the worktree now — and the phone still keeps its
+  own copy, so nothing you write waits on the network. A closed laptop costs you nothing: what you
+  type is in effect immediately and reaches the Mac when it answers.
+- **Reviewing one worktree from two devices gives you both halves.** They are merged in the order you
+  meet them scrolling, with no attribution on any comment and nothing to resolve — they are your
+  notes either way, and swiping one away still deletes it.
+- **A new Review tab in the Mac's Settings, and a Review screen on the phone.** Both set the same two
+  things and each shows you the result before you copy anything: the line every exported review
+  begins with, and whether comments are named `A. B. C.` or `1. 2. 3.` You can clear the opening line
+  entirely — the document then starts at your first comment.
+- **The copy button tells you what it is about to hand over.** Above it, one line says how much of
+  the review has reached your Mac, and only when that number is not all of it. Copying never waits
+  for the Mac: a review that never reached it is still a complete review on your clipboard.
+- **A file you marked read in one worktree no longer shows as read in another.** Marks were kept
+  against the file's path alone, so two checkouts of one project shared them — and a diff you had
+  never opened could be drawn as already seen. They are kept per worktree now.
+- **Marks and reviews for worktrees you no longer have are cleaned up when Granita starts**, and the
+  Mac's Review tab counts what it is holding.
+
 ### 0.14.2 — 2026-09-17
 - **The review you copy now quotes your code as code.** Every excerpt used to go over with a `> ` in
   front of each line, which is a character the agent has to strip off before it can search the file

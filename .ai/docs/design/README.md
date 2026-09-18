@@ -16,6 +16,7 @@ a question that now has a real one. When a file's last section ships, the file g
 |---|---|---|
 | [`granita-design-review.html`](granita-design-review.html) | The continuous diff's second header form and wrap-on (M5). **Not syntax highlighting** — this row claimed it until 0.4.2 and the file has never held a frame of it: §4 has eight subsections and none is highlighting, and the only two mentions in the whole review are a rejection of underlining that names the highlighter in passing. 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
 | [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which 0.4.1 made reachable and deliberately did not build: a Mac paired with before goes straight to its worktrees, so the only reader who lands here is one whose token the Mac revoked. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
+| [`granita-review-settings-design-review.html`](granita-review-settings-design-review.html) | All of it: the phone's Settings sheet in seven states, the sync caption the review sheet gains, and the Mac's sixth tab. 17 September 2026, drawn against 0.14.2 for issues [#64](https://github.com/fardavide/granita/issues/64) and [#98](https://github.com/fardavide/granita/issues/98) | [`../design-review-settings.md`](../design-review-settings.md) |
 
 The pairing return arrived with **twelve** states and left with one, because the pull request that
 recorded it also built the other eleven. What it carried that no frame could — that the six words

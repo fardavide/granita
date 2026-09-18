@@ -23,8 +23,8 @@ extension WorktreeAlertPrompt? {
     var title: String {
         switch self {
         case .confirmDeletion(let subject): "Delete “\(subject.displayName)”?"
-        case .refusal(.edit): "Your Mac would not make that change"
-        case .refusal(.deletion(.worktreeNotDeletable)): "Your Mac would not delete it"
+        case .refusal(.edit): "Your Mac cannot make that change"
+        case .refusal(.deletion(.worktreeNotDeletable)): "Your Mac cannot delete it"
         case .refusal(.deletion): "Granita could not tell whether it was deleted"
         case nil: "Delete this worktree?"
         }

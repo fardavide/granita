@@ -2,6 +2,7 @@ import Foundation
 
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// The review a reader has written, in this phone's user defaults.
 ///
@@ -46,5 +47,20 @@ public struct UserDefaultsReviewCommentStore: ReviewCommentStore, @unchecked Sen
         // a failure that cannot happen would put a sentence on screen nobody could ever act on.
         guard let encoded = try? JSONEncoder().encode(comments) else { return }
         defaults.set(encoded, forKey: Self.key(for: worktree))
+    }
+
+    /// There is no Mac behind this one, so there is nowhere for a review to go.
+    ///
+    /// **Not a failure and not a queue** — a reader whose review lives only here is told it is this
+    /// phone's, which is the truth and is the same thing the screen says when the Mac they read from
+    /// is too old to hold one. `MacReviewCommentStore` is what makes this answer differently, by
+    /// wrapping this store rather than replacing it.
+    public func push(_ comments: [ReviewComment], in worktree: WorktreeID) async -> ReviewSync {
+        .notStorable
+    }
+
+    /// Nothing to reconcile with. What this phone wrote is the whole review.
+    public func reconcile(in worktree: WorktreeID) async -> [ReviewComment] {
+        comments(in: worktree)
     }
 }

@@ -1,5 +1,6 @@
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// A review that lives in memory, so a baseline photographs the same screen every time it is
 /// recorded.
@@ -20,5 +21,17 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     func save(_ comments: [ReviewComment], in worktree: WorktreeID) {
         saved = comments
+    }
+
+    /// What a push answers with, so a baseline can photograph each caption state without a Mac.
+    var pushAnswers: ReviewSync = .settled
+
+    func push(_ comments: [ReviewComment], in worktree: WorktreeID) async -> ReviewSync {
+        pushAnswers
+    }
+
+    /// No second device in a baseline: the review is whatever the test seeded.
+    func reconcile(in worktree: WorktreeID) async -> [ReviewComment] {
+        saved
     }
 }

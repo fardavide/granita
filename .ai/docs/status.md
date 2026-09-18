@@ -2,6 +2,28 @@
 
 Where the project is. Update this when a slice lands.
 
+**In progress: the review moves to the Mac, and the store grows a schema.** Issues
+[#64](https://github.com/fardavide/granita/issues/64) and
+[#98](https://github.com/fardavide/granita/issues/98) are one slice on Davide's call, carrying
+`SPEC.md` §9's two unbuilt storage rules with them. The layers under the screens are built and green:
+a `CoreReviewDomain` module both halves share, store schema 2 with the old decoder kept, `viewed`
+re-keyed by worktree with a date so §9's prune and cap became expressible at all, the review and
+settings routes, and a phone-side store that saves locally and pushes separately. The calls the
+design returned on 17 September 2026 are in
+[`design-review-settings.md`](design-review-settings.md); the departures are in
+[`decisions.md`](decisions.md).
+
+**Three surfaces remain, and they are the whole of what is left**: the phone's Settings sheet in
+seven states, the sync caption above the review's copy button, and the Mac's sixth tab. Each needs
+its snapshot baselines in the same pull request, per [`design-handoff`](../skills/design-handoff/SKILL.md).
+
+**Two defects were found on the way and are fixed.** A document that existed and could not be decoded
+was indistinguishable from a first run, so the next mutation overwrote a reader's whole store in
+silence — and the guard against a newer Granita's document was defeated by the same path. Separately,
+a file identifier is a hash of a repository-relative path, so with no worktree on a viewed mark, a
+file read in one worktree drew as read in another whenever their content agreed. Both are in
+[`decisions.md`](decisions.md) with the tests that hold them.
+
 **The copied review is Markdown again, and each comment has a name — that is 0.14.2.** The excerpt
 goes over in a fenced block tagged with the file's language rather than behind a `> ` on every line;
 the comments are lettered `A.`, `B.`, `C.` in document order and separated by a rule; and the heading

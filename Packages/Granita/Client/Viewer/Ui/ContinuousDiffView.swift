@@ -3,6 +3,7 @@ import SwiftUI
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// Every changed file in one scroll, which is `SPEC.md` §10's locked decision and the screen this
 /// product exists for.

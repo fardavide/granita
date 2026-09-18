@@ -4,6 +4,7 @@ import Testing
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerPresentation
 
@@ -349,6 +350,7 @@ struct ClientViewerImagesTests {
             )
             sut = ClientViewerModel(
                 worktree: WorktreeID(rawValue: "b7c1e0a4f2d84391"),
+                macName: "MacBook Pro",
                 repository: repository,
                 commentStore: FakeReviewCommentStore(),
                 pasteboard: FakeReviewPasteboard(),

@@ -1,4 +1,5 @@
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// One comment as the review shows it: what the reader wrote, and whether the diff still has the
 /// lines it was written against.

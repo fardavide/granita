@@ -5,6 +5,7 @@ import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiagnosticsDomain
 import CoreDiffDomain
+import CoreReviewDomain
 import ServerApiDomain
 import ServerGitDomain
 import ServerStoreDomain
@@ -219,7 +220,7 @@ public enum GranitaRouter {
         authenticated.get("/v1/worktrees/:worktreeId/changes") { request, context -> WorktreeChanges in
             let id = try worktreeId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
             return WorktreeChanges(
                 revision: changes.revision,
                 stats: changes.stats,
@@ -240,7 +241,7 @@ public enum GranitaRouter {
                 throw ApiError(.tooLarge, message: "at most \(maximumBatchedFiles) files at a time")
             }
 
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
             return try await diffs(
                 for: requested,
                 in: changes,
@@ -254,7 +255,7 @@ public enum GranitaRouter {
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
             let produced = try await diffs(
                 for: [file],
                 in: changes,
@@ -272,7 +273,7 @@ public enum GranitaRouter {
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
             guard let path = changes.paths[file] else {
                 throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
             }
@@ -309,7 +310,7 @@ public enum GranitaRouter {
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
             let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
             guard let path = changes.paths[file], let current = changes.files.first(where: { $0.id == file })
             else {
                 throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
@@ -365,7 +366,7 @@ public enum GranitaRouter {
             let file = try fileId(from: context)
             let body = try await decoded(ViewedRequest.self, from: request, context: context)
             let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, dependencies: dependencies)
+            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
 
             guard let current = changes.files.first(where: { $0.id == file }) else {
                 throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
@@ -377,11 +378,74 @@ public enum GranitaRouter {
             }
 
             do {
-                try await dependencies.store.setViewed(body.viewed, file: file, contentHash: body.contentHash)
+                // The worktree was always in the path; until now it stopped at the route and the
+                // store kept one flat map of marks for every checkout on this Mac.
+                try await dependencies.store.setViewed(
+                    body.viewed,
+                    file: file,
+                    in: id,
+                    contentHash: body.contentHash,
+                    at: Date()
+                )
             } catch {
                 throw ApiError(.badRequest, message: "could not save that: \(error)")
             }
             return Response(status: .noContent)
+        }
+
+        // MARK: - The review, which lives here and is read from a phone
+
+        authenticated.get("/v1/worktrees/:worktreeId/review") { _, context -> ReviewRequest in
+            let id = try worktreeId(from: context)
+            // Resolved rather than trusted, like every other worktree route: an identifier that
+            // names nothing this Mac serves is answered the same way everywhere.
+            _ = try await dependencies.registry.resolve(id)
+            return ReviewRequest(comments: await dependencies.store.state().reviews[id] ?? [])
+        }
+
+        authenticated.put("/v1/worktrees/:worktreeId/review") { request, context -> Response in
+            let id = try worktreeId(from: context)
+            let body = try await decoded(ReviewRequest.self, from: request, context: context)
+            _ = try await dependencies.registry.resolve(id)
+            do {
+                try await dependencies.store.setReview(body.comments, in: id)
+            } catch {
+                throw ApiError(.badRequest, message: "could not save that: \(error)")
+            }
+            return Response(status: .noContent)
+        }
+
+        authenticated.get("/v1/review-settings") { _, _ -> ReviewSettingsResponse in
+            let settings = await dependencies.store.state().reviewSettings
+            return ReviewSettingsResponse(
+                openingLine: settings.openingLine,
+                identifier: settings.identifier
+            )
+        }
+
+        authenticated.patch("/v1/review-settings") { request, context -> ReviewSettingsResponse in
+            let body = try await decoded(
+                ReviewSettingsPatchRequest.self,
+                from: request,
+                context: context
+            )
+            let current = await dependencies.store.state().reviewSettings
+            // Only what was named. The double optional is doing the work: an absent key leaves the
+            // setting alone, a null one clears it, so an edit queued on a phone that never read this
+            // Mac's values cannot overwrite the one it did not touch.
+            let updated = ReviewSettings(
+                openingLine: body.openingLine ?? current.openingLine,
+                identifier: body.identifier ?? current.identifier
+            )
+            do {
+                try await dependencies.store.setReviewSettings(updated)
+            } catch {
+                throw ApiError(.badRequest, message: "could not save that: \(error)")
+            }
+            return ReviewSettingsResponse(
+                openingLine: updated.openingLine,
+                identifier: updated.identifier
+            )
         }
 
         return router
@@ -391,11 +455,17 @@ public enum GranitaRouter {
 
     private static func changeSet(
         at location: RepositoryLocation,
+        for worktree: WorktreeID,
         dependencies: ApiDependencies
     ) async throws -> WorktreeChangeSet {
         do {
-            let viewed = await dependencies.store.state().viewed
-            return try await dependencies.service.changeSet(in: location, viewed: viewed)
+            // This worktree's marks and no other's. The service asks only which file was read at
+            // which content, so the date the store keeps beside each mark stops here.
+            let marks = await dependencies.store.state().viewed[worktree] ?? [:]
+            return try await dependencies.service.changeSet(
+                in: location,
+                viewed: marks.mapValues(\.contentHash)
+            )
         } catch {
             throw gitFailure(error)
         }

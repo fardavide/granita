@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// The whole review in one place: the note, the comments, the text, and — only after the copy — the
 /// way to throw it away.
@@ -56,6 +57,10 @@ public struct ReviewSheetView: View {
     private let note: Binding<String>
     private let hasSkippedNote: Bool
     private let hasCopied: Bool
+
+    /// What to say about where this review is, or nothing when there is nothing to say.
+    private let caption: ReviewSyncCaption?
+
     private let document: String
     private let showsDocument: Bool
     private let onShowDocument: (Bool) -> Void
@@ -80,6 +85,7 @@ public struct ReviewSheetView: View {
         note: Binding<String>,
         hasSkippedNote: Bool,
         hasCopied: Bool,
+        caption: ReviewSyncCaption?,
         document: String,
         showsDocument: Bool,
         onShowDocument: @escaping (Bool) -> Void,
@@ -94,6 +100,7 @@ public struct ReviewSheetView: View {
         self.note = note
         self.hasSkippedNote = hasSkippedNote
         self.hasCopied = hasCopied
+        self.caption = caption
         self.document = document
         self.showsDocument = showsDocument
         self.onShowDocument = onShowDocument
@@ -406,6 +413,14 @@ public struct ReviewSheetView: View {
     /// exists to do is under the thumb whatever the list is doing.
     private var footer: some View {
         VStack(spacing: 6) {
+            // **The one place sync state appears, and it is directly above the button it is about.**
+            // A reader here is deciding whether this document is everything they wrote; three taps
+            // on is the one deciding whether it is safe to destroy. Those are the two moments where
+            // knowing changes what they do, and both are in this sheet — so nothing about the
+            // network is drawn in the diff, on the rail, or in the composer.
+            if let caption {
+                syncCaption(caption)
+            }
             copyButton
             if hasCopied {
                 Button("Clear review", role: .destructive) { isConfirmingClear = true }
@@ -422,6 +437,34 @@ public struct ReviewSheetView: View {
         .padding(.top, 10)
         .padding(.bottom, Self.margin)
         .background(Color.diffPage)
+    }
+
+    /// One sentence, the store's words under it where there are any, and an amber dot only when the
+    /// two copies of this review actually disagree.
+    ///
+    /// **The dot is the same figure the stale comment row uses**, which is the whole reason it is
+    /// legible without a legend: on this screen amber already means *this does not match what is
+    /// there now*.
+    @ViewBuilder private func syncCaption(_ caption: ReviewSyncCaption) -> some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 5) {
+                if caption.isUnsettled {
+                    Circle()
+                        .fill(Color.diffCommentStale)
+                        .frame(width: 6, height: 6)
+                }
+                Text(caption.sentence)
+            }
+            if let reason = caption.reason {
+                Text(reason)
+                    .font(.caption2)
+                    .monospaced()
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
     }
 
     /// **A filled button, and it turns green when it has done its job.** Two seconds of *Copied* is

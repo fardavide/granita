@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @media print { body { background: #fff } }
+  a { color: #6B5B3E; text-decoration: underline; text-underline-offset: 2px }
+  a:hover { color: #23211E }
+  body { margin: 0 }
+</style>
+</helmet>
+
+<div style="background:#F4F2EE;width:1608px;box-sizing:border-box;padding:80px 64px 200px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;color:#23211E;-webkit-font-smoothing:antialiased">
+<div style="width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:96px">
+
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:end;border-bottom:1px solid #D8D2C6;padding-bottom:40px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">Granita 0.14.2 &nbsp;·&nbsp; issues #64, #70 &nbsp;·&nbsp; the review's two settings, and where a review lives</div>
+      <h1 style="font-size:52px;line-height:1.04;font-weight:400;letter-spacing:-0.02em;margin:0 0 20px">One rule answers all three asks:<br>the phone may always type.</h1>
+      <p style="font-size:19px;line-height:1.55;margin:0 0 14px;max-width:52ch;color:#4A463F">A closed laptop is the normal condition, not the error, so no surface here is allowed to be inert when the Mac is away. What is on the phone's screen is what the next copy will contain — that is the promise, and it is the only one that survives an app the system can end at any moment. The Mac is where a review and its settings <em>outlive the phone</em>, which is a different claim from being what the reader is looking at.</p>
+      <p style="font-size:19px;line-height:1.55;margin:0;max-width:52ch;color:#4A463F">From that rule: the phone's Settings screen never refuses to open and never shows a spinner; the diff gains nothing at all; and the review sheet gains exactly one line of type, above the button that matters, because the copy is the moment where knowing changes what a reader does.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Drawn against</div>
+      <div style="font-size:15px;line-height:1.7;color:#4A463F">iPhone 390 × 844pt, iPad Pro 11″ landscape 1194 × 834pt, Mac window 620 × 560pt. Light and dark, Dynamic Type Large.<br>Cards are <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">secondarySystemGroupedBackground</span> on <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">systemGroupedBackground</span> — white on #F2F2F7, #1C1C1E on #000. The rail is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.indigo</span> at 3pt, as <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">DiffGutter.railWidth</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">DiffPalette</span> have it.<br>Read at <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">main</span> today: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ReviewFeedback</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ReviewIdentifier</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ReviewCommentStore</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">UserDefaultsReviewCommentStore</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ReviewSheetView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">CommentComposerView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">GranitaSettingsScreen</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">SettingsTab</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">GeneralSettingsView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">StoreWriteFailure</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">WorktreeSplitScreen</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">DiffPaneLayout</span>.</div>
+    </div>
+  </div>
+
+  <div style="border:1px solid #C9B98F;background:#FBFAF7;padding:30px 34px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#B4453C;margin-bottom:18px">Read this before Ask 3 &nbsp;·&nbsp; two of the brief's premises have moved at main</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:34px">
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">The Settings window already has five tabs, and the fifth was this design's own call.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">SettingsTab</span> is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">general, projects, devices, connections, advanced</span>, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaSettingsScreen</span>'s own doc comment opens <em>“Design §2 gives it five tabs rather than the specification's four, with Advanced last.”</em> The connection log was lifted out of Advanced because it is read under pressure and because <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">Reset All Data</span> shares that pane. So item 12 is not “do we break a four-tab spec”. That was broken once, deliberately, with a reason, and recorded. The question left is whether <em>this</em> pair of controls earns the same treatment.</div>
+      </div>
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">General is not port, launch and server state. There is no port row.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GeneralSettingsView</span> holds two sections and three rows: Address, Status, and <em>Open Granita at login</em>. The port field is gone on purpose — macOS chooses the port when Granita advertises, so the control could not be operated. That makes General emptier than the brief assumes, and it does not change my answer: what is left is one coherent subject, <em>this Mac's own address and whether anything is listening</em>, and the wording of a document is not that subject.</div>
+      </div>
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">The code size is not a setting, whatever §10 says.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffPaneLayout</span> fixes it: 11pt on the phone, 12pt beside the selector, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ClientViewerModel.codePointSize</span> is a private var fed from the layout. So the phone's Settings screen has exactly <strong style="font-weight:400">two rows and no third candidate today</strong> — which is worth knowing, because it rules out padding the screen with a phone-local group that has nothing in it yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:40px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">The spine &nbsp;·&nbsp; one rule, and the test every state is judged against</div>
+        <h2 style="font-size:38px;font-weight:400;letter-spacing:-0.015em;margin:0 0 18px;line-height:1.1">What is on screen is what will be copied</h2>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F">Davide's answer on 17 September — the phone keeps a local copy and reconciles, the Mac is the source of truth — reads as a storage rule, and it settles the storage. It does not settle what a screen may claim. So the rule this whole round is drawn from is the narrower one: <strong style="font-weight:400;color:#23211E">a Granita surface never shows a value it will not use.</strong> A queued opening line is the line the next review begins with. A comment the Mac refused is a comment the copy still contains. The Mac wins at <em>read</em> time, when a fresh device asks what the settings are; the phone wins at <em>write</em> time, because the alternative is discarding something a reader typed on a screen that accepted it.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F">That rule removes two states before they are drawn. There is <strong style="font-weight:400;color:#23211E">no loading state</strong> on the phone's Settings screen: it opens on the last values it read, or on the defaults, and both are values it would honour, so there is nothing for a spinner to stand in front of. And there is <strong style="font-weight:400;color:#23211E">no blocked copy</strong>: the copy button never waits for the Mac, because a review that was never pushed and gets pasted anyway is a complete review in the reader's hand.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">If the app is killed right here</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">Every state below was checked against that question, and one answer changed a drawing. An opening line the reader typed and did not commit is the one thing in this round that can be lost, because a text field's value is not written anywhere until editing ends.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px">So the field commits on <strong style="font-weight:400;color:#23211E">every pause in typing, locally</strong>, and sends on end of editing. Local is a defaults write, the same thing the review already does; it costs nothing and it is what makes <a href="#1d">1d</a> survivable. A keystroke is never a request — 29 characters would be 29 round trips over a LAN, and the Mac's store already coalesces at one second, which is its debounce and not the wire's.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px">Everything else here is already safe: a comment is saved when the composer's <em>Save</em> returns, and a review is only destroyed behind <em>Copy</em> and an alert.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:36px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#B4453C;margin-bottom:14px">Ask 1 &nbsp;·&nbsp; first drawing &nbsp;·&nbsp; no baselines exist</div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">The phone's Settings screen</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:56ch;color:#4A463F">A sheet of stock grouped rows, reached from the toolbar of the screen that already belongs to one Mac, holding two controls and a three-line receipt of what they do. Nothing on it is a new control and nothing on it is a spinner.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F">The seven states are one screen with one changing footer. That is the whole shape: the controls never move, never disable except in the one state where there is nowhere for a value to go, and the sentence under them says what this phone and that Mac currently disagree about.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">The five calls in this ask</div>
+        <div style="font-size:15px;line-height:1.7;color:#4A463F">a &nbsp;The way in is the worktree sidebar's toolbar menu, because settings are that Mac's.<br>b &nbsp;It is a sheet, not a pushed screen.<br>c &nbsp;The default is told by a sentence and by the absence of <em>Reset</em>, not by a placeholder.<br>d &nbsp;Unreachable is editable and queued, not read-only.<br>e &nbsp;Never paired is reachable and inert, because queueing needs an addressee.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#D8D2C6;border:1px solid #D8D2C6;margin-bottom:44px">
+      <div style="background:#FBFAF7;padding:26px 24px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">CALL A &nbsp;·&nbsp; THE WAY IN</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">In the toolbar of the screen titled with the Mac's name</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">The worktree sidebar is already per-Mac: its title is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">MacBook Pro</span>, its back button returns to the Mac list, and its toolbar menu already holds the arrangement toggle and <em>Pair again</em>. Settings that live on a Mac belong in the menu of the screen that is about that Mac. One item, third: <em>Settings…</em></div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 24px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">REJECTED &nbsp;·&nbsp; A TAB BAR</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Two screens do not make a tab bar</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">The app is a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">NavigationSplitView</span> inside a stack, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">WorktreeSplitScreen</span>'s own history is what a container change costs here: a collapsed split view once drew its chrome and none of its rows. A tab bar also takes 49pt of every diff, permanently, for a screen opened twice a year.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 24px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">REJECTED &nbsp;·&nbsp; THE DIFF'S TOOLBAR</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">A gear next to “12 files”</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">The diff screen's toolbar is for reading code, it is where the review capsule and the file count already compete, and it is per-worktree rather than per-Mac. A settings door there would be the fourth thing on a 44pt bar, and the first one that is not about the file in front of the reader.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap;margin-bottom:56px">
+
+      <div id="1a" data-screen-label="1a the way in" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">Call a &nbsp;·&nbsp; the toolbar menu, iPhone light &nbsp;·&nbsp; <a href="#1a">1a</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="height:47px;position:relative">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#000">9:41</div>
+            <div style="position:absolute;right:26px;top:17px;display:flex;align-items:center;gap:5px">
+              <svg width="16" height="10" viewBox="0 0 16 10" fill="#000"><rect x="0" y="6" width="3" height="4" rx="1"/><rect x="4.3" y="4.2" width="3" height="5.8" rx="1"/><rect x="8.6" y="2.2" width="3" height="7.8" rx="1"/><rect x="12.9" y="0" width="3" height="10" rx="1" opacity="0.3"/></svg>
+              <div style="width:24px;height:11px;border:1px solid rgba(0,0,0,0.35);border-radius:3px;display:flex;align-items:center;padding:1px;box-sizing:border-box"><div style="width:14px;height:100%;border-radius:1.5px;background:#000"></div></div>
+            </div>
+          </div>
+          <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:1px;letter-spacing:-0.3px"><span style="font-size:24px;font-weight:500;line-height:1;margin-top:-2px">‹</span>Macs</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">MacBook Pro</span>
+            <span style="flex:1"></span>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="#007AFF"><circle cx="11" cy="11" r="9.6" fill="none" stroke="#007AFF" stroke-width="1.5"/><circle cx="6.6" cy="11" r="1.5"/><circle cx="11" cy="11" r="1.5"/><circle cx="15.4" cy="11" r="1.5"/></svg>
+          </div>
+          <div style="opacity:0.34">
+            <div style="padding:26px 16px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase">Pinned</div>
+            <div style="background:#fff;border-top:0.33px solid rgba(60,60,67,0.2);border-bottom:0.33px solid rgba(60,60,67,0.2)">
+              <div style="padding:11px 16px;border-bottom:0.33px solid rgba(60,60,67,0.16)"><div style="font-size:16px;font-weight:600;color:#000">gutter targets</div><div style="font-size:13px;color:rgba(60,60,67,0.6);margin-top:2px">Granita · 12 files · +411 −86</div></div>
+              <div style="padding:11px 16px"><div style="font-size:16px;font-weight:600;color:#000">amber stale rows</div><div style="font-size:13px;color:rgba(60,60,67,0.6);margin-top:2px">Granita · 3 files · +54 −12</div></div>
+            </div>
+          </div>
+          <div style="position:absolute;right:12px;top:97px;width:252px;background:rgba(249,249,249,0.86);backdrop-filter:blur(18px);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,0.22),0 0 0 0.33px rgba(0,0,0,0.08);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;font-size:17px;letter-spacing:-0.3px;color:#000;border-bottom:0.33px solid rgba(60,60,67,0.22)">Grouped by project<svg width="19" height="19" viewBox="0 0 19 19" fill="none" stroke="#000" stroke-width="1.6"><path d="M2.5 6h14M2.5 10h14M2.5 14h9"/></svg></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;font-size:17px;letter-spacing:-0.3px;color:#000;border-bottom:0.33px solid rgba(60,60,67,0.22)">Most recent first<svg width="19" height="19" viewBox="0 0 19 19" fill="none" stroke="#000" stroke-width="1.6"><path d="M4 4.5h11M4 9.5h11M4 14.5h11"/></svg></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;font-size:17px;letter-spacing:-0.3px;color:#000;border-bottom:0.33px solid rgba(60,60,67,0.22);background:rgba(0,0,0,0.055)">Settings…<svg width="19" height="19" viewBox="0 0 19 19" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="3.2"/><path d="M9.5 1.9v1.8M9.5 15.3v1.8M1.9 9.5h1.8M15.3 9.5h1.8M4.1 4.1l1.3 1.3M13.6 13.6l1.3 1.3M14.9 4.1l-1.3 1.3M5.4 13.6l-1.3 1.3"/></svg></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;font-size:17px;letter-spacing:-0.3px;color:#000">Pair again…<svg width="19" height="19" viewBox="0 0 19 19" fill="none" stroke="#000" stroke-width="1.5"><rect x="5" y="2.2" width="9" height="14.6" rx="2"/><path d="M7.7 4h3.6"/></svg></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">One item added to a menu that already exists, third of four, above <em>Pair again</em> because it is the thing a reader wants more often. The menu is the sidebar's, so it is present on the iPad's 320pt column too and needs no second answer there.</div>
+      </div>
+
+      <div style="width:520px;flex:none;padding-top:30px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Call b &nbsp;·&nbsp; a sheet, and the same sheet on both devices</div>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation.</strong> A full-height sheet with its own navigation bar and one <em>Done</em>, presented from the sidebar. On the iPad the same view is a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">.formSheet</span> at 540 × 620pt over the split view.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: pushing it.</strong> Settings are not a place inside the worktree hierarchy, and the phone's sidebar stack already spends its back button on the Mac list — a pushed settings screen makes <em>back</em> mean two things one tap apart. On the iPad it is worse: a push lands in whichever of three columns declared the destination, which is precisely the bug <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">WorktreeSplitScreen</span> spent eight releases on.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 16px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: the iPad's third column.</strong> Tempting, because the review already takes it. But the review is <em>about the worktree in the middle column</em> and settings are not — they would sit beside a diff they do not describe, and the reader would have to close them to get their file selector back.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a preference pane the reader can close without wondering whether anything was saved — dull, immediate, and never between them and the code.</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:36px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">What is on it</div>
+        <h3 style="font-size:30px;font-weight:400;line-height:1.15;margin:0 0 18px;letter-spacing:-0.012em">Two controls, and a three-line receipt of what they do</h3>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Opening line.</strong> One section, one field, full width, holding real editable text rather than a placeholder. Committed locally on a pause and sent on end of editing. It replaces <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ReviewFeedback.document</span>'s first element outright — the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">parts</span> array's seed, which is the one call site and the one string.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Comment labels.</strong> A two-segment picker whose segments are the thing itself: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">A. B. C.</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">1. 2. 3.</span> A popup menu would hide one option behind a tap and show the chosen one as a word; a segmented control shows both idioms at once, which makes the setting its own preview. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ReviewIdentifier</span> is already exactly these two cases.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">And the receipt.</strong> A third section, monospaced, four lines, showing the first two lines of a review and the first comment's head. It exists because the two controls are about a document the reader cannot see from here, and it is the only place both settings are legible together. It is text, not a control, and it is why no <em>Preview</em> button is needed.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">And the room for #70.</strong> The highlighting theme lands as a fourth section, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">CODE</span>, below the receipt, and it is <em>this phone's</em> rather than the Mac's: it renders on this screen at this brightness in this appearance, it cannot fail, and it needs no round trip. That divide — the Mac owns what the review <em>says</em>, the phone owns how it <em>draws</em> — is what keeps the screen's footer sentences true when a second group arrives.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Call c &nbsp;·&nbsp; how the default is told</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F"><strong style="font-weight:400;color:#23211E">Two signals, and neither is the field's own appearance.</strong> The footer sentence states it — <em>“This is the default line.”</em> — and <em>Reset to the default line</em> is absent. A reader who typed something sees the other footer and a Reset row; a reader who has never touched it sees neither.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Rejected: a placeholder.</strong> It is the obvious drawing and it is a lie. A placeholder says <em>nothing is set and typing will set it</em>; here the grey words are the exact string that will be exported. Davide's own sentence is <em>“you will see the default one, and you will be able to edit it”</em> — edit, not replace.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Rejected: greying the text.</strong> Same lie, and it fails contrast on the one row the reader is about to type into.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Empty is not default.</strong> A field cleared to nothing is a review with no opening line, and that is a legal answer — the document then begins with its first comment. Reset is how the default comes back, not the delete key.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+
+      <div id="1b" data-screen-label="1b loaded" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 1 &nbsp;·&nbsp; loaded, edited earlier, iPhone light &nbsp;·&nbsp; <a href="#1b">1b</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+            <div style="position:absolute;right:26px;top:17px;display:flex;align-items:center;gap:5px">
+              <svg width="16" height="10" viewBox="0 0 16 10" fill="#fff"><rect x="0" y="6" width="3" height="4" rx="1"/><rect x="4.3" y="4.2" width="3" height="5.8" rx="1"/><rect x="8.6" y="2.2" width="3" height="7.8" rx="1"/><rect x="12.9" y="0" width="3" height="10" rx="1" opacity="0.35"/></svg>
+              <div style="width:24px;height:11px;border:1px solid rgba(255,255,255,0.4);border-radius:3px;display:flex;align-items:center;padding:1px;box-sizing:border-box"><div style="width:14px;height:100%;border-radius:1.5px;background:#fff"></div></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3">Review the uncommitted work in this worktree.</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">Every review you copy begins with this line. Stored on MacBook&nbsp;Pro, so any device reading it starts the same way.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">
+              Review the uncommitted work in this worktree.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Settings read from the Mac, showing a line the reader changed at some point. <em>Reset</em> is present because the value differs from the default — that presence is half of how the default is told apart. Nothing here indicates a connection, because there is nothing wrong.</div>
+      </div>
+
+      <div id="1c" data-screen-label="1c default" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 2 &nbsp;·&nbsp; never changed, iPhone light &nbsp;·&nbsp; <a href="#1c">1c</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3">Review of uncommitted changes</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)"><strong style="font-weight:600;color:rgba(60,60,67,0.75)">This is the default line.</strong> Every review you copy begins with it until you change it. Stored on MacBook&nbsp;Pro.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">
+              Review of uncommitted changes<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">The same screen with two differences: the footer opens by naming the value as the default, and there is no <em>Reset</em> row because there is nothing to reset. The field is full-ink editable text in both — the difference is stated, not implied by the drawing.</div>
+      </div>
+
+      <div id="1d" data-screen-label="1d editing" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 3 &nbsp;·&nbsp; the field has focus, iPhone light &nbsp;·&nbsp; <a href="#1d">1d</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1px rgba(88,86,214,0.5)">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3;display:flex;align-items:flex-start">
+                <span>Review the uncommitted work in this worktre</span><span style="width:2px;height:21px;background:#5856D6;margin-left:1px;border-radius:1px"></span>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">Every review you copy begins with this line. Stored on MacBook&nbsp;Pro, so any device reading it starts the same way.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review.</div>
+            <div style="position:absolute;left:0;right:0;bottom:0">
+              <div style="height:45px;background:rgba(215,215,220,0.92);display:flex;align-items:center;justify-content:flex-end;padding:0 16px;border-top:0.33px solid rgba(60,60,67,0.2)">
+                <span style="font-size:17px;color:#007AFF;font-weight:600;letter-spacing:-0.3px">Done</span>
+              </div>
+              <div style="height:266px;background:#D1D3D9;padding:8px 3px 0;box-sizing:border-box">
+                <div style="display:flex;gap:6px;justify-content:center;margin-bottom:11px">
+                  <div style="font-size:15px;color:rgba(0,0,0,0.5)">worktree</div><div style="width:0.5px;background:rgba(0,0,0,0.2)"></div><div style="font-size:15px;color:rgba(0,0,0,0.5)">worktrees</div><div style="width:0.5px;background:rgba(0,0,0,0.2)"></div><div style="font-size:15px;color:rgba(0,0,0,0.5)">Worktree</div>
+                </div>
+                <div style="display:flex;gap:6px;justify-content:center;margin-bottom:11px">
+                  <div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">q</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">w</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">e</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">r</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">t</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">y</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">u</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">i</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">o</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">p</div>
+                </div>
+                <div style="display:flex;gap:6px;justify-content:center;margin-bottom:11px;padding:0 20px">
+                  <div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">a</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">s</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">d</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">f</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">g</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">h</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">j</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">k</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">l</div>
+                </div>
+                <div style="display:flex;gap:6px;justify-content:center;margin-bottom:11px">
+                  <div style="width:42px;height:42px;background:rgba(172,175,183,0.95);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:17px">⇧</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">z</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">x</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">c</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">v</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">b</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">n</div><div style="width:33px;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">m</div><div style="width:42px;height:42px;background:rgba(172,175,183,0.95);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px">⌫</div>
+                </div>
+                <div style="display:flex;gap:6px;justify-content:center">
+                  <div style="width:42px;height:42px;background:rgba(172,175,183,0.95);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px">123</div><div style="width:42px;height:42px;background:rgba(172,175,183,0.95);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:17px">☺</div><div style="flex:1;height:42px;background:#fff;border-radius:5px;box-shadow:0 1px 0 rgba(0,0,0,0.3)"></div><div style="width:88px;height:42px;background:#007AFF;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff">return</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">The keyboard takes 311pt with its bar, so the receipt section is off-screen and the field is not: it is the first row of the first section, which is why it needs no scroll-to-focus. The focus ring is the indigo the rails use, the same one the review's note field already draws. <em>Return</em> ends editing and sends; so does <em>Done</em> on the bar; so does closing the sheet.</div>
+      </div>
+
+      <div id="1e" data-screen-label="1e saving" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 4 &nbsp;·&nbsp; the write is in flight, iPhone light &nbsp;·&nbsp; <a href="#1e">1e</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3">Review the uncommitted work in this worktree.</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.4;color:rgba(60,60,67,0.6)">Saving to MacBook&nbsp;Pro…</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">
+              Review the uncommitted work in this worktree.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">One footer sentence replaced, and nothing else. No spinner, no disabled control, no <em>Saved</em> afterwards — the sentence simply returns to the one in <a href="#1b">1b</a>. A LAN write that succeeds in 40ms should not leave a mark; the reader can leave immediately, because what they typed is already this phone's answer.</div>
+      </div>
+
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin:56px 0 36px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Call d &nbsp;·&nbsp; the state that makes this screen hard</div>
+        <h3 style="font-size:30px;font-weight:400;line-height:1.15;margin:0 0 18px;letter-spacing:-0.012em">The Mac is away: type anyway, and say where it went</h3>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">Recommendation: editable, queued, and one footer sentence.</strong> The controls behave exactly as in <a href="#1b">1b</a>. The footer says <em>“MacBook Pro is not reachable. What you change is kept on this phone and sent when it answers.”</em> No banner, no dimming, no lock glyph, and no new row — a row is a control, and there is no control that helps here.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F">The queued write carries <strong style="font-weight:400;color:#23211E">only the fields the reader actually changed</strong>, which is the presence-versus-null idiom §8 already spells out for the worktree PATCH. That is what makes editing safe against a Mac whose values this phone has never read: a queued opening line cannot overwrite a label style it never saw.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F;background:#EFEBE1;border-left:2px solid #C9B98F;padding:14px 18px"><strong style="font-weight:400;color:#23211E">Killed here, the reader loses nothing.</strong> The local commit happens on a pause in typing, before the send, so the queue is on disk. The next launch shows the same value and the same sentence, and the send is retried when the Mac answers — by the same reconnect the diff already does on <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">scenePhase == .active</span>.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: read-only, last known values.</strong> The honest-looking option, and the one I would have drawn first. It fails on frequency: a closed laptop is the normal condition, so read-only means the two controls are unusable most of the time the app is open — including the whole of a train journey spent reading a diff that was already fetched. It also inverts the product's own posture: the reader's phone is the thing that goes away, and this would make the phone the thing that cannot act.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0 0 14px;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: refusing to open.</strong> An unreachable Mac is not an error, and the day #70 lands the screen also holds something entirely local. A door that is shut because a laptop is shut is a door the reader will find shut on the first try.</p>
+        <p style="font-size:16.5px;line-height:1.65;margin:0;color:#6A655C"><strong style="font-weight:400;color:#23211E">Rejected: a “Sync now” button.</strong> There is nothing for it to do that reconnecting does not already do, and it would be the one control on the screen that reports on the network rather than on the review. The Connections tab on the Mac is where the network is looked at.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Call e &nbsp;·&nbsp; never paired</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F"><strong style="font-weight:400;color:#23211E">Reachable, and inert.</strong> The same item appears in the Mac list's toolbar, so the screen can be discovered; the two controls are drawn in the defaults and disabled, and one row offers <em>Pair a Mac…</em></div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">The difference from <a href="#1f">1f</a> is the only thing worth saying about it: queueing needs an addressee.</strong> An unreachable Mac will answer later, so a value has somewhere to go. A phone with no Mac has nowhere, ever, and a control that accepts a value it will discard is worse than one that is plainly off. A reader in this state also has no review to copy — there is no worktree to comment on — so nothing is being withheld.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">This answers §6's fourth open call.</strong> Yes, reachable — otherwise the screen is undiscoverable, which was the real half of that question. No, not operable.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Several Macs.</strong> The settings are the Mac's, so entering from a Mac's sidebar shows that Mac's, and the footer names it. Two Macs are two answers, and neither the screen nor the reader has to reconcile them — which is another reason the way in is per-Mac rather than a global tab.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">An older Mac, newer phone.</strong> The settings routes 404 and the phone reads the same state as <a href="#1f">1f</a> with one sentence changed: <em>“Granita on MacBook Pro is too old to store this. Update it, or keep these on this phone.”</em> Nothing queues, because the addressee cannot receive it. An older phone against a newer Mac never asks, and exports the built-in line — today's behaviour, which is the definition of degrading sensibly.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+
+      <div id="1f" data-screen-label="1f unreachable" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 5 &nbsp;·&nbsp; the Mac is unreachable, iPhone light &nbsp;·&nbsp; <a href="#1f">1f</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3">Reply to each point by its letter.</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.4;color:rgba(60,60,67,0.6)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C0821F;margin-right:6px;vertical-align:1px"></span>MacBook&nbsp;Pro is not reachable. What you change is kept on this phone and sent when it answers.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">
+              Reply to each point by its letter.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">A line typed while the laptop was shut, already in effect: the receipt below shows it, because the receipt is drawn from the value this phone will use. The amber dot is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">fileStatusAmber</span>, the same figure the stale comment row uses, and it is the only mark on the screen.</div>
+      </div>
+
+      <div id="1g" data-screen-label="1g unreachable dark" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 5 &nbsp;·&nbsp; the same, iPhone dark &nbsp;·&nbsp; <a href="#1g">1g</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(84,84,88,0.5);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#000"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#000;border-radius:10px 10px 0 0;overflow:hidden;box-shadow:0 -0.33px 0 rgba(84,84,88,0.65)">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(84,84,88,0.65);background:rgba(28,28,30,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#fff">Settings</span>
+              <span style="position:absolute;right:16px;color:#0A84FF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#1C1C1E;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#fff;line-height:1.3">Reply to each point by its letter.</div>
+              <div style="height:0.33px;background:rgba(84,84,88,0.65);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#0A84FF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.4;color:rgba(235,235,245,0.6)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D9A227;margin-right:6px;vertical-align:1px"></span>MacBook&nbsp;Pro is not reachable. What you change is kept on this phone and sent when it answers.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#1C1C1E;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.24);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#636366;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.3);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#fff">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(235,235,245,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(235,235,245,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#1C1C1E;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(235,235,245,0.7)">
+              Reply to each point by its letter.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(255,255,255,0.35)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Dark is the appearance swap and nothing else: #1C1C1E cards on #000, the sheet's own hairline at the top edge because a black sheet over a black page has no other boundary. Every other frame in this ask photographs the same way.</div>
+      </div>
+
+      <div id="1h" data-screen-label="1h refused" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 6 &nbsp;·&nbsp; the Mac said no, iPhone light &nbsp;·&nbsp; <a href="#1h">1h</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000;line-height:1.3">Reply to each point by its letter.</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Try Again</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.4;color:rgba(60,60,67,0.6)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#C0821F;margin-right:6px;vertical-align:1px"></span>MacBook&nbsp;Pro would not save this, so it still has the old line. This phone will keep using the one above.</div>
+            <div style="padding:4px 32px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.5;color:rgba(60,60,67,0.45)">No space left on device</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12),0 0 0 0.5px rgba(0,0,0,0.04);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">What a review begins with</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">
+              Reply to each point by its letter.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Our sentence with the store's demoted to small print — the idiom <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">StoreWriteFailure</span> already carries, and the wording says the thing a reader has to know: the two copies disagree, and theirs is the one that will be exported. <em>Try Again</em> is added to the card because here there <em>is</em> something a control can do. The commonest real cause is not a full disk: it is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">blockedByAnotherProcess</span> — a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">granita-server</span> holding the lock — whose sentence is <em>“Another copy of Granita on MacBook Pro is using its settings.”</em></div>
+      </div>
+
+      <div id="1i" data-screen-label="1i never paired" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 7 &nbsp;·&nbsp; no Mac at all, iPhone light &nbsp;·&nbsp; <a href="#1i">1i</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:16px;color:#007AFF;font-size:17px;font-weight:600;letter-spacing:-0.3px">Done</span>
+            </div>
+            <div style="padding:22px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Opening line</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:rgba(60,60,67,0.3);line-height:1.3">Review of uncommitted changes</div>
+            </div>
+            <div style="padding:26px 32px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase;letter-spacing:0.01em">Comment labels</div>
+            <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px;opacity:0.4">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 32px 0;font-size:13px;line-height:1.4;color:rgba(60,60,67,0.6)">These are stored on the Mac you read from, so there is nowhere to keep them yet. Reviews begin with the default line above.</div>
+            <div style="margin:22px 16px 0;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:-0.3px;color:#007AFF">Pair a Mac…</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Both controls in the defaults and off, the receipt section gone — it would be a receipt for a review that cannot exist — and one row that leads to the thing the reader actually needs. Reached from the Mac list's toolbar, which is the only screen this reader has.</div>
+      </div>
+
+      <div id="1j" data-screen-label="1j iPad loaded" style="width:1194px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">States 1 and 3 &nbsp;·&nbsp; iPad Pro 11″ landscape, light, the form sheet over the split view &nbsp;·&nbsp; <a href="#1j">1j</a></div>
+        <div style="position:relative;width:1194px;height:834px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;display:flex">
+            <div style="width:320px;flex:none;background:#F2F2F7;border-right:0.33px solid rgba(60,60,67,0.24);padding-top:24px">
+              <div style="padding:8px 20px 10px;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#000">MacBook Pro</div>
+              <div style="padding:8px 20px 6px;font-size:12.5px;color:rgba(60,60,67,0.6);text-transform:uppercase">Pinned</div>
+              <div style="margin:0 10px;background:rgba(88,86,214,0.14);border-radius:9px;padding:9px 12px"><div style="font-size:15px;font-weight:600;color:#000">gutter targets</div><div style="font-size:12.5px;color:rgba(60,60,67,0.6);margin-top:2px">Granita · 12 files · +411 −86</div></div>
+              <div style="margin:2px 10px;padding:9px 12px"><div style="font-size:15px;font-weight:600;color:#000">amber stale rows</div><div style="font-size:12.5px;color:rgba(60,60,67,0.6);margin-top:2px">Granita · 3 files · +54 −12</div></div>
+            </div>
+            <div style="width:320px;flex:none;background:#fff;border-right:0.33px solid rgba(60,60,67,0.24);padding-top:24px">
+              <div style="padding:8px 18px 12px;font-size:17px;font-weight:600;color:#000">12 files</div>
+              <div style="padding:6px 18px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6)">Client/Viewer/Ui</div>
+              <div style="padding:6px 18px 6px 30px;font-size:14px;color:#000">ReviewSheetView.swift</div>
+              <div style="padding:6px 18px 6px 30px;font-size:14px;color:#000">CommentComposerView.swift</div>
+            </div>
+            <div style="flex:1;background:#fff;padding-top:24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(28,28,30,0.9);line-height:19px">
+              <div style="padding-left:22px;color:rgba(60,60,67,0.5)">212 &nbsp;&nbsp;private var opening = "Review of uncommitted changes"</div>
+              <div style="padding-left:22px;color:rgba(60,60,67,0.5)">213</div>
+              <div style="padding-left:22px;color:rgba(60,60,67,0.5)">214 &nbsp;&nbsp;func document() -&gt; String {</div>
+            </div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.32)"></div>
+          <div style="position:absolute;left:327px;top:107px;width:540px;height:620px;background:#F2F2F7;border-radius:12px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,0.34)">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Settings</span>
+              <span style="position:absolute;right:20px;color:#007AFF;font-size:17px;font-weight:600">Done</span>
+            </div>
+            <div style="padding:20px 36px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase">Opening line</div>
+            <div style="margin:0 20px;background:#fff;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#000">Review the uncommitted work in this worktree.</div>
+              <div style="height:0.33px;background:rgba(60,60,67,0.2);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;color:#007AFF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 36px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">Every review you copy begins with this line. Stored on MacBook&nbsp;Pro, so any device reading it starts the same way.</div>
+            <div style="padding:24px 36px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase">Comment labels</div>
+            <div style="margin:0 20px;background:#fff;border-radius:10px">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.12);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.12);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#000">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(60,60,67,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 36px 0;font-size:13px;line-height:1.35;color:rgba(60,60,67,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:24px 36px 7px;font-size:13px;color:rgba(60,60,67,0.6);text-transform:uppercase">What a review begins with</div>
+            <div style="margin:0 20px;background:#fff;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(60,60,67,0.75)">Review the uncommitted work in this worktree.<br>---<br>A. ClientViewerModel.swift:212-214<br>```swift</div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:760px">540 × 620pt centred over the three columns, which is the one layout decision the iPad needs: the sheet is the same view at the same insets, and the diff behind it is dimmed rather than resized, so nothing the reader was reading moves. The keyboard on iPad takes 353pt of the 834 and the sheet floats above it — the field is still the first row, so state 3 needs no separate iPad answer beyond this frame with a keyboard under it.</div>
+      </div>
+
+      <div id="1k" data-screen-label="1k iPad refused dark" style="width:1194px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 6 &nbsp;·&nbsp; iPad Pro 11″ landscape, dark &nbsp;·&nbsp; <a href="#1k">1k</a></div>
+        <div style="position:relative;width:1194px;height:834px;border:1px solid rgba(84,84,88,0.5);border-radius:18px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;display:flex">
+            <div style="width:320px;flex:none;background:#000;border-right:0.33px solid rgba(84,84,88,0.65);padding-top:24px">
+              <div style="padding:8px 20px 10px;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#fff">MacBook Pro</div>
+              <div style="padding:8px 20px 6px;font-size:12.5px;color:rgba(235,235,245,0.6);text-transform:uppercase">Pinned</div>
+              <div style="margin:0 10px;background:rgba(94,92,230,0.22);border-radius:9px;padding:9px 12px"><div style="font-size:15px;font-weight:600;color:#fff">gutter targets</div><div style="font-size:12.5px;color:rgba(235,235,245,0.6);margin-top:2px">Granita · 12 files · +411 −86</div></div>
+            </div>
+            <div style="width:320px;flex:none;background:#1C1C1E;border-right:0.33px solid rgba(84,84,88,0.65);padding-top:24px">
+              <div style="padding:8px 18px 12px;font-size:17px;font-weight:600;color:#fff">12 files</div>
+              <div style="padding:6px 18px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(235,235,245,0.6)">Client/Viewer/Ui</div>
+              <div style="padding:6px 18px 6px 30px;font-size:14px;color:#fff">ReviewSheetView.swift</div>
+            </div>
+            <div style="flex:1;background:#1C1C1E;padding-top:24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(235,235,245,0.8);line-height:19px">
+              <div style="padding-left:22px;color:rgba(235,235,245,0.45)">212 &nbsp;&nbsp;private var opening = "Review of uncommitted changes"</div>
+            </div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5)"></div>
+          <div style="position:absolute;left:327px;top:107px;width:540px;height:620px;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,0.6),0 0 0 0.33px rgba(84,84,88,0.65)">
+            <div style="height:56px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:0.33px solid rgba(84,84,88,0.65);background:rgba(28,28,30,0.94)">
+              <span style="font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#fff">Settings</span>
+              <span style="position:absolute;right:20px;color:#0A84FF;font-size:17px;font-weight:600">Done</span>
+            </div>
+            <div style="padding:20px 36px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase">Opening line</div>
+            <div style="margin:0 20px;background:#1C1C1E;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px 13px;font-size:17px;letter-spacing:-0.4px;color:#fff">Reply to each point by its letter.</div>
+              <div style="height:0.33px;background:rgba(84,84,88,0.65);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;color:#0A84FF">Try Again</div>
+              <div style="height:0.33px;background:rgba(84,84,88,0.65);margin-left:16px"></div>
+              <div style="height:44px;display:flex;align-items:center;padding:0 16px;font-size:17px;color:#0A84FF">Reset to the default line</div>
+            </div>
+            <div style="padding:7px 36px 0;font-size:13px;line-height:1.4;color:rgba(235,235,245,0.6)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D9A227;margin-right:6px;vertical-align:1px"></span>MacBook&nbsp;Pro would not save this, so it still has the old line. This iPad will keep using the one above.</div>
+            <div style="padding:4px 36px 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:rgba(235,235,245,0.4)">No space left on device</div>
+            <div style="padding:24px 36px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase">Comment labels</div>
+            <div style="margin:0 20px;background:#1C1C1E;border-radius:10px">
+              <div style="height:52px;display:flex;align-items:center;padding:0 12px">
+                <div style="flex:1;display:flex;background:rgba(118,118,128,0.24);border-radius:9px;padding:2px;box-sizing:border-box;height:32px">
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:rgba(235,235,245,0.6)">A. B. C.</div>
+                  <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#636366;border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,0.3);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#fff">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 36px 0;font-size:13px;line-height:1.35;color:rgba(235,235,245,0.6)">How each comment is named in the copied review, so you can ask your agent to reply point by point.</div>
+            <div style="padding:24px 36px 7px;font-size:13px;color:rgba(235,235,245,0.6);text-transform:uppercase">What a review begins with</div>
+            <div style="margin:0 20px;background:#1C1C1E;border-radius:10px;padding:13px 16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;line-height:1.75;color:rgba(235,235,245,0.7)">Reply to each point by its letter.<br>---<br>1. ClientViewerModel.swift:212-214<br>```swift</div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:760px">The refusal on the second device, with figures chosen rather than letters — which is the receipt earning its place: the reader can see that the labels changed without copying anything. Note the sentence names <em>this iPad</em>; it is the device's own word for itself, because the point of the sentence is which of the two copies the reader is holding.</div>
+      </div>
+
+    </div>
+
+    <p style="font-size:17px;line-height:1.6;margin:44px 0 0;max-width:80ch;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a screen that has already decided. Two rows, a sentence that is only ever about a disagreement, and nothing to wait for — the reader came here to change one word and should be back in the diff in nine seconds.</p>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:36px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Ask 2 &nbsp;·&nbsp; review &nbsp;·&nbsp; 40 baselines exist and 39 of them do not change</div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">The composer and the review sheet gain one line of type</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:56ch;color:#4A463F">The answer to the hard question is <strong style="font-weight:400;color:#23211E">only at the copy</strong>. Sync state appears in exactly one place — a caption directly above <em>Copy review</em>, in the slot the footer already reserves for a sentence about that button — and nowhere else. Not in the gutter, not on a rail, not on a row, not in the composer.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F">Your instinct is right and it is right for a stronger reason than noise. The rail is this app's one overloaded object: it is the same 3pt indigo in the gutter, the instruction bar, the composer's anchor and the review row, and its whole job is to say <em>a row here and a mark there are the same thing</em>. A second meaning on it — <em>and this one has not been uploaded</em> — spends the one piece of vocabulary the review feature has on a fact that changes nothing the reader can do while reading code.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F">And the copy is where it does change something. A reader about to paste into an agent session is deciding whether this document is everything they wrote; a reader about to press <em>Clear</em> is deciding whether it is safe to destroy. Those are the two moments, they are three taps apart, and both are in the sheet.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">The composer does not change at all</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">Its 16 baselines stand. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">CommentComposerView</span> is 300pt with the keyboard up, holding an anchor, three rows of quotation and a field; its job is one comment, and <em>Save</em> already means <em>written down</em> — the local write is what makes that true and it has not moved. A sync state in the composer would be a report about the previous comment on the screen for writing the next one.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">One string in it does change, and only in one state.</strong> Nothing — even the refusal in <a href="#2e">2e</a> leaves <em>Save</em> alone, because the comment <em>is</em> saved. The Mac is where it survives the phone, and the composer never promised that.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">The one shipped sentence that becomes false.</strong> <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">ReviewSheetView</span>'s clear alert says <em>“They are not stored on the Mac.”</em> Once a review lives there, that is a lie in the one place the app is deliberately explicit about where a review lives. Three wordings, below.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#D8D2C6;border:1px solid #D8D2C6;margin-bottom:44px">
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">8 &nbsp;·&nbsp; NOT YET ON THE MAC</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">One caption, whole review, above the button</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">2 of 5 comments are only on this phone.</span> Per-review, not per-comment: the reader's question is <em>is this document complete</em>, which is a fact about the set. A count rather than a word, because two of five and five of five are different decisions.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">9 &nbsp;·&nbsp; RECONCILING</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">The same caption, one sentence on</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">Saving 2 comments to MacBook Pro…</span> No spinner and no progress: the push is one request for the whole review, so there is nothing to count. It ends by the caption disappearing, with no <em>Saved</em> — the absence of a sentence is the good state everywhere in this round.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">10 &nbsp;·&nbsp; TWO DEVICES</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Union, in document order, with one line saying so</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Both sets are the review. No merge screen, no keep-mine, no attribution on a row: comments are anchored to different lines, so the union is almost always exactly what the reader wants, and swipe-to-delete is already the control for the rest.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:26px 22px 28px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">11 &nbsp;·&nbsp; THE MAC REFUSED</div>
+        <div style="font-size:17px;line-height:1.35;margin-bottom:10px">Our sentence, their small print, the copy untouched</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">MacBook Pro would not store this review.</span> The button stays filled, stays indigo and stays enabled. The refusal changes what <em>Clear</em> will cost, and that is where the sentence is repeated.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+
+      <div id="2a" data-screen-label="2a the diff, unchanged" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">The call, drawn as nothing &nbsp;·&nbsp; iPhone light &nbsp;·&nbsp; <a href="#2a">2a</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="height:47px;position:relative">
+            <div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#000">9:41</div>
+          </div>
+          <div style="height:44px;display:flex;align-items:center;padding:0 16px;position:relative;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+            <span style="color:#007AFF;font-size:17px;display:flex;align-items:center;gap:1px;letter-spacing:-0.3px"><span style="font-size:24px;font-weight:500;line-height:1;margin-top:-2px">‹</span>MacBook Pro</span>
+            <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">gutter targets</span>
+            <span style="flex:1"></span>
+            <span style="display:flex;align-items:center;gap:4px;color:#5856D6;font-size:13px;font-family:ui-monospace,'SF Mono',Menlo,monospace;background:rgba(88,86,214,0.12);padding:4px 9px;border-radius:11px">5</span>
+          </div>
+          <div style="background:#fff;font-family:ui-monospace,'SF Mono',Menlo,monospace">
+            <div style="display:flex;align-items:center;height:46px;padding:0 4px 0 12px;font-family:-apple-system,'SF Pro Text',sans-serif;border-bottom:0.33px solid rgba(60,60,67,0.12)">
+              <div style="width:3px;height:24px;border-radius:2px;background:#1E7A3C;flex:none;margin-right:11px"></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:15px;font-weight:600;letter-spacing:-0.3px;color:#000">ReviewSheetView.swift</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:#8A8A8E;margin-top:1.5px">Client/Viewer/Ui</div>
+              </div>
+              <div style="flex:none;display:flex;gap:6px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px"><span style="color:#1E7A3C">+41</span><span style="color:#B4453C">−6</span></div>
+              <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:21px;height:21px;border-radius:50%;border:1.5px solid rgba(60,60,67,0.26)"></div></div>
+            </div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">208</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">    private var footer: some View {</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">209</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">        VStack(spacing: 6) {</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px;background:rgba(30,122,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">210</div><div style="width:12px;flex:none;text-align:center;color:#1E7A3C">+</div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">            if let sync { syncCaption }</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px;background:rgba(30,122,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">211</div><div style="width:12px;flex:none;text-align:center;color:#1E7A3C">+</div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">            copyButton</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">212</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">            if hasCopied {</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">213</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">                clearButton</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">214</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">            }</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">215</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">        }</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px;background:rgba(180,69,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">216</div><div style="width:12px;flex:none;text-align:center;color:#B4453C">−</div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">        .padding(.top, 10)</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">217</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">        .background(Color.diffPage)</div></div>
+            <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">218</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">    }</div></div>
+          </div>
+          <div style="height:10px"></div>
+          <div style="background:#fff">
+            <div style="display:flex;align-items:center;height:46px;padding:0 4px 0 12px;font-family:-apple-system,'SF Pro Text',sans-serif;border-bottom:0.33px solid rgba(60,60,67,0.12)">
+              <div style="width:3px;height:24px;border-radius:2px;background:#C0821F;flex:none;margin-right:11px"></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:15px;font-weight:600;letter-spacing:-0.3px;color:#000">ReviewCommentStore.swift</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:#8A8A8E;margin-top:1.5px">Client/Viewer/Domain</div>
+              </div>
+              <div style="flex:none;display:flex;gap:6px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px"><span style="color:#1E7A3C">+14</span><span style="color:#B4453C">−9</span></div>
+              <div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center"><div style="width:21px;height:21px;border-radius:50%;border:1.5px solid rgba(60,60,67,0.26)"></div></div>
+            </div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace">
+              <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">22</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">public protocol ReviewCommentStore: Sendable {</div></div>
+              <div style="display:flex;height:18px;line-height:18px;font-size:11px;background:rgba(30,122,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">23</div><div style="width:12px;flex:none;text-align:center;color:#1E7A3C">+</div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">    func push(_ comments: [ReviewComment]) async</div></div>
+              <div style="display:flex;height:18px;line-height:18px;font-size:11px"><div style="width:30px;flex:none;text-align:right;padding-right:8px;font-size:10px;color:rgba(60,60,67,0.32);box-sizing:border-box">24</div><div style="width:12px;flex:none"></div><div style="flex:1;white-space:pre;padding-left:6px;color:#1C1C1E">}</div></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Three marked runs, two of them written while the laptop was shut, and the screen is byte-identical to the shipped baseline. This is the frame that carries the call: the diff's answer to states 8 to 11 is <em>nothing at all</em>. The capsule in the toolbar still counts 5, because 5 is how many comments the reader has — not how many arrived somewhere.</div>
+      </div>
+
+      <div id="2b" data-screen-label="2b not yet on the Mac" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 8 &nbsp;·&nbsp; written, not yet on the Mac &nbsp;·&nbsp; <a href="#2b">2b</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px"><div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div></div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;position:relative;flex:none">
+              <span style="color:#007AFF;font-size:17px;letter-spacing:-0.3px">Close</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Review</span>
+              <span style="flex:1"></span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6)">5 comments</span>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.24);flex:none"></div>
+            <div style="flex:1;overflow:hidden">
+              <div style="padding:16px 16px 0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+                <div style="background:#fff;border-radius:10px;padding:11px 13px;font-size:15px;color:#000;line-height:1.35">The gutter aim is fine, but the composer's excerpt is one row short on iPad.</div>
+              </div>
+              <div style="padding:20px 16px 7px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase">Comments · in document order</div>
+              <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:210-211</div><div style="font-size:15px;color:#000;line-height:1.35">This caption should be one sentence, not a badge per row.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:216</div><div style="font-size:15px;color:#000;line-height:1.35">Keep the 10pt top padding — the footer needs it under the caption.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewCommentStore.swift:23</div><div style="font-size:15px;color:#000;line-height:1.35">This has to stay synchronous for the read; only the push is async.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#C0821F;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#C0821F;margin-bottom:3px">⚠ CommentDraft.swift:88 · stale</div><div style="font-size:15px;color:#000;line-height:1.35">The draft is cleared twice here.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">JsonDocumentStore.swift:141</div><div style="font-size:15px;color:#000;line-height:1.35">Prune reviews for worktrees that are gone, like viewedFiles.</div></div></div>
+              </div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;font-size:15px;color:#007AFF">Show text<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round"><path d="M2 4l3.5 3.5L9 4"/></svg></div>
+            </div>
+            <div style="flex:none;padding:10px 16px 16px;background:#F2F2F7">
+              <div style="text-align:center;font-size:12px;color:rgba(60,60,67,0.6);margin-bottom:8px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#C0821F;margin-right:5px;vertical-align:1px"></span>2 of 5 comments are only on this phone.</div>
+              <div style="height:50px;border-radius:13px;background:#5856D6;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.5"><rect x="5.4" y="1.9" width="9.2" height="11.6" rx="2"/><path d="M11.6 15.1H3.9a1.5 1.5 0 0 1-1.5-1.5V5.4"/></svg>Copy review</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">The list is the shipped one, down to the amber rail on the stale row — the sync state does not compete with it, because the one row here that <em>is</em> a warning stays the only one. The caption sits in the slot the footer already owns for a sentence about the button below it, 12pt secondary, centred, with the same amber dot the settings screen uses.</div>
+      </div>
+
+      <div id="2c" data-screen-label="2c reconciling" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 9 &nbsp;·&nbsp; reconciling &nbsp;·&nbsp; <a href="#2c">2c</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px"><div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div></div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;position:relative;flex:none">
+              <span style="color:#007AFF;font-size:17px;letter-spacing:-0.3px">Close</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Review</span>
+              <span style="flex:1"></span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6)">5 comments</span>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.24);flex:none"></div>
+            <div style="flex:1;overflow:hidden">
+              <div style="padding:16px 16px 0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+                <div style="background:#fff;border-radius:10px;padding:11px 13px;font-size:15px;color:#000;line-height:1.35">The gutter aim is fine, but the composer's excerpt is one row short on iPad.</div>
+              </div>
+              <div style="padding:20px 16px 7px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase">Comments · in document order</div>
+              <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:210-211</div><div style="font-size:15px;color:#000;line-height:1.35">This caption should be one sentence, not a badge per row.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:216</div><div style="font-size:15px;color:#000;line-height:1.35">Keep the 10pt top padding — the footer needs it under the caption.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewCommentStore.swift:23</div><div style="font-size:15px;color:#000;line-height:1.35">This has to stay synchronous for the read; only the push is async.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#C0821F;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#C0821F;margin-bottom:3px">⚠ CommentDraft.swift:88 · stale</div><div style="font-size:15px;color:#000;line-height:1.35">The draft is cleared twice here.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">JsonDocumentStore.swift:141</div><div style="font-size:15px;color:#000;line-height:1.35">Prune reviews for worktrees that are gone, like viewedFiles.</div></div></div>
+              </div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;font-size:15px;color:#007AFF">Show text<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round"><path d="M2 4l3.5 3.5L9 4"/></svg></div>
+            </div>
+            <div style="flex:none;padding:10px 16px 16px;background:#F2F2F7">
+              <div style="text-align:center;font-size:12px;color:rgba(60,60,67,0.6);margin-bottom:8px">Saving 2 comments to MacBook&nbsp;Pro…</div>
+              <div style="height:50px;border-radius:13px;background:#5856D6;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.5"><rect x="5.4" y="1.9" width="9.2" height="11.6" rx="2"/><path d="M11.6 15.1H3.9a1.5 1.5 0 0 1-1.5-1.5V5.4"/></svg>Copy review</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">One sentence different from <a href="#2b">2b</a>, and no dot — the amber was reporting a disagreement and there is no longer one to report. The reader is not asked to wait: the button above their thumb does the same thing it did a second ago.</div>
+      </div>
+
+      <div id="2d" data-screen-label="2d two devices" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 10 &nbsp;·&nbsp; the same worktree, read from two devices &nbsp;·&nbsp; <a href="#2d">2d</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px"><div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div></div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden;display:flex;flex-direction:column">
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;position:relative;flex:none">
+              <span style="color:#007AFF;font-size:17px;letter-spacing:-0.3px">Close</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#000">Review</span>
+              <span style="flex:1"></span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6)">7 comments</span>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.24);flex:none"></div>
+            <div style="flex:1;overflow:hidden">
+              <div style="padding:16px 16px 0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+                <div style="background:#fff;border-radius:10px;padding:11px 13px;font-size:15px;color:#000;line-height:1.35">The gutter aim is fine, but the composer's excerpt is one row short on iPad.</div>
+              </div>
+              <div style="padding:20px 16px 2px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase">Comments · in document order</div>
+              <div style="padding:0 16px 7px;font-size:12px;color:rgba(60,60,67,0.6)">2 were written on another device.</div>
+              <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:118</div><div style="font-size:15px;color:#000;line-height:1.35">The header count is the reader's count, not the Mac's.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:210-211</div><div style="font-size:15px;color:#000;line-height:1.35">This caption should be one sentence, not a badge per row.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:216</div><div style="font-size:15px;color:#000;line-height:1.35">Keep the 10pt top padding — the footer needs it under the caption.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewCommentStore.swift:23</div><div style="font-size:15px;color:#000;line-height:1.35">This has to stay synchronous for the read; only the push is async.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewCommentStore.swift:31</div><div style="font-size:15px;color:#000;line-height:1.35">Replacing the whole set is still right — the push is the same shape.</div></div></div>
+              </div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;font-size:15px;color:#007AFF">Show text<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round"><path d="M2 4l3.5 3.5L9 4"/></svg></div>
+            </div>
+            <div style="flex:none;padding:10px 16px 16px;background:#F2F2F7">
+              <div style="height:50px;border-radius:13px;background:#5856D6;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.5"><rect x="5.4" y="1.9" width="9.2" height="11.6" rx="2"/><path d="M11.6 15.1H3.9a1.5 1.5 0 0 1-1.5-1.5V5.4"/></svg>Copy review</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(0,0,0,0.3)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Seven comments where this phone wrote five, sorted with the rest in document order, and no mark of any kind on the two that came from the iPad. The one line goes under the section label — where a fact about the list belongs — and it does not name the device, because naming it starts making this a review with two authors. Nothing is said in the footer: there is no disagreement, the Mac has all seven.</div>
+      </div>
+
+      <div id="2e" data-screen-label="2e refused, dark" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">State 11 &nbsp;·&nbsp; the Mac refused the write, iPhone dark &nbsp;·&nbsp; <a href="#2e">2e</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(84,84,88,0.5);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#000"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:47px"><div style="position:absolute;left:30px;top:15px;font-size:14px;font-weight:600;color:#fff">9:41</div></div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#000;border-radius:10px 10px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -0.33px 0 rgba(84,84,88,0.65)">
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;position:relative;flex:none">
+              <span style="color:#0A84FF;font-size:17px;letter-spacing:-0.3px">Close</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;letter-spacing:-0.4px;color:#fff">Review</span>
+              <span style="flex:1"></span>
+              <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(235,235,245,0.6)">5 comments</span>
+            </div>
+            <div style="height:0.33px;background:rgba(84,84,88,0.65);flex:none"></div>
+            <div style="flex:1;overflow:hidden">
+              <div style="padding:16px 16px 0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(235,235,245,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+                <div style="background:#1C1C1E;border-radius:10px;padding:11px 13px;font-size:15px;color:rgba(235,235,245,0.3);line-height:1.35">Skipped — nothing will be added</div>
+              </div>
+              <div style="padding:20px 16px 7px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(235,235,245,0.6);text-transform:uppercase">Comments · in document order</div>
+              <div style="margin:0 16px;background:#1C1C1E;border-radius:10px;overflow:hidden">
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(84,84,88,0.6)"><div style="width:3px;border-radius:1.5px;background:#5E5CE6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5E5CE6;margin-bottom:3px">ReviewSheetView.swift:210-211</div><div style="font-size:15px;color:#fff;line-height:1.35">This caption should be one sentence, not a badge per row.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(84,84,88,0.6)"><div style="width:3px;border-radius:1.5px;background:#5E5CE6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5E5CE6;margin-bottom:3px">ReviewSheetView.swift:216</div><div style="font-size:15px;color:#fff;line-height:1.35">Keep the 10pt top padding — the footer needs it under the caption.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(84,84,88,0.6)"><div style="width:3px;border-radius:1.5px;background:#5E5CE6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5E5CE6;margin-bottom:3px">ReviewCommentStore.swift:23</div><div style="font-size:15px;color:#fff;line-height:1.35">This has to stay synchronous for the read; only the push is async.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(84,84,88,0.6)"><div style="width:3px;border-radius:1.5px;background:#D9A227;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#D9A227;margin-bottom:3px">⚠ CommentDraft.swift:88 · stale</div><div style="font-size:15px;color:#fff;line-height:1.35">The draft is cleared twice here.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px"><div style="width:3px;border-radius:1.5px;background:#5E5CE6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5E5CE6;margin-bottom:3px">JsonDocumentStore.swift:141</div><div style="font-size:15px;color:#fff;line-height:1.35">Prune reviews for worktrees that are gone, like viewedFiles.</div></div></div>
+              </div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;font-size:15px;color:#0A84FF">Show text<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#0A84FF" stroke-width="2" stroke-linecap="round"><path d="M2 4l3.5 3.5L9 4"/></svg></div>
+            </div>
+            <div style="flex:none;padding:10px 16px 16px;background:#000">
+              <div style="text-align:center;font-size:12px;color:rgba(235,235,245,0.6);margin-bottom:2px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#D9A227;margin-right:5px;vertical-align:1px"></span>MacBook&nbsp;Pro would not store this review.</div>
+              <div style="text-align:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;color:rgba(235,235,245,0.4);margin-bottom:8px">No space left on device</div>
+              <div style="height:50px;border-radius:13px;background:#5E5CE6;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" stroke="#fff" stroke-width="1.5"><rect x="5.4" y="1.9" width="9.2" height="11.6" rx="2"/><path d="M11.6 15.1H3.9a1.5 1.5 0 0 1-1.5-1.5V5.4"/></svg>Copy review</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:34px;display:flex;align-items:center;justify-content:center"><div style="width:139px;height:5px;border-radius:3px;background:rgba(255,255,255,0.35)"></div></div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">The refusal takes two lines rather than one — ours and the store's — and takes nothing away. No <em>Try Again</em> here, unlike the settings screen: the push already retries on every change and every reconnect, and the reader's next move is the button underneath, which works. This is also the frame that proves the copy is never gated.</div>
+      </div>
+
+      <div id="2f" data-screen-label="2f the clear alert" style="width:390px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">After the copy &nbsp;·&nbsp; the sentence that becomes false &nbsp;·&nbsp; <a href="#2f">2f</a></div>
+        <div style="position:relative;width:390px;height:844px;border:1px solid rgba(60,60,67,0.22);border-radius:22px;overflow:hidden;background:#000;font-family:-apple-system,'SF Pro Text',sans-serif">
+          <div style="position:absolute;inset:0;background:#F2F2F7;filter:brightness(0.55)"></div>
+          <div style="position:absolute;left:0;right:0;top:56px;bottom:0;background:#F2F2F7;border-radius:10px 10px 0 0;overflow:hidden;filter:brightness(0.86)">
+            <div style="height:52px;display:flex;align-items:center;padding:0 16px;position:relative">
+              <span style="color:#007AFF;font-size:17px">Close</span>
+              <span style="position:absolute;left:0;right:0;text-align:center;font-size:17px;font-weight:600;color:#000">Review</span>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.24)"></div>
+            <div style="padding:16px 16px 0">
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+              <div style="background:#fff;border-radius:10px;padding:11px 13px;font-size:15px;color:#000">The gutter aim is fine, but the composer's excerpt…</div>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;padding:10px 16px 16px">
+              <div style="height:50px;border-radius:13px;background:#1E7A3C;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600">Copied</div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#D70015">Clear review</div>
+              <div style="text-align:center;font-size:12px;color:rgba(60,60,67,0.6)">Paste it to your agent first — clearing deletes it from this phone.</div>
+            </div>
+          </div>
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.2)"></div>
+          <div style="position:absolute;left:47px;top:300px;width:270px;background:rgba(249,249,249,0.82);backdrop-filter:blur(22px);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
+            <div style="padding:19px 16px 15px;text-align:center">
+              <div style="font-size:17px;font-weight:600;color:#000;margin-bottom:5px">Clear this review?</div>
+              <div style="font-size:13px;line-height:1.35;color:#000">The note and 5 comments will be deleted from this phone and from MacBook&nbsp;Pro. Two of them never reached it.</div>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.3)"></div>
+            <div style="display:flex">
+              <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#007AFF">Cancel</div>
+              <div style="width:0.33px;background:rgba(60,60,67,0.3)"></div>
+              <div style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;color:#D70015">Clear</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:390px">Three wordings, chosen by what is actually true at the moment the alert opens. All of it on the Mac: <em>“…deleted from this phone and from MacBook Pro.”</em> Some of it not: that, plus <em>“Two of them never reached it.”</em> None of it — an unreachable Mac all session, or a Mac too old to store reviews — the shipped sentence, unchanged: <em>“They are not stored on the Mac.”</em> The footer caption under <em>Clear</em> keeps its own wording, because it is about the paste rather than about storage.</div>
+      </div>
+
+      <div id="2g" data-screen-label="2g iPad column" style="width:1194px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">States 8 and 10 &nbsp;·&nbsp; iPad Pro 11″ landscape, light, the review as a column &nbsp;·&nbsp; <a href="#2g">2g</a></div>
+        <div style="position:relative;width:1194px;height:834px;border:1px solid rgba(60,60,67,0.22);border-radius:18px;overflow:hidden;background:#F2F2F7;font-family:-apple-system,'SF Pro Text',sans-serif;display:flex">
+          <div style="width:320px;flex:none;background:#F2F2F7;border-right:0.33px solid rgba(60,60,67,0.24);display:flex;flex-direction:column">
+            <div style="height:52px;display:flex;flex-direction:column;justify-content:center;padding:0 16px">
+              <div style="font-size:17px;font-weight:600;color:#000">Review</div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(60,60,67,0.6);margin-top:1px">7 comments</div>
+            </div>
+            <div style="height:0.33px;background:rgba(60,60,67,0.24)"></div>
+            <div style="flex:1;overflow:hidden">
+              <div style="padding:16px 16px 0">
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase;margin-bottom:7px">A note for the agent · optional</div>
+                <div style="background:#fff;border-radius:10px;padding:11px 13px;font-size:15px;color:rgba(60,60,67,0.45);line-height:1.35">Anything about the change as a whole?</div>
+              </div>
+              <div style="padding:20px 16px 2px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.6px;color:rgba(60,60,67,0.6);text-transform:uppercase">Comments · in document order</div>
+              <div style="padding:0 16px 7px;font-size:12px;color:rgba(60,60,67,0.6)">2 were written on another device.</div>
+              <div style="margin:0 16px;background:#fff;border-radius:10px;overflow:hidden">
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:118</div><div style="font-size:15px;color:#000;line-height:1.35">The header count is the reader's count.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">ReviewSheetView.swift:210-211</div><div style="font-size:15px;color:#000;line-height:1.35">One sentence, not a badge per row.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px;border-bottom:0.33px solid rgba(60,60,67,0.18)"><div style="width:3px;border-radius:1.5px;background:#C0821F;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#C0821F;margin-bottom:3px">⚠ CommentDraft.swift:88 · stale</div><div style="font-size:15px;color:#000;line-height:1.35">The draft is cleared twice here.</div></div></div>
+                <div style="display:flex;gap:11px;padding:10px 12px 11px"><div style="width:3px;border-radius:1.5px;background:#5856D6;flex:none"></div><div style="flex:1"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#5856D6;margin-bottom:3px">JsonDocumentStore.swift:141</div><div style="font-size:15px;color:#000;line-height:1.35">Prune reviews for worktrees that are gone.</div></div></div>
+              </div>
+              <div style="height:44px;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;font-size:15px;color:#007AFF">Show text</div>
+            </div>
+            <div style="padding:10px 16px 16px">
+              <div style="text-align:center;font-size:12px;color:rgba(60,60,67,0.6);margin-bottom:8px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#C0821F;margin-right:5px;vertical-align:1px"></span>3 of 7 comments are only on this iPad.</div>
+              <div style="height:50px;border-radius:13px;background:#5856D6;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;font-weight:600">Copy review</div>
+            </div>
+          </div>
+          <div style="flex:1;background:#fff;display:flex;flex-direction:column">
+            <div style="height:44px;display:flex;align-items:center;padding:0 18px;border-bottom:0.33px solid rgba(60,60,67,0.24);background:rgba(249,249,249,0.94)">
+              <span style="font-size:17px;font-weight:600;color:#000">gutter targets</span><span style="flex:1"></span><span style="font-size:15px;color:#007AFF">12 files</span>
+            </div>
+            <div style="flex:1;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;line-height:19px;padding-top:6px">
+              <div style="display:flex;height:19px"><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">208</div><div style="width:12px"></div><div style="white-space:pre;color:#1C1C1E">    private var footer: some View {</div></div>
+              <div style="display:flex;height:19px"><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">209</div><div style="width:12px"></div><div style="white-space:pre;color:#1C1C1E">        VStack(spacing: 6) {</div></div>
+              <div style="display:flex;height:19px;background:rgba(30,122,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">210</div><div style="width:12px;text-align:center;color:#1E7A3C">+</div><div style="white-space:pre;color:#1C1C1E">            if let sync { syncCaption }</div></div>
+              <div style="display:flex;height:19px;background:rgba(30,122,60,0.10);position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:1.5px;background:#5856D6"></div><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">211</div><div style="width:12px;text-align:center;color:#1E7A3C">+</div><div style="white-space:pre;color:#1C1C1E">            copyButton</div></div>
+              <div style="display:flex;height:19px"><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">212</div><div style="width:12px"></div><div style="white-space:pre;color:#1C1C1E">            if hasCopied {</div></div>
+              <div style="display:flex;height:19px"><div style="width:34px;text-align:right;padding-right:8px;font-size:11px;color:rgba(60,60,67,0.32);box-sizing:border-box">213</div><div style="width:12px"></div><div style="white-space:pre;color:#1C1C1E">                clearButton</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:760px">The column takes the same two additions in the same two slots, and the diff beside it is untouched — which is the whole argument for putting the caption in the footer rather than on the rows: the review can sit open beside live code all afternoon without anything on this screen reporting on a network. The caption says <em>this iPad</em>, and both additions are one <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">if let</span> in a view that already branches on presentation.</div>
+      </div>
+
+    </div>
+
+    <p style="font-size:17px;line-height:1.6;margin:44px 0 0;max-width:80ch;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> the screen never learned about the network. The code is the subject; the one sentence that appears does so at the moment it changes a decision, and it appears where decisions are made — under the reader's thumb, above the button.</p>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:36px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Ask 3 &nbsp;·&nbsp; the Mac's settings window &nbsp;·&nbsp; items 12 and 13</div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">A sixth tab, called Review, fourth in the row</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:56ch;color:#4A463F">Order: General, Projects, Devices, <strong style="font-weight:400;color:#23211E">Review</strong>, Connections, Advanced. The first four are the pipeline outward — this Mac, what it serves, who may read it, what comes back — then live diagnostics, then the drawer with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">Reset All Data</span> in it.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;border-bottom:2px solid #C9B98F">And the spec argument is already spent.</strong> §9 says four tabs; <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">main</span> ships five, because the connection log was lifted out of Advanced on the grounds that it is read under pressure and must not sit one mis-click from the button that unpairs every device. That departure is in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">.ai/docs/decisions.md</span> and in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">SettingsTab</span>'s own doc comment. So the question is not whether the four-tab row may be broken. It is whether these two controls earn it on the same terms, and they do: <em>what the review says</em> is its own subject, it is the only pane whose values a phone reads and writes, and it is the first thing in this window that is not about serving.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F">If the built tab bar overflows at 620pt — six labels, the longest being <em>Connections</em> — widen the window to 680 rather than rename a tab or accept the overflow chevron. The window is a fixed size already, set by the QR in Devices, so widening it is a constant, not a layout change.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">What I rejected, and why each is worse</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F"><strong style="font-weight:400;color:#23211E">General, as a third section.</strong> The tab's own doc comment states its subject: this Mac's address, whether anything is listening, whether Granita comes back after a restart. It is also the pane a reader opens <em>when the phone cannot connect</em> — the worst place to put a text field about the wording of a document. The brief's instinct that it would make the tab about two unrelated things is right, and the code makes it sharper: there is no port row to hide behind, so a review section would be a third of the tab's content.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Advanced.</strong> Neither control is advanced — one is a sentence and one is a choice of two — and they would share the pane with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">Reset All Data</span>. That is the exact objection that moved the connection log out.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Devices.</strong> Plausible for ten seconds, since these are the settings phones read. But that pane is <em>who may connect</em>, it is 560pt of QR and countdown, and a text field under a live pairing code is a field nobody will find.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">Nowhere: phone only.</strong> Rejected because Davide asked for both, and because the Mac is where the value lives — a store that holds a setting no local surface can show is a store you debug with a text editor.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+
+      <div id="3a" data-screen-label="3a Mac Review tab light" style="width:620px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">Item 13 &nbsp;·&nbsp; the Review tab, light &nbsp;·&nbsp; <a href="#3a">3a</a></div>
+        <div style="width:620px;border-radius:10px;overflow:hidden;box-shadow:0 18px 44px rgba(35,33,30,0.18),0 0 0 0.5px rgba(0,0,0,0.30);font-family:-apple-system,'SF Pro Text','Helvetica Neue',Helvetica,sans-serif;color:rgba(0,0,0,0.85);background:#ECECEC">
+          <div style="background:linear-gradient(#F7F7F7,#EBEBEB);border-bottom:0.5px solid rgba(0,0,0,0.14)">
+            <div style="display:flex;align-items:center;gap:8px;padding:11px 13px 3px">
+              <div style="width:12px;height:12px;border-radius:50%;background:#FF5F57;box-shadow:inset 0 0 0 0.5px rgba(0,0,0,0.12)"></div>
+              <div style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;box-shadow:inset 0 0 0 0.5px rgba(0,0,0,0.12)"></div>
+              <div style="width:12px;height:12px;border-radius:50%;background:#28C840;box-shadow:inset 0 0 0 0.5px rgba(0,0,0,0.12)"></div>
+              <div style="flex:1;text-align:center;font-size:13px;font-weight:600;margin-right:60px">Review</div>
+            </div>
+            <div style="display:flex;justify-content:center;gap:2px;padding:4px 8px 8px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(0,0,0,0.75)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"><circle cx="8" cy="8" r="2.9"/><path d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.3 3.3l1.2 1.2M11.5 11.5l1.2 1.2M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2"/></svg>General</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(0,0,0,0.75)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"><path d="M1.9 4.8a1.1 1.1 0 0 1 1.1-1.1h3l1.3 1.7h5.7a1.1 1.1 0 0 1 1.1 1.1v5.7a1.1 1.1 0 0 1-1.1 1.1H3a1.1 1.1 0 0 1-1.1-1.1z"/></svg>Projects</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(0,0,0,0.75)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15"><rect x="4.6" y="1.9" width="6.8" height="12.2" rx="1.7"/><path d="M6.9 3.5h2.2"/></svg>Devices</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;background:rgba(0,0,0,0.10);color:rgba(0,0,0,0.85)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"><path d="M2.4 2.6h11.2v8.2H6.2L3.3 13.4v-2.6H2.4z"/><path d="M4.9 5.4h6.2M4.9 7.7h3.9"/></svg>Review</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:78px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(0,0,0,0.75)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15"><circle cx="3.2" cy="12.4" r="1.5"/><circle cx="12.8" cy="12.4" r="1.5"/><circle cx="8" cy="3.4" r="1.5"/><path d="M4.3 11.1 7 5M9 5l2.7 6.1M4.7 12.4h6.6" stroke-dasharray="2 1.7"/></svg>Connections</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(0,0,0,0.75)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"><circle cx="6" cy="6" r="2.3"/><path d="M6 1.5v1.2M6 9.3v1.2M1.5 6h1.2M9.3 6h1.2M2.9 2.9l.9.9M8.2 8.2l.9.9M9.1 2.9l-.9.9M3.8 8.2l-.9.9"/><circle cx="11.6" cy="11.6" r="1.7"/><path d="M11.6 8.7v.9M11.6 13.6v.9M8.7 11.6h.9M13.6 11.6h.9"/></svg>Advanced</div>
+            </div>
+          </div>
+          <div style="height:484px;background:#F2F2F2;padding:20px 20px 0;box-sizing:border-box">
+            <div style="background:#FFF;border-radius:8px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.10),0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 14px">
+                <div style="width:96px;text-align:right;font-size:13px;color:rgba(0,0,0,0.85)">Opening line</div>
+                <div style="flex:1;height:22px;background:#fff;border-radius:5px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.22),inset 0 1px 1px rgba(0,0,0,0.04);display:flex;align-items:center;padding:0 7px;font-size:13px;color:rgba(0,0,0,0.85)">Review of uncommitted changes</div>
+                <div style="font-size:13px;color:rgba(0,0,0,0.3)">Reset</div>
+              </div>
+              <div style="height:0.5px;background:rgba(0,0,0,0.09);margin-left:14px"></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+                <div style="width:96px;text-align:right;font-size:13px;color:rgba(0,0,0,0.85)">Labels</div>
+                <div style="display:flex;background:rgba(0,0,0,0.055);border-radius:6px;padding:1.5px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.12)">
+                  <div style="padding:3px 14px;border-radius:5px;background:#fff;box-shadow:0 0 0 0.5px rgba(0,0,0,0.12),0 1px 2px rgba(0,0,0,0.1);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px">A. B. C.</div>
+                  <div style="padding:3px 14px;border-radius:5px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(0,0,0,0.6)">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 14px 0;font-size:11px;line-height:1.45;color:rgba(0,0,0,0.5);max-width:520px">Every review copied from a phone or an iPad begins with this line, and its comments are named this way. This is the default line; reviews use it until you change it.</div>
+            <div style="margin-top:20px;background:#FFF;border-radius:8px;box-shadow:0 0 0 0.5px rgba(0,0,0,0.10),0 1px 2px rgba(0,0,0,0.04);padding:12px 14px">
+              <div style="font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:8px">A review will look like this</div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.85;color:rgba(0,0,0,0.65)">Review of uncommitted changes<br>---<br>A. Client/Viewer/Ui/ReviewSheetView.swift:210-211<br>```swift<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if let sync { syncCaption }<br>```<br>This caption should be one sentence, not a badge per row.</div>
+            </div>
+            <div style="margin-top:20px;display:flex;align-items:center;gap:12px;padding:0 14px">
+              <div style="width:96px;text-align:right;font-size:13px;color:rgba(0,0,0,0.5)">Stored reviews</div>
+              <div style="font-size:13px;color:rgba(0,0,0,0.5)">3 worktrees · 11 comments</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:620px">Two rows in one section, the Mac's own control for each: a plain <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">TextField</span> in a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">LabeledContent</span>, committed on focus loss as macOS expects, and a segmented <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">Picker</span> whose two segments are the thing they choose. <em>Reset</em> sits at the trailing edge of the field's row, disabled while the value is the default — the Mac can afford a visibly-disabled control where the phone's row cannot. The sample below is the same receipt the phone draws, at the one size a 620pt window can spare, and it is the only place either app shows a fenced comment block before it is pasted.</div>
+      </div>
+
+      <div id="3b" data-screen-label="3b Mac Review tab dark" style="width:620px;flex:none">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:#8A8378;margin-bottom:8px">Item 13 &nbsp;·&nbsp; the same, dark, with the line edited and figures chosen &nbsp;·&nbsp; <a href="#3b">3b</a></div>
+        <div style="width:620px;border-radius:10px;overflow:hidden;box-shadow:0 18px 44px rgba(35,33,30,0.30),0 0 0 0.5px rgba(0,0,0,0.6);font-family:-apple-system,'SF Pro Text','Helvetica Neue',Helvetica,sans-serif;color:rgba(255,255,255,0.88);background:#2A2A2C">
+          <div style="background:linear-gradient(#3C3C3E,#333335);border-bottom:0.5px solid rgba(0,0,0,0.5)">
+            <div style="display:flex;align-items:center;gap:8px;padding:11px 13px 3px">
+              <div style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></div>
+              <div style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></div>
+              <div style="width:12px;height:12px;border-radius:50%;background:#28C840"></div>
+              <div style="flex:1;text-align:center;font-size:13px;font-weight:600;margin-right:60px">Review</div>
+            </div>
+            <div style="display:flex;justify-content:center;gap:2px;padding:4px 8px 8px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(255,255,255,0.7)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"><circle cx="8" cy="8" r="2.9"/><path d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.3 3.3l1.2 1.2M11.5 11.5l1.2 1.2M12.7 3.3l-1.2 1.2M4.5 11.5l-1.2 1.2"/></svg>General</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(255,255,255,0.7)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"><path d="M1.9 4.8a1.1 1.1 0 0 1 1.1-1.1h3l1.3 1.7h5.7a1.1 1.1 0 0 1 1.1 1.1v5.7a1.1 1.1 0 0 1-1.1 1.1H3a1.1 1.1 0 0 1-1.1-1.1z"/></svg>Projects</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(255,255,255,0.7)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15"><rect x="4.6" y="1.9" width="6.8" height="12.2" rx="1.7"/><path d="M6.9 3.5h2.2"/></svg>Devices</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;background:rgba(255,255,255,0.13);color:#fff"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"><path d="M2.4 2.6h11.2v8.2H6.2L3.3 13.4v-2.6H2.4z"/><path d="M4.9 5.4h6.2M4.9 7.7h3.9"/></svg>Review</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:78px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(255,255,255,0.7)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15"><circle cx="3.2" cy="12.4" r="1.5"/><circle cx="12.8" cy="12.4" r="1.5"/><circle cx="8" cy="3.4" r="1.5"/><path d="M4.3 11.1 7 5M9 5l2.7 6.1M4.7 12.4h6.6" stroke-dasharray="2 1.7"/></svg>Connections</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;width:70px;padding:5px 3px;border-radius:6px;font-size:11px;color:rgba(255,255,255,0.7)"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"><circle cx="6" cy="6" r="2.3"/><path d="M6 1.5v1.2M6 9.3v1.2M1.5 6h1.2M9.3 6h1.2M2.9 2.9l.9.9M8.2 8.2l.9.9M9.1 2.9l-.9.9M3.8 8.2l-.9.9"/><circle cx="11.6" cy="11.6" r="1.7"/><path d="M11.6 8.7v.9M11.6 13.6v.9M8.7 11.6h.9M13.6 11.6h.9"/></svg>Advanced</div>
+            </div>
+          </div>
+          <div style="height:484px;background:#1E1E20;padding:20px 20px 0;box-sizing:border-box">
+            <div style="background:#2C2C2E;border-radius:8px;box-shadow:0 0 0 0.5px rgba(255,255,255,0.08);overflow:hidden">
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 14px">
+                <div style="width:96px;text-align:right;font-size:13px;color:rgba(255,255,255,0.88)">Opening line</div>
+                <div style="flex:1;height:22px;background:#1C1C1E;border-radius:5px;box-shadow:0 0 0 0.5px rgba(255,255,255,0.18);display:flex;align-items:center;padding:0 7px;font-size:13px;color:#fff">Reply to each numbered point.</div>
+                <div style="font-size:13px;color:#4C8DFF">Reset</div>
+              </div>
+              <div style="height:0.5px;background:rgba(255,255,255,0.08);margin-left:14px"></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+                <div style="width:96px;text-align:right;font-size:13px;color:rgba(255,255,255,0.88)">Labels</div>
+                <div style="display:flex;background:rgba(255,255,255,0.07);border-radius:6px;padding:1.5px;box-shadow:0 0 0 0.5px rgba(255,255,255,0.12)">
+                  <div style="padding:3px 14px;border-radius:5px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:rgba(255,255,255,0.6)">A. B. C.</div>
+                  <div style="padding:3px 14px;border-radius:5px;background:#5E5CE6;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:#fff">1. 2. 3.</div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:7px 14px 0;font-size:11px;line-height:1.45;color:rgba(255,255,255,0.5);max-width:520px">Every review copied from a phone or an iPad begins with this line, and its comments are named this way.</div>
+            <div style="margin-top:20px;background:#2C2C2E;border-radius:8px;box-shadow:0 0 0 0.5px rgba(255,255,255,0.08);padding:12px 14px">
+              <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px">A review will look like this</div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.85;color:rgba(255,255,255,0.62)">Reply to each numbered point.<br>---<br>1. Client/Viewer/Ui/ReviewSheetView.swift:210-211<br>```swift<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if let sync { syncCaption }<br>```<br>This caption should be one sentence, not a badge per row.</div>
+            </div>
+            <div style="margin-top:20px;display:flex;align-items:center;gap:12px;padding:0 14px">
+              <div style="width:96px;text-align:right;font-size:13px;color:rgba(255,255,255,0.5)">Stored reviews</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.5)">3 worktrees · 11 comments</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px;max-width:620px">Edited, so <em>Reset</em> is live, and the footer's second sentence is gone — the same two signals the phone uses, in the Mac's idiom. The selected segment takes the system accent; drawn here in the indigo the phone's rail uses, which is what Granita's accent should be if it ever declares one, and which is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">.indigo</span> either way.</div>
+      </div>
+
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-top:44px">
+      <div>
+        <p style="font-size:17px;line-height:1.6;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">The <em>Stored reviews</em> row is the one thing here that is not in the brief</strong>, and it is not a review browser. It is two numbers, because §9 says <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">viewedFiles</span> is the only unbounded collection in the store and that stops being true this slice. Reviews now accumulate per worktree, and worktrees are deleted by the agent that made them. The row is where a reader sees that the store is not growing without bound — the same job Advanced's project and device counts already do, which is the other place it could go if you would rather this tab held only the two controls.</p>
+        <p style="font-size:17px;line-height:1.6;margin:0;max-width:58ch;color:#4A463F">No <em>Clear all reviews</em> button. Clearing is the reader's act at the moment of pasting, and a Mac-side button would destroy a review a phone might be holding unsent. Pruning is a rule, not a control: drop reviews whose worktree no longer exists, on the same startup pass that prunes <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">viewedFiles</span>.</p>
+      </div>
+      <div>
+        <p style="font-size:17px;line-height:1.6;margin:0;padding:16px 20px;background:#EFEBE1;border-left:2px solid #C9B98F"><strong style="font-weight:400">Should feel like</strong> a preference that was always meant to be there — two rows a reader reads once, changes once, and never opens again. The sample is the only thing on the pane worth looking at twice.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:28px">Where a frame and SPEC.md disagree &nbsp;·&nbsp; the spec wins until Davide says otherwise</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#D8D2C6;border:1px solid #D8D2C6">
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#7A6A2E;letter-spacing:0.04em;margin-bottom:12px">§9 &nbsp;·&nbsp; THE STORE DOCUMENT</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">Two new fields, and a schema bump</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">StoreDocument</span> gains <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">reviewSettings</span> (an opening line and a label style) and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">reviews</span> (per worktree). <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">schemaVersion</span> bumps and the old decoder stays, exactly as §9 instructs. Nothing here needs queries: the phone reads one settings object and one review per worktree, both by key. <strong style="font-weight:400;color:#23211E">No disagreement with the LOCKED row</strong> — JSON, one actor, atomic replace, all intact.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">§9 &nbsp;·&nbsp; FALSE AS OF THIS SLICE</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">“<span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">viewedFiles</span> is the only unbounded collection”</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Reviews are unbounded in the same way and for a worse reason: a comment carries an excerpt, so a review is kilobytes rather than bytes, and the worktrees they belong to are created and destroyed by an agent. The prune rule and the cap need a sentence of their own in §9, and the <em>Stored reviews</em> row is what makes it observable.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#7A6A2E;letter-spacing:0.04em;margin-bottom:12px">§8 &nbsp;·&nbsp; THE WIRE</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">Four routes, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px">apiVersion</span> 2</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">GET/PATCH /v1/settings</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">GET/PUT /v1/worktrees/{id}/review</span>. PATCH uses §8's own presence-versus-null idiom, which is what makes a queued edit safe. §8 says the client refuses to pair on an <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">apiVersion</span> mismatch and any route 426s on a newer client — so a <strong style="font-weight:400;color:#23211E">paired older Mac needs a third answer</strong>: 404 on these routes means <em>keep it local</em>, not <em>fail</em>. That is a change to §8's compatibility rule and it is the one I would want written down.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">§9 &nbsp;·&nbsp; ALREADY DIVERGED</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">“Settings window, four tabs”</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">Five ship. A sixth is the same departure again and should be recorded the same way, in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">.ai/docs/decisions.md</span>, with the window's fixed width noted as the constraint that could overturn it.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#B4453C;letter-spacing:0.04em;margin-bottom:12px">§10 &nbsp;·&nbsp; PROMISED, NOT BUILT</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">“the code size is its own setting”</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">It is a constant in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">DiffPaneLayout</span>. Two earlier rounds have leaned on that sentence to argue what Dynamic Type may and may not scale. Either §10 loses the claim, or the phone's Settings screen is where the setting lands — in the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">CODE</span> group, beside #70's theme, as this ask's shape already allows.</div>
+      </div>
+      <div style="background:#FBFAF7;padding:24px 22px 26px">
+        <div style="font-size:12px;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:#3E7C4A;letter-spacing:0.04em;margin-bottom:12px">§11 &nbsp;·&nbsp; STAYS CHEAP</div>
+        <div style="font-size:16.5px;line-height:1.35;margin-bottom:10px">Nothing drawn here builds toward v2</div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C">No thread, no reply, no resolve, no history, no second reader, no screen listing past reviews. The union rule in state 10 is the one thing that could be mistaken for multi-reader review, and it is deliberately anonymous: the reader sees comments, not authors, and can delete any of them. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px">REVIEW.md</span> in the worktree, when it comes, reads the same stored review this slice puts on the Mac.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:70px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">§6's open calls, answered</div>
+        <div style="font-size:17px;line-height:1.6;color:#4A463F">
+          <p style="margin:0 0 16px"><strong style="font-weight:400;color:#23211E">Placeholders in the opening line: no, and it costs nothing to add later.</strong> The stored value is a plain string, so <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">{worktree}</span> can be interpolated at export whenever you want it, with no change to the store or the wire. What v1 would be buying is a template language: escaping for a literal brace, a rule for an unknown token, a rule for an empty value, and a second thing for the field's footer to explain. 0.14.2 dropped the three facts because the session already has them; a reader pasting elsewhere can type the project's name into their own sentence, which is now <em>their</em> sentence.</p>
+          <p style="margin:0 0 16px"><strong style="font-weight:400;color:#23211E">A sixth tab on the Mac: yes.</strong> Fourth position, named Review. The argument is above, and the precedent is the fifth.</p>
+          <p style="margin:0 0 16px"><strong style="font-weight:400;color:#23211E">A not-yet-synced comment visible at all: only at the copy.</strong> One caption above <em>Copy review</em>, per review, with a count. Nothing in the diff, nothing on a rail, nothing in the composer.</p>
+          <p style="margin:0"><strong style="font-weight:400;color:#23211E">Settings reachable with no Mac paired: yes, and inert.</strong> Discoverability is the real half of that question; operability is not, because a queued value needs somewhere to go.</p>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">What to photograph, and what is a swap of something drawn</div>
+        <div style="font-size:16px;line-height:1.65;color:#4A463F;margin-bottom:18px">Ask 1 asks for four layouts per state, which is 28 frames for a screen whose iPad answer is <em>the same view in a 540 × 620 sheet</em> and whose dark answer is <em>#1C1C1E on #000</em>. Both are stated once and drawn twice rather than seven times, which is how the existing suites are built — <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">ReviewSheetView</span> has 24 baselines for six states, not 96.</div>
+        <div style="background:#FBFAF7;border:1px solid #D8D2C6;padding:20px 22px;font-size:15px;line-height:1.7;color:#4A463F">
+          <strong style="font-weight:400;color:#23211E">New suite, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ReviewSettingsViewSnapshotTests</span>:</strong> 7 states × iPhone and iPad × light and dark = <strong style="font-weight:400;color:#23211E">28</strong>, plus one iPhone frame at xxLarge and one with the keyboard raised. The seven subjects are the states above: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">loaded</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">the default</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">editing</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">saving</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">unreachable</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">refused</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">never paired</span>.
+          <div style="height:12px"></div>
+          <strong style="font-weight:400;color:#23211E">Existing suites:</strong> the composer's 16 do not change. The review sheet's 24 gain four subjects — <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">not yet on the Mac</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">reconciling</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">from another device</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">refused</span> — at 16 new images, and one for each clear-alert wording. The Mac's 30 gain <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">serving-review-light</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">-dark</span> in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaSettingsScreenSnapshotTests</span> plus a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ReviewSettingsViewSnapshotTests</span> of four: default, edited, figures, and a store that refused.
+          <div style="height:12px"></div>
+          <strong style="font-weight:400;color:#23211E">The one baseline that will catch a real bug:</strong> <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">editing-iPhone</span>. The review sheet's own column baseline was lost four CI runs to a keyboard inset arriving mid-layout, and this screen raises a keyboard on purpose.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>
+

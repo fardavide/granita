@@ -31,7 +31,9 @@ def export(
 
     The function records are optional because most of these tests are about which *files* count, and
     an export without them subtracts nothing — which is the honest reading of "this run identified no
-    action closure", not a silent fallback.
+    action closure", not a silent fallback. Where records are given, a file's line summary must be
+    what llvm-cov would have reported for them — the sum of each record's own lines — because the
+    reader checks the two against each other before it subtracts anything.
     """
     return {
         "data": [
@@ -60,6 +62,21 @@ def function(name: str, filename: str, regions: list[tuple[int, int]]) -> dict:
         "filenames": [filename],
         "regions": [[line, 1, line, 40, count, 0, 0, 0] for line, count in regions],
     }
+
+
+def spanning(name: str, filename: str, spans: list[tuple[int, int, int, int, int]]) -> dict:
+    """One function record whose regions span lines, given as `(line, column, line, column, count)`
+    — the shape the line rule needs, because which region wraps a line is a question about spans."""
+    return {
+        "name": name,
+        "filenames": [filename],
+        "regions": [[*span[:4], span[4], 0, 0, 0] for span in spans],
+    }
+
+
+def region(line: int, column: int, end_line: int, end_column: int, count: int, kind: int = 0) -> list:
+    """One region as a function record lists it: span, count, file index, expansion, kind."""
+    return [line, column, end_line, end_column, count, 0, 0, kind]
 
 
 def demangler(table: dict[str, str]):
@@ -229,33 +246,38 @@ class TestActionClosureRegions:
 
     VIEW = "/w/Packages/Granita/Client/Viewer/Ui/ReviewCapsule.swift"
 
-    def read(self, tmp_path, functions: list[dict], table: dict[str, str], regions=(4, 9), scope=None):
+    NAMES = {
+        "$sBody": "ClientViewerUi.ReviewCapsule.body.getter : some SwiftUI.View",
+        "$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some",
+        "$sBuilder": "closure #2 () -> SwiftUI.Text in ClientViewerUi.ReviewCapsule.body.getter : some",
+    }
+
+    # A body that ran five times on line 10, beside whatever closure the test adds. The file's
+    # summary is what llvm-cov would report for the records each test lists — one line and one
+    # region per single-line region, added up across records — because the reader checks that
+    # before it subtracts, so a fixture that made the number up would fail on the check rather than
+    # on the claim.
+    def read(self, tmp_path, functions: list[dict], lines=(1, 3), regions=(1, 3), scope=None):
         path = tmp_path / "export.json"
-        path.write_text(json.dumps(export([(self.VIEW, (20, 40), regions)], functions)))
-        return coverage.read_export(
-            path, scope or coverage.VIEWS_SCOPE, demangle=demangler(table)
+        path.write_text(
+            json.dumps(export([(self.VIEW, lines, regions)], [function("$sBody", self.VIEW, [(10, 5)]), *functions]))
         )
+        return coverage.read_export(path, scope or coverage.VIEWS_SCOPE, demangle=demangler(self.NAMES))
 
     def test_given_a_region_only_an_action_closure_holds_when_reading_then_it_leaves_the_count(self, tmp_path):
-        totals = self.read(
-            tmp_path,
-            [function("$sAction", self.VIEW, [(11, 0), (12, 0)])],
-            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
-        )
+        totals = self.read(tmp_path, [function("$sAction", self.VIEW, [(11, 0), (12, 0)])])
 
-        # Two of the nine regions were the closure's alone, and neither was covered.
-        assert totals["regions"] == {"covered": 4, "count": 7}
+        # Two of the three regions were the closure's alone, and neither was covered.
+        assert totals["regions"] == {"covered": 1, "count": 1}
 
     def test_given_a_covered_action_closure_when_reading_then_it_leaves_both_sides(self, tmp_path):
         # The rule is about the kind of code, not about whether a baseline happened to reach it.
         # Subtracting only the uncovered ones would be a rule that flatters every number it touches.
         totals = self.read(
-            tmp_path,
-            [function("$sAction", self.VIEW, [(11, 3)])],
-            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
+            tmp_path, [function("$sAction", self.VIEW, [(11, 3)])], lines=(2, 2), regions=(2, 2)
         )
 
-        assert totals["regions"] == {"covered": 3, "count": 8}
+        assert totals["regions"] == {"covered": 1, "count": 1}
 
     def test_given_a_region_the_body_also_holds_when_reading_then_it_stays(self, tmp_path):
         # llvm-cov maps one span into several records. A span the enclosing body reports too is the
@@ -264,37 +286,26 @@ class TestActionClosureRegions:
             tmp_path,
             [
                 function("$sAction", self.VIEW, [(11, 0), (12, 0)]),
-                function("$sBody", self.VIEW, [(11, 0)]),
+                function("$sBuilder", self.VIEW, [(9, 0), (11, 0)]),
             ],
-            {
-                "$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some",
-                "$sBody": "ClientViewerUi.ReviewCapsule.body.getter : some SwiftUI.View",
-            },
+            lines=(1, 5),
+            regions=(1, 5),
         )
 
-        assert totals["regions"] == {"covered": 4, "count": 8}
+        assert totals["regions"] == {"covered": 1, "count": 5}
 
     def test_given_a_view_returning_closure_when_reading_then_nothing_is_subtracted(self, tmp_path):
-        totals = self.read(
-            tmp_path,
-            [function("$sBuilder", self.VIEW, [(11, 0), (12, 0)])],
-            {"$sBuilder": "closure #2 () -> SwiftUI.Text in ClientViewerUi.ReviewCapsule.body.getter : some"},
-        )
+        totals = self.read(tmp_path, [function("$sBuilder", self.VIEW, [(11, 0), (12, 0)])])
 
-        assert totals["regions"] == {"covered": 4, "count": 9}
+        assert totals["regions"] == {"covered": 1, "count": 3}
 
-    def test_given_an_action_closure_when_reading_then_the_line_counter_is_untouched(self, tmp_path):
-        # **Measured, not assumed.** Over the whole views scope on 4 September 2026 the exclusion
-        # moved 200 of 1695 regions and 7 of 5043 lines, because a closure written inline shares its
-        # source lines with the view expression that contains it. The line counter cannot express
-        # this exclusion; the region counter is the unit that can.
-        totals = self.read(
-            tmp_path,
-            [function("$sAction", self.VIEW, [(11, 0), (12, 0)])],
-            {"$sAction": "closure #1 () -> () in ClientViewerUi.ReviewCapsule.body.getter : some"},
-        )
+    def test_given_records_that_disagree_with_the_summary_when_reading_then_it_refuses(self, tmp_path):
+        # The per-function rule is reproduced from llvm-cov, and a reproduction that drifts must fail
+        # the run rather than quietly subtract from a total it no longer understands.
+        import pytest
 
-        assert totals["lines"] == {"covered": 20, "count": 40}
+        with pytest.raises(RuntimeError, match="ReviewCapsule.swift.*regions"):
+            self.read(tmp_path, [function("$sAction", self.VIEW, [(11, 0), (12, 0)])], regions=(4, 9))
 
     def test_given_the_host_reachable_scope_when_reading_then_action_closures_still_count(self, tmp_path):
         # The exclusion is the Snapshot row's, and only its. A `-> ()` closure in domain or data code
@@ -304,7 +315,7 @@ class TestActionClosureRegions:
         path.write_text(
             json.dumps(
                 export(
-                    [(domain, (20, 40), (4, 9))],
+                    [(domain, (0, 2), (4, 9))],
                     [function("$sAction", domain, [(11, 0), (12, 0)])],
                 )
             )
@@ -336,6 +347,191 @@ class TestActionClosureRegions:
         totals = coverage.read_export(path, coverage.VIEWS_SCOPE, demangle=demangler({}))
 
         assert totals["regions"] == {"covered": 4, "count": 9}
+
+
+class TestFunctionLineCounts:
+    """llvm-cov's own rule for one function's lines, reproduced so a closure's contribution to a
+    file total can be told apart. Every case here is a shape a real export was seen to hold."""
+
+    def test_given_one_covered_region_when_counting_then_every_line_inside_takes_its_count(self):
+        counts = coverage.function_line_counts([region(5, 7, 9, 6, 3)])
+
+        assert counts == {5: 3, 6: 3, 7: 3, 8: 3, 9: 3}
+
+    def test_given_a_nested_region_when_counting_then_its_lines_take_the_innermost_count(self):
+        # A `guard` that never fell through inside a body that ran five times.
+        counts = coverage.function_line_counts([region(10, 1, 16, 1, 5), region(12, 10, 14, 5, 0)])
+
+        assert counts == {10: 5, 11: 5, 12: 5, 13: 0, 14: 0, 15: 5, 16: 5}
+
+    def test_given_a_line_opening_a_skipped_region_when_counting_then_it_is_not_mapped(self):
+        # A `#if` line. The compiler emits a skipped region for it, and llvm-cov leaves a line that
+        # opens one out of the count entirely — so a directive is in no denominator to begin with.
+        counts = coverage.function_line_counts(
+            [region(5, 1, 9, 6, 3), region(7, 13, 7, 27, 0, kind=coverage.SKIPPED_REGION)]
+        )
+
+        assert 7 not in counts
+        assert counts[6] == 3 and counts[8] == 3
+
+    def test_given_lines_inside_a_skipped_region_when_counting_then_they_are_not_mapped(self):
+        # The inactive half of a `#if os(macOS)`: wrapped by a region with no counter.
+        counts = coverage.function_line_counts(
+            [region(5, 1, 12, 6, 3), region(7, 13, 10, 19, 0, kind=coverage.SKIPPED_REGION)]
+        )
+
+        assert set(counts) == {5, 6, 11, 12}
+
+    def test_given_no_code_region_when_counting_then_nothing_is_mapped(self):
+        assert coverage.function_line_counts([region(7, 13, 7, 27, 0, kind=coverage.SKIPPED_REGION)]) == {}
+
+
+class TestActionClosureLines:
+    """The line half of the action-closure exclusion: a closure's own lines, as llvm-cov added them
+    to the file total, leave with its regions."""
+
+    VIEW = "/w/Packages/Granita/Client/Viewer/Ui/DiffFileLines.swift"
+
+    # A body covered five times, spanning lines 10–16, with a closure on lines 12–14 that never ran.
+    # llvm-cov adds the two records up: seven lines from the body, all covered, and three more from
+    # the closure, none covered — ten lines, seven covered, over a seven-line span.
+    BODY = (10, 1, 16, 1, 5)
+    CLOSURE = (12, 10, 14, 5, 0)
+    NAMES = {
+        "$sBody": "ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+        "$sAction": "closure #1 (Phase) -> () in ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+        "$sInnerAction": "closure #1 @Swift.MainActor () -> () in closure #1 (Phase) -> () in "
+        "ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+        "$sBuilder": "closure #2 () -> SwiftUI.Text in ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+        "$sThunk": "implicit closure #1 @Sendable (ClientViewerUi.DiffFileLines) -> @Swift.MainActor @Sendable () -> () "
+        "in ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+        "$sThunkInner": "implicit closure #2 @Swift.MainActor @Sendable () -> () in implicit closure #1 @Sendable "
+        "(ClientViewerUi.DiffFileLines) -> @Swift.MainActor @Sendable () -> () "
+        "in ClientViewerUi.DiffFileLines.body.getter : some SwiftUI.View",
+    }
+
+    def read(self, tmp_path, functions, lines=(7, 10), regions=(1, 2), scope=None):
+        path = tmp_path / "export.json"
+        path.write_text(json.dumps(export([(self.VIEW, lines, regions)], functions)))
+        return coverage.read_export(path, scope or coverage.VIEWS_SCOPE, demangle=demangler(self.NAMES))
+
+    def test_given_an_action_closure_when_reading_then_its_lines_leave_the_line_counter(self, tmp_path):
+        totals = self.read(
+            tmp_path,
+            [spanning("$sBody", self.VIEW, [self.BODY]), spanning("$sAction", self.VIEW, [self.CLOSURE])],
+        )
+
+        # The closure's three lines leave. The body's seven stay, including the line the closure
+        # opens on: a baseline that draws the view puts that line on screen whether or not the
+        # closure ever runs, and the body's record is the one that says so.
+        assert totals["lines"] == {"covered": 7, "count": 7}
+        assert totals["regions"] == {"covered": 1, "count": 1}
+
+    def test_given_a_covered_action_closure_when_reading_then_its_lines_leave_both_sides(self, tmp_path):
+        # The same rule as the regions column: the kind of code decides, not whether a run reached it.
+        totals = self.read(
+            tmp_path,
+            [spanning("$sBody", self.VIEW, [self.BODY]), spanning("$sAction", self.VIEW, [(12, 10, 14, 5, 3)])],
+            lines=(10, 10),
+            regions=(2, 2),
+        )
+
+        assert totals["lines"] == {"covered": 7, "count": 7}
+
+    def test_given_two_closures_opening_at_one_position_when_reading_then_they_count_once(self, tmp_path):
+        # `Button(action: someMethod)` compiles to a curried reference: an implicit closure returning
+        # a closure, and the closure it returns, both opening at the same column. llvm-cov files
+        # records that start at one position under one instantiation group and takes the larger
+        # figure, so the file holds eight lines here, not nine — and the reproduction has to agree
+        # with that before it may subtract anything.
+        totals = self.read(
+            tmp_path,
+            [
+                spanning("$sBody", self.VIEW, [self.BODY]),
+                spanning("$sThunk", self.VIEW, [(12, 10, 12, 30, 4)]),
+                spanning("$sThunkInner", self.VIEW, [(12, 10, 12, 30, 0)]),
+            ],
+            lines=(8, 8),
+            regions=(2, 2),
+        )
+
+        # The outer closure returns a closure rather than `()`, so the group is not an action's and
+        # it stays whole.
+        assert totals["lines"] == {"covered": 8, "count": 8}
+        assert totals["regions"] == {"covered": 2, "count": 2}
+
+    def test_given_a_group_of_action_closures_when_reading_then_it_leaves_once(self, tmp_path):
+        # `.task { await model.load() }`: an action closure holding the main-actor closure it hops
+        # to, at one position. One group, so it contributed three lines and leaves three.
+        totals = self.read(
+            tmp_path,
+            [
+                spanning("$sBody", self.VIEW, [self.BODY]),
+                spanning("$sAction", self.VIEW, [(12, 10, 14, 5, 3)]),
+                spanning("$sInnerAction", self.VIEW, [self.CLOSURE]),
+            ],
+            lines=(10, 10),
+            regions=(2, 2),
+        )
+
+        assert totals["lines"] == {"covered": 7, "count": 7}
+        assert totals["regions"] == {"covered": 1, "count": 1}
+
+    def test_given_a_closure_span_the_body_also_reports_when_reading_then_its_lines_stay(self, tmp_path):
+        # The body's own record now reads lines 13 and 14 as unrun, so the file holds ten lines with
+        # five covered — and none of them leave, because the span is the body's as much as the
+        # closure's.
+        totals = self.read(
+            tmp_path,
+            [
+                spanning("$sBody", self.VIEW, [self.BODY, self.CLOSURE]),
+                spanning("$sAction", self.VIEW, [self.CLOSURE]),
+            ],
+            lines=(5, 10),
+            regions=(1, 3),
+        )
+
+        assert totals["lines"] == {"covered": 5, "count": 10}
+        assert totals["regions"] == {"covered": 1, "count": 3}
+
+    def test_given_a_view_returning_closure_when_reading_then_its_lines_stay(self, tmp_path):
+        # A ViewBuilder closure that never ran is drawing code a baseline did not draw — untested,
+        # and exactly what this row is for.
+        totals = self.read(
+            tmp_path,
+            [spanning("$sBody", self.VIEW, [self.BODY]), spanning("$sBuilder", self.VIEW, [self.CLOSURE])],
+        )
+
+        assert totals["lines"] == {"covered": 7, "count": 10}
+        assert totals["regions"] == {"covered": 1, "count": 2}
+
+    def test_given_the_host_reachable_scope_when_reading_then_no_line_leaves(self, tmp_path):
+        domain = "/w/Packages/Granita/Core/Diff/Domain/Parser.swift"
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [(domain, (7, 10), (1, 2))],
+                    [spanning("$sParse", domain, [self.BODY]), spanning("$sAction", domain, [self.CLOSURE])],
+                )
+            )
+        )
+
+        totals = coverage.read_export(
+            path,
+            coverage.HOST_REACHABLE_SCOPE,
+            demangle=demangler({"$sAction": "closure #1 () -> () in CoreDiffDomain.Parser.parse() -> ()"}),
+        )
+
+        assert totals["lines"] == {"covered": 7, "count": 10}
+
+    def test_given_records_that_disagree_with_the_summary_when_reading_then_it_refuses(self, tmp_path):
+        # The line rule is reproduced from llvm-cov, and a reproduction that drifts must fail the
+        # run rather than quietly subtract from a total it no longer understands.
+        import pytest
+
+        with pytest.raises(RuntimeError, match="DiffFileLines.swift.*lines"):
+            self.read(tmp_path, [spanning("$sBody", self.VIEW, [self.BODY])], lines=(20, 40), regions=(1, 1))
 
 
 class TestCollect:
@@ -641,13 +837,12 @@ class TestRender:
 
         assert "view layers alone" in text
 
-    def test_given_the_regions_column_excludes_action_closures_when_rendering_then_the_report_says_so(self, tmp_path):
+    def test_given_both_columns_exclude_action_closures_when_rendering_then_the_report_says_so(self, tmp_path):
         # A denominator that leaves something out has to say what, in the report itself. The scope
         # string un-judges the row for a run, but nobody reading the table sees the scope string.
         text = self.render(tmp_path, summary({"snapshot": entry((8, 10), (4, 5), scope=coverage.VIEWS_SCOPE)}), None)
 
-        assert "action closures" in text
-        assert "its lines stay counted" in text
+        assert "both its columns leave out the action closures" in text
 
     def test_given_no_module_breakdown_is_wanted_when_rendering_then_none_is_written(self, tmp_path):
         # Coverage is reported per test kind, not per module: the question worth asking is which

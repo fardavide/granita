@@ -40,7 +40,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack {
-            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
@@ -78,7 +78,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([chosen]))) {
-            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
@@ -114,7 +114,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([chosen]))) {
-                WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+                WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },
@@ -148,7 +148,7 @@ struct WorktreeSplitScreenSnapshotTests {
         // when - then
         assertScreenSnapshot(
             NavigationStack(path: .constant(NavigationPath([removed]))) {
-            WorktreeSplitScreen(model: model, onPairAgain: {}) { _, displayName, _ in
+            WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
                     WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
                 }
             },

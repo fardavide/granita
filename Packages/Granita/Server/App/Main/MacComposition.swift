@@ -107,6 +107,12 @@ final class MacComposition {
             requiresAuthentication: true
         )
 
+        // `SPEC.md` §9's startup housekeeping: drop the marks and reviews of worktrees an agent has
+        // since deleted, and cap the marks. Detached here rather than awaited, unlike the CLI's —
+        // this runs on the way to drawing a menu bar, and a git process per enabled project is not
+        // something a reader should watch an icon wait for.
+        Task { await dependencies.registry.pruneStore() }
+
         // The Mac woke, or someone pressed Restart. One stream, because what a rebind *does* is
         // identical either way and the teardown ordering is delicate enough to want one owner.
         let rebinds = Rebinds(wakes: WorkspaceWakeNotifications())

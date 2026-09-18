@@ -3,6 +3,7 @@ import Testing
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerPresentation
 
@@ -1206,6 +1207,7 @@ private struct Scenario {
         // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
         sut = ClientViewerModel(
             worktree: aWorktree,
+            macName: "MacBook Pro",
             repository: repository,
             commentStore: FakeReviewCommentStore(),
             pasteboard: FakeReviewPasteboard(),

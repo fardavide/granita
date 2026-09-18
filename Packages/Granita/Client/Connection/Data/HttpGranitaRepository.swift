@@ -3,6 +3,7 @@ import Foundation
 import ClientConnectionDomain
 import CoreApiDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// The read API of one Mac, over a session pinned to that Mac's key.
 ///
@@ -128,5 +129,41 @@ public struct HttpGranitaRepository: GranitaRepository {
             "/v1/worktrees/\(worktree.rawValue)/files/\(file.rawValue)/viewed",
             body: ViewedRequest(viewed: viewed, contentHash: contentHash)
         )
+    }
+
+    public func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] {
+        try await client.get(
+            "/v1/worktrees/\(worktree.rawValue)/review",
+            returning: ReviewRequest.self
+        ).comments
+    }
+
+    public func putReview(
+        _ comments: [ReviewComment],
+        in worktree: WorktreeID
+    ) async throws(ApiFailure) {
+        try await client.put(
+            "/v1/worktrees/\(worktree.rawValue)/review",
+            body: ReviewRequest(comments: comments)
+        )
+    }
+
+    public func reviewSettings() async throws(ApiFailure) -> ReviewSettings {
+        let response = try await client.get("/v1/review-settings", returning: ReviewSettingsResponse.self)
+        return ReviewSettings(openingLine: response.openingLine, identifier: response.identifier)
+    }
+
+    public func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings {
+        let response = try await client.patch(
+            "/v1/review-settings",
+            body: ReviewSettingsPatchRequest(
+                openingLine: patch.openingLine,
+                identifier: patch.identifier
+            ),
+            returning: ReviewSettingsResponse.self
+        )
+        return ReviewSettings(openingLine: response.openingLine, identifier: response.identifier)
     }
 }

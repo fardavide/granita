@@ -235,19 +235,37 @@ UNREACHABLE_FILES = {
 # can express it, because an action closure shares a file, and usually a line, with the view it sits
 # in.
 #
-# **It is the regions column alone, and that is a measurement rather than a shortcut.** Over the
-# whole views scope on 4 September 2026 the exclusion took 200 of 1695 regions out of the
-# denominator and 7 of 5043 lines: a closure written inline is spanned by the view expression that
-# contains it, so its lines are the body's lines and removing them would remove the body. Lines are
-# therefore untouched and still judged exactly as before — only the region number changes basis.
-#
 # **What it costs, stated rather than discovered later.** View code is judged by this row and no
 # other, so an action closure's body is now judged by nothing. That is bounded by an architecture
 # rule the project already has and review already enforces: a screen's action closure is one call
 # into a model, and the model is judged by the Unit row. A closure that grows a branch has outgrown a
 # view, and moving it is the fix rather than counting it here.
+#
+# The seventh rename takes the same closures out of the lines column too, and corrects the sixth's
+# reasoning. The sixth left lines alone on the grounds that an inline closure "shares its lines with
+# the view expression that contains it", measured as 7 of 5043 lines that a segment-based reading
+# found to be a closure's alone. That reading modelled the file total as a count over the source,
+# and it is not one: llvm-cov computes lines per function record and adds the records up, so the
+# lines a closure spans are in the total once for the body and once more for the closure, and the
+# closure's share is a separable whole. The rule that replaces it — the Snapshot row judges only
+# what a render can execute, and a line is in its denominator when it is code and carries at least
+# one region the regions column already counts — is one rule for both counters rather than one per
+# column, and `action_closures` reproduces llvm-cov's per-record arithmetic for every scoped file
+# and refuses to subtract if the two disagree.
+#
+# It raises the number, and by more than any rename before it: measured on 18 September 2026 over
+# the same export, the lines column went from 11070 of 11428 to 10986 of 11072, 96.9% to 99.2%,
+# while regions did not move. The bar is the one above and not the arithmetic: what left was 356
+# lines of `Button` actions, `onChange` handlers and `.task` bodies, which a rendered baseline is
+# unable to execute by construction. 84 of them were counted covered, because a `.task`, an
+# `onAppear` or a geometry callback fires during a render — and fifteen of those are the one known
+# imprecision of the predicate: an `enumerateAttribute` block in the highlighter returns `()` and is
+# a computation, not an action, and a rule that reads the return type cannot tell the two apart. It
+# has been outside the regions column on the same grounds since the sixth rename, and it lowers the
+# number rather than raising it. That the regions column did not move is the check that the closures
+# leaving are exactly the ones already out of it.
 DEFAULT_SCOPE = "package"
-VIEWS_SCOPE = "views-and-screens-no-action-closures"
+VIEWS_SCOPE = "views-and-screens-no-action-closures-per-record"
 HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-no-camera-serial"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
@@ -388,17 +406,34 @@ def demangle(names: list[str]) -> list[str]:
     return demangled
 
 
-def action_closure_regions(data: dict, scoped: set[str], demangle) -> dict[tuple, int]:
-    """The region spans that occur in an action closure and in nothing else, and how often each ran.
+def action_closures(data: dict, scoped: set[str], demangle) -> dict[str, dict[str, int]]:
+    """What the action closures in scope contribute to the two counters, as one `covered`/`count`
+    pair per counter to take back out of the file summaries.
 
-    **A span the enclosing body also reports stays.** llvm-cov maps one piece of source into several
-    records, so a region reached through a closure is frequently the body's region as well; taking it
-    out on the closure's word alone would remove drawing code from the denominator.
+    **A file's summary is a sum over its function records, not a count over its source.** llvm-cov
+    computes lines and regions per function, from that function's regions alone, and adds the
+    functions up — so a closure's lines are counted once for the body that spans them and once more
+    for the closure, and `PairingEntryScreen` reports 72 lines over a 51-line span. Records that
+    start at the same source position form one *instantiation group*, and a group contributes the
+    largest of its members' figures rather than their sum: a curried `self.method` reference emits
+    two closures at one column, and llvm-cov counts that line once. A closure's contribution is
+    therefore a group's, separable whole, and it leaves as one.
+
+    **A span the enclosing body also reports keeps its group.** llvm-cov maps one piece of source
+    into several records, so a region reached through a closure is frequently the body's region as
+    well; taking it out on the closure's word alone would remove drawing code from the denominator.
+    A group leaves only when every member is an action closure and every span it holds is in no
+    other kind of record.
+
+    The reproduction of llvm-cov's rule is checked against every scoped file's reported totals, both
+    counters, before anything is subtracted; a drift fails the run rather than subtracting from a
+    number this script no longer understands.
 
     Only records that touch a file in scope are demangled. A real export carries around twenty
     thousand of them and the views scope is some forty files, so the filter is what keeps this one
     short subprocess rather than a pass over the whole binary.
     """
+    excluded = {counter: empty() for counter in COUNTERS}
     records = {}
     for record in data.get("functions", []):
         if record["name"] in records:
@@ -406,26 +441,98 @@ def action_closure_regions(data: dict, scoped: set[str], demangle) -> dict[tuple
         if any(name in scoped for name in record["filenames"]):
             records[record["name"]] = record
     if not records:
-        return {}
+        return excluded
 
     names = list(records)
     classified = dict(zip(names, demangle(names)))
-    alone, shared = {}, set()
+    alone, shared = set(), set()
+    groups = {}  # (filename, start line, start column) -> [(is_action, spans, {counter: figures})]
     for name, record in records.items():
         is_action = is_action_closure(classified[name])
+        by_file = {}
         for region in record["regions"]:
-            start_line, start_column, end_line, end_column, count, file_index = region[:6]
-            if region[7] != CODE_REGION:
-                continue
-            filename = record["filenames"][file_index]
-            if filename not in scoped:
-                continue
-            span = (filename, start_line, start_column, end_line, end_column)
-            if is_action:
-                alone[span] = max(alone.get(span, 0), count)
-            else:
-                shared.add(span)
-    return {span: count for span, count in alone.items() if span not in shared}
+            filename = record["filenames"][region[5]]
+            if filename in scoped:
+                by_file.setdefault(filename, []).append(region)
+        for filename, regions in by_file.items():
+            spans = {}
+            for start_line, start_column, end_line, end_column, count, _, _, kind in regions:
+                if kind != CODE_REGION:
+                    continue
+                span = (filename, start_line, start_column, end_line, end_column)
+                (alone if is_action else shared).add(span)
+                spans[span] = count
+            lines = function_line_counts(regions)
+            figures = {
+                "lines": {"count": len(lines), "covered": sum(1 for count in lines.values() if count)},
+                "regions": {"count": len(spans), "covered": sum(1 for count in spans.values() if count)},
+            }
+            key = (filename, regions[0][0], regions[0][1])
+            groups.setdefault(key, []).append((is_action, spans, figures))
+
+    alone -= shared
+    reproduced = {}
+    for (filename, _, _), members in groups.items():
+        total = reproduced.setdefault(filename, {counter: empty() for counter in COUNTERS})
+        leaves = all(is_action and spans and spans.keys() <= alone for is_action, spans, _ in members)
+        for counter in COUNTERS:
+            for key in ("count", "covered"):
+                figure = max(figures[counter][key] for _, _, figures in members)
+                total[counter][key] += figure
+                if leaves:
+                    excluded[counter][key] += figure
+
+    for entry in data["files"]:
+        if entry["filename"] not in reproduced:
+            continue
+        for counter in COUNTERS:
+            measured = {key: entry["summary"][counter][key] for key in ("covered", "count")}
+            if reproduced[entry["filename"]][counter] != measured:
+                mine = reproduced[entry["filename"]][counter]
+                raise RuntimeError(
+                    f"{entry['filename']}: llvm-cov reports {measured['covered']}/{measured['count']} "
+                    f"{counter} and this script reproduces {mine['covered']}/{mine['count']}."
+                )
+    return excluded
+
+
+# The kind of region that a `#if` leaves behind: no counter, and a line opening one is unmapped.
+SKIPPED_REGION = 2
+
+
+def function_line_counts(regions: list[list]) -> dict[int, int]:
+    """llvm-cov's own rule for one function's lines, reproduced: the execution count of every line
+    the function maps, from its regions in one file.
+
+    A line is mapped when a code region wraps it or opens on it, and never when the first thing on
+    it is a skipped region — which is what a `#if` line is, so a directive is in no denominator to
+    begin with. Its count is the larger of the innermost wrapping region's and any region opening on
+    it, which is why the line a closure opens on reads covered in the body that contains it while the
+    closure's own record reads it as the closure ran.
+    """
+    code = [region for region in regions if region[7] == CODE_REGION]
+    skipped = [region for region in regions if region[7] == SKIPPED_REGION]
+    if not code:
+        return {}
+    counts = {}
+    first = min(region[0] for region in code)
+    last = max(region[2] for region in code)
+    for line in range(first, last + 1):
+        opening = [region for region in code if region[0] == line]
+        columns = [region[1] for region in opening] + [region[3] for region in code if region[2] == line]
+        skipping = [region[1] for region in skipped if region[0] == line]
+        if skipping and (not columns or min(skipping) <= min(columns)):
+            continue
+        wrapping = [region for region in code + skipped if region[0] < line <= region[2]]
+        innermost = max(wrapping, key=lambda r: (r[0], r[1], -r[2], -r[3])) if wrapping else None
+        wrapped = innermost is not None and innermost[7] == CODE_REGION
+        if not wrapped and not opening:
+            continue
+        count = innermost[4] if wrapped else 0
+        for region in opening:
+            count = max(count, region[4])
+        counts[line] = count
+    return counts
 
 
 def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE, demangle=demangle) -> dict:
@@ -434,10 +541,10 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE, demangle=demangl
     SwiftPM writes this format itself and `xcrun llvm-cov export` writes the same one, so a host
     `swift test` pass and a simulator `xcodebuild test` pass fold in through the same code.
 
-    The views scope then takes its action closures back out of the region counter. It is a
-    subtraction from the file summaries rather than a total recomputed from the function records —
-    both because the summary is what every other row is taken from, and because an export carrying no
-    function records must subtract nothing rather than fall back to zero.
+    The views scope then takes its action closures back out of both counters. It is a subtraction
+    from the file summaries rather than a total recomputed from the function records — both because
+    the summary is what every other row is taken from, and because an export carrying no function
+    records must subtract nothing rather than fall back to zero.
     """
     export = json.loads(path.read_text())
     data = export["data"][0]
@@ -465,13 +572,12 @@ def read_export(path: pathlib.Path, scope: str = DEFAULT_SCOPE, demangle=demangl
             totals[counter]["count"] += measured["count"]
 
     if scope == VIEWS_SCOPE:
-        for count in action_closure_regions(data, scoped, demangle).values():
-            totals["regions"]["count"] -= 1
-            # Covered or not, it leaves: the rule is about the kind of code, not about whether a
-            # baseline happened to reach it. Dropping only the uncovered ones would be a rule that
-            # flatters every number it touches.
-            if count:
-                totals["regions"]["covered"] -= 1
+        # Covered or not, it leaves: the rule is about the kind of code, not about whether a
+        # baseline happened to reach it. Dropping only the uncovered ones would be a rule that
+        # flatters every number it touches.
+        for counter, excluded in action_closures(data, scoped, demangle).items():
+            totals[counter]["count"] -= excluded["count"]
+            totals[counter]["covered"] -= excluded["covered"]
     return totals
 
 
@@ -705,9 +811,8 @@ def render(args: argparse.Namespace) -> int:
         "total. Regions rather than branches because swiftc emits no branch coverage; a region is "
         "an `if`, a `guard`, a `case`, a ternary or a closure body. The Snapshot row is measured "
         "over the view layers alone, because a rendered view executes no repository and no parser, "
-        "and its regions column leaves out the action closures inside them — a closure returning "
-        "`()` draws nothing, so a baseline cannot reach it; its lines stay counted, because such a "
-        "closure shares them with the view it sits in. The Unit and All rows are measured over what "
+        "and both its columns leave out the action closures inside them — a closure returning "
+        "`()` draws nothing, so a baseline cannot reach it. The Unit and All rows are measured over what "
         "a host test can reach, which excludes view bodies and the composition roots. Kinds are "
         "directories; see the `swift-testing` skill.</sub>",
     ]

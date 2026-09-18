@@ -5,6 +5,7 @@ import CoreBrandingDomain
 import CoreDiagnosticsDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerStoreDomain
@@ -149,6 +150,21 @@ public final class ServerMacModel {
     /// boundary.
     public private(set) var storedProjectCount = 0
     public private(set) var storedDeviceCount = 0
+
+    /// The review's two settings as this Mac holds them, and what the document is carrying.
+    ///
+    /// **The counts are the only thing this window says about the reviews themselves**, and they say
+    /// it as two numbers rather than a list: a review is a reader's scratch notes on one worktree,
+    /// not something to browse from here.
+    public private(set) var reviewSettings: ReviewSettings = .unset
+    public private(set) var storedReviewCount = 0
+    public private(set) var storedReviewCommentCount = 0
+
+    /// The field's text, which is the Mac's answer from the moment editing ends.
+    ///
+    /// Separate from `reviewSettings` for the reason the phone's is: a text field's value is not
+    /// written anywhere until then, and committing on focus loss is what macOS readers expect.
+    public var reviewOpeningLineDraft = ReviewSettings.defaultOpeningLine
 
     /// Where the document lives, for the row that reveals it. A fact rather than a lookup: the
     /// composition root already had to know it in order to open the store.
@@ -606,6 +622,56 @@ public final class ServerMacModel {
         let state = await store.state()
         storedProjectCount = state.projects.count
         storedDeviceCount = state.devices.count
+    }
+
+    public func loadReviewSettings() async {
+        let state = await store.state()
+        reviewSettings = state.reviewSettings
+        reviewOpeningLineDraft = state.reviewSettings.openingLine ?? ReviewSettings.defaultOpeningLine
+        storedReviewCount = state.reviews.count
+        storedReviewCommentCount = state.reviews.values.reduce(0) { $0 + $1.count }
+    }
+
+    public func commitReviewOpeningLine() async {
+        // Cleared to nothing is a real answer — a review that begins at its first comment — and it
+        // is not the same as never having chosen, which is what Reset restores.
+        await writeReviewSettings(
+            ReviewSettings(
+                openingLine: reviewOpeningLineDraft,
+                identifier: reviewSettings.identifier
+            )
+        )
+    }
+
+    public func chooseReviewIdentifier(_ identifier: ReviewIdentifier) async {
+        await writeReviewSettings(
+            ReviewSettings(openingLine: reviewSettings.openingLine, identifier: identifier)
+        )
+    }
+
+    public func resetReviewOpeningLine() async {
+        reviewOpeningLineDraft = ReviewSettings.defaultOpeningLine
+        await writeReviewSettings(
+            ReviewSettings(openingLine: nil, identifier: reviewSettings.identifier)
+        )
+    }
+
+    // MARK: -
+
+    /// A refused write leaves the pane showing what the store still holds.
+    ///
+    /// The same shape `loadStoredCounts` and the reset use: this window writes to a document another
+    /// process may be holding, and the honest answer to that is the value that is actually stored
+    /// rather than the one this pane would like to be.
+    private func writeReviewSettings(_ settings: ReviewSettings) async {
+        let failure = await write { () async throws(StoreError) in
+            try await store.setReviewSettings(settings)
+        }
+        guard failure == nil else {
+            await loadReviewSettings()
+            return
+        }
+        reviewSettings = settings
     }
 
     /// Forgets everything, at the reader's request and after a confirmation that counted it.

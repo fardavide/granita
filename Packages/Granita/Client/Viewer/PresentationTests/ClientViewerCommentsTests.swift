@@ -3,6 +3,7 @@ import Testing
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerPresentation
 
@@ -839,6 +840,7 @@ private struct Scenario {
         pasteboard = FakeReviewPasteboard()
         sut = ClientViewerModel(
             worktree: aWorktree,
+            macName: "MacBook Pro",
             repository: FakeGranitaRepository(
                 changeSet: .success(changes),
                 hunks: Dictionary(uniqueKeysWithValues: files.map { ($0.id, [aHunk]) }),

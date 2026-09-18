@@ -1,6 +1,7 @@
 import ClientViewerDomain
 import ClientViewerUi
 import CoreDiffDomain
+import CoreReviewDomain
 import SwiftUI
 import Testing
 
@@ -26,6 +27,7 @@ struct ReviewSheetViewSnapshotTests {
                 note: .constant(subject.note),
                 hasSkippedNote: subject.hasSkippedNote,
                 hasCopied: subject.hasCopied,
+                caption: subject.caption,
                 document: subject.document,
                 showsDocument: subject.showsDocument,
                 onShowDocument: { _ in },
@@ -52,6 +54,11 @@ struct ReviewCase: Sendable, CustomTestStringConvertible {
     var hasCopied = false
     var presentation: ReviewSheetView.Presentation = .sheet
     var showsDocument = false
+
+    /// Absent on every state that predates the Mac holding a review, which is how the shipped
+    /// baselines stay byte-identical: the good state draws no sentence at all.
+    var caption: ReviewSyncCaption?
+
     let document: String
 
     var testDescription: String { name }
@@ -121,6 +128,66 @@ struct ReviewCase: Sendable, CustomTestStringConvertible {
             comments: [aReview[0]],
             note: "",
             showsDocument: true,
+            document: aDocument
+        ),
+
+        // MARK: - Where the review is, which is said in one place and only here
+
+        // **Written while the laptop was shut.** The count is the assertion: two of four and four of
+        // four are different decisions at the moment the reader is about to paste, and a word would
+        // collapse them. The amber dot is the same figure the stale comment row uses.
+        ReviewCase(
+            name: "some-of-it-unsent",
+            comments: aReview,
+            note: "",
+            caption: ReviewSyncCaption(
+                sentence: "2 of 4 comments are only on this phone.",
+                reason: nil,
+                isUnsettled: true
+            ),
+            document: aDocument
+        ),
+
+        // **The push is running and there is no dot**, because the amber was reporting a
+        // disagreement and there is no longer one to report. Nothing asks the reader to wait.
+        ReviewCase(
+            name: "reconciling",
+            comments: aReview,
+            note: "",
+            caption: ReviewSyncCaption(
+                sentence: "Sending to MacBook Pro…",
+                reason: nil,
+                isUnsettled: false
+            ),
+            document: aDocument
+        ),
+
+        // **The Mac refused, and the copy button is untouched by it.** That is the state this
+        // baseline exists to hold: a review that was never pushed and gets pasted anyway is a
+        // complete review in the reader's hand, so nothing here is disabled and nothing is gated.
+        ReviewCase(
+            name: "the-mac-refused",
+            comments: aReview,
+            note: "",
+            caption: ReviewSyncCaption(
+                sentence: "MacBook Pro cannot store this review.",
+                reason: "the document on disk could not be read, so it was left as it is",
+                isUnsettled: true
+            ),
+            document: aDocument
+        ),
+
+        // **A Mac too old to hold a review, which is not a failure.** No dot, no small print: the
+        // sentence states where the review lives rather than reporting that something went wrong.
+        ReviewCase(
+            name: "kept-on-this-phone",
+            comments: aReview,
+            note: "",
+            caption: ReviewSyncCaption(
+                sentence: "This review is kept on this phone.",
+                reason: nil,
+                isUnsettled: false
+            ),
             document: aDocument
         )
     ]

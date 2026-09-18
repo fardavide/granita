@@ -56,6 +56,15 @@ public enum ApiFailure: Error, Hashable, Sendable {
     /// behind and has to be updated.
     case unsupportedApiVersion
 
+    /// That Mac has no such route, which means it predates the feature asking for it.
+    ///
+    /// **A deliberate departure from `SPEC.md` §8**, which says a route 426s on a newer client.
+    /// Applied to the review's routes that would make a newer phone refuse a Mac that merely
+    /// predates them, costing the reader every screen that already worked in order to protect two
+    /// settings. So the caller degrades instead: it keeps using its own values and says the Mac is
+    /// too old to hold them. Nothing is queued, because the addressee cannot receive it.
+    case routeNotServed
+
     /// This app could not build the request, so nothing reached the Mac and retrying will not help.
     ///
     /// A bug here rather than anything about the network, and the diagnostic is for whoever fixes
@@ -131,6 +140,9 @@ public enum ApiFailure: Error, Hashable, Sendable {
         switch self {
         case .unauthorized, .pairingExpired, .rateLimited, .projectNotVisible: nil
         case .worktreeGone, .fileGone, .staleContentHash, .tooLarge, .unsupportedApiVersion: nil
+        // An answer rather than a fault: the screen's own sentence says the Mac is too old, and a
+        // status code underneath it would be noise in a monospaced font.
+        case .routeNotServed: nil
         // Nothing to print, because nothing is meant to be on screen: a cancelled read leaves the
         // screen the reader was already looking at.
         case .cancelled: nil

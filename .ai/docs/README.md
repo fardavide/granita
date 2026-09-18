@@ -10,6 +10,7 @@ choice was made belongs here.
 | [`decisions.md`](decisions.md) | Why each choice was made and what it beat — including every deliberate departure from `SPEC.md` |
 | [`design.md`](design.md) | The client's four screens, the control each one must use, and every call with the alternative it beat — the design sheet the round trip writes into |
 | [`design-mac.md`](design-mac.md) | The same for the Mac's seven surfaces: the status item, the window, and the five Settings tabs |
+| [`design-review-settings.md`](design-review-settings.md) | The phone's Settings sheet, the sync caption, and the Mac's sixth tab — the calls from the 17 September 2026 return, not yet built |
 | [`status.md`](status.md) | Milestones, what exists, what Davide still owns |
 | [`verification.md`](verification.md) | What the spec's verify-first pass found against the real environment, with numbers |
 | [`design/`](design/) | Frames as Claude Design returned them; the calls they carry live in prose alongside |

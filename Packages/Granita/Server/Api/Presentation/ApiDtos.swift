@@ -15,3 +15,5 @@ extension WorktreeChanges: ResponseEncodable {}
 extension FileLines: ResponseEncodable {}
 extension HealthResponse: ResponseEncodable {}
 extension PairResponse: ResponseEncodable {}
+extension ReviewRequest: ResponseEncodable {}
+extension ReviewSettingsResponse: ResponseEncodable {}

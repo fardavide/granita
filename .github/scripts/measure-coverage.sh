@@ -77,6 +77,14 @@ COVERAGE_SETTINGS=(
     CLANG_COVERAGE_MAPPING=YES
 )
 
+# **Empty on purpose: these two passes are not `-quiet`.** That flag makes a working xcodebuild and a
+# blocked one produce identical output — nothing at all — so the only way to tell them apart is to go
+# looking for the test host process by hand. Each pass here renders hundreds of screens on a
+# serialized simulator and takes over ten minutes; with no progress a healthy run is indistinguishable
+# from one that has stopped, which is how a clipboard read that blocked forever went undiagnosed for
+# hours. Set it back on a runner whose log size is the problem: `XCODE_QUIET=-quiet`.
+XCODE_QUIET="${XCODE_QUIET:-}"
+
 # ---------------------------------------------------------------------------------------------
 # unit — the package suite, on the host
 # ---------------------------------------------------------------------------------------------
@@ -162,7 +170,7 @@ xcodebuild test \
     -only-testing:GranitaMobileSnapshotTests \
     "${COVERAGE_SETTINGS[@]}" \
     CODE_SIGNING_ALLOWED=NO \
-    -quiet || echo "::warning::The snapshot pass failed; measuring whatever it reached."
+    ${XCODE_QUIET} || echo "::warning::The snapshot pass failed; measuring whatever it reached."
 
 SNAPSHOT_PROFILE="$(find "$DERIVED" -name Coverage.profdata | head -1)"
 if [ -z "$SNAPSHOT_PROFILE" ]; then
@@ -213,7 +221,7 @@ xcodebuild test \
     -only-testing:GranitaMacSnapshotTests \
     "${COVERAGE_SETTINGS[@]}" \
     CODE_SIGNING_ALLOWED=NO \
-    -quiet || echo "::warning::The macOS snapshot pass failed; measuring whatever it reached."
+    ${XCODE_QUIET} || echo "::warning::The macOS snapshot pass failed; measuring whatever it reached."
 
 MAC_SNAPSHOT_PROFILE="$(find "$MAC_DERIVED" -name Coverage.profdata | head -1)"
 if [ -z "$MAC_SNAPSHOT_PROFILE" ]; then

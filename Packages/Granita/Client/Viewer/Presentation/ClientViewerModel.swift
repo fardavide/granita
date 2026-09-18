@@ -4,6 +4,7 @@ import SwiftUI
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// What the phone knows about one worktree's changes, and which of them it has fetched.
 ///
@@ -302,6 +303,7 @@ public final class ClientViewerModel {
 
     public init(
         worktree: WorktreeID,
+        macName: String,
         repository: any GranitaRepository,
         commentStore: any ReviewCommentStore,
         pasteboard: any ReviewPasteboard,
@@ -313,6 +315,7 @@ public final class ClientViewerModel {
     ) {
         self.refreshAnnouncementDelay = refreshAnnouncementDelay
         self.worktree = worktree
+        self.macName = macName
         self.repository = repository
         self.commentStore = commentStore
         self.pasteboard = pasteboard
@@ -924,18 +927,41 @@ public final class ClientViewerModel {
     ///
     /// `note` absent is the *Skip* the flow offers, and the document leaves nothing standing in for
     /// it.
+    /// What this phone last read from the Mac, or what it is queuing to send there.
+    ///
+    /// **Held rather than fetched at export time.** The copy is the one act in this feature that must
+    /// never wait for a network: a review that was never pushed and gets pasted anyway is a complete
+    /// review in the reader's hand, so the document is built from whatever this device currently
+    /// believes the settings are.
+    public private(set) var reviewSettings: ReviewSettings = .unset
+
+    /// The Mac this worktree is being read from, for the one sentence that names it.
+    ///
+    /// Held rather than fetched: the sentence is about which of two copies the reader is holding, so
+    /// it has to be sayable while that Mac is exactly what cannot be reached.
+    public let macName: String
+
+    /// How much of this review the Mac has, which is drawn in one place and only above the copy.
+    public private(set) var reviewSync: ReviewSync = .settled
+
+    /// Reads what the Mac holds, merges it with what this phone wrote, and offers the result back.
+    ///
+    /// Called when the review opens rather than continuously: a review is read at the moment the
+    /// reader goes looking for it, and polling for a second device's comments would put a network on
+    /// a screen whose subject is code.
+    public func syncReview() async {
+        reviewSync = .reconciling
+        comments = await commentStore.reconcile(in: worktree)
+        reviewSync = await commentStore.push(comments, in: worktree)
+    }
+
+    public func loadReviewSettings() async {
+        guard let settings = try? await repository.reviewSettings() else { return }
+        reviewSettings = settings
+    }
+
     public func feedback(note: String?) -> String {
-        ReviewFeedback.document(
-            note: note,
-            // **Stated here, and it is the setting that is not built yet rather than a preference
-            // this screen owns.** Davide asked for the style to be the reader's choice, saved
-            // alongside the review's opening text; both live on a Settings surface the phone does not
-            // have, and building one is its own slice. Letters until then, because the instruction he
-            // wrote the feature for names them — *"give me a reply for each one of them using the
-            // identifier letter"*. One line to change when the setting arrives.
-            identifiers: .letters,
-            comments: reviewed
-        )
+        ReviewFeedback.document(note: note, settings: reviewSettings, comments: reviewed)
     }
 
     /// One batch, with the answers spliced back into the files that asked for them.

@@ -91,7 +91,7 @@ public struct WorktreeDiffScreen: View {
                 presented(sheet)
             }
             .alert(
-                "Your Mac would not make that change",
+                "Your Mac cannot make that change",
                 isPresented: Binding(
                     get: { model.viewedFailure != nil },
                     set: { if $0 == false { model.dismissViewedFailure() } }
@@ -107,7 +107,7 @@ public struct WorktreeDiffScreen: View {
             // are different promises: a mark that moved and came back needs the reader told it came
             // back, and an expansion that was refused left the hunk exactly as it was.
             .alert(
-                "Your Mac would not send those lines",
+                "Your Mac cannot send those lines",
                 isPresented: Binding(
                     get: { model.expansionFailure != nil },
                     set: { if $0 == false { model.dismissExpansionFailure() } }
@@ -442,6 +442,7 @@ public struct WorktreeDiffScreen: View {
             note: $model.noteDraft,
             hasSkippedNote: model.hasSkippedNote,
             hasCopied: model.hasCopied,
+            caption: ReviewSyncCopy.caption(for: model.reviewSync, macName: model.macName),
             document: model.feedback(note: model.noteDraft),
             showsDocument: model.isShowingDocument,
             onShowDocument: { model.showDocument($0) },
