@@ -60,9 +60,14 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
     static let all: [SettingsCase] = [
         // A line the reader changed at some point. **Reset is present**, and its presence is half of
         // how the default is told apart — the other half being the footer sentence.
+        //
+        // **Every line here fits one row of an iPhone**, on purpose: the field grows vertically, and
+        // the width a vertical field wraps against is not settled on its first layout. A sentence that
+        // wrapped after "in" here wrapped after "this" on the CI runner, three renders out of four,
+        // and a wrap is the one thing this screen has that a render can land on either side of.
         SettingsCase(
             name: "a-line-of-their-own",
-            openingLine: "Review the uncommitted work in this worktree.",
+            openingLine: "Review the work in this worktree.",
             standing: .settled
         ),
 
@@ -80,7 +85,7 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
         // confirmation afterwards: a LAN write that succeeds in 40ms should not leave a mark.
         SettingsCase(
             name: "saving",
-            openingLine: "Review the uncommitted work in this worktree.",
+            openingLine: "Review the work in this worktree.",
             standing: .saving
         ),
 
