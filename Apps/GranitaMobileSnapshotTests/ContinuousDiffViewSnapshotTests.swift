@@ -45,6 +45,8 @@ struct ContinuousDiffViewSnapshotTests {
                 onOpenImage: { _, _ in },
                 onRetryImage: { _, _ in },
                 onRetry: {},
+                // Nothing to report: a pull is a gesture, and a raster cannot make one.
+                onRefresh: {},
                 onCopyLogs: {}
             )
             // **Reduced Motion wherever a card is still on its way, because design §9's sweep is an

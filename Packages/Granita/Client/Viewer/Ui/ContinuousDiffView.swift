@@ -89,6 +89,10 @@ public struct ContinuousDiffView: View {
     private let onRetryImage: (DiffSide, FileID) -> Void
     private let onOpenReview: () -> Void
     private let onRetry: () -> Void
+
+    /// What a pull on the scroll asks for, awaited so the indicator turns until the answer lands.
+    private let onRefresh: () async -> Void
+
     private let onCopyLogs: () -> Void
 
     public init(
@@ -118,6 +122,9 @@ public struct ContinuousDiffView: View {
         onRetryImage: @escaping (DiffSide, FileID) -> Void,
         onOpenReview: @escaping () -> Void = {},
         onRetry: @escaping () -> Void,
+        // No default, for the reason `onOpenImage` carries: a pull that resolves to nothing is a
+        // gesture the reader makes, watches spin and gets no answer from.
+        onRefresh: @escaping () async -> Void,
         onCopyLogs: @escaping () -> Void
     ) {
         self.state = state
@@ -148,6 +155,7 @@ public struct ContinuousDiffView: View {
         self.onRetryImage = onRetryImage
         self.onOpenReview = onOpenReview
         self.onRetry = onRetry
+        self.onRefresh = onRefresh
         self.onCopyLogs = onCopyLogs
     }
 
@@ -222,6 +230,16 @@ public struct ContinuousDiffView: View {
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
         .scrollPosition(id: $scrolledTo, anchor: .top)
+        // **The one gesture that re-reads this screen, and the only place a reader can make it is the
+        // top of the scroll.** That is what settles it against `SPEC.md` §10: a read replaces every
+        // entry, drops what has been lexed and re-fetches every batch, and the rule forbids that
+        // happening *under* a reader — which a pull cannot do, because the pull is the top of the
+        // page. It is also what keeps a stale comment's row legal, since staleness still becomes true
+        // only across a read that re-measures from there.
+        //
+        // **Stock, and the indicator is the scroll's own** — nothing is drawn beside the name while
+        // it runs, because this read is one the reader can already see themselves asking for.
+        .refreshable { await onRefresh() }
         // **`initial: true`, and that is what makes the jump photographable.** A jump target handed
         // to a freshly-built view is a value that has already stopped changing, so a watch that only
         // fires on a *change* would never run — which is true of a snapshot and would be true of any

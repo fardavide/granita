@@ -7,6 +7,12 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.15.1 — 2026-09-18
+- **Pull a diff down to read it again.** A change set you opened before your agent's last commit was
+  the one you were stuck with, short of leaving the worktree and coming back to it. The diff now
+  refreshes on a pull, the same way the worktree list already does. *Try Again* on a failed file is
+  unchanged — it still asks only for what your Mac refused, and leaves the rest of the diff alone.
+
 ### 0.15.0 — 2026-09-18
 - **Your review now lives on your Mac, not on the phone you wrote it on.** Comments used to be kept
   only on the device that typed them, so a new phone or a reinstall lost them and a second device

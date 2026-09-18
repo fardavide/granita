@@ -29,6 +29,11 @@ final class FakeGranitaRepository: GranitaRepository {
     /// that has only just arrived must never have its committed side asked for at all.
     var imagesAskedFor: [ImageRead] { imageReads.withLock { $0 } }
 
+    /// How many times the change set has been asked for. A count rather than a list, because every
+    /// read asks the same question of the same worktree — what a test wants to know is whether a
+    /// gesture produced one at all.
+    var changeSetReads: Int { reads.withLock { $0 } }
+
     private let changeSet: Result<WorktreeChanges, ApiFailure>
 
     /// What the first read answers with, when the point of the test is what the second one does.

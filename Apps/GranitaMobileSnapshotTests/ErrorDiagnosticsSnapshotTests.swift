@@ -98,6 +98,9 @@ struct ErrorDiagnosticsSnapshotTests {
                     onOpenImage: { _, _ in },
                     onRetryImage: { _, _ in },
                     onRetry: {},
+                    // Nothing to report: this subject is the failure screen, which has no scroll to
+                    // pull at all.
+                    onRefresh: {},
                     onCopyLogs: {}
                 )
                 .navigationTitle("Mobile diagnostics")
