@@ -311,6 +311,12 @@ public struct WorktreeDiffScreen: View {
             onRetryImage: { side, file in Task { await model.retryImage(side, of: file) } },
             onOpenReview: { model.showReview() },
             onRetry: { Task { await model.load() } },
+            // **Not the same question as the failure bar's *Try Again*, which is why both survive.**
+            // That control re-asks for the files the Mac refused and leaves the rest of the change
+            // set alone; this asks whether the change set is still the change set. A batch that
+            // failed is a gap in what is drawn, and an agent that committed since is a different
+            // drawing entirely.
+            onRefresh: { await model.load(trigger: .pullToRefresh) },
             onCopyLogs: { Task { await model.copyLogs() } }
         )
         // **Overlaid, never inset.** A `safeAreaInset` shortens the scroll, and a scroll that changes

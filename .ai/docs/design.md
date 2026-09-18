@@ -183,6 +183,11 @@ pull-to-refresh on the diff would re-read the document under a finger. The row h
 way — it is inside a box the estimate owns — but the bar's *Try Again* and a refresh gesture would be
 two ways to ask one question, and one of them would have to go.
 
+**The refresh arrived on 18 September 2026 and neither had to go.** They scope apart: *Try Again*
+re-asks for the files the Mac refused and touches nothing else, and the pull asks whether the change
+set is still the change set. §8's *The diff is pulled to refresh* carries the argument, and the row
+survives because a pull is only reachable from the top of the scroll.
+
 ## §8 — Connecting and reading worktrees *(returned 13 September 2026)*
 
 The loading return for [issue #82](https://github.com/fardavide/granita/issues/82) keeps stock
@@ -295,9 +300,43 @@ while the reader was looking at it exactly as stale.
 
 **The open diff is deliberately excluded.** Re-reading a change set replaces every entry in it,
 drops what has been lexed and re-fetches every batch, and doing that under a reader halfway down a
-scroll is the unasked-for movement `SPEC.md` §10 forbids — the same argument that rejected
-pull-to-refresh on that screen. Its appearance read stands, because a reader arriving at the diff is
-at the top of it.
+scroll is the unasked-for movement `SPEC.md` §10 forbids. Its appearance read stands, because a
+reader arriving at the diff is at the top of it. This paragraph once carried the clause *the same
+argument that rejected pull-to-refresh on that screen*; the section below overturns that half of it
+and leaves the exclusion itself standing.
+
+### The diff is pulled to refresh, and §10 never forbade it *(Davide, 18 September 2026)*
+
+**§4 gets stock pull-to-refresh, on the same terms the worktree list has.** The gesture re-reads the
+change set; the scroll's own indicator is the whole of the report, and nothing turns beside the
+worktree's name while it runs — that spinner belongs to the read nobody asked for, and a reader who
+pulled can see themselves pulling.
+
+**§10 is not an argument against it, and reading it as one was the category error the `design` skill
+already names.** The rule forbids content moving *unasked*; it has never been an argument against a
+layout that moves because the reader pressed something. The stronger form of the same point is
+structural rather than interpretive: **a pull can only be made at the top of the scroll**, which is
+the position the appearance read is already allowed at, for the reason that paragraph gives. So the
+gesture cannot reach the state §10 is about. That also settles §7.3's open question — *if a refresh
+is ever added, this row has to be re-argued* — in the row's favour, because staleness still becomes
+true only across a read that re-measures from the top.
+
+**The failure bar's *Try Again* stays, and the two are not one question asked twice.** §9 expected
+one of them to have to go. They scope apart instead: *Try Again* re-asks for the files the Mac
+refused and leaves the rest of the change set where it is, and the pull asks whether the change set
+is still the change set. A gap in what is drawn and an agent that has committed since are different
+complaints with different remedies.
+
+**What is still excluded is the read on coming back to the front**, which is the section above and
+unchanged: that one arrives with the reader's thumb wherever they left it.
+
+> Rejected: dropping *Try Again* and letting the gesture be the single way to retry, which hides
+> recovery behind an affordance-free gesture at exactly the moment a reader is stuck. Rejected: a
+> gesture that works only once the diff has loaded, which is a control that exists on some states and
+> not others for a distinction the reader cannot see. Rejected: a toolbar refresh button, which
+> spends a slot on the trailing edge that already carries *12 files* and the review's chip.
+>
+> Nothing new is drawn, so no frame changes.
 
 ### Accessibility and transitions carry the same facts
 
@@ -1943,7 +1982,9 @@ all off screen, and a file the reader has shut, which draws as a 44pt bar with n
 the line it used to be on and opening the review. Drawn rather than hidden: the comment is still in the
 export, and a mark you cannot see is a mark you cannot delete. It inserts height into a file, which the
 no-reflow rule forbids — **legal only because staleness can become true only across a re-read, which
-re-measures from the top.** If a refresh is ever added, this row has to be re-argued.
+re-measures from the top.** The refresh this anticipated arrived on 18 September 2026 and the row
+survives it unchanged: a pull can only be made at the top of the scroll, so every read this screen
+performs still re-measures from there.
 
 ### §7.4 — The way in is a floating capsule, because the toolbar is not there when you need it
 

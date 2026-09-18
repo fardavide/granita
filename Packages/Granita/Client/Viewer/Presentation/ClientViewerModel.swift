@@ -350,11 +350,23 @@ public final class ClientViewerModel {
     /// `.task` is torn down whenever its view goes away, and reporting that as the Mac's failure is
     /// the app blaming the Mac for something the app did.
     public func load() async {
+        await load(trigger: .appearance)
+    }
+
+    public func load(trigger: DiffReadTrigger) async {
         // Only a failure goes back to the spinner — a screen re-runs its `.task` every time it
         // appears, and blanking a diff that is already drawn would restart it under the reader. See
         // `ClientWorktreesModel`, which carries the argument and the baselines that settled it.
         if case .failed = state {
             state = .loading
+        }
+        // **Only a read nobody asked for, over a change set already on screen.** A pull is reported
+        // by the scroll it was made in — that is what `.refreshable` draws — so a second spinner
+        // beside the name would be the app saying one thing twice, which is design §8's call for the
+        // worktree list and the same shape here.
+        let isUnaskedFor = switch trigger {
+        case .appearance: true
+        case .pullToRefresh: false
         }
         // **Decided after the line above rather than before it**, so a retry from the failure screen
         // counts as the first read it is: that screen has just been replaced by the spinner and the
@@ -364,11 +376,11 @@ public final class ClientViewerModel {
         // `UnaskedForRefresh.announcementDelay` carries: this screen re-reads on every appearance,
         // and a spinner that appears and vanishes each time a reader comes back is motion reporting
         // a wait they never had.
-        let announces = switch state {
+        let hasReadOnce = switch state {
         case .loading, .failed: false
         case .nothingChanged, .reading: true
         }
-        let announcing = announces ? sayingTheRefreshIsWorthShowing() : nil
+        let announcing = isUnaskedFor && hasReadOnce ? sayingTheRefreshIsWorthShowing() : nil
         defer {
             announcing?.cancel()
             isRefreshing = false

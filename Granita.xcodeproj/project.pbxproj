@@ -714,7 +714,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -763,7 +763,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				"PRODUCT_NAME[sdk=macosx*]" = "Granita Client";
@@ -793,7 +793,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -825,7 +825,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				"PRODUCT_NAME[sdk=macosx*]" = "Granita Client";
@@ -940,7 +940,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = "Granita Server";
 				SDKROOT = macosx;
@@ -966,7 +966,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.15.0;
+				MARKETING_VERSION = 0.15.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = "Granita Server";
 				SDKROOT = macosx;

@@ -2,6 +2,26 @@
 
 Where the project is. Update this when a slice lands.
 
+**The diff is pulled to refresh — that is 0.15.1.** §4's scroll takes stock pull-to-refresh, on the
+same terms the worktree list already had: the scroll's own indicator is the whole report, and the
+spinner beside the worktree's name stays reserved for the read nobody asked for. The read on coming
+back to the foreground is still excluded from this screen, which is unchanged.
+
+**It re-opens a rejection, and the rejection was the weak kind.** `design.md` had ruled pull-to-refresh
+out on `SPEC.md` §10 — but only in a subordinate clause of a paragraph about the *foreground* read, and
+§10 forbids content moving *unasked*, which a pull is not. The argument that settles it is structural
+rather than interpretive: a pull is only reachable at the top of the scroll, which is the position the
+appearance read is already allowed at. That also leaves §7.3's stale-comment row legal without
+re-arguing it, and lets §9's failure bar keep its *Try Again* — the bar re-asks for the files the Mac
+refused, and the pull asks whether the change set is still the change set. In
+[`decisions.md`](decisions.md), with the new call recorded in [design §8](design.md).
+
+**Nothing new is drawn, so no baseline moved.** Verified: 1,661 package tests in 154 suites pass, the
+snapshot suite passes with no PNG changed, and the coverage gate passes all six values — unit
+97.2%/94.6%, snapshot 99.2%/97.7%, all 97.9%/95.3%, at 230 uncovered lines, eight fewer than the
+baseline. **The gesture itself has not been pressed in the running app**; that check is Davide's, and
+it is the one this project says is the only one that works.
+
 **In progress: the review moves to the Mac, and the store grows a schema.** Issues
 [#64](https://github.com/fardavide/granita/issues/64) and
 [#98](https://github.com/fardavide/granita/issues/98) are one slice on Davide's call, carrying

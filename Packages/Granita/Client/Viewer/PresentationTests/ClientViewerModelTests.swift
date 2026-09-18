@@ -267,6 +267,56 @@ struct ClientViewerModelTests {
         await first.value
     }
 
+    // MARK: - Pulling the change set again
+
+    /// **The read the reader performs, and the one thing this screen could not do until now.** A
+    /// change set on a phone goes stale the moment the agent lands its next commit, and the only way
+    /// to settle that was to leave the worktree and come back.
+    @Test
+    func `given a change set on screen when the reader pulls it down then the Mac is asked again`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 3))
+        await scenario.sut.load()
+        #expect(scenario.repository.changeSetReads == 1)
+
+        // when
+        await scenario.sut.load(trigger: .pullToRefresh)
+
+        // then
+        #expect(scenario.repository.changeSetReads == 2)
+    }
+
+    /// **The pull is already reported by the scroll it was made in**, so the toolbar stays out of it.
+    /// Design §8 settles this for the worktree list — a pull carries the list's own indicator and
+    /// nothing duplicates it — and this screen is the same shape.
+    @Test
+    func `given a pull that is taking a while when it runs then nothing turns beside the name`() async {
+        // given — a threshold of zero, so a spinner that was going to appear has already had every
+        // chance to. The read after the first one waits, which is the window this is asserted in.
+        let scenario = Scenario(
+            files: aChangeSet(of: 3),
+            suspendingReadsAfter: 1,
+            refreshAnnouncementDelay: .zero
+        )
+        await scenario.sut.load()
+
+        // when
+        let pull = Task { await scenario.sut.load(trigger: .pullToRefresh) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // then — and the files stay exactly where they were, which is what makes the scroll's own
+        // indicator the only report this read needs.
+        #expect(scenario.sut.isRefreshing == false)
+        let filesStillOnScreen: Int = switch scenario.sut.state {
+        case .reading(let entries): entries.count
+        case .loading, .nothingChanged, .failed: 0
+        }
+        #expect(filesStillOnScreen == 3)
+        await scenario.repository.releaseSuspendedRead()
+        await pull.value
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
     // MARK: - Which files get fetched, which is SPEC §10's rule being spent
 
     @Test
