@@ -137,7 +137,10 @@ public enum DiffImageRefusal {
     /// amount of pressing *Try Again* will reach.
     public static func sentence(for failure: ApiFailure) -> String {
         switch failure {
-        case .notUnderstood:
+        // `routeNotServed` is now the precise form of what this sentence was inferring from
+        // `notUnderstood`: a bare 404 is a route that Mac does not have. Both stay, because a body
+        // this version cannot read means the same thing from the other direction.
+        case .notUnderstood, .routeNotServed:
             "your Mac is too old to send pictures"
         case .unreachable, .requestNotBuildable, .cancelled:
             "your Mac is out of reach"
@@ -162,7 +165,7 @@ public enum DiffImageRefusal {
     public static func isWorthRetrying(_ failure: ApiFailure) -> Bool {
         switch failure {
         case .notUnderstood, .unauthorized, .pairingExpired, .unsupportedApiVersion, .tooLarge,
-             .worktreeGone, .fileGone, .projectNotVisible:
+             .worktreeGone, .fileGone, .projectNotVisible, .routeNotServed:
             false
         case .unreachable, .requestNotBuildable, .cancelled, .rateLimited, .staleContentHash,
              .worktreeNotDeletable, .gitFailure, .badRequest:

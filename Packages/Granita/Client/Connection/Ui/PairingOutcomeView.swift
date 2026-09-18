@@ -181,7 +181,7 @@ public struct PairingOutcomeView: View {
 
         case .unauthorized, .projectNotVisible, .worktreeGone, .worktreeNotDeletable, .fileGone,
              .staleContentHash, .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion,
-             .requestNotBuildable, .notUnderstood, .cancelled:
+             .requestNotBuildable, .notUnderstood, .cancelled, .routeNotServed:
             // Everything a Mac can answer that is not one of the three above. They share a remedy
             // and a sentence. The copied report preserves what tells them apart.
             //

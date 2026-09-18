@@ -1,4 +1,5 @@
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// One stretch of rail, as a hunk draws it.
 ///

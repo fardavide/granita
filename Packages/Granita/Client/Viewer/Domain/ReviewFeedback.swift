@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// A review, as the one piece of text the reader hands back to the agent that wrote the code.
 ///
@@ -47,12 +48,19 @@ public enum ReviewFeedback {
     /// that cannot be mistaken for a paragraph break. The first one also divides the note from the
     /// comments, which earns its place for the same reason — the note is about the change as a whole
     /// and everything under the rule is about lines.
+    /// **The opening line and the labels are the reader's**, which is what the settings on both ends
+    /// exist to set. A cleared opening line is a real answer rather than a mistake: the document then
+    /// begins at its first comment, and the reader who wanted that had to clear the field on purpose.
     public static func document(
         note: String?,
-        identifiers: ReviewIdentifier,
+        settings: ReviewSettings,
         comments: [ReviewedComment]
     ) -> String {
-        var parts = ["Review of uncommitted changes"]
+        var parts: [String] = []
+        if let opening = settings.resolvedOpeningLine {
+            parts.append(opening)
+        }
+        let identifiers = settings.identifier
         let written = note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if written.isEmpty == false {
             parts.append(written)

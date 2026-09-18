@@ -73,7 +73,7 @@ public struct DiffBatchFailure: Hashable, Sendable {
             .backToWorktrees
         case .rateLimited, .projectNotVisible, .fileGone, .staleContentHash, .worktreeNotDeletable,
              .gitFailure, .tooLarge, .badRequest, .unsupportedApiVersion, .requestNotBuildable,
-             .unreachable, .cancelled, .notUnderstood:
+             .unreachable, .cancelled, .notUnderstood, .routeNotServed:
             .tryAgain
         }
     }
@@ -148,7 +148,7 @@ public struct DiffBatchFailure: Hashable, Sendable {
             true
         case .unauthorized, .pairingExpired, .rateLimited, .projectNotVisible, .worktreeGone,
              .worktreeNotDeletable, .fileGone, .staleContentHash, .gitFailure, .tooLarge,
-             .badRequest, .unsupportedApiVersion, .cancelled, .notUnderstood:
+             .badRequest, .unsupportedApiVersion, .cancelled, .notUnderstood, .routeNotServed:
             false
         }
     }

@@ -7,6 +7,7 @@ import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 
 /// Everything the phone reads once it is paired, and the two rules that hold across all of it: a
 /// bearer on every request, and a refusal that arrives as something the phone has a screen for
@@ -400,7 +401,109 @@ struct HttpGranitaRepositoryTests {
             try await scenario.sut.projects()
         }
     }
+
+    // MARK: - The review, and the settings that shape it
+
+    @Test
+    func `given a review on the Mac when it is read then the comments come back`() async throws {
+        // given
+        let scenario = Scenario(
+            status: 200,
+            json: try encoded(ReviewRequest(comments: [aReviewComment]))
+        )
+
+        // when
+        let comments = try await scenario.sut.review(in: aWorktreeId)
+
+        // then
+        #expect(comments == [aReviewComment])
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.path() == "/v1/worktrees/\(aWorktreeId.rawValue)/review")
+    }
+
+    @Test
+    func `given a review when it is sent then it replaces rather than appends`() async throws {
+        // given — PUT because that is exactly what it does: the review sent is the review the Mac
+        // then holds, so sending it twice leaves the same thing behind.
+        let scenario = Scenario(status: 204, json: "")
+
+        // when
+        try await scenario.sut.putReview([aReviewComment], in: aWorktreeId)
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.method == .put)
+        #expect(request.url.path() == "/v1/worktrees/\(aWorktreeId.rawValue)/review")
+    }
+
+    @Test
+    func `given a Mac with no such route when the review is read then it says the route is absent`(
+    ) async throws {
+        // given — a bare 404 with no refusal body, which is what a Mac that predates this feature
+        // answers. Told apart from a domain 404 so the phone degrades instead of refusing the Mac.
+        let scenario = Scenario(status: 404, json: "")
+
+        // when - then
+        await #expect(throws: ApiFailure.routeNotServed) {
+            try await scenario.sut.review(in: aWorktreeId)
+        }
+    }
+
+    @Test
+    func `given settings on the Mac when they are read then both fields arrive`() async throws {
+        // given
+        let scenario = Scenario(
+            status: 200,
+            json: #"{"openingLine":"Mine.","identifier":"numbers"}"#
+        )
+
+        // when
+        let settings = try await scenario.sut.reviewSettings()
+
+        // then
+        #expect(settings.openingLine == "Mine.")
+        #expect(settings.identifier == .numbers)
+    }
+
+    @Test
+    func `given a patch when it is sent then only the named field is on the wire`() async throws {
+        // given — the presence-versus-null idiom, seen from the side that writes it: a phone that
+        // never read this Mac's label style must not send an opinion about it.
+        let scenario = Scenario(
+            status: 200,
+            json: #"{"openingLine":"Mine.","identifier":"letters"}"#
+        )
+
+        // when
+        _ = try await scenario.sut.updateReviewSettings(
+            ReviewSettingsPatch(openingLine: .some("Mine."), identifier: nil)
+        )
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        let body = try #require(request.body.map { String(decoding: $0, as: UTF8.self) })
+        #expect(request.method == .patch)
+        #expect(body.contains("openingLine"))
+        #expect(body.contains("identifier") == false)
+    }
 }
+
+// MARK: -
+
+private let aWorktreeId = WorktreeID(canonicalPath: "/repo/slice")
+
+private let aReviewComment = ReviewComment(
+    anchor: CommentAnchor(
+        file: FileID(repositoryRelativePath: "src/a.swift"),
+        first: DiffLinePosition(oldNumber: nil, newNumber: 12),
+        last: DiffLinePosition(oldNumber: nil, newNumber: 14)
+    ),
+    path: "src/a.swift",
+    lines: CommentedLines(side: .new, first: 12, last: 14),
+    language: "swift",
+    quotedLines: ["+    let a = 1"],
+    text: "This should be a constant."
+)
 
 // MARK: -
 

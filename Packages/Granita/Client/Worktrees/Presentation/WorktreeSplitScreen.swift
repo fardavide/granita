@@ -19,7 +19,7 @@ import CoreDiffDomain
 /// content, and this screen is inside one because §5 requires that back returns to the Mac list. So
 /// the phone gets the sidebar directly, which is what the collapse was supposed to produce, and
 /// both halves are photographed.
-public struct WorktreeSplitScreen<Opened: View>: View {
+public struct WorktreeSplitScreen<Opened: View, Settings: View>: View {
 
     @State private var model: ClientWorktreesModel
 
@@ -29,6 +29,18 @@ public struct WorktreeSplitScreen<Opened: View>: View {
     private let opening: (WorktreeID, String, String) -> Opened
     private let onPairAgain: () -> Void
 
+    /// The review's settings, handed in for exactly the reason the diff is: they are another
+    /// feature's `Presentation`, and this target may not see one.
+    ///
+    /// **Presented from here rather than from the sidebar** because the sheet has to survive the
+    /// sidebar being a column of a split view on the iPad — a sheet presented by a column is bounded
+    /// by that column.
+    private let settings: () -> Settings
+
+    /// Whether the settings sheet is up. State rather than a binding: nothing outside this screen
+    /// has an opinion about it, and the menu row that opens it lives inside.
+    @State private var isShowingSettings = false
+
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -36,6 +48,7 @@ public struct WorktreeSplitScreen<Opened: View>: View {
     public init(
         model: ClientWorktreesModel,
         onPairAgain: @escaping () -> Void,
+        @ViewBuilder settings: @escaping () -> Settings,
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // **Pinned in `@State`, and here that is a fix rather than a precaution.** The composition
@@ -50,9 +63,17 @@ public struct WorktreeSplitScreen<Opened: View>: View {
         _model = State(initialValue: model)
         self.opening = opening
         self.onPairAgain = onPairAgain
+        self.settings = settings
     }
 
     public var body: some View {
+        presented
+            // **The same sheet on both devices**, presented from here so the iPad's form sheet is
+            // centred over the three columns rather than bounded by the sidebar that opened it.
+            .sheet(isPresented: $isShowingSettings) { settings() }
+    }
+
+    @ViewBuilder private var presented: some View {
         #if os(macOS)
         // The package builds for the host so `make test` can run without a simulator, and no macOS
         // surface presents this screen — `horizontalSizeClass` does not exist on that platform at
@@ -62,7 +83,12 @@ public struct WorktreeSplitScreen<Opened: View>: View {
         // Compact is the phone, and it is also an iPad in a narrow multitasking width — which is why
         // the question asked is the width and not the device.
         if horizontalSizeClass == .compact {
-            WorktreeSidebarScreen(model: model, onPairAgain: onPairAgain, opening: opening)
+            WorktreeSidebarScreen(
+                model: model,
+                onPairAgain: onPairAgain,
+                onOpenSettings: { isShowingSettings = true },
+                opening: opening
+            )
         } else {
             twoColumns
         }
@@ -77,7 +103,13 @@ public struct WorktreeSplitScreen<Opened: View>: View {
             // view's and the detail column's declarations below, with nowhere in the sidebar column
             // to push the result. That is exactly the bug a tap on a real Mac found: the row
             // highlighted and nothing opened. See `WorktreeSidebarScreen`'s doc comment.
-            WorktreeSidebarScreen(model: model, claimsRowTaps: false, onPairAgain: onPairAgain, opening: opening)
+            WorktreeSidebarScreen(
+                model: model,
+                claimsRowTaps: false,
+                onPairAgain: onPairAgain,
+                onOpenSettings: { isShowingSettings = true },
+                opening: opening
+            )
                 .navigationSplitViewColumnWidth(WorktreeSidebarView.widthInASplitView)
                 // The stock sidebar chrome — translucent material, vibrant selection — rather than
                 // the plain list style `List` defaults to. Scoped to this column only, so the

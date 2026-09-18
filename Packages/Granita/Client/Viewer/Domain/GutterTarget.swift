@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// Which row a thumb on the gutter meant.
 ///

@@ -3,6 +3,7 @@ import Foundation
 import CoreDiagnosticsDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerMacPresentation
@@ -200,7 +201,9 @@ private actor FakeStore: Store {
                     id: "d\($0)", name: "d\($0)", platform: "iOS",
                     tokenHash: "h\($0)", pairedAt: Date(timeIntervalSince1970: 1)
                 )
-            }
+            },
+            reviews: [:],
+            reviewSettings: .unset
         )
     }
 
@@ -212,7 +215,16 @@ private actor FakeStore: Store {
     func removeProject(id: ProjectID) throws(StoreError) {}
     func setAlias(_ alias: String?, for worktree: WorktreeID) throws(StoreError) {}
     func setPinned(_ isPinned: Bool, for worktree: WorktreeID) throws(StoreError) {}
-    func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {}
+    func setViewed(
+        _ isViewed: Bool,
+        file: FileID,
+        in worktree: WorktreeID,
+        contentHash: String,
+        at date: Date
+    ) throws(StoreError) {}
+    func prune(keeping worktrees: Set<WorktreeID>, markLimit: Int) throws(StoreError) {}
     func add(device: StoredDevice) throws(StoreError) {}
     func removeDevice(id: String) throws(StoreError) {}
+    func setReview(_ comments: [ReviewComment], in worktree: WorktreeID) throws(StoreError) {}
+    func setReviewSettings(_ settings: ReviewSettings) throws(StoreError) {}
 }

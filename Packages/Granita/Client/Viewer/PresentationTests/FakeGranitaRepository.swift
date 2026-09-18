@@ -4,6 +4,7 @@ import Synchronization
 import ClientConnectionDomain
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// A Mac that answers the two read routes the diff screen uses, and records what it was asked for.
 ///
@@ -211,6 +212,15 @@ final class FakeGranitaRepository: GranitaRepository {
         writes.withLock { $0.append(ViewedWrite(isViewed: viewed, file: file, contentHash: contentHash)) }
         if let viewedFailure { throw viewedFailure }
     }
+
+    // The review goes through `ReviewCommentStore` rather than through the model's repository, so
+    // these exist for conformance and answer with a Mac that holds nothing.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] { [] }
+    func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {}
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { .unset }
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings { .unset }
 }
 
 // MARK: -

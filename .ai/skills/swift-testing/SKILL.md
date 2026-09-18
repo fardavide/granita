@@ -172,22 +172,28 @@ ternary, **or a closure body**. So write the test as you write the code, for eac
   subject of its own** — the states you photograph are the states you cover, and a state you argued
   for in a comment but never rendered is a state nothing holds you to.
 
-**An action closure in a view is no longer counted, and that has a rule attached.** A snapshot
-renders a view and never presses its controls, so a closure like
+**An action closure in a view is not counted, in either column, and that has a rule attached.** A
+snapshot renders a view and never presses its controls, so a closure like
 `onRestart: { Task { await model.restart() } }` was uncovered by construction and every control added
-to a screen lowered the Snapshot regions row. Since 2026-09-04 the regions column leaves those out:
-a closure returning `()` draws nothing, so it is outside what that row asks. Its **lines are still
-counted**, because a closure written inline shares them with the view it sits in.
+to a screen lowered the Snapshot row. The row judges only what a render can execute: a closure
+returning `()` draws nothing, so it is outside what that row asks, and its lines leave with its
+regions. The rule is one for both columns — a line is in the denominator when it is code and carries
+a region the regions column counts — and the script refuses to run if its reading of llvm-cov's
+arithmetic drifts from llvm-cov's own totals.
 
 So the rule that replaces "read the export and say so to Davide":
 
-- **Keep an action closure to one call into the model.** Its body is now judged by nothing — the
-  views scope is the only row that sees view code, and this takes it out of that row.
+- **Keep an action closure to one call into the model.** Its body is judged by nothing — the views
+  scope is the only row that sees view code, and this takes it out of that row.
 - **A closure that grows a branch has outgrown a view.** Move it to the model, where the Unit row
   judges it. Do not argue it back into the denominator, and do not leave a `guard` or a `??` inside a
   `Button`'s action where nothing will ever hold you to it.
 - The exclusion is closures, not methods: a named method in a `Ui` file **is** still counted, because
   it has a name and a test can call it.
+- **A computation closure that returns `()` leaves too, and that is a known imprecision, not a
+  licence.** The predicate reads the return type; an `enumerateAttribute` block in the highlighter is
+  the one case it misreads today. Do not write view logic as a `-> ()` closure to take it out of the
+  row.
 
 ## Test kinds, and the coverage gate
 

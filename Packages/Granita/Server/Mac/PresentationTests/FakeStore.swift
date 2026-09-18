@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CoreReviewDomain
 import ServerStoreDomain
 
 /// The store, held in memory, for the questions the Settings window asks it.
@@ -22,9 +23,18 @@ actor FakeStore: Store {
     init(
         projects: [StoredProject] = [],
         devices: [StoredDevice] = [],
+        reviews: [WorktreeID: [ReviewComment]] = [:],
+        reviewSettings: ReviewSettings = .unset,
         failure: StoreError? = nil
     ) {
-        stored = StoredState(projects: projects, worktrees: [:], viewed: [:], devices: devices)
+        stored = StoredState(
+            projects: projects,
+            worktrees: [:],
+            viewed: [:],
+            devices: devices,
+            reviews: reviews,
+            reviewSettings: reviewSettings
+        )
         self.failure = failure
     }
 
@@ -65,8 +75,31 @@ actor FakeStore: Store {
 
     func setAlias(_ alias: String?, for worktree: WorktreeID) throws(StoreError) {}
     func setPinned(_ isPinned: Bool, for worktree: WorktreeID) throws(StoreError) {}
-    func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {}
+    func setViewed(
+        _ isViewed: Bool,
+        file: FileID,
+        in worktree: WorktreeID,
+        contentHash: String,
+        at date: Date
+    ) throws(StoreError) {}
+    func prune(keeping worktrees: Set<WorktreeID>, markLimit: Int) throws(StoreError) {}
     func add(device: StoredDevice) throws(StoreError) {}
+    func setReview(_ comments: [ReviewComment], in worktree: WorktreeID) throws(StoreError) {}
+
+    /// Real rather than a no-op, and refusing like every other write here: the Review tab's whole
+    /// behaviour on a refusal is to go back to what is stored, which a fake that silently accepted
+    /// everything could not tell apart from one that succeeded.
+    func setReviewSettings(_ settings: ReviewSettings) throws(StoreError) {
+        if let failure { throw failure }
+        stored = StoredState(
+            projects: stored.projects,
+            worktrees: stored.worktrees,
+            viewed: stored.viewed,
+            devices: stored.devices,
+            reviews: stored.reviews,
+            reviewSettings: settings
+        )
+    }
 
     // MARK: -
 
@@ -78,7 +111,9 @@ actor FakeStore: Store {
             projects: projects ?? stored.projects,
             worktrees: stored.worktrees,
             viewed: stored.viewed,
-            devices: devices ?? stored.devices
+            devices: devices ?? stored.devices,
+            reviews: stored.reviews,
+            reviewSettings: stored.reviewSettings
         )
     }
 }

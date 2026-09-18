@@ -11,15 +11,20 @@ import ServerMacDomain
 struct SettingsTabTests {
 
     @Test
-    func `given the panes when they are listed then Advanced is last and Connections is its own`() {
-        // given - when - then
-        #expect(SettingsTab.allCases == [.general, .projects, .devices, .connections, .advanced])
+    func `given the panes when they are listed then Advanced is last and Review is fourth`() {
+        // given - when - then — the first four are the pipeline outward: this Mac, what it serves,
+        // who may read it, and what comes back from them. Then live diagnostics, then the drawer
+        // with Reset All Data at the bottom of it.
+        #expect(
+            SettingsTab.allCases == [.general, .projects, .devices, .review, .connections, .advanced]
+        )
     }
 
     @Test(arguments: [
         (SettingsTab.general, "general"),
         (SettingsTab.projects, "projects"),
         (SettingsTab.devices, "devices"),
+        (SettingsTab.review, "review"),
         (SettingsTab.connections, "connections"),
         (SettingsTab.advanced, "advanced")
     ])

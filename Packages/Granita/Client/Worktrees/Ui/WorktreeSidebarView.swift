@@ -49,6 +49,7 @@ public struct WorktreeSidebarView: View {
     private let onRefresh: () async -> Void
     private let onPairAgain: () -> Void
     private let onCopyLogs: () -> Void
+    private let onOpenSettings: () -> Void
 
     /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
     /// the answer arrives.
@@ -76,7 +77,8 @@ public struct WorktreeSidebarView: View {
         onRetry: @escaping () -> Void,
         onRefresh: @escaping () async -> Void,
         onPairAgain: @escaping () -> Void,
-        onCopyLogs: @escaping () -> Void
+        onCopyLogs: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void
     ) {
         self.macName = macName
         self.state = state
@@ -100,6 +102,7 @@ public struct WorktreeSidebarView: View {
         self.onRefresh = onRefresh
         self.onPairAgain = onPairAgain
         self.onCopyLogs = onCopyLogs
+        self.onOpenSettings = onOpenSettings
     }
 
     public var body: some View {
@@ -204,10 +207,14 @@ public struct WorktreeSidebarView: View {
     /// reader sees is two rows of chrome. There is already a second preference beside the mode and
     /// probably a third: three toggles cannot be three segmented controls, but they are three menu
     /// rows without a redesign.
+    /// **The menu is no longer gated on the list being arrangeable**, and that is deliberate: the
+    /// review's settings belong to this Mac, so this is the screen they are reached from — and a Mac
+    /// with nothing to arrange would otherwise hide the only door to them. The arrangement rows stay
+    /// conditional; the settings row does not.
     @ToolbarContentBuilder private var arrangement: some ToolbarContent {
-        if state.isArrangeable {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                if state.isArrangeable {
                     Picker(
                         "Arrangement",
                         selection: Binding(get: { mode }, set: onChooseMode)
@@ -216,14 +223,21 @@ public struct WorktreeSidebarView: View {
                         Text("Most recent first").tag(WorktreeListMode.mostRecentFirst)
                     }
                     .pickerStyle(.inline)
+                }
 
+                // Above the toggle, because it is the thing a reader wants more often — and in this
+                // menu rather than the diff's toolbar, because settings are that Mac's and the diff
+                // is one worktree's.
+                Button("Review settings…", action: onOpenSettings)
+
+                if state.isArrangeable {
                     Toggle(
                         "Show worktrees with no changes",
                         isOn: Binding(get: { showsQuietWorktrees }, set: onShowQuietWorktrees)
                     )
-                } label: {
-                    Label("Arrange", systemImage: "ellipsis.circle")
                 }
+            } label: {
+                Label("Arrange", systemImage: "ellipsis.circle")
             }
         }
     }

@@ -1,3 +1,5 @@
+import CoreReviewDomain
+
 /// What `/v1/pair` is asked.
 ///
 /// The phone writes it and the Mac reads it, so there is one definition rather than one per side:
@@ -32,6 +34,78 @@ public struct ViewedRequest: Codable, Hashable, Sendable {
     public init(viewed: Bool, contentHash: String) {
         self.viewed = viewed
         self.contentHash = contentHash
+    }
+}
+
+/// What `/v1/worktrees/…/review` carries, in both directions.
+///
+/// The whole review rather than one comment: it is small, whoever is sending holds all of it, and a
+/// per-comment route would make clearing it a sequence of requests with a half-cleared review on the
+/// Mac in the middle of it.
+public struct ReviewRequest: Codable, Hashable, Sendable {
+
+    public let comments: [ReviewComment]
+
+    public init(comments: [ReviewComment]) {
+        self.comments = comments
+    }
+}
+
+/// What `/v1/review-settings` answers with.
+///
+/// `openingLine` absent means the reader has never chosen one and the built-in line is used; present
+/// and empty means they chose to have none, and the document begins at its first comment. Those are
+/// different answers and the wire keeps them apart.
+public struct ReviewSettingsResponse: Codable, Hashable, Sendable {
+
+    public let openingLine: String?
+    public let identifier: ReviewIdentifier
+
+    public init(openingLine: String?, identifier: ReviewIdentifier) {
+        self.openingLine = openingLine
+        self.identifier = identifier
+    }
+}
+
+/// What `PATCH /v1/review-settings` is told, carrying only what the reader changed.
+///
+/// **Presence versus null, the same idiom the worktree patch already uses**, and here it is what
+/// makes an edit made while the Mac was away safe: a queued opening line must not carry a label
+/// style this phone never read. A key that is absent leaves that setting alone; a key present and
+/// null clears it; a key with a value sets it.
+public struct ReviewSettingsPatchRequest: Codable, Hashable, Sendable {
+
+    /// Outer nil is "not mentioned"; inner nil is "cleared".
+    public let openingLine: String??
+    public let identifier: ReviewIdentifier?
+
+    public init(openingLine: String??, identifier: ReviewIdentifier?) {
+        self.openingLine = openingLine
+        self.identifier = identifier
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // `decodeIfPresent` answers nil for an absent key and for an explicit null alike, and those
+        // are the two cases this type exists to tell apart — so the key is asked for by name first.
+        openingLine = container.contains(.openingLine)
+            ? .some(try container.decodeIfPresent(String.self, forKey: .openingLine))
+            : nil
+        identifier = try container.decodeIfPresent(ReviewIdentifier.self, forKey: .identifier)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        if let openingLine {
+            // Encoded even when it is nil, because null is the instruction to clear it.
+            try container.encode(openingLine, forKey: .openingLine)
+        }
+        try container.encodeIfPresent(identifier, forKey: .identifier)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case openingLine
+        case identifier
     }
 }
 

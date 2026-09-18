@@ -18,12 +18,30 @@ import ClientConnectionDomain
 /// **The pasteboard is named rather than assumed**, which is the one difference from the viewer's
 /// sibling and the reason this one is tested rather than exempt: a suite may not write the
 /// developer's clipboard on every `make test`, so a test names its own and reads it back.
+///
+/// **Both platforms take a name now, and on iOS that is a fix rather than symmetry.** The UIKit
+/// branch wrote `UIPasteboard.general` unconditionally, so the only way to assert it was for a test
+/// to save the shared pasteboard, write it, read it back and put it in place again. That test
+/// blocked the whole phone snapshot suite indefinitely — the general pasteboard is a system service
+/// shared with everything else on the simulator, and reading `items` off it waits on a daemon that
+/// does not always answer. A named board is private to this process and cannot wait on anybody.
 public struct SystemDiagnosticPasteboard: DiagnosticPasteboard {
 
     #if canImport(AppKit)
     private let name: NSPasteboard.Name
 
     public init(name: NSPasteboard.Name = .general) {
+        self.name = name
+    }
+    #elseif canImport(UIKit)
+    /// The board to write, or nothing for the one a reader actually pastes from.
+    ///
+    /// A name rather than a `UIPasteboard`, for the reason the AppKit branch holds one: the instance
+    /// is not `Sendable` and this type is, so what travels is the identifier and the board is made
+    /// where it is used.
+    private let name: UIPasteboard.Name?
+
+    public init(name: UIPasteboard.Name? = nil) {
         self.name = name
     }
     #else
@@ -41,8 +59,14 @@ public struct SystemDiagnosticPasteboard: DiagnosticPasteboard {
             pasteboard.setString(text, forType: .string)
         }
         #elseif canImport(UIKit)
+        let name = name
         await MainActor.run {
-            UIPasteboard.general.string = text
+            // `create: true` because a named board a test asked for may not exist yet, and the
+            // fallback is the general one so a name that cannot be made still copies rather than
+            // silently doing nothing — this is *Copy Logs*, and a reader pressing it with nothing on
+            // their clipboard afterwards is the worst outcome available.
+            let pasteboard = name.flatMap { UIPasteboard(name: $0, create: true) } ?? .general
+            pasteboard.string = text
         }
         #else
         throw .unavailable

@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// One file's whole diff: its hunks, and a torn expander wherever the diff skipped something.
 ///

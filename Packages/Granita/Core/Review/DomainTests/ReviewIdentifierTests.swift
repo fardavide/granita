@@ -1,6 +1,6 @@
 import Testing
 
-@testable import ClientViewerDomain
+@testable import CoreReviewDomain
 
 /// The short name each comment answers to, which is the whole reason it exists: the reader pastes
 /// the document, clears the review, and from then on the only handle either side has on a comment is

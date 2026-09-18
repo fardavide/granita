@@ -1,4 +1,5 @@
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// What the reader picked out, turned into something that can be written down.
 ///

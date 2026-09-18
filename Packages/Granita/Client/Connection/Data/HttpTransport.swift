@@ -9,6 +9,7 @@ public struct HttpRequest: Hashable, Sendable {
     public enum Method: String, Hashable, Sendable, CaseIterable {
         case get = "GET"
         case post = "POST"
+        case put = "PUT"
         case patch = "PATCH"
         case delete = "DELETE"
     }

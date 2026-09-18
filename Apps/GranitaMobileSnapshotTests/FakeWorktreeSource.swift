@@ -1,6 +1,7 @@
 import ClientConnectionDomain
 import ClientWorktreesDomain
 import CoreDiffDomain
+import CoreReviewDomain
 import Foundation
 
 /// A Mac and a defaults file, for the screen tests in this bundle.
@@ -61,6 +62,14 @@ actor FakeGranitaRepository: GranitaRepository {
         contentHash: String,
         in worktree: WorktreeID
     ) async throws(ApiFailure) { throw .fileGone }
+
+    // A baseline never reaches the review's routes: the sheet is handed a store directly.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] { [] }
+    func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {}
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { .unset }
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings { .unset }
 }
 
 // MARK: -

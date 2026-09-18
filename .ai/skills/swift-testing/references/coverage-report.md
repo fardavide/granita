@@ -11,7 +11,7 @@ section. Read this when a row falls, when a scope looks wrong, or before proposi
 - Why moving snapshot tests into the package would not fix a number
 - What the Unit and All rows are measured over
 - What the Snapshot row is measured over — including the 2026-08-23 measurement
-- Why the Snapshot regions column leaves out action closures
+- Why the Snapshot row leaves out action closures, in both columns
 - The redefinitions, and the one that was wrong
 - Why a redefinition un-judges a row
 - Why the denominators differ
@@ -83,7 +83,7 @@ it is for: of the code that draws screens, how much does a baseline put on scree
 **The Ui kind is not scoped**, because a behavioural test drives the real app and reaching a
 repository is exactly what it does.
 
-## Why the Snapshot regions column leaves out action closures
+## Why the Snapshot row leaves out action closures, in both columns
 
 A closure that returns `()` is an action — a `Button`'s, an `onChange`, a `.task`, an `onAppear`. It
 draws nothing, and a baseline presses nothing, so it is outside the question this row asks rather
@@ -94,11 +94,30 @@ a file — and usually a line — with the view it sits in.
 **A named method returning `()` is not an action, and that is where the line is drawn.** A method has
 a name, so a test can call it; a closure literal has neither a name nor a seam.
 
-**Regions only, and that is measured rather than assumed.** Over the whole views scope on
-2026-09-04, the exclusion took **200 of 1695 regions** out of the denominator and **7 of 5043
-lines**. A closure written inline is spanned by the view expression containing it, so its lines are
-the body's lines and removing them would remove the body. Lines stay counted and stay judged; only
-the region number changed basis, 87.8% → 97.5%.
+**Both columns, since 2026-09-18 — and the reasoning that kept it to regions for two weeks was
+wrong.** Over the whole views scope on 2026-09-04, the exclusion took **200 of 1695 regions** out of
+the denominator, 87.8% → 97.5%, and lines were left alone on the grounds that a segment-based
+reading found only **7 of 5043** lines to be a closure's alone: an inline closure "shares its lines
+with the view expression containing it". That reading modelled a file's line total as a count over
+its source, and llvm-cov does not compute one. **It computes lines per function record, from that
+record's own regions, and adds the records up** — `PairingEntryScreen` reports 72 lines over a
+51-line span — so the lines a closure spans are in the total once for the body and once more for the
+closure, and the closure's share is a separable whole. Records that open at one source position
+form an *instantiation group* whose figures merge by `max`, which is how a curried `self.method`
+reference emits two closures at one column and counts one line.
+
+The rule that replaced the two half-rules: **the Snapshot row judges only what a render can
+execute, and a line is in its denominator when it is code and carries at least one region the
+regions column already counts.** The script reproduces llvm-cov's per-record arithmetic for every
+scoped file, both counters, and refuses to run if the two disagree — which is what found the
+instantiation groups. Measured on 2026-09-18 over one export: lines **11070/11428 → 10986/11072**,
+96.9% → 99.2%; regions unchanged at 1851/1894, which is the check that the closures leaving are
+exactly the ones already out of that column. Of the 356 lines that left, 84 were covered — `.task`,
+`onAppear` and geometry callbacks fire during a render — and fifteen of those are the predicate's
+one known imprecision: an `enumerateAttribute` block in `HighlightrSyntaxHighlighter` returns `()`
+and is a computation, not an action. It lowers the number rather than raising it, and it is stated
+here rather than fixed because a rule that reads the return type cannot tell the two apart, and one
+that read the call site would be a parser of Swift.
 
 The predicate reads `xcrun swift-demangle --compact` and **parses** the result — it does not match
 `-> ()` anywhere in the string. A demangled closure carries its enclosing context after ` in `, so

@@ -1,6 +1,7 @@
 import Foundation
 
 import CoreDiffDomain
+import CoreReviewDomain
 import ServerStoreDomain
 
 /// The store, held in memory.
@@ -16,7 +17,14 @@ actor FakeStore: Store {
     private var stored: StoredState
 
     init(devices: [StoredDevice] = [], failure: StoreError? = nil) {
-        stored = StoredState(projects: [], worktrees: [:], viewed: [:], devices: devices)
+        stored = StoredState(
+            projects: [],
+            worktrees: [:],
+            viewed: [:],
+            devices: devices,
+            reviews: [:],
+            reviewSettings: .unset
+        )
         self.failure = failure
     }
 
@@ -56,11 +64,27 @@ actor FakeStore: Store {
         stored = replacing(worktrees: worktrees)
     }
 
-    func setViewed(_ isViewed: Bool, file: FileID, contentHash: String) throws(StoreError) {
+    func setViewed(
+        _ isViewed: Bool,
+        file: FileID,
+        in worktree: WorktreeID,
+        contentHash: String,
+        at date: Date
+    ) throws(StoreError) {
         try refuseIfAsked()
         var viewed = stored.viewed
-        viewed[file] = isViewed ? contentHash : nil
+        var marks = viewed[worktree] ?? [:]
+        marks[file] = isViewed ? ViewedMark(contentHash: contentHash, viewedAt: date) : nil
+        viewed[worktree] = marks.isEmpty ? nil : marks
         stored = replacing(viewed: viewed)
+    }
+
+    func prune(keeping worktrees: Set<WorktreeID>, markLimit: Int) throws(StoreError) {
+        try refuseIfAsked()
+        stored = replacing(
+            viewed: stored.viewed.filter { worktrees.contains($0.key) },
+            reviews: stored.reviews.filter { worktrees.contains($0.key) }
+        )
     }
 
     func add(device: StoredDevice) throws(StoreError) {
@@ -78,6 +102,18 @@ actor FakeStore: Store {
         stored = .empty
     }
 
+    func setReview(_ comments: [ReviewComment], in worktree: WorktreeID) throws(StoreError) {
+        try refuseIfAsked()
+        var reviews = stored.reviews
+        reviews[worktree] = comments.isEmpty ? nil : comments
+        stored = replacing(reviews: reviews)
+    }
+
+    func setReviewSettings(_ settings: ReviewSettings) throws(StoreError) {
+        try refuseIfAsked()
+        stored = replacing(reviewSettings: settings)
+    }
+
     private func refuseIfAsked() throws(StoreError) {
         if let failure {
             throw failure
@@ -87,14 +123,18 @@ actor FakeStore: Store {
     private func replacing(
         projects: [StoredProject]? = nil,
         worktrees: [WorktreeID: StoredWorktree]? = nil,
-        viewed: [FileID: String]? = nil,
-        devices: [StoredDevice]? = nil
+        viewed: [WorktreeID: [FileID: ViewedMark]]? = nil,
+        devices: [StoredDevice]? = nil,
+        reviews: [WorktreeID: [ReviewComment]]? = nil,
+        reviewSettings: ReviewSettings? = nil
     ) -> StoredState {
         StoredState(
             projects: projects ?? stored.projects,
             worktrees: worktrees ?? stored.worktrees,
             viewed: viewed ?? stored.viewed,
-            devices: devices ?? stored.devices
+            devices: devices ?? stored.devices,
+            reviews: reviews ?? stored.reviews,
+            reviewSettings: reviewSettings ?? stored.reviewSettings
         )
     }
 }

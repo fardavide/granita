@@ -3,6 +3,7 @@ import Foundation
 import CoreApiDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 
 /// The two routes a phone may reach before it has a token.
 ///
@@ -115,6 +116,49 @@ public protocol GranitaRepository: Sendable {
         contentHash: String,
         in worktree: WorktreeID
     ) async throws(ApiFailure)
+
+    /// The review this Mac holds for a worktree, which may be more than this phone wrote.
+    ///
+    /// A second device reviewing the same worktree is the case: both sets are the review, and the
+    /// union of them in document order is what a reader wants.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment]
+
+    /// Replaces the review this Mac holds, which is also how it is cleared.
+    func putReview(
+        _ comments: [ReviewComment],
+        in worktree: WorktreeID
+    ) async throws(ApiFailure)
+
+    /// The two settings that shape every exported review.
+    ///
+    /// **A Mac that predates these answers 404 rather than refusing the client**, which is a
+    /// deliberate departure from §8's rule that a route 426s on a newer client: refusing would cost
+    /// the reader every screen that already worked in order to protect two settings. The phone reads
+    /// that as "this Mac cannot store them" and keeps using its own.
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings
+
+    /// Changes only the settings named, using the presence-versus-null idiom the worktree patch
+    /// already uses — so a queued edit cannot overwrite a field this phone never read.
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings
+}
+
+/// What a reader changed about the review's shape, and nothing they did not.
+///
+/// **Absent means "leave it alone", which is why both fields are doubly optional where the value
+/// itself is optional.** A queued opening line written while the Mac was away must not carry a label
+/// style this phone never read, and an opening line the reader cleared is a real value rather than
+/// an absence — `.some(nil)` clears it, `nil` leaves it.
+public struct ReviewSettingsPatch: Hashable, Sendable {
+
+    public let openingLine: String??
+    public let identifier: ReviewIdentifier?
+
+    public init(openingLine: String??, identifier: ReviewIdentifier?) {
+        self.openingLine = openingLine
+        self.identifier = identifier
+    }
 }
 
 extension GranitaRepository {

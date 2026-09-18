@@ -17,6 +17,13 @@ IOS_SIM      := platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
 UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+# **Empty on purpose: these runs are not `-quiet`.** That flag makes a working xcodebuild and a
+# wedged one produce identical output — nothing at all — so the only way to tell them apart is to go
+# looking for the test host process by hand. A snapshot pass renders ~936 screens on a serialized
+# simulator and takes over ten minutes; recording them takes longer still, and with no progress a
+# healthy run is indistinguishable from the one that really did hang with the host never launched.
+# Set it back when the noise is the problem: `make snapshots XCODE_QUIET=-quiet`.
+XCODE_QUIET  ?=
 # Generated and committed, and therefore checkable. The icons are generated and committed too but
 # are deliberately absent — see verify-generated.
 GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
@@ -44,12 +51,12 @@ test: ## Run the package test suite — no simulator, no Xcode
 .PHONY: build
 build: ## Compile-check the package and both apps, on all three destinations
 	cd $(PACKAGE) && swift build
-	xcodebuild build -project $(PROJECT) -scheme GranitaMac    -destination '$(MAC_GENERIC)' -quiet $(UNSIGNED)
-	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' -quiet $(UNSIGNED)
+	xcodebuild build -project $(PROJECT) -scheme GranitaMac    -destination '$(MAC_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
+	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
 	@# The Client's third destination. `swift build` above already compiles every Client target for
 	@# macOS — it is the host — so what this adds is the app shell, its assets and its plist, which
 	@# is exactly the half that was riding "Designed for iPad" before issue #73.
-	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(MAC_GENERIC)' -quiet $(UNSIGNED)
+	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(MAC_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
 
 .PHONY: coverage
 coverage: ## Run the coverage gate locally — CI's verdict on five of the six values
@@ -103,11 +110,11 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 
 .PHONY: snapshots-ios
 snapshots-ios: ## Render the phone's screens on a simulator
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: tls-tests-ios
 tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobileConnections -destination '$(IOS_SIM)' -quiet CODE_SIGNING_ALLOWED=NO $(TLS_PACKAGE_FLAGS)
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobileConnections -destination '$(IOS_SIM)' $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(TLS_PACKAGE_FLAGS)
 
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment
@@ -118,7 +125,7 @@ snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, 
 	@# The gate that matters is `Snapshot tests (macOS)` on the pull request.
 	@# `-only-testing` because the scheme now holds two kinds. Without it this target would also
 	@# drive the app, and a UI failure would surface in the job that photographs screens.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacSnapshotTests -quiet CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacSnapshotTests $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: ui-tests-mac
 ui-tests-mac: ## Drive the Mac app and assert what pressing things changed
@@ -135,7 +142,7 @@ ui-tests-mac: ## Drive the Mac app and assert what pressing things changed
 	@# is killed before it can connect, and the only thing xcodebuild says is `Test crashed with
 	@# signal kill before establishing connection`, which names nothing. So no
 	@# CODE_SIGNING_ALLOWED=NO here.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacUiTests -derivedDataPath .build/mac-ui -quiet
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacUiTests -derivedDataPath .build/mac-ui $(XCODE_QUIET)
 
 .PHONY: record-snapshots
 record-snapshots: ## Re-record every snapshot baseline after a deliberate design change

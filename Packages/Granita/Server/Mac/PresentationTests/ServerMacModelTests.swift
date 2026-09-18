@@ -3,6 +3,7 @@ import Testing
 
 import CoreDiagnosticsDomain
 import CoreDiffDomain
+import CoreReviewDomain
 import ServerApiDomain
 import ServerMacDomain
 import ServerStoreDomain
@@ -1306,7 +1307,156 @@ struct ServerMacModelTests {
         #expect(scenario.sut.devicesFailure != nil)
         #expect(scenario.sut.projectsFailure == nil)
     }
+
+    // MARK: - The Review tab
+
+    @Test
+    func `given settings on disk when the Review tab opens then the field shows the stored line`(
+    ) async {
+        // given
+        let scenario = Scenario(
+            reviewSettings: ReviewSettings(openingLine: "Review this worktree.", identifier: .numbers)
+        )
+
+        // when
+        await scenario.sut.loadReviewSettings()
+
+        // then
+        #expect(scenario.sut.reviewOpeningLineDraft == "Review this worktree.")
+        #expect(scenario.sut.reviewSettings.identifier == .numbers)
+    }
+
+    @Test
+    func `given nothing chosen when the Review tab opens then the field shows the built-in line`(
+    ) async {
+        // given — the field is never empty on open: a reader has to see what a review currently
+        // begins with before they can decide to change it.
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.loadReviewSettings()
+
+        // then
+        #expect(scenario.sut.reviewOpeningLineDraft == ReviewSettings.defaultOpeningLine)
+        #expect(scenario.sut.reviewSettings.openingLine == nil)
+    }
+
+    @Test
+    func `given a line typed on the Mac when it is committed then the store holds it`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.sut.loadReviewSettings()
+        scenario.sut.reviewOpeningLineDraft = "Mine."
+
+        // when
+        await scenario.sut.commitReviewOpeningLine()
+
+        // then
+        #expect(await scenario.store.state().reviewSettings.openingLine == "Mine.")
+    }
+
+    @Test
+    func `given a label style chosen when it is set then the opening line is untouched`() async {
+        // given — the two settings are independent. A pane that wrote both on every change would
+        // make choosing figures silently re-save a line the reader was midway through editing.
+        let scenario = Scenario(
+            reviewSettings: ReviewSettings(openingLine: "Mine.", identifier: .letters)
+        )
+        await scenario.sut.loadReviewSettings()
+
+        // when
+        await scenario.sut.chooseReviewIdentifier(.numbers)
+
+        // then
+        let stored = await scenario.store.state().reviewSettings
+        #expect(stored.identifier == .numbers)
+        #expect(stored.openingLine == "Mine.")
+    }
+
+    @Test
+    func `given a chosen line when it is reset then the store forgets it rather than storing today's default`(
+    ) async {
+        // given
+        let scenario = Scenario(
+            reviewSettings: ReviewSettings(openingLine: "Mine.", identifier: .letters)
+        )
+        await scenario.sut.loadReviewSettings()
+
+        // when
+        await scenario.sut.resetReviewOpeningLine()
+
+        // then — absent rather than the built-in string, so a later release may change what the
+        // default is without every Mac having written this release's down.
+        #expect(await scenario.store.state().reviewSettings.openingLine == nil)
+        #expect(scenario.sut.reviewOpeningLineDraft == ReviewSettings.defaultOpeningLine)
+    }
+
+    @Test
+    func `given a store that refuses when a review setting is written then the pane shows what is stored`(
+    ) async {
+        // given — another copy of Granita holding the document is the commonest real cause, and the
+        // pane must not go on showing a value that never landed.
+        let scenario = Scenario(
+            reviewSettings: ReviewSettings(openingLine: "Theirs.", identifier: .letters),
+            storeFailure: .documentIsFromANewerVersion
+        )
+        await scenario.sut.loadReviewSettings()
+        scenario.sut.reviewOpeningLineDraft = "Mine."
+
+        // when
+        await scenario.sut.commitReviewOpeningLine()
+
+        // then
+        #expect(scenario.sut.reviewSettings.openingLine == "Theirs.")
+    }
+
+    @Test
+    func `given reviews in the store when the Review tab opens then it counts them and their comments`(
+    ) async {
+        // given — two numbers rather than a list: this is where a reader sees the document is not
+        // growing without bound, and it is deliberately not a review browser.
+        let scenario = Scenario(reviews: [
+            WorktreeID(canonicalPath: "/repo/one"): [aStoredComment, anotherStoredComment],
+            WorktreeID(canonicalPath: "/repo/two"): [aStoredComment]
+        ])
+
+        // when
+        await scenario.sut.loadReviewSettings()
+
+        // then
+        #expect(scenario.sut.storedReviewCount == 2)
+        #expect(scenario.sut.storedReviewCommentCount == 3)
+    }
 }
+
+// MARK: -
+
+private let aStoredComment = ReviewComment(
+    anchor: CommentAnchor(
+        file: FileID(repositoryRelativePath: "src/a.swift"),
+        first: DiffLinePosition(oldNumber: nil, newNumber: 12),
+        last: DiffLinePosition(oldNumber: nil, newNumber: 14)
+    ),
+    path: "src/a.swift",
+    lines: CommentedLines(side: .new, first: 12, last: 14),
+    language: "swift",
+    quotedLines: ["+    let a = 1"],
+    text: "This should be a constant."
+)
+
+/// A second comment, so a count of two counts two comments rather than one counted twice.
+private let anotherStoredComment = ReviewComment(
+    anchor: CommentAnchor(
+        file: FileID(repositoryRelativePath: "src/b.swift"),
+        first: DiffLinePosition(oldNumber: nil, newNumber: 3),
+        last: DiffLinePosition(oldNumber: nil, newNumber: 3)
+    ),
+    path: "src/b.swift",
+    lines: CommentedLines(side: .new, first: 3, last: 3),
+    language: "swift",
+    quotedLines: ["+    let b = 2"],
+    text: "Name this."
+)
 
 // MARK: -
 
@@ -1335,6 +1485,8 @@ private struct Scenario {
         worktreesWithChanges: [String: Int] = [:],
         candidates: [RepositoryCandidate] = [],
         pickedFolder: URL? = nil,
+        reviews: [WorktreeID: [ReviewComment]] = [:],
+        reviewSettings: ReviewSettings = .unset,
         storeFailure: StoreError? = nil,
         pairingFailure: PairingInvitationError? = nil,
         codeExpiresAt: Date = Date(timeIntervalSince1970: 120),
@@ -1344,7 +1496,13 @@ private struct Scenario {
     ) {
         loginItems = FakeLoginItemRegistry(isRegistered: opensAtLogin, failure: loginItemFailure)
         restarts = FakeServerRestarting()
-        store = FakeStore(projects: projects, devices: devices, failure: storeFailure)
+        store = FakeStore(
+            projects: projects,
+            devices: devices,
+            reviews: reviews,
+            reviewSettings: reviewSettings,
+            failure: storeFailure
+        )
         folders = FakeProjectFolders(
             contents: folderContents,
             worktreesWithChanges: worktreesWithChanges,

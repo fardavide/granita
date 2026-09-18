@@ -128,6 +128,7 @@ private extension ApiFailure {
         case .unreachable: "unreachable"
         case .cancelled: "cancelled"
         case .notUnderstood: "notUnderstood"
+        case .routeNotServed: "routeNotServed"
         }
     }
 }

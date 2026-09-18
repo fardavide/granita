@@ -62,6 +62,33 @@ public struct WorktreeRegistry: Sendable {
         return projects
     }
 
+    /// Drops what the store holds for worktrees that no longer exist, and caps the viewed marks.
+    ///
+    /// **`SPEC.md` §9's startup rule, and it has to be here rather than in the store**, because the
+    /// store cannot know which worktrees are real — that answer costs a git process per project and
+    /// belongs to whatever already runs them. An agent makes and destroys these checkouts, so
+    /// nothing else would ever drop what they left behind.
+    ///
+    /// Failing is not worth reporting: this is housekeeping that runs at launch, and a Mac whose
+    /// document could not be pruned still serves every route. It is tried again next launch.
+    public func pruneStore(markLimit: Int = 20_000) async {
+        let projects = await store.state().projects.filter(\.isVisible)
+        var living: Set<WorktreeID> = []
+        for project in projects {
+            // **A project that cannot be read abandons the whole pass.** A repository on a volume
+            // that has not mounted yet answers the same as one with no worktrees, and pruning on
+            // that reading would delete a reader's marks and reviews for being unreachable rather
+            // than for being gone. Housekeeping is never worth that, and there is another launch.
+            guard let found = try? await service.worktrees(
+                in: RepositoryLocation(path: project.path)
+            ) else {
+                return
+            }
+            living.formUnion(found.map { WorktreeID(canonicalPath: $0.location.path) })
+        }
+        try? await store.prune(keeping: living, markLimit: markLimit)
+    }
+
     public func worktrees(inProject filter: ProjectID?) async throws(ApiError) -> [Worktree] {
         let state = await store.state()
         let projects = state.projects.filter { $0.isVisible && (filter == nil || $0.id == filter) }

@@ -61,6 +61,7 @@ extension RouterTransport {
         switch request.method {
         case .get: .get
         case .post: .post
+        case .put: .put
         case .patch: .patch
         case .delete: .delete
         }

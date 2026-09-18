@@ -1,6 +1,7 @@
 import Testing
 
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerDomain
 
@@ -46,7 +47,7 @@ struct ReviewFeedbackTests {
         // when
         let document = ReviewFeedback.document(
             note: "Rename appVersion to version before this lands.",
-            identifiers: .letters,
+            settings: .unset,
             comments: [comment]
         )
 
@@ -84,7 +85,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then
         #expect(document == """
@@ -105,7 +106,7 @@ struct ReviewFeedbackTests {
         // given — the field was opened, brushed, and left. Same intent as *Skip*, and it must not
         // produce a paragraph made of one space.
         // when
-        let document = ReviewFeedback.document(note: "   \n  ", identifiers: .letters, comments: [])
+        let document = ReviewFeedback.document(note: "   \n  ", settings: .unset, comments: [])
 
         // then
         #expect(document == "Review of uncommitted changes")
@@ -116,7 +117,7 @@ struct ReviewFeedbackTests {
         // given - when
         let document = ReviewFeedback.document(
             note: "\n  Ship it.  \n",
-            identifiers: .letters,
+            settings: .unset,
             comments: []
         )
 
@@ -132,7 +133,7 @@ struct ReviewFeedbackTests {
     func `given nothing was written when the document is built then it is the heading alone`() {
         // given - when — unreachable from the screen, whose capsule is absent until a comment exists.
         // Answered anyway, because a function that is total has no state a caller has to avoid.
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [])
 
         // then — and nothing about the project, the worktree or the size of the read, which the
         // session being pasted into already knows.
@@ -151,7 +152,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then
         #expect(document.contains("A. SwiftlyCore/Sources/Common/Utils/Lce.swift:8\n```swift"))
@@ -181,7 +182,7 @@ struct ReviewFeedbackTests {
         // when
         let document = ReviewFeedback.document(
             note: nil,
-            identifiers: .letters,
+            settings: .unset,
             comments: [first, second]
         )
 
@@ -222,7 +223,7 @@ struct ReviewFeedbackTests {
         // when
         let document = ReviewFeedback.document(
             note: "Ship it.",
-            identifiers: .letters,
+            settings: .unset,
             comments: [comment]
         )
 
@@ -245,7 +246,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then
         #expect(document.contains("""
@@ -272,7 +273,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then
         #expect(document.contains("""
@@ -299,7 +300,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then
         #expect(document.contains("""
@@ -325,7 +326,7 @@ struct ReviewFeedbackTests {
         }
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: comments)
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: comments)
 
         // then
         #expect(document.contains("A. Sources/File0.swift:0"))
@@ -347,7 +348,11 @@ struct ReviewFeedbackTests {
         }
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .numbers, comments: comments)
+        let document = ReviewFeedback.document(
+            note: nil,
+            settings: ReviewSettings(openingLine: nil, identifier: .numbers),
+            comments: comments
+        )
 
         // then
         #expect(document.contains("1. Sources/File0.swift:0"))
@@ -370,7 +375,7 @@ struct ReviewFeedbackTests {
         )
 
         // when
-        let document = ReviewFeedback.document(note: nil, identifiers: .letters, comments: [comment])
+        let document = ReviewFeedback.document(note: nil, settings: .unset, comments: [comment])
 
         // then — a line the returned frames never drew, added for the one case their example could
         // not show. It borrows the idiom the stale line already established rather than inventing a
@@ -400,7 +405,7 @@ struct ReviewFeedbackTests {
         // when
         let document = ReviewFeedback.document(
             note: nil,
-            identifiers: .letters,
+            settings: .unset,
             comments: [ReviewedComment(comment: comment.comment, isStale: true)]
         )
 
@@ -430,7 +435,7 @@ struct ReviewFeedbackTests {
         // when
         let document = ReviewFeedback.document(
             note: nil,
-            identifiers: .letters,
+            settings: .unset,
             comments: [ReviewedComment(comment: comment.comment, isStale: true)]
         )
 

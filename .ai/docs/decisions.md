@@ -5389,6 +5389,10 @@ partly-uncovered records in the views scope are named methods and all thirty-fiv
 
 ### Regions only, and that is a measurement rather than a shortcut
 
+**Corrected on 2026-09-18** — the entry headed *The Snapshot row's lines leave with its regions*
+shows that the "7 of 5043" below came from modelling the line total as a count over the source,
+which llvm-cov does not compute. Both columns leave out action closures now.
+
 Over the whole views scope the exclusion takes **200 of 1695 regions** out of the denominator and
 **7 of 5043 lines**. A closure written inline is spanned by the view expression containing it, so its
 lines *are* the body's lines and removing them would remove the body. So the line counter is untouched
@@ -6652,3 +6656,193 @@ scoped that work in the same exchange: the setting is editable **from the phone 
 synced between them**, and it lands alongside
 [#64](https://github.com/fardavide/granita/issues/64), which moves the comments themselves off the
 phone. That is a wire change and a design round trip, and it is a slice of its own.
+
+## A document that would not decode was indistinguishable from a first run, and got overwritten
+
+`JsonDocumentStore` funnelled every read failure into an empty state: a file that existed and did not
+decode returned `.empty` with nothing set on it, so the next mutation wrote over it — every project,
+alias, pin and paired device, with no error anywhere. The blank state a reader saw was the same one a
+first launch draws, which is why nothing about it looked wrong.
+
+**The from-a-newer-version guard was defeated by the same path.** The version was compared only after
+the whole envelope had decoded, and the envelope decoded the state with it. `StoredState`'s four
+fields are all non-optional, so a future document that renamed or added one threw during decode, hit
+the same `try?`, and was read as a first run — the exact outcome the guard and its doc comment exist
+to prevent, in precisely the case that guard is for. The version is now decoded on its own and first:
+it is the one field a later release is guaranteed to still spell the way this one does.
+
+`isFromUnreadableDocument` became a typed reason rather than a flag, because the two cases reach a
+reader as different sentences — one names a Granita to upgrade, the other a file to repair. A damaged
+document refuses writes through `notWritable`, whose reason string carries the truth, so **no new
+error case and no new reader-facing copy were needed**.
+
+**Reset is the one deliberate act still allowed to land on bytes this version cannot decode.** It is
+the only repair a reader has for a damaged document, and the first cut of this fix took it away
+without noticing: flagging the document made every write refuse, including the one control that
+exists to fix it. A document from a *newer* Granita is still refused — that one is readable, and by
+something the reader may go back to.
+
+> The tests were proved against the old logic rather than trusted: restoring it failed exactly the
+> three new cases and nothing else. A fix for silent data loss whose test cannot be shown to fail is
+> a fix nobody can check.
+
+## The Mac's settings window takes a sixth tab, and it is the same departure as the fifth
+
+`SPEC.md` §9 fixes the window at four tabs. Five ship, because the connection log was lifted out of
+Advanced on the grounds that it is read under pressure and must not sit one mis-click from the button
+that unpairs every device. The review's two settings make six, in fourth position, named Review.
+
+They earn it on the same terms the connection log did: the review is its own subject, it is the only
+pane whose values a phone reads and writes, and it is the first thing in the window that is not about
+serving. General was rejected because its subject is this Mac's address and whether anything is
+listening — and with no port row to hide behind, a review section would be a third of that tab. It is
+also the pane a reader opens when something is wrong, which is the worst place for a text field about
+the wording of a document. Advanced was rejected because neither control is advanced and they would
+share a pane with *Reset all data*, which is the objection that moved the connection log out.
+
+**The constraint that could overturn this is the window's fixed width.** It is 620pt, set by the QR
+in Devices. If six labels overflow, the answer is to widen it to 680 rather than rename a tab or
+accept an overflow chevron — the window is a constant already, so widening it is not a layout change.
+
+## The settings and review routes 404 for an older Mac rather than 426
+
+`SPEC.md` §8 says the client refuses to pair on a contract mismatch and that any route 426s on a newer
+client. Applied here that would make a newer phone refuse a Mac that simply predates this slice, which
+costs the reader every screen that already worked in order to protect two settings.
+
+So these routes are absent rather than incompatible on an older Mac: they 404, and the phone reads the
+same state it draws for a Mac it has never asked — its own local values, with a sentence naming the
+Mac as too old. Nothing queues, because the addressee cannot receive it. An older phone against a
+newer Mac never asks and exports the built-in line, which is today's behaviour and the definition of
+degrading sensibly.
+
+This is a departure from §8's compatibility rule and it is deliberate: **a contract bump that takes
+the product away is a worse answer than a route that is honestly missing.**
+
+## Reviews become the store's second unbounded collection, and the worse one
+
+§9 names `viewed` as the only collection that grows without bound, and this slice ends that. Reviews
+accumulate per worktree, a comment carries an excerpt, so a review is kilobytes where a viewed mark is
+bytes — and the worktrees they belong to are created and destroyed by an agent rather than by a
+reader.
+
+`viewed` could not be pruned or capped as §9 requires because the code stores neither of the fields
+that would make it possible: it is a file-path hash to a content hash, with no worktree and no date,
+where §9 specifies both.
+
+> **Corrected while building it: this is not a wire change.** The route is
+> `POST /v1/worktrees/:worktreeId/files/:fileId/viewed`, so the worktree has been in the path the
+> whole time — it stopped at the route handler and never reached the store. The fix is entirely
+> behind the API, no contract bump and no client change, which makes it far cheaper than this entry
+> first claimed.
+
+**A second defect fell out of the same shape, and it is the worse one.** A file identifier is a hash
+of a repository-relative path, so one file in two checkouts of a project is one identifier. With no
+worktree on a mark, marking a file read in one worktree drew it as read in the other whenever their
+content agreed — which, between two branches of one repository, is most of the files in them. A diff
+silently drawn as already-read is the one failure this feature must not have.
+
+**Version 1's marks are dropped rather than migrated.** They carry no worktree and none can be
+inferred, and a mark assigned to the wrong worktree hides a file the reader has not seen. Dropping
+them costs a reader one pass of re-marking; guessing costs them a review. The old shape is still
+decoded rather than ignored, so a `viewed` key that is neither shape still makes the document
+unreadable instead of quietly emptying a collection this version would then write back.
+
+**Pruning is a rule rather than a control**, on the same startup pass for both collections: drop what
+belongs to a worktree that no longer exists. There is no Mac-side button to clear a review — clearing
+is the reader's act at the moment of pasting, and a Mac-side button would destroy a review a phone
+might still be holding unsent.
+
+## One clipboard read held every phone baseline hostage
+
+`SystemDiagnosticPasteboard`'s UIKit branch wrote `UIPasteboard.general` and took no name, so the only
+way to assert it was for a test to save the **shared system pasteboard**, write, read back and restore
+it. Reading `items` off the general board waits on a simulator daemon that does not reliably answer,
+and when it does not, the test host sits at 0% CPU forever — with every one of the suite's ~936
+baselines behind it, because the suites are `.serialized` and share one window.
+
+It presented three different ways and none of them looked like a pasteboard: a run that sat 48 minutes
+with the test host never launching, a run that crash-looped and restarted three times reporting "12
+tests passed", and a run that blocked for an hour. The only thing they had in common was the test that
+ran immediately before.
+
+**The fix is the seam the AppKit branch already had.** That side takes an `NSPasteboard.Name` for
+exactly this reason — its own comment says a suite may not write the developer's clipboard on every
+`make test` — and the UIKit side now takes a `UIPasteboard.Name?` the same way, defaulting to the
+general board so nothing about the shipped behaviour changes. The name travels rather than the
+instance, because `UIPasteboard` is not `Sendable` and this type is. A named board is private to the
+process: no save, no restore, nothing outside to wait on.
+
+> Rejected: skipping the test in `make snapshots`. It would have unblocked the suite the same day and
+> left a real integration test — *did Copy Logs put the report where a paste would find it* — running
+> nowhere, which is the half of this the unit tests genuinely cannot answer.
+
+**What made it findable was deleting `-quiet` from the Makefile's long `xcodebuild` runs.** With it,
+a healthy run and a blocked one produce identical output — nothing — so the only way to tell them
+apart is to go looking for the test host process by hand. The two signals worth keeping: is the app
+process alive, and are PNGs appearing. Neither is visible in a quiet run.
+
+## `record-snapshots` deletes the directory first, and that is a trap with uncommitted baselines in it
+
+It opens with `rm -rf __Snapshots__`. Anything in there that git does not track is gone — and a
+baseline recorded but not yet committed is exactly that. Sixteen of them were lost that way in one
+run, after which `git checkout` restored the 920 tracked ones and could not restore the rest.
+
+**Commit new baselines before running it again**, and after any record, `git status` the directory:
+only the subjects that were added should appear. The pass rewrites every animated state — anything
+with a spinner or an in-flight bar — at a different frame, so a one-subject addition otherwise arrives
+as a hundred-and-thirty-file diff that nobody will review.
+
+## The Snapshot row's lines leave with its regions, and the 2026-09-04 reasoning for keeping them was a wrong model
+
+Davide, on this slice's coverage report: *"Is there anything we should exclude by rule for snapshot
+tests?"* and then *"Can you think of a solid rule for it?"* The answer was one rule that replaces two
+half-rules, and adopting it corrected the entry above headed *An action closure leaves the Snapshot
+regions column*.
+
+**The rule.** The Snapshot row judges only what a render can execute. A line is in its denominator
+when it is code and carries at least one region the regions column already counts. So an action
+closure — a closure literal returning `()` — leaves both columns, not one, and the two columns
+describe the same set of code again.
+
+### Why the earlier entry kept lines, and why that was wrong
+
+That entry measured **7 of 5043 lines** as belonging to a closure alone and concluded that an inline
+closure "shares its lines with the view expression containing it", so removing them would remove the
+body. That reading modelled a file's line total as a count over its source. **llvm-cov does not
+compute one.** It computes lines *per function record*, from that record's own regions, and adds the
+records up — `PairingEntryScreen` reports 72 lines over a 51-line span. A closure's lines are in the
+total once for the body's record and once more for the closure's own, so the closure's share is a
+separable whole, and the "7" was an artefact of the segment-based reading, not a property of the code.
+
+The script now reproduces llvm-cov's own arithmetic for every scoped file, both counters, and
+**refuses to run if the two disagree**. That self-check is what found the second thing the earlier
+entry did not know: records that open at one source position form an *instantiation group* whose
+figures merge by `max`. A curried `self.method` reference emits two closures at one column — a
+thunk returning the action, count 4, and the action itself, count 0 — and llvm-cov counts that as one
+line. The naive per-record sum gave two, `PairingOutcomeScreen` came out at 45 lines against
+llvm-cov's 44, and the refusal fired. A group leaves only when every member is an action closure
+whose spans no other record shares; a mixed group stays.
+
+### The measurement, over one export
+
+| | Before | After |
+|---|---|---|
+| Snapshot lines | 11070 / 11428, 96.9% | 10986 / 11072, 99.2% |
+| Snapshot regions | 1851 / 1894 | 1851 / 1894, unchanged |
+
+Regions unchanged is the check: the closures leaving the lines column are exactly the ones already
+out of the regions column since 2026-09-04, and no new predicate crept in. Of the 356 lines that left,
+84 were covered — `.task`, `onAppear`, `onChange` and geometry callbacks fire during a render — so the
+rule takes covered lines out with the uncovered ones and does not merely flatter the number.
+
+**One known imprecision, stated rather than fixed.** Fifteen of those 84 are an `enumerateAttribute`
+block in `HighlightrSyntaxHighlighter`: a closure returning `()` that is a computation, not an action.
+The predicate reads the return type and cannot tell the two apart; a predicate that read the call
+site would be a parser of Swift. It lowers the number rather than raising it, it has been out of the
+regions column since 2026-09-04 for the same reason, and the `swift-testing` skill now says in as
+many words that writing view logic as a `-> ()` closure to take it out of the row is not a licence.
+
+The scope string is renamed `views-and-screens-no-action-closures-per-record`, so the Snapshot row
+is unjudged for exactly one run and rejoins the ratchet on the next `main` run. That is the seventh
+rename, and the first that corrects a previous one rather than a previous scope.

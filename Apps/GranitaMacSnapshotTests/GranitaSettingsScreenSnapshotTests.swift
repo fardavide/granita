@@ -134,6 +134,7 @@ struct GranitaSettingsScreenSnapshotTests {
         case .general: "general"
         case .projects: "projects"
         case .devices: "devices"
+        case .review: "review"
         case .connections: "connections"
         case .advanced: "advanced"
         }

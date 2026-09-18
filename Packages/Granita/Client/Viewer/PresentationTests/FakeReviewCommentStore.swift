@@ -1,5 +1,6 @@
 import ClientViewerDomain
 import CoreDiffDomain
+import CoreReviewDomain
 
 /// A review that lives in memory, so a test can seed one and read back what the model wrote.
 ///
@@ -11,6 +12,15 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     private(set) var saved: [ReviewComment]
 
+    /// Every push the model made, so a test can assert that saving and offering are separate acts.
+    private(set) var pushed: [[ReviewComment]] = []
+
+    /// What the Mac is pretending to hold, which `reconcile` unions into what this phone wrote.
+    var onTheMac: [ReviewComment] = []
+
+    /// What a push answers with, so the caption's states can be driven without a network.
+    var pushAnswers: ReviewSync = .settled
+
     init(holding comments: [ReviewComment] = []) {
         saved = comments
     }
@@ -21,5 +31,16 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     func save(_ comments: [ReviewComment], in worktree: WorktreeID) {
         saved = comments
+    }
+
+    func push(_ comments: [ReviewComment], in worktree: WorktreeID) async -> ReviewSync {
+        pushed.append(comments)
+        return pushAnswers
+    }
+
+    func reconcile(in worktree: WorktreeID) async -> [ReviewComment] {
+        let anchors = Set(saved.map(\.anchor))
+        saved += onTheMac.filter { anchors.contains($0.anchor) == false }
+        return saved
     }
 }

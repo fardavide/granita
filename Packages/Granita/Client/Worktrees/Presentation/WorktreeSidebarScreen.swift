@@ -47,6 +47,9 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
     private let opening: (WorktreeID, String, String) -> Opened
     private let onPairAgain: () -> Void
 
+    /// Opens the review's settings, which belong to this Mac and so are reached from this screen.
+    private let onOpenSettings: () -> Void
+
     /// Whether this screen should claim its rows' taps itself.
     ///
     /// **False when this screen is a `NavigationSplitView` column, true everywhere else.** A row's
@@ -62,6 +65,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         model: ClientWorktreesModel,
         claimsRowTaps: Bool = true,
         onPairAgain: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void,
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
@@ -72,6 +76,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         self.claimsRowTaps = claimsRowTaps
         self.opening = opening
         self.onPairAgain = onPairAgain
+        self.onOpenSettings = onOpenSettings
     }
 
     public var body: some View {
@@ -103,7 +108,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 onRetry: { Task { await model.load(trigger: .retry) } },
                 onRefresh: { await model.load(trigger: .pullToRefresh) },
                 onPairAgain: onPairAgain,
-                onCopyLogs: { Task { await model.copyLogs() } }
+                onCopyLogs: { Task { await model.copyLogs() } },
+                onOpenSettings: onOpenSettings
             )
         }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in

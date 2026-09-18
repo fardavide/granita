@@ -75,7 +75,8 @@ struct ErrorDiagnosticsSnapshotTests {
                     onRetry: {},
                     onRefresh: {},
                     onPairAgain: {},
-                    onCopyLogs: {}
+                    onCopyLogs: {},
+                    onOpenSettings: {}
                 )
             }
             .frame(maxWidth: layout.isRegularWidth ? WorktreeSidebarView.widthInASplitView : nil)

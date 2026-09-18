@@ -6,6 +6,7 @@ import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiffDomain
 import CorePairingDomain
+import CoreReviewDomain
 
 @testable import ClientConnectionDomain
 
@@ -289,6 +290,110 @@ struct RememberedMacsTests {
 
         // then
         #expect(await scenario.macs.saved.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that refuses when the review is sent then the pairing is forgotten too`(
+    ) async {
+        // given — the review's routes go through the same wrapper as everything else, which is the
+        // whole point of these tests: what a refusal does to what this phone believes must not
+        // depend on which route provoked it.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .unauthorized
+        )
+
+        // when
+        try? await scenario.sut.putReview([], in: aWorktree.id)
+
+        // then
+        #expect(await scenario.macs.saved.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that refuses when its review settings are read then the pairing is forgotten`(
+    ) async {
+        // given — a revoked token refuses the settings route as readily as the worktree list, and a
+        // reader who opened Settings rather than a diff has to recover the same way.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .unauthorized
+        )
+
+        // when
+        _ = try? await scenario.sut.reviewSettings()
+
+        // then
+        #expect(await scenario.macs.saved.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that refuses when its review is read then the pairing is forgotten`() async {
+        // given — all four of the review's calls go through the wrapper, and a rule that held for
+        // three of them would recover a reader or not depending on which one they happened to make.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .unauthorized
+        )
+
+        // when
+        _ = try? await scenario.sut.review(in: aWorktree.id)
+
+        // then
+        #expect(await scenario.macs.saved.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that refuses when its review settings are written then the pairing is forgotten`(
+    ) async {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .unauthorized
+        )
+
+        // when
+        _ = try? await scenario.sut.updateReviewSettings(
+            ReviewSettingsPatch(openingLine: .some("Mine."), identifier: nil)
+        )
+
+        // then
+        #expect(await scenario.macs.saved.isEmpty)
+    }
+
+    @Test
+    func `given a Mac that is unreachable when its review is read then its address is dropped`(
+    ) async {
+        // given — the other half of what the wrapper is for: an unreachable Mac has a stale address
+        // rather than a revoked pairing, so the next read resolves again instead of re-dialling a
+        // dead port.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .unreachable(diagnostic: "NWError -65563")
+        )
+
+        // when
+        _ = try? await scenario.sut.review(in: aWorktree.id)
+
+        // then — still paired: being out of reach says nothing about whether the token is good.
+        #expect(await scenario.macs.saved.isEmpty == false)
+    }
+
+    @Test
+    func `given a Mac with no review route when it is asked then the pairing is kept`() async {
+        // given — an absent route says the Mac is older than the feature asking, which is nothing
+        // about whether this phone may still talk to it. Forgetting the pairing over one would be
+        // the worst available reading, and it would unpair a reader for opening a screen.
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            refusing: .routeNotServed
+        )
+
+        // when
+        _ = try? await scenario.sut.reviewSettings()
+
+        // then
+        #expect(await scenario.macs.saved.isEmpty == false)
     }
 
     // MARK: - What a failure changes about what the phone believes
@@ -777,6 +882,30 @@ private actor FakeMacBehindAPairing: GranitaRepository {
         try note(.markViewed(viewed, file, contentHash, worktree))
     }
 
+    // The review's four calls go through the same wrapper as everything else, which is the whole
+    // point of these tests: what a failure does to what this phone remembers must not depend on
+    // which route provoked it.
+    func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] {
+        try note(.review(worktree))
+        return []
+    }
+
+    func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {
+        try note(.putReview(worktree))
+    }
+
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings {
+        try note(.reviewSettings)
+        return .unset
+    }
+
+    func updateReviewSettings(
+        _ patch: ReviewSettingsPatch
+    ) async throws(ApiFailure) -> ReviewSettings {
+        try note(.updateReviewSettings)
+        return .unset
+    }
+
     private func note(_ request: MacRequest) throws(ApiFailure) {
         asked.append(request)
         if let answering { throw answering }
@@ -835,6 +964,10 @@ private enum MacRequest: Hashable, Sendable {
     case lines(FileID, WorktreeID, DiffSide, Int, Int)
     case image(FileID, WorktreeID, DiffSide)
     case markViewed(Bool, FileID, String, WorktreeID)
+    case review(WorktreeID)
+    case putReview(WorktreeID)
+    case reviewSettings
+    case updateReviewSettings
 }
 
 private let theMacTheReaderTapped = DiscoveredServer(

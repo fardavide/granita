@@ -7,6 +7,7 @@ import UIKit
 import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
+import ClientSettingsPresentation
 import ClientViewerData
 import ClientViewerDomain
 import ClientViewerPresentation
@@ -14,6 +15,7 @@ import ClientViewerUi
 import ClientWorktreesData
 import ClientWorktreesPresentation
 import CoreBrandingDomain
+import CoreReviewDomain
 
 /// Composition root for the phone and the iPad: the one Client target that may see a `Data`
 /// target, because wiring implementations into the protocols every other target depends on is
@@ -233,7 +235,20 @@ public struct GranitaMobileScene: Scene {
                 announcing: VoiceOverWorktreeReadAnnouncements(),
                 now: Date.init
             ),
-            onPairAgain: onPairAgain
+            onPairAgain: onPairAgain,
+            // The review's settings live on this Mac, so the screen that is about this Mac is where
+            // they are reached from. Composed here because it is the only Client target that may see
+            // two features' `Presentation` at once.
+            settings: {
+                ReviewSettingsScreen(
+                    model: ClientSettingsModel(
+                        macName: macName,
+                        isPaired: true,
+                        repository: repository
+                    ),
+                    onPair: onPairAgain
+                )
+            }
         // **The project's name is offered here and no longer taken.** It reached this closure for one
         // reader — the exported review's heading — and 0.14.2 dropped that heading on Davide's own
         // argument that a session pasted into already knows which checkout it is in. The sidebar
@@ -254,8 +269,18 @@ public struct GranitaMobileScene: Scene {
                 worktreeName: displayName,
                 model: ClientViewerModel(
                     worktree: worktree,
+                    // The same name the sidebar is titled with, because the review's one sentence is
+                    // about which of two copies the reader is holding and has to name the other one.
+                    macName: macName,
                     repository: repository,
-                    commentStore: UserDefaultsReviewCommentStore(defaults: .standard),
+                    // The Mac holds the review and this phone keeps a copy that never waits for it.
+                    // Wrapping rather than replacing is the whole of Davide's call: the Mac wins at
+                    // read time, the phone wins at write time, so a closed laptop costs a reader
+                    // nothing they typed.
+                    commentStore: MacReviewCommentStore(
+                        local: UserDefaultsReviewCommentStore(defaults: .standard),
+                        repository: repository
+                    ),
                     pasteboard: SystemReviewPasteboard(),
                     // **One lexer for the app, not one per worktree.** Building it loads and
                     // evaluates the whole highlight.js bundle, and its `JSContext` cannot be shared
