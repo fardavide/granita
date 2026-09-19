@@ -111,6 +111,14 @@ stylesheet asked for in light appearance paints pale grey on white.
 
 ## Five pairs, and the filter is published
 
+> **Two of these four criteria were never true of the table that shipped, and the sheet said they
+> were.** Corrected 19 September 2026, after measuring all 271 stylesheets rather than reading them:
+> **every colour clears 4.5:1** is false — `xcode-dark` draws comments at 3.8:1 and `atom-one` at
+> 2.6:1 — and **mean chroma at or below Xcode's** is false too, since Xcode is itself the second most
+> saturated of the eight stable pairs in the bundle. What the filter actually is, and what it actually
+> excluded, is in *The filter, restated* below. The four criteria are kept here as written because the
+> paragraphs under them argue from them.
+
 Four criteria, all measurable, none an opinion: **both halves exist in the bundle**; **each half is
 legible on our card**, since the theme's own background is discarded; **every colour clears 4.5:1
 there**; and **the five colours' mean chroma is at or below Xcode's**. Five pass today.
@@ -257,6 +265,48 @@ criterion.
 
 Confirmed by four consecutive `make test` runs in separate processes after the two were removed.
 
+### 1b. The filter, restated — stability is the only criterion that has ever excluded anything
+
+Measured 19 September 2026 across all 271 stylesheets, prompted by Davide asking whether more themes
+could be added. **The contrast and chroma criteria do not survive measurement, and no code enforces
+either.** What the table is actually filtered on:
+
+1. **Both halves exist as a pair.** Unchanged, and it is what rules out Dracula, Nord, Monokai and
+   Night Owl.
+2. **Every role renders the same colour on every launch.** This is the whole of the filter, it is the
+   only one that has excluded anything, and `CodeThemePaletteTests` is what enforces it.
+3. **Contrast on our card is measured and reported, not gated.** Comments apart from the rest, because
+   every stylesheet in the bundle dims them deliberately and 4.5:1 is WCAG's threshold for body text
+   rather than for a class meant to recede.
+4. **Chroma is reported, not gated.** Xcode was taken as the reference and is not the floor.
+
+| Pair | chroma vs Xcode | comment | other roles | |
+|---|---|---|---|---|
+| `gradient` | 1.41× | 3.5:1 | 3.9:1 | the only genuinely colourful pair in the bundle |
+| `paraiso` | 1.08× | 4.8:1 | 2.2:1 | |
+| **Xcode** | 1.00× | 3.8:1 | 5.9:1 | **ships**, default |
+| `kimbie` | 0.98× | 3.8:1 | 2.2:1 | |
+| **Stack Overflow** | 0.94× | 5.2:1 | 4.9:1 | **ships**, and the best-contrasting pair available |
+| `nnfx` | 0.92× | 5.8:1 | 4.2:1 | |
+| `tokyo-night` | 0.72× | 2.7:1 | 5.6:1 | the modern one, and less colourful than Xcode |
+| **Atom One** | 0.70× | 2.6:1 | 3.2:1 | **ships**, and the weakest of the three |
+
+**Solarized was excluded for the wrong reason, and the right reason is stronger.** The return says its
+comment grey is "about 2.4:1 on white"; on our card it measures **3.2:1**, better than Atom One's 2.6:1,
+so contrast never disqualified it. What disqualifies it is criterion 2: `solarized-light` declares
+`.hljs-keyword` as `#6c71c4` and `.hljs-meta .hljs-keyword` as `#d33682`, and Highlightr's stripper
+splits the descendant selector onto the same key. It is the same defect as `github` and `a11y`, and it
+was hiding behind a contrast figure that does not reproduce.
+
+**Atom One stays, on a stated basis rather than as an exception.** Davide's call, 19 September 2026. It
+is the lowest-contrast pair on the list, and the criterion it was said to pass is one nothing passes.
+
+**None of the five unshipped pairs ships**, also Davide's call: `tokyo-night` was the only honest
+addition and buys no colour, `gradient` buys colour and costs contrast, and `paraiso`, `kimbie` and
+`nnfx` are neither modern nor colourful. The route to a modern colourful pair, and to bringing
+*Accessible* back, is [#103](https://github.com/fardavide/granita/issues/103) — Granita shipping its own
+stylesheet.
+
 ### 2. A role that collapses into plain is recorded as the plain colour
 
 The frames assumed five distinct colours per half. Three of the six shipped halves have only four,
@@ -295,5 +345,12 @@ reads *‹ Settings*. It held one subject when it shipped and holds two now.
 - **Five is the reviewer's number, not a measurement.** The filter is measurable and the count is not:
   twelve pairs would pass it if twelve cleared 4.5:1 on our card, and the list would become a scroll.
   A dozen changes the screen from one glance to two, and changes nothing about the drawing.
+  > **The hypothetical is unreachable and the count was never the constraint.** Eight pairs in the
+  > whole bundle render stably, five once the unshipped ones are excluded on Davide's call — so the
+  > chooser could not become a scroll from this bundle however generous the bar. What limits the list is
+  > the supply of stylesheets Highlightr parses deterministically, not the room on the screen.
 - **Excluding Solarized will be the unpopular one.** It has the strongest following and the cleanest
   naming, and it fails on a comment grey that only fails because we discard its background.
+  > **It does not fail on that.** Its comment measures 3.2:1 on our card rather than the 2.4:1 claimed,
+  > which is better than shipped Atom One. It fails because `solarized-light` gives `.hljs-keyword` two
+  > different colours once Highlightr splits its descendant selectors — the same defect as `github`.
