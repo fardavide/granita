@@ -95,6 +95,15 @@ public struct HighlightKey: Hashable, Sendable {
     public let language: String
     public let appearance: HighlightAppearance
 
+    /// Which pair of stylesheets the side was lexed with.
+    ///
+    /// **A sixth part for exactly the reason the appearance is a fifth: the colours are baked into
+    /// what comes back rather than applied over it.** A reader who changes the theme with this field
+    /// missing would be handed the old colours for every file already lexed, and would keep them until
+    /// the content hash moved — which on a worktree nobody is writing to is never. The screen's own
+    /// `drawing` identity carries the same value, so the task that re-lexes re-fires.
+    public let theme: CodeTheme
+
     /// The code size the side was lexed for.
     ///
     /// **Nothing in what comes back is measured at it, and the field stays anyway.** The highlighter
@@ -121,6 +130,7 @@ public struct HighlightKey: Hashable, Sendable {
         side: DiffSide,
         language: String,
         appearance: HighlightAppearance,
+        theme: CodeTheme,
         pointSize: Double,
         lineNumbers: [Int]
     ) {
@@ -129,6 +139,7 @@ public struct HighlightKey: Hashable, Sendable {
         self.side = side
         self.language = language
         self.appearance = appearance
+        self.theme = theme
         self.pointSize = pointSize
         self.lineNumbers = lineNumbers
     }
@@ -185,6 +196,7 @@ public enum SyntaxHighlighting {
         for diff: FileDiff,
         side: DiffSide,
         appearance: HighlightAppearance,
+        theme: CodeTheme,
         pointSize: Double
     ) -> HighlightKey? {
         guard let language = diff.file.language, let source = plan(for: diff, side: side).source else {
@@ -196,6 +208,7 @@ public enum SyntaxHighlighting {
             side: side,
             language: language,
             appearance: appearance,
+            theme: theme,
             pointSize: pointSize,
             lineNumbers: source.lineNumbers
         )

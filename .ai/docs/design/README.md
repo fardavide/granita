@@ -17,6 +17,19 @@ a question that now has a real one. When a file's last section ships, the file g
 | [`granita-design-review.html`](granita-design-review.html) | The continuous diff's second header form and wrap-on (M5). **Not syntax highlighting** — this row claimed it until 0.4.2 and the file has never held a frame of it: §4 has eight subsections and none is highlighting, and the only two mentions in the whole review are a rejection of underlining that names the highlighter in passing. 21 August 2026, drawn against 0.0.4 | [`../design.md`](../design.md) |
 | [`granita-pairing-design-review.html`](granita-pairing-design-review.html) | The already-paired state, which 0.4.1 made reachable and deliberately did not build: a Mac paired with before goes straight to its worktrees, so the only reader who lands here is one whose token the Mac revoked. 25 August 2026, drawn against 0.0.19 | [`../design.md`](../design.md) §5 |
 | [`granita-review-settings-design-review.html`](granita-review-settings-design-review.html) | All of it: the phone's Settings sheet in seven states, the sync caption the review sheet gains, and the Mac's sixth tab. 17 September 2026, drawn against 0.14.2 for issues [#64](https://github.com/fardavide/granita/issues/64) and [#98](https://github.com/fardavide/granita/issues/98) | [`../design-review-settings.md`](../design-review-settings.md) |
+The appearance return **arrived and was built in the same session, so it was never archived here at
+all** — there is no commit in which its frames existed. 0.16.0 built the sheet's fourth section and the
+chooser it pushes, and this directory is for drawings waiting on an implementation rather than for
+drawings that already have one. [`../design-appearance.md`](../design-appearance.md) is the whole
+record now — every call beside the alternative it beat, and the four places the build departs from the
+drawing. The original is in the Claude Design project at
+`https://claude.ai/design/p/7a8bd161-884b-4993-9c88-0b09f1cd625e` if it is ever wanted again.
+
+**What it left recorded rather than built is the shortlist**: the return drew five theme pairs and three
+ship, because Highlightr renders two of them differently on each launch. That is in
+[`../decisions.md`](../decisions.md), and it is the clearest case yet of the rule this directory exists
+for — the drawing was one moment's answer to a question about CSS, and what survives it is a
+measurement of the library that reads the CSS.
 
 The pairing return arrived with **twelve** states and left with one, because the pull request that
 recorded it also built the other eleven. What it carried that no frame could — that the six words

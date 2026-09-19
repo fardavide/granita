@@ -310,8 +310,8 @@ struct SyntaxHighlightingTests {
         let diff = aDiff(hunks: [aHunk()])
 
         // when
-        let old = SyntaxHighlighting.key(for: diff, side: .old, appearance: .light, pointSize: 11)
-        let new = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, pointSize: 11)
+        let old = SyntaxHighlighting.key(for: diff, side: .old, appearance: .light, theme: .default, pointSize: 11)
+        let new = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .default, pointSize: 11)
 
         // then — the two sides of one file are different text and would otherwise share an entry.
         #expect(old != new)
@@ -325,11 +325,34 @@ struct SyntaxHighlightingTests {
         let diff = aDiff(hunks: [aHunk()])
 
         // when
-        let light = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, pointSize: 11)
-        let dark = SyntaxHighlighting.key(for: diff, side: .new, appearance: .dark, pointSize: 11)
+        let light = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .default, pointSize: 11)
+        let dark = SyntaxHighlighting.key(for: diff, side: .new, appearance: .dark, theme: .default, pointSize: 11)
 
         // then
         #expect(light != dark)
+    }
+
+    @Test
+    func `given one side in two themes when the keys are made then they differ`() {
+        // given — the same fact the appearance above turns on, asked about the other half of the pair:
+        // the colours are baked into what comes back, so a reader who changes theme needs a different
+        // answer rather than the same one restyled. Without this the files already lexed would keep
+        // the old palette until the content hash moved, which on a worktree nobody is writing to is
+        // never.
+        let diff = aDiff(hunks: [aHunk()])
+
+        // when
+        let xcode = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .xcode, pointSize: 11)
+        let atomOne = SyntaxHighlighting.key(
+            for: diff,
+            side: .new,
+            appearance: .light,
+            theme: .atomOne,
+            pointSize: 11
+        )
+
+        // then
+        #expect(xcode != atomOne)
     }
 
     @Test
@@ -341,8 +364,8 @@ struct SyntaxHighlightingTests {
         let diff = aDiff(hunks: [aHunk()])
 
         // when
-        let small = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, pointSize: 11)
-        let large = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, pointSize: 14)
+        let small = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .default, pointSize: 11)
+        let large = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .default, pointSize: 14)
 
         // then
         #expect(small != large)
@@ -361,8 +384,8 @@ struct SyntaxHighlightingTests {
         ])
 
         // when
-        let first = SyntaxHighlighting.key(for: before, side: .new, appearance: .light, pointSize: 11)
-        let second = SyntaxHighlighting.key(for: after, side: .new, appearance: .light, pointSize: 11)
+        let first = SyntaxHighlighting.key(for: before, side: .new, appearance: .light, theme: .default, pointSize: 11)
+        let second = SyntaxHighlighting.key(for: after, side: .new, appearance: .light, theme: .default, pointSize: 11)
 
         // then — same file, same hash, different question.
         #expect(before.file.contentHash == after.file.contentHash)
@@ -377,7 +400,7 @@ struct SyntaxHighlightingTests {
         let diff = aDiff(hunks: [aHunk()], language: nil)
 
         // when
-        let key = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, pointSize: 11)
+        let key = SyntaxHighlighting.key(for: diff, side: .new, appearance: .light, theme: .default, pointSize: 11)
 
         // then
         #expect(key == nil)

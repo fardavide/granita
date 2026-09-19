@@ -7,6 +7,19 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.16.0 — 2026-09-19
+- **Choose whether Granita follows your phone's appearance, or stays light or dark.** A new
+  *Appearance* section on the Settings sheet, reached the same way the review's settings are — the
+  worktree list's toolbar menu. *System* is the default and is what the app has always done.
+- **Choose the colours your code is lexed in.** Xcode's palette is still the default and still what
+  you get if you never open the screen; *Atom One* and *Stack Overflow* are the alternatives. Tapping
+  *Code colours* opens a list where **every theme is drawn in both light and dark at once**, side by
+  side, with a mark under the half your phone is currently showing — so you can judge a pair without
+  changing your appearance to see the other half of it. The diff you were reading re-colours itself on
+  the way back.
+- Both settings are kept on the device you set them on. Neither changes anything about what a review
+  says, so they need nothing from your Mac and work with it closed, asleep, or never paired.
+
 ### 0.15.1 — 2026-09-18
 - **Pull a diff down to read it again.** A change set you opened before your agent's last commit was
   the one you were stuck with, short of leaving the worktree and coming back to it. The diff now

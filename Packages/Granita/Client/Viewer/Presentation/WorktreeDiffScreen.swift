@@ -54,6 +54,10 @@ public struct WorktreeDiffScreen: View {
     /// environment value, which is why the model is told rather than left to guess.
     @Environment(\.colorScheme) private var colorScheme
 
+    /// Which pair of stylesheets that lexing uses, which the reader sets on the Settings sheet and the
+    /// scene root puts here. The other half of the same question `colorScheme` asks.
+    @Environment(\.codeTheme) private var codeTheme
+
     public init(worktreeName: String, model: ClientViewerModel, onPairAgain: @escaping () -> Void) {
         self.worktreeName = worktreeName
         self.onPairAgain = onPairAgain
@@ -137,13 +141,17 @@ public struct WorktreeDiffScreen: View {
             // The model starts on light at the phone's 11pt because nothing else is knowable before a
             // view exists; this is where an iPad at 12pt and a screen already in dark mode say so.
             // A repeat with the same pair is not wasted — it colours anything opened since.
-            .task(id: drawing) { await model.drawing(in: drawing.appearance, at: drawing.pointSize) }
+            .task(id: drawing) {
+                await model.drawing(in: drawing.appearance, themed: drawing.theme, at: drawing.pointSize)
+            }
     }
 
-    /// The pair the highlighter's answers are keyed on, as one value so one `.task` watches both.
+    /// The trio the highlighter's answers are keyed on, as one value so one `.task` watches all of
+    /// them.
     private var drawing: DiffDrawing {
         DiffDrawing(
             appearance: colorScheme == .dark ? .dark : .light,
+            theme: codeTheme,
             pointSize: Double(layout.codePointSize)
         )
     }
@@ -586,12 +594,19 @@ public struct WorktreeDiffScreen: View {
 
 // MARK: -
 
-/// The two facts a lexed side is keyed on that only a rendered view knows.
+/// The three facts a lexed side is keyed on that only a rendered view knows.
 ///
-/// One value rather than two watched separately, because `.task(id:)` takes one identity and two
+/// One value rather than three watched separately, because `.task(id:)` takes one identity and three
 /// tasks would race to reset the same cache.
 private struct DiffDrawing: Hashable {
 
     let appearance: HighlightAppearance
+
+    /// **Here so that changing the theme re-lexes what is already on screen.** Without it the task
+    /// would not re-fire, and the reader would get their new colours on files they scrolled to next
+    /// and the old ones on everything already lexed — for as long as the worktree's content hash sat
+    /// still, which on a checkout nobody is writing to is indefinitely.
+    let theme: CodeTheme
+
     let pointSize: Double
 }

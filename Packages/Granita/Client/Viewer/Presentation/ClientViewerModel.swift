@@ -274,6 +274,14 @@ public final class ClientViewerModel {
     /// nothing, because nothing has been fetched to colour yet when it is made.
     private var appearance: HighlightAppearance = .light
 
+    /// Which pair of stylesheets the reader chose, reported by the screen for the same reason the
+    /// appearance is.
+    ///
+    /// **Xcode until the screen says otherwise**, which is not a guess the way the appearance's is: it
+    /// is the value the setting defaults to, so a reader who has never opened that sheet is reported
+    /// the thing they were already reading in.
+    private var theme = CodeTheme.default
+
     /// The code size the screen is drawing at, which `DiffPaneLayout` decides from the room.
     private var codePointSize = Double(DiffPaneLayout.codePointSize)
 
@@ -496,11 +504,16 @@ public final class ClientViewerModel {
     /// invalidate it. The code size is the same fact, arriving from `DiffPaneLayout` rather than from
     /// the system.
     ///
-    /// Safe to call on every appearance, which is what the screen does: an unchanged pair colours
+    /// Safe to call on every appearance, which is what the screen does: an unchanged trio colours
     /// whatever is open and not yet coloured, and there is usually nothing.
-    public func drawing(in appearance: HighlightAppearance, at pointSize: Double) async {
-        if appearance != self.appearance || pointSize != codePointSize {
+    public func drawing(
+        in appearance: HighlightAppearance,
+        themed theme: CodeTheme,
+        at pointSize: Double
+    ) async {
+        if appearance != self.appearance || theme != self.theme || pointSize != codePointSize {
             self.appearance = appearance
+            self.theme = theme
             codePointSize = pointSize
             // **Thrown away rather than restyled.** The colours are baked into what the lexer
             // answered, so an entry made for the other appearance is the *wrong* colours rather than
@@ -1152,6 +1165,7 @@ public final class ClientViewerModel {
             for: diff,
             side: side,
             appearance: appearance,
+            theme: theme,
             pointSize: codePointSize
         ) else {
             return
@@ -1161,7 +1175,12 @@ public final class ClientViewerModel {
         // Recorded before the await rather than after it, so two passes over one file — a batch
         // landing while the reader opens something — do not both put the same question.
         asked.insert(key)
-        guard let lines = await highlighter.highlight(source.text, as: key.language, for: appearance) else {
+        guard let lines = await highlighter.highlight(
+            source.text,
+            as: key.language,
+            for: appearance,
+            themed: theme
+        ) else {
             return
         }
         let indexed = source.indexed(lines)

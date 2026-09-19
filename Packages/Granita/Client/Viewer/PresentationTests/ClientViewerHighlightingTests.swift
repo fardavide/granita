@@ -82,7 +82,7 @@ struct ClientViewerHighlightingTests {
 
         // when — a different appearance, so every cached answer is thrown away and everything open
         // is asked again.
-        await scenario.sut.drawing(in: .dark, at: 11)
+        await scenario.sut.drawing(in: .dark, themed: .default, at: 11)
 
         // then — the two light-mode requests and not one more.
         #expect(scenario.highlighter.requests.count == 2)
@@ -115,7 +115,7 @@ struct ClientViewerHighlightingTests {
         await scenario.sut.load()
         await scenario.sut.reading(0)
         await scenario.sut.setOpen(false, on: scenario.fileIds[0])
-        await scenario.sut.drawing(in: .dark, at: 11)
+        await scenario.sut.drawing(in: .dark, themed: .default, at: 11)
         let batches = scenario.repository.batchesAskedFor.count
 
         // when
@@ -154,11 +154,51 @@ struct ClientViewerHighlightingTests {
         await scenario.sut.reading(0)
 
         // when
-        await scenario.sut.drawing(in: .dark, at: 11)
+        await scenario.sut.drawing(in: .dark, themed: .default, at: 11)
 
         // then
         #expect(scenario.highlighter.requests.count == 4)
         #expect(scenario.highlighter.requests.suffix(2).allSatisfy { $0.appearance == .dark })
+    }
+
+    @Test
+    func `given the theme changing when the screen says so then every side is lexed again for it`() async {
+        // given — **the one thing the sixth part of the key buys, and the reason it is a part at all.**
+        // The colours are baked into what the lexer answered, so a reader who picks GitHub's palette
+        // while a diff is open would otherwise keep Xcode's on every file already lexed — and keep
+        // them until the content hash moved, which on a worktree nobody is writing to is never.
+        let scenario = Scenario(files: aChangeSet(of: 1), hunks: [aChangedPair])
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when — the appearance and the size are untouched, so the theme is the only thing that could
+        // have invalidated anything.
+        await scenario.sut.drawing(
+            in: .light,
+            themed: .stackOverflow,
+            at: Double(DiffPaneLayout.codePointSize)
+        )
+
+        // then
+        #expect(scenario.highlighter.requests.count == 4)
+        #expect(scenario.highlighter.requests.suffix(2).allSatisfy { $0.theme == .stackOverflow })
+    }
+
+    @Test
+    func `given an unchanged theme when the screen says so again then nothing is lexed twice`() async {
+        // given — the screen reports the trio on every appearance of the view, and the theme is the
+        // part most likely to be reported unchanged: it only moves when a reader opens a settings
+        // sheet, which is twice a year.
+        let scenario = Scenario(files: aChangeSet(of: 1), hunks: [aChangedPair])
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.drawing(in: .light, themed: .atomOne, at: 11)
+        await scenario.sut.drawing(in: .light, themed: .atomOne, at: 11)
+
+        // then — the two lexed for Atom One, and not a third pass.
+        #expect(scenario.highlighter.requests.count == 4)
     }
 
     @Test
@@ -171,8 +211,8 @@ struct ClientViewerHighlightingTests {
         await scenario.sut.reading(0)
 
         // when
-        await scenario.sut.drawing(in: .light, at: Double(DiffPaneLayout.codePointSize))
-        await scenario.sut.drawing(in: .light, at: Double(DiffPaneLayout.codePointSize))
+        await scenario.sut.drawing(in: .light, themed: .default, at: Double(DiffPaneLayout.codePointSize))
+        await scenario.sut.drawing(in: .light, themed: .default, at: Double(DiffPaneLayout.codePointSize))
 
         // then
         #expect(scenario.highlighter.requests.count == 2)
@@ -201,7 +241,7 @@ struct ClientViewerHighlightingTests {
         let scenario = Scenario(files: aChangeSet(of: 1), hunks: [aChangedPair])
 
         // when
-        await scenario.sut.drawing(in: .dark, at: 12)
+        await scenario.sut.drawing(in: .dark, themed: .default, at: 12)
 
         // then
         #expect(scenario.highlighter.requests.isEmpty)
@@ -250,7 +290,7 @@ struct ClientViewerHighlightingTests {
         await scenario.sut.reading(0)
 
         // when
-        await scenario.sut.drawing(in: .light, at: Double(DiffPaneLayout.codePointSize))
+        await scenario.sut.drawing(in: .light, themed: .default, at: Double(DiffPaneLayout.codePointSize))
 
         // then
         #expect(scenario.highlighter.requests.count == 2)
