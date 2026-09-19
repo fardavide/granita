@@ -69,12 +69,17 @@ public struct CodeThemePalette: Hashable, Sendable {
 /// of which the great majority are broken. `lines(of:)` discards the stylesheet's background, so a
 /// dark stylesheet asked for in light appearance paints pale grey on white.
 ///
-/// **Three cases, and the filter that produced them is published rather than asserted.** Both halves
-/// exist in the bundle; each half is legible on *our* card rather than on its own; every colour
-/// clears 4.5:1 there; the colours' mean chroma is at or below Xcode's; **and the stylesheet renders
-/// the same colours on every launch.** A theme that fails one is **absent** rather than a greyed row —
-/// which is the second state the never-ship-a-dead-control rule permits, and the right one when the
-/// alternative is a row that explains a contrast ratio.
+/// **Three cases, and two criteria decide them.** Both halves exist in the bundle as a pair, **and the
+/// stylesheet renders the same colours on every launch.** A theme that fails either is **absent** rather
+/// than a greyed row — which is the second state the never-ship-a-dead-control rule permits, and the
+/// right one when the alternative is a row that explains a contrast ratio.
+///
+/// **Contrast and chroma are measured and reported, not gated, and saying otherwise was wrong.** The
+/// design return published four criteria including *every colour clears 4.5:1 on our card*; measuring
+/// all 271 stylesheets on 19 September 2026 showed that no shipped pair satisfies it — `xcode-dark`
+/// draws comments at 3.8:1 and `atom-one` at 2.6:1 — and that Xcode is the second most saturated of the
+/// eight stable pairs, so it is no chroma ceiling either. The figures per pair are in
+/// `.ai/docs/design-appearance.md`; what they are *not* is a thing this type enforces.
 ///
 /// **The fifth criterion is this repository's rather than the design's, and it is what took the count
 /// from the five that were drawn to the three that ship.** Highlightr's stylesheet stripper keys rules
@@ -96,11 +101,19 @@ public struct CodeThemePalette: Hashable, Sendable {
 ///
 /// Measured 19 September 2026. Recorded in `.ai/docs/decisions.md` and `.ai/docs/design-appearance.md`.
 ///
-/// **Solarized is the interesting exclusion of the design's own four**: it pairs cleanly, its chroma is
-/// the lowest of any candidate, and its comment grey `#93A1A1` is about 2.4:1 on white. On its own
-/// cream background it is fine — we discard that background, so we break it. Dracula, Nord and Monokai
-/// are dark with no light sibling, so admitting them would mean inventing a light half nobody asked
-/// for. Every call and the alternative it beat is in `.ai/docs/design-appearance.md`.
+/// **Solarized is the interesting exclusion, and not for the reason the return gave.** It was excluded
+/// for a comment grey said to be 2.4:1 on white; on our card it measures 3.2:1, better than the Atom One
+/// that ships. It fails the second criterion instead: `solarized-light` gives `.hljs-keyword` both
+/// `#6c71c4` and `#d33682`, because Highlightr splits `.hljs-meta .hljs-keyword` onto the bare class.
+/// The same defect as `github`, hidden behind a figure that does not reproduce.
+///
+/// **Dracula, Nord and Monokai are refused twice over.** They are dark with no light sibling — and
+/// measuring them for the other question, whether one stylesheet could serve both halves since we
+/// discard its background, they turn out to declare `.hljs-keyword` two ways as well. A dark-tuned
+/// palette is also pale: the stable dark-only stylesheets measure 1.0–2.9:1 on a white card. Every call
+/// and the alternative it beat is in `.ai/docs/design-appearance.md`;
+/// [#103](https://github.com/fardavide/granita/issues/103) is the route that does not go through this
+/// bundle.
 public enum CodeTheme: String, Hashable, Sendable, CaseIterable {
 
     case xcode
