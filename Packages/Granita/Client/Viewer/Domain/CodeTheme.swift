@@ -59,66 +59,37 @@ public struct CodeThemePalette: Hashable, Sendable {
     }
 }
 
+/// Where the lexer finds one half of a theme.
+///
+/// A distinct type keeps a Granita-owned stylesheet from accidentally being looked up in
+/// Highlightr's private resource bundle, which was the limitation that originally kept custom
+/// themes out of this table.
+public enum CodeThemeStylesheet: Hashable, Sendable {
+
+    case highlightrBundle(String)
+    case clientBundle(String)
+}
+
 /// Which colours the code is lexed in, as a pair rather than as a stylesheet.
 ///
-/// **A pair by name, from a table written here, and the measurement is what settles that rather than
-/// taste.** Highlightr bundles 271 stylesheets and only 40 of them carry a matched `-light`/`-dark`
-/// pair — Granita's own default is not one of them, being `xcode` and `xcode-dark`. So a pairing
-/// table has to exist in *either* design: letting a reader choose the two halves independently does
-/// not avoid this table, it only stops using it, and what it buys instead is 271 × 271 combinations
-/// of which the great majority are broken. `lines(of:)` discards the stylesheet's background, so a
-/// dark stylesheet asked for in light appearance paints pale grey on white.
+/// **A pair by name, from a table written here.** A dark-only theme is absent rather than paired with
+/// an invented light half, because discarding the stylesheet background would otherwise put pale
+/// tokens on Granita's white code card.
 ///
-/// **Three cases, and two criteria decide them.** Both halves exist in the bundle as a pair, **and the
-/// stylesheet renders the same colours on every launch.** A theme that fails either is **absent** rather
-/// than a greyed row — which is the second state the never-ship-a-dead-control rule permits, and the
-/// right one when the alternative is a row that explains a contrast ratio.
-///
-/// **Contrast and chroma are measured and reported, not gated, and saying otherwise was wrong.** The
-/// design return published four criteria including *every colour clears 4.5:1 on our card*; measuring
-/// all 271 stylesheets on 19 September 2026 showed that no shipped pair satisfies it — `xcode-dark`
-/// draws comments at 3.8:1 and `atom-one` at 2.6:1 — and that Xcode is the second most saturated of the
-/// eight stable pairs, so it is no chroma ceiling either. The figures per pair are in
-/// `.ai/docs/design-appearance.md`; what they are *not* is a thing this type enforces.
-///
-/// **The fifth criterion is this repository's rather than the design's, and it is what took the count
-/// from the five that were drawn to the three that ship.** Highlightr's stylesheet stripper keys rules
-/// by selector in a `Dictionary` and understands neither `@media` blocks nor descendant selectors: it
-/// reduces `.hljs-meta .hljs-keyword` onto the bare `.hljs-keyword`. So when a stylesheet declares one
-/// of these roles more than once with different values, which declaration wins is decided by a
-/// dictionary iteration order Swift randomises per process — the colours change when the app is
-/// relaunched, and a frozen palette for it cannot exist. Two of the five drawn pairs fail it, and both
-/// failures were observed rather than reasoned: lexing the sample in separate processes returned
-/// different palettes.
-///
-/// - **Accessible**, on `a11y-light`/`a11y-dark`, declares `.hljs-keyword` twice — once for colour and
-///   once for `font-weight` — and redeclares comment, string and type inside
-///   `@media (-ms-high-contrast:active)`. Four of its four roles move. It is the loss that costs most,
-///   because it was the only pair drawn against a contrast target.
-/// - **GitHub**, on `github`/`github-dark`, has three declarations reducing to `.hljs-keyword`
-///   (`#a71d5d`, `#333`, and one with no colour at all) and two reducing to `.hljs-string`
-///   (`#183691`, `#333`).
-///
-/// Measured 19 September 2026. Recorded in `.ai/docs/decisions.md` and `.ai/docs/design-appearance.md`.
-///
-/// **Solarized is the interesting exclusion, and not for the reason the return gave.** It was excluded
-/// for a comment grey said to be 2.4:1 on white; on our card it measures 3.2:1, better than the Atom One
-/// that ships. It fails the second criterion instead: `solarized-light` gives `.hljs-keyword` both
-/// `#6c71c4` and `#d33682`, because Highlightr splits `.hljs-meta .hljs-keyword` onto the bare class.
-/// The same defect as `github`, hidden behind a figure that does not reproduce.
-///
-/// **Dracula, Nord and Monokai are refused twice over.** They are dark with no light sibling — and
-/// measuring them for the other question, whether one stylesheet could serve both halves since we
-/// discard its background, they turn out to declare `.hljs-keyword` two ways as well. A dark-tuned
-/// palette is also pale: the stable dark-only stylesheets measure 1.0–2.9:1 on a white card. Every call
-/// and the alternative it beat is in `.ai/docs/design-appearance.md`;
-/// [#103](https://github.com/fardavide/granita/issues/103) is the route that does not go through this
-/// bundle.
+/// The original Xcode, Atom One and Stack Overflow pairs remain backed by Highlightr's resources.
+/// Accessible, Granita, Catppuccin and GitHub are application-owned CSS with one declaration per
+/// token role, so Highlightr's selector dictionary cannot choose a different colour between launches.
+/// Every colour in those four pairs clears 4.5:1 on its white or `#1C1C1E` card; the measured minima
+/// are recorded in `.ai/docs/design-appearance.md`.
 public enum CodeTheme: String, Hashable, Sendable, CaseIterable {
 
     case xcode
     case atomOne
     case stackOverflow
+    case accessible
+    case granita
+    case catppuccin
+    case github
 
     /// The one a reader who has never opened this screen is already reading in.
     ///
@@ -134,48 +105,54 @@ public enum CodeTheme: String, Hashable, Sendable, CaseIterable {
         case .xcode: "Xcode"
         case .atomOne: "Atom One"
         case .stackOverflow: "Stack Overflow"
+        case .accessible: "Accessible"
+        case .granita: "Granita"
+        case .catppuccin: "Catppuccin"
+        case .github: "GitHub"
         }
     }
 
     /// The highlight.js stylesheet this half is lexed with.
     ///
-    /// The whole of the pairing table, and the reason it cannot be a suffix rule: `xcode` pairs with
-    /// `xcode-dark`, `github` with `github-dark`, and only two of the five follow the `-light`
-    /// convention at all.
-    public func stylesheet(for appearance: HighlightAppearance) -> String {
+    /// The whole pairing table, including whether the resource belongs to Highlightr or Granita.
+    public func stylesheet(for appearance: HighlightAppearance) -> CodeThemeStylesheet {
         switch (self, appearance) {
-        case (.xcode, .light): "xcode"
-        case (.xcode, .dark): "xcode-dark"
-        case (.atomOne, .light): "atom-one-light"
-        case (.atomOne, .dark): "atom-one-dark"
-        case (.stackOverflow, .light): "stackoverflow-light"
-        case (.stackOverflow, .dark): "stackoverflow-dark"
+        case (.xcode, .light): .highlightrBundle("xcode")
+        case (.xcode, .dark): .highlightrBundle("xcode-dark")
+        case (.atomOne, .light): .highlightrBundle("atom-one-light")
+        case (.atomOne, .dark): .highlightrBundle("atom-one-dark")
+        case (.stackOverflow, .light): .highlightrBundle("stackoverflow-light")
+        case (.stackOverflow, .dark): .highlightrBundle("stackoverflow-dark")
+        case (.accessible, .light): .clientBundle("accessible-light")
+        case (.accessible, .dark): .clientBundle("accessible-dark")
+        case (.granita, .light): .clientBundle("granita-light")
+        case (.granita, .dark): .clientBundle("granita-dark")
+        case (.catppuccin, .light): .clientBundle("catppuccin-latte")
+        case (.catppuccin, .dark): .clientBundle("catppuccin-mocha")
+        case (.github, .light): .clientBundle("github-light")
+        case (.github, .dark): .clientBundle("github-dark")
         }
     }
 
     /// The five colours the preview draws this half in, frozen.
     ///
-    /// **Frozen rather than lexed, and pinned by a test rather than trusted.** A list of five themes
-    /// showing live-lexed samples is ten stylesheet swaps on the one actor the diff in front of the
-    /// reader is also using; these cost what a rectangle costs. What stops them rotting is
+    /// **Frozen rather than lexed, and pinned by a test rather than trusted.** A list of seven themes
+    /// showing live-lexed samples is fourteen stylesheet swaps on the one actor the diff in front of
+    /// the reader is also using; these cost what a rectangle costs. What stops them rotting is
     /// `CodeThemePaletteTests`, which lexes the sample with the real highlighter once per half and
     /// asserts these exact values — so the day Highlightr ships a changed stylesheet, a test says so
     /// instead of a reader noticing a preview that lies.
     ///
-    /// **Every value here was measured rather than transcribed, and five of the ten halves draw a role
-    /// in the plain colour** — which is the one place this table departs from the frames that asked for
-    /// it. The frames assumed five distinct colours per half; the bundle does not always provide them,
-    /// because Highlightr's stylesheet parser keys its rules by selector and a later rule for the same
-    /// selector replaces the earlier one. `a11y-light` says `.hljs-keyword{color:#7928a1}` and then
-    /// `.hljs-keyword{font-weight:700}`, so the colour is gone by the time a keyword is drawn and the
-    /// run falls back to the stylesheet's base — which the base override then turns into the row's own
-    /// `.primary`. So a role that collapses is recorded here **as the plain colour**, because that is
+    /// **Every value here was measured rather than transcribed. Some bundled halves draw a role in the
+    /// plain colour** because their stylesheet does not colour the class produced by the Swift grammar,
+    /// so the run falls back to the stylesheet's base — which the base override then turns into the
+    /// row's own `.primary`. A role that collapses is recorded here **as the plain colour**, because that is
     /// exactly what the diff draws: the preview and the file agree, which is the only property this
     /// table has to have. Which halves, and what it costs a reader, is in
     /// `.ai/docs/design-appearance.md`.
     public func palette(for appearance: HighlightAppearance) -> CodeThemePalette {
         switch (self, appearance) {
-        // The only half of the ten with five genuinely distinct colours and the palette every other
+        // A half with five genuinely distinct colours and the palette every other
         // one is judged against. It is also the one the frames got furthest from: they drew this
         // comment as a slate `#5D6C79`, and `xcode.min.css` says green.
         case (.xcode, .light):
@@ -197,7 +174,7 @@ public enum CodeTheme: String, Hashable, Sendable, CaseIterable {
                 string: CodeColour(0xFC6A5D),
                 type: CodeColour(0xFFFFFF)
             )
-        // Both halves intact, and the only pair besides Stack Overflow that manages it.
+        // Both bundled halves have all four token roles intact.
         case (.atomOne, .light):
             CodeThemePalette(
                 comment: CodeColour(0xA0A1A7),
@@ -230,6 +207,70 @@ public enum CodeTheme: String, Hashable, Sendable, CaseIterable {
                 plain: CodeColour(0xFFFFFF),
                 string: CodeColour(0xB5BD68),
                 type: CodeColour(0xF08D49)
+            )
+        case (.accessible, .light):
+            CodeThemePalette(
+                comment: CodeColour(0x696969),
+                keyword: CodeColour(0x7928A1),
+                plain: CodeColour(0x000000),
+                string: CodeColour(0x008000),
+                type: CodeColour(0xAA5D00)
+            )
+        case (.accessible, .dark):
+            CodeThemePalette(
+                comment: CodeColour(0xD4D0AB),
+                keyword: CodeColour(0xDCC6E0),
+                plain: CodeColour(0xFFFFFF),
+                string: CodeColour(0xABE338),
+                type: CodeColour(0xF5AB35)
+            )
+        case (.granita, .light):
+            CodeThemePalette(
+                comment: CodeColour(0x52657A),
+                keyword: CodeColour(0x6D28D9),
+                plain: CodeColour(0x000000),
+                string: CodeColour(0x00796B),
+                type: CodeColour(0xC0265E)
+            )
+        case (.granita, .dark):
+            CodeThemePalette(
+                comment: CodeColour(0xA9B8CC),
+                keyword: CodeColour(0xD6B4FC),
+                plain: CodeColour(0xFFFFFF),
+                string: CodeColour(0x7FE0C3),
+                type: CodeColour(0xFF9DBB)
+            )
+        case (.catppuccin, .light):
+            CodeThemePalette(
+                comment: CodeColour(0x6C6F85),
+                keyword: CodeColour(0x8839EF),
+                plain: CodeColour(0x000000),
+                string: CodeColour(0x1E66F5),
+                type: CodeColour(0xD20F39)
+            )
+        case (.catppuccin, .dark):
+            CodeThemePalette(
+                comment: CodeColour(0xA6ADC8),
+                keyword: CodeColour(0xCBA6F7),
+                plain: CodeColour(0xFFFFFF),
+                string: CodeColour(0xA6E3A1),
+                type: CodeColour(0xF9E2AF)
+            )
+        case (.github, .light):
+            CodeThemePalette(
+                comment: CodeColour(0x6E7781),
+                keyword: CodeColour(0xCF222E),
+                plain: CodeColour(0x000000),
+                string: CodeColour(0x0A3069),
+                type: CodeColour(0x8250DF)
+            )
+        case (.github, .dark):
+            CodeThemePalette(
+                comment: CodeColour(0x8B949E),
+                keyword: CodeColour(0xFF7B72),
+                plain: CodeColour(0xFFFFFF),
+                string: CodeColour(0xA5D6FF),
+                type: CodeColour(0xD2A8FF)
             )
         }
     }

@@ -11,6 +11,54 @@ import ClientViewerDomain
 @Suite("Code themes")
 struct CodeThemeTests {
 
+    @Test
+    func `given the accessible theme when its light half is requested then it uses our stylesheet`() {
+        // given - when - then — the repaired Accessible pair belongs to Granita rather than
+        // Highlightr's bundle, so the renderer must not silently load the unstable bundled copy.
+        #expect(
+            CodeTheme.accessible.stylesheet(for: .light)
+                == .clientBundle("accessible-light")
+        )
+    }
+
+    @Test
+    func `given the Granita theme when its light half is requested then it uses our stylesheet`() {
+        // given - when - then — Granita's palette is product-owned rather than an alias for a
+        // community stylesheet, so both its identity and its resource stay explicit.
+        #expect(
+            CodeTheme.granita.stylesheet(for: .light)
+                == .clientBundle("granita-light")
+        )
+    }
+
+    @Test
+    func `given the Catppuccin theme when its halves are requested then they use Latte and Mocha`() {
+        // given - when - then — the community theme already defines a real light and dark pair, so
+        // Granita maps those established flavours rather than inventing a missing counterpart.
+        #expect(
+            CodeTheme.catppuccin.stylesheet(for: .light)
+                == .clientBundle("catppuccin-latte")
+        )
+        #expect(
+            CodeTheme.catppuccin.stylesheet(for: .dark)
+                == .clientBundle("catppuccin-mocha")
+        )
+    }
+
+    @Test
+    func `given the GitHub theme when its halves are requested then they use our stable pair`() {
+        // given - when - then — these resources preserve GitHub's native light and dark colours
+        // without the repeated selectors that make Highlightr's bundled copies nondeterministic.
+        #expect(
+            CodeTheme.github.stylesheet(for: .light)
+                == .clientBundle("github-light")
+        )
+        #expect(
+            CodeTheme.github.stylesheet(for: .dark)
+                == .clientBundle("github-dark")
+        )
+    }
+
     @Test(arguments: CodeTheme.allCases)
     func `given a theme when it is named then the row has a word for it`(theme: CodeTheme) {
         // given - when - then — the list and the section both draw this, and the chooser is built from

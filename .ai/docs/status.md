@@ -2,6 +2,22 @@
 
 Where the project is. Update this when a slice lands.
 
+**Four new code-colour pairs are 0.17.0.** Issue
+[#103](https://github.com/fardavide/granita/issues/103). Accessible and GitHub return as stable,
+Granita-owned CSS, joined by Catppuccin Latte/Mocha and a high-separation, pastel-accented Granita
+pair. The four additions have genuine light/dark identities and every token clears 4.5:1 on the
+actual white or `#1C1C1E` card. The chooser now has seven rows; its control and navigation are
+unchanged.
+
+**The custom-style seam is deliberately one method.** Granita pins
+[`fardavide/Highlightr`](https://github.com/fardavide/Highlightr) `2.3.1`, which exposes the
+stylesheet-string parser upstream already used internally. The CSS remains in `ClientViewerUi`, and
+the real-lexer palette test covers all fourteen halves.
+
+**Verified for 0.17.0:** 1,693 package tests in 159 suites; the full iOS snapshot suite including a
+real-code Granita render; package, Mac app, iOS app and Mac Client builds; and all six coverage
+ratchet values. Coverage is unit 97.2%/94.7%, snapshot 99.2%/97.8%, all-tests 98.0%/95.4%.
+
 **The reader chooses the appearance and the code's colours — that is 0.16.0.** Issue
 [#70](https://github.com/fardavide/granita/issues/70). A fourth section on the phone's Settings sheet,
 below the receipt: a System / Light / Dark picker, and a *Code colours* row that pushes a list where
@@ -11,15 +27,10 @@ failure state to draw, and it stays live in `no-mac-at-all` where the two above 
 are in [`design-appearance.md`](design-appearance.md); the four departures are there too and the two
 expensive ones are in [`decisions.md`](decisions.md).
 
-**Three of the five drawn themes ship, and the reason is a measurement rather than a judgement.**
-Highlightr keys CSS rules by selector in a `Dictionary` and understands neither `@media` blocks nor
-descendant selectors, so a stylesheet declaring a role twice renders differently on each launch —
-Swift randomises the iteration order per process. *Accessible* and *GitHub* fail that, and it was
-caught by two runs of unchanged code disagreeing rather than by reading the CSS. The filter gained a
-fifth criterion, and `CodeThemePaletteTests` is where a future pair fails it: it lexes one sample with
-the real highlighter and pins all six frozen palettes. **Losing *Accessible* costs the most** — it was
-the only pair drawn against a contrast target, and `SPEC.md` §10's colourblind-safe palette had been
-flagged as possibly one setting with it.
+**The original three themes remain byte-for-byte the same.** Highlightr's bundled Accessible and
+GitHub resources are still unsuitable because duplicate selectors render nondeterministically; the
+new copies declare every role once, and `CodeThemePaletteTests` pins every frozen preview against the
+real lexer.
 
 **`ClientViewerUiTests` is the first test target on a Ui module**, which `Package.swift` had ruled out.
 The rule is about stateless views and the highlighter is an actor wrapping a JavaScript engine; moving

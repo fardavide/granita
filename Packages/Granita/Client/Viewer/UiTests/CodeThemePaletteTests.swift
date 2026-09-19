@@ -5,12 +5,12 @@ import Testing
 import ClientViewerDomain
 @testable import ClientViewerUi
 
-/// The one test standing between a shortlist of five themes and a table of colours that quietly
+/// The one test standing between the theme shortlist and a table of colours that quietly
 /// stops being true.
 ///
 /// **Every preview in the app is drawn from `CodeTheme.palette(for:)` rather than from the lexer**,
-/// because a list of five themes showing live samples would be ten stylesheet swaps on the one actor
-/// the diff in front of the reader is also using. That trade is only honest while the frozen values
+/// because a list of seven themes showing live samples would be fourteen stylesheet swaps on the
+/// one actor the diff in front of the reader is also using. That trade is only honest while the frozen values
 /// are the stylesheets' own answers — so this lexes `CodeThemeSample.source` with the real
 /// `HighlightrSyntaxHighlighter`, once per half, and compares what comes back with what is frozen.
 ///
@@ -94,10 +94,9 @@ private struct Scenario {
     /// The palette the lexer actually produced, read at the positions above.
     ///
     /// **A role the lexer answered nothing for is recorded as the plain colour, and that is the
-    /// assertion rather than a leniency in it.** Five of the ten halves collapse a role into the base —
-    /// Highlightr's stylesheet parser keys rules by selector, so `a11y-light` restating
-    /// `.hljs-keyword` for `font-weight` loses the colour it stated first — and the base override then
-    /// turns that into no colour at all, so the row draws it in `.primary`. The frozen table says
+    /// assertion rather than a leniency in it.** Some bundled halves collapse a role into the base,
+    /// and the base override then turns that into no colour at all, so the row draws it in `.primary`.
+    /// The frozen table says
     /// *plain* for exactly those roles, so what this compares is the preview against the file: if a
     /// stylesheet update ever gives one of them its colour back, the table is wrong by one entry and
     /// this says so.

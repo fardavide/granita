@@ -66,9 +66,9 @@ let package = Package(
         // `BindAddress.nwEndpoint` routes through NIOTSListenerBootstrap so listening and Bonjour
         // advertising happen in one bind rather than fighting over the port.
         .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.26.0"),
-        // Highlightr, not HighlightSwift: it builds the attributed string itself, with no
-        // main-thread-only HTML importer and no input trimming.
-        .package(url: "https://github.com/raspu/Highlightr.git", from: "2.3.0"),
+        // Our minimal Highlightr fork exposes the dependency's existing stylesheet parser so
+        // Granita can own stable theme pairs. It otherwise remains upstream 2.3.0.
+        .package(url: "https://github.com/fardavide/Highlightr.git", from: "2.3.1"),
         // swift-subprocess — `Foundation.Process` deadlocks when a child outwrites the pipe
         // buffer unless both streams drain concurrently, and it hands the child our own process
         // group, which makes timeout handling dangerous.
@@ -381,6 +381,7 @@ let package = Package(
                 .product(name: "Highlightr", package: "Highlightr")
             ],
             path: "Client/Viewer/Ui",
+            resources: [.process("Resources/CodeThemes")],
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .target(
