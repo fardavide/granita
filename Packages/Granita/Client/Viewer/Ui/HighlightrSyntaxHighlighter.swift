@@ -25,10 +25,10 @@ public actor HighlightrSyntaxHighlighter: SyntaxHighlighter {
 
     /// Which stylesheet is loaded, so an unchanged pair does not re-parse one.
     ///
-    /// **A theme change costs exactly one `setTheme`, which is what makes five pairs affordable.** The
+    /// **A theme change costs exactly one `setTheme`, which keeps seven pairs affordable.** The
     /// guard was here before the setting was, for the appearance; a theme is the same question asked
     /// about the other half of the pair.
-    private var loadedStylesheet: String?
+    private var loadedStylesheet: CodeThemeStylesheet?
 
     /// What each stylesheet draws text it did not classify in, learned once and kept.
     ///
@@ -44,7 +44,7 @@ public actor HighlightrSyntaxHighlighter: SyntaxHighlighter {
     ///
     /// Keyed by stylesheet and language together — see `base(of:as:by:)` for why the grammar is part of
     /// the question.
-    private var baseColours: [String: Color?] = [:]
+    private var baseColours: [BaseColourKey: Color?] = [:]
 
     /// What this build of highlight.js can actually lex.
     ///
@@ -85,17 +85,27 @@ public actor HighlightrSyntaxHighlighter: SyntaxHighlighter {
 
     /// The engine with the right stylesheet on it, or nothing at all on a machine that cannot build
     /// one.
-    private func engine(styled stylesheet: String) -> Highlightr? {
+    private func engine(styled stylesheet: CodeThemeStylesheet) -> Highlightr? {
         if hasBuiltEngine == false {
             hasBuiltEngine = true
             engine = Highlightr()
         }
         if loadedStylesheet != stylesheet {
+            switch stylesheet {
+            case let .highlightrBundle(name):
+                // Every name comes from `CodeTheme`'s exhaustive table, and the real-lexer palette
+                // test loads every half. There is no reader-controlled name to validate here.
+                engine?.setTheme(to: name)
+            case let .clientBundle(name):
+                guard let url = Bundle.module.url(forResource: name, withExtension: "css"),
+                      let contents = try? String(contentsOf: url, encoding: .utf8) else {
+                    return nil
+                }
+                // Optional for the same reason the return is: a machine without a JavaScript
+                // context has already lost, and the caller's single refusal guard says so.
+                engine?.setTheme(with: contents)
+            }
             loadedStylesheet = stylesheet
-            // Optional-chained rather than guarded: a machine with no JavaScript context has already
-            // lost, and the caller's own guard says so once. A second branch here would be the same
-            // failure written twice.
-            engine?.setTheme(to: stylesheet)
         }
         return engine
     }
@@ -115,8 +125,12 @@ public actor HighlightrSyntaxHighlighter: SyntaxHighlighter {
     ///
     /// Keyed on the pair, because the answer is a property of the stylesheet *and* of the grammar that
     /// produced the run — two languages under one stylesheet can disagree about what is unclassified.
-    private func base(of stylesheet: String, as language: String, by engine: Highlightr) -> Color? {
-        let key = "\(stylesheet)|\(language)"
+    private func base(
+        of stylesheet: CodeThemeStylesheet,
+        as language: String,
+        by engine: Highlightr
+    ) -> Color? {
+        let key = BaseColourKey(stylesheet: stylesheet, language: language)
         if let known = baseColours[key] { return known }
         let probed = engine.highlight(" ", as: language, fastRender: true)
             .flatMap { $0.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? RPColor }
@@ -176,4 +190,10 @@ public actor HighlightrSyntaxHighlighter: SyntaxHighlighter {
         }
         return lines
     }
+}
+
+private struct BaseColourKey: nonisolated Hashable, Sendable {
+
+    let stylesheet: CodeThemeStylesheet
+    let language: String
 }

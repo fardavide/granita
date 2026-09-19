@@ -1,0 +1,9 @@
+.hljs{color:#4c4f69}
+.hljs-comment,.hljs-quote{color:#6c6f85}
+.hljs-keyword,.hljs-selector-tag,.hljs-subst{color:#8839ef;font-weight:700}
+.hljs-string,.hljs-doctag,.hljs-regexp{color:#1e66f5}
+.hljs-type,.hljs-built_in,.hljs-builtin-name,.hljs-literal,.hljs-number,.hljs-params{color:#d20f39}
+.hljs-title,.hljs-section,.hljs-name,.hljs-selector-id,.hljs-selector-class{color:#1e66f5}
+.hljs-attribute,.hljs-attr,.hljs-property,.hljs-template-variable,.hljs-variable,.hljs-meta,.hljs-link{color:#8839ef}
+.hljs-addition,.hljs-symbol,.hljs-bullet{color:#1e66f5}
+.hljs-deletion{color:#d20f39}

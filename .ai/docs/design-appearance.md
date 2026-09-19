@@ -62,7 +62,7 @@ per half is not a summary of the stylesheet — it **is** the stylesheet.
   comes back, so a theme change with the key unchanged hands the reader the old colours for every
   file already lexed. The theme is a sixth part of the question exactly as the appearance is a fifth.
 
-## One section, two rows, five pairs, and a push
+## One section, two rows, seven pairs, and a push
 
 `APPEARANCE`, fourth on the sheet, below the receipt. Row one is the three-segment System / Light /
 Dark picker at 52pt, exactly as the comment-label row above it is. Row two is one 132pt cell: *Code
@@ -85,7 +85,7 @@ place in the app where two of these modifiers are in one hierarchy.
 
 **Nothing marks the default in the section**, and that is deliberate: the sheet's rule is that a
 default is told by a sentence or by an absence, and a value the reader can always choose back from a
-five-row list needs neither. The word *Default* appears once, in the list, beside the row it belongs
+seven-row list needs neither. The word *Default* appears once, in the list, beside the row it belongs
 to. There is no *Reset* row and no badge here.
 
 **Both samples carry a hairline in both appearances**, and it is the separator colour rather than a
@@ -109,27 +109,22 @@ stylesheet asked for in light appearance paints pale grey on white.
 > escape hatch it deserves to be: if the table ever refuses a combination someone wants, the fix is
 > one more row, which is a data change and a test.
 
-## Five pairs, and the filter is published
+## Seven pairs, from two stylesheet sources
 
-> **Two of these four criteria were never true of the table that shipped, and the sheet said they
-> were.** Corrected 19 September 2026, after measuring all 271 stylesheets rather than reading them:
-> **every colour clears 4.5:1** is false — `xcode-dark` draws comments at 3.8:1 and `atom-one` at
-> 2.6:1 — and **mean chroma at or below Xcode's** is false too, since Xcode is itself the second most
-> saturated of the eight stable pairs in the bundle. What the filter actually is, and what it actually
-> excluded, is in *The filter, restated* below. The four criteria are kept here as written because the
-> paragraphs under them argue from them.
-
-Four criteria, all measurable, none an opinion: **both halves exist in the bundle**; **each half is
-legible on our card**, since the theme's own background is discarded; **every colour clears 4.5:1
-there**; and **the five colours' mean chroma is at or below Xcode's**. Five pass today.
+The first three pairs remain the exact Highlightr resources readers already had. The other four are
+Granita-owned, deterministic CSS: one declaration per token role, no media queries and no descendant
+selectors for Highlightr's parser to flatten. Every colour in those four clears 4.5:1 on the actual
+card; the minimum contrast per pair is shown below.
 
 | In the app | Stylesheets | Why it is here |
 |---|---|---|
 | Xcode | `xcode`, `xcode-dark` | Default, shipped since 0.8.0 |
-| Accessible | `a11y-light`, `a11y-dark` | The only pair designed against a contrast target. Named for what it is, not for its files |
 | Atom One | `atom-one-light`, `atom-one-dark` | Highlightr's own default, and the one a reader is most likely to recognise |
-| GitHub | `github`, `github-dark` | The other place this exact diff gets read, which is the argument Xcode won on |
-| Stack Overflow | `stackoverflow-light`, `stackoverflow-dark` | The quietest of the five. The choice for a reader who finds Xcode loud |
+| Stack Overflow | `stackoverflow-light`, `stackoverflow-dark` | The quietest bundled pair |
+| Accessible | `accessible-light`, `accessible-dark` | Clean transcription of the a11y palette; minima 4.55:1 light, 8.56:1 dark |
+| Granita | `granita-light`, `granita-dark` | Product palette: vivid violet, mint, rose and slate with pastel dark-mode accents; deliberately distinct from plain code, with minima 5.32:1 light and 8.44:1 dark |
+| Catppuccin | `catppuccin-latte`, `catppuccin-mocha` | Recognisable Latte/Mocha colours, mapped to readable roles; minima 4.91:1 light, 7.35:1 dark |
+| GitHub | `github-light`, `github-dark` | GitHub's native light/dark vocabulary without unstable duplicate selectors; minima 4.55:1 light, 5.53:1 dark |
 
 **A theme is a row of data**: a display name, two stylesheet names, and five colours per half —
 comment, keyword, plain, string, type. The five are not a summary of the stylesheet, they are the
@@ -238,7 +233,7 @@ pushes to reads five names, one marked default and one selected.
 
 All of it is built. Four calls were made differently, and the first is the one that matters.
 
-### 1. Three pairs ship, not five — and the filter gained a fifth criterion
+### 1. Seven pairs ship — four use stylesheets Granita owns
 
 **Highlightr does not render a stylesheet the way the stylesheet reads.** Its `Theme` keys CSS rules by
 selector in a `Dictionary`, understands neither `@media` blocks nor descendant selectors, and reduces
@@ -246,38 +241,34 @@ selector in a `Dictionary`, understands neither `@media` blocks nor descendant s
 roles more than once with different values, **which declaration wins is decided by a dictionary
 iteration order Swift randomises per process** — the colours change between launches.
 
-That is a criterion the return could not have applied, because it reasoned from the CSS text and this
-is a property of the library reading it. Two of the five drawn pairs fail it, and both failures were
-**observed rather than argued**: lexing the sample in separate processes returned different palettes.
+That is a property of the library reading CSS rather than of highlight.js itself. The original
+Accessible and GitHub resources failed it in separate processes, so Granita now owns clean
+transcriptions of both. The same route supplies the new Granita and Catppuccin pairs.
 
 | Pair | Verdict | Why |
 |---|---|---|
 | Xcode | ships | No duplicate declaration for any role |
 | Atom One | ships | Only `.hljs-link` is duplicated, which no role uses |
 | Stack Overflow | ships | Clean, and the only pair with four distinct colours in **both** halves |
-| **Accessible** | **absent** | `a11y-light`/`a11y-dark` declare `.hljs-keyword` twice — colour, then `font-weight` — and redeclare comment, string and type inside `@media (-ms-high-contrast:active)`. All four roles move between launches |
-| **GitHub** | **absent** | Three declarations reduce to `.hljs-keyword` (`#a71d5d`, `#333`, one with no colour) and two to `.hljs-string` (`#183691`, `#333`) |
+| Accessible | ships, Granita-owned | Clean a11y transcription; every role clears 4.5:1 |
+| Granita | ships, Granita-owned | Pastel product palette, tuned against both actual cards |
+| Catppuccin | ships, Granita-owned | Latte and Mocha are genuine community light/dark flavours |
+| GitHub | ships, Granita-owned | Clean transcription of GitHub's native light/dark vocabulary |
 
-**Losing *Accessible* is the expensive half of this**, because it was the only pair drawn against a
-contrast target and the return argued for it on exactly that ground. It is **absent rather than a
-greyed row**, which is the state the return's own §5d reasoning picks for a theme that fails a
-criterion.
+The application-owned resources are loaded through the same parser as the bundled ones. The frozen
+preview test lexes every half through the real engine, so the preview and diff cannot drift apart.
 
-Confirmed by four consecutive `make test` runs in separate processes after the two were removed.
-
-### 1b. The filter, restated — stability is the only criterion that has ever excluded anything
+### 1b. The filter, restated
 
 Measured 19 September 2026 across all 271 stylesheets, prompted by Davide asking whether more themes
-could be added. **The contrast and chroma criteria do not survive measurement, and no code enforces
-either.** What the table is actually filtered on:
+could be added. The original bundle survey remains useful context, but application-owned additions
+now have a stricter contract:
 
 1. **Both halves exist as a pair.** Unchanged, and it is what rules out Dracula, Nord, Monokai and
    Night Owl.
-2. **Every role renders the same colour on every launch.** This is the whole of the filter, it is the
-   only one that has excluded anything, and `CodeThemePaletteTests` is what enforces it.
-3. **Contrast on our card is measured and reported, not gated.** Comments apart from the rest, because
-   every stylesheet in the bundle dims them deliberately and 4.5:1 is WCAG's threshold for body text
-   rather than for a class meant to recede.
+2. **Every role renders the same colour on every launch.** `CodeThemePaletteTests` enforces this.
+3. **New application-owned colours clear 4.5:1 on our card.** The three legacy bundled pairs remain
+   unchanged even where a muted comment falls below it.
 4. **Chroma is reported, not gated.** Xcode was taken as the reference and is not the floor.
 
 | Pair | chroma vs Xcode | comment | other roles | |

@@ -17,8 +17,8 @@ private extension Color {
 /// One half of a theme, drawn rather than lexed.
 ///
 /// **Three lines and five colours, and neither is fetched, computed at open or capable of being
-/// stale.** A list of five themes showing live samples would be ten stylesheet swaps on the one actor
-/// the diff behind this sheet is also using; this costs what a rectangle costs, and
+/// stale.** A list of seven themes showing live samples would be fourteen stylesheet swaps on the
+/// one actor the diff behind this sheet is also using; this costs what a rectangle costs, and
 /// `CodeThemePaletteTests` is what keeps the rectangle honest.
 ///
 /// **It carries its own card colour and its own hairline in both appearances.** In light the light

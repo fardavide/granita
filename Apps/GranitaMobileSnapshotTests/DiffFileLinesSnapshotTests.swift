@@ -43,6 +43,47 @@ struct DiffFileLinesSnapshotTests {
             named: subject.name
         )
     }
+
+    /// The application-owned Granita stylesheet, carried all the way from CSS through highlight.js
+    /// into the rows a reader sees. The chooser's sample is deliberately frozen, so this is the
+    /// rendered proof that its themed preview and a real diff use the same path.
+    @Test(arguments: SnapshotLayout.all)
+    func `given the Granita stylesheet when Swift renders then its distinct colours reach the diff`(
+        layout: SnapshotLayout
+    ) async throws {
+        // given
+        let numberedLines = aChangedFunction.compactMap { line -> (number: Int, text: String)? in
+            guard let number = line.newNumber else { return nil }
+            return (number, line.text)
+        }
+        let lexed = try #require(await HighlightrSyntaxHighlighter().highlight(
+            numberedLines.map(\.text).joined(separator: "\n"),
+            as: "swift",
+            for: layout.appearance,
+            themed: .granita
+        ))
+        let highlighted = HighlightedFile(
+            old: [:],
+            new: Dictionary(uniqueKeysWithValues: zip(numberedLines.map(\.number), lexed))
+        )
+
+        // when - then
+        assertScreenSnapshot(
+            DiffFileLines(
+                lines: aChangedFunction,
+                highestNumber: max(
+                    aChangedFunction.compactMap(\.oldNumber).max() ?? 0,
+                    aChangedFunction.compactMap(\.newNumber).max() ?? 0
+                ),
+                pointSize: layout.codePointSize,
+                runs: [],
+                highlighted: highlighted
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading),
+            layout: layout,
+            named: "granita-theme"
+        )
+    }
 }
 
 // MARK: -

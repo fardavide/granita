@@ -1,5 +1,5 @@
 {
-  "originHash" : "f253294b87d0146e779b93f2777e3e7952c5992534fd31c5e9342788cc35e817",
+  "originHash" : "b2b6acf54f7a6ecc91ccfe3489c168704fff2b2f9d38abcb18d28d9b4ccef0f9",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -13,10 +13,10 @@
     {
       "identity" : "highlightr",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/raspu/Highlightr.git",
+      "location" : "https://github.com/fardavide/Highlightr.git",
       "state" : {
-        "revision" : "05e7fcc63b33925cd0c1faaa205cdd5681e7bbef",
-        "version" : "2.3.0"
+        "revision" : "0144d8444afdf6a7d6e1153c502e2c8fc2876ad3",
+        "version" : "2.3.1"
       }
     },
     {

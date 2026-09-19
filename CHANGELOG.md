@@ -7,6 +7,14 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.17.0 — 2026-09-19
+- **Choose from four new code-colour pairs.** Accessible and GitHub return as stable Granita-owned
+  styles, joined by Catppuccin's Latte/Mocha pair and a new Granita palette with vivid violet, teal,
+  rose and slate in light mode and pastel accents in dark mode. Every token in the four additions
+  clears 4.5:1 on the card it is drawn on.
+- **Light and dark stay a real pair.** Popular dark-only themes such as Dracula are not given an
+  invented light half; the chooser continues to show both genuine appearances before you select one.
+
 ### 0.16.0 — 2026-09-19
 - **Choose whether Granita follows your phone's appearance, or stays light or dark.** A new
   *Appearance* section on the Settings sheet, reached the same way the review's settings are — the
