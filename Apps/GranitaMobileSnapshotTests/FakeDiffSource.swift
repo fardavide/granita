@@ -978,7 +978,10 @@ func aLoadedViewerModel(
     )
     await model.load()
     await model.reading(0)
-    await model.drawing(in: layout.appearance, at: Double(layout.codePointSize))
+    // Xcode's pair, because that is what an unconfigured app draws and every diff baseline in this
+    // suite predates the setting. The chooser's own subjects are drawn from `CodeTheme`'s frozen
+    // palettes rather than from a lexed model, so no baseline here needs a second theme.
+    await model.drawing(in: layout.appearance, themed: .default, at: Double(layout.codePointSize))
     return model
 }
 

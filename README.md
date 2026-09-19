@@ -66,12 +66,12 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.16.0** — choose the app's appearance and the colours your code is lexed in, with every theme
+  drawn in both light and dark at once so you can judge a pair without switching to see half of it.
 - **0.15.1** — pull a diff down to read it again, so a change set your agent has moved on from is one
   gesture away from being current.
 - **0.15.0** — your review is kept on your Mac rather than on one phone, and a new Review screen sets
   the line it opens with and how its comments are named.
-- **0.14.2** — the copied review quotes code in a fenced block tagged with its language, and letters
-  each comment so you can ask your agent to reply point by point.
 
 [Every release](CHANGELOG.md).
 

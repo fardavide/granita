@@ -7,6 +7,7 @@ import UIKit
 import ClientConnectionData
 import ClientConnectionDomain
 import ClientConnectionPresentation
+import ClientSettingsData
 import ClientSettingsPresentation
 import ClientViewerData
 import ClientViewerDomain
@@ -29,6 +30,11 @@ public struct GranitaMobileScene: Scene {
 
     public var body: some Scene {
         WindowGroup {
+            // **Everything the reader sees is inside this, because a forced appearance has to cover the
+            // diff as well as the sheet that sets it.** `AppearanceRoot` owns the observation and
+            // applies `preferredColorScheme`; what is left here is the one modifier only a root can
+            // apply, which is putting the chosen theme where `WorktreeDiffScreen` reads it.
+            AppearanceRoot(model: Self.appearance) { codeTheme in
             // The stack, the measure around it and where its two exits lead all belong to
             // `PairingSpineScreen`, and what is left here is the wiring that only a composition root
             // can do: which implementation answers each protocol, and which session each of the two
@@ -86,8 +92,19 @@ public struct GranitaMobileScene: Scene {
                     )
                 }
             )
+            .environment(\.codeTheme, codeTheme)
+            }
         }
     }
+
+    /// The two settings this device decides for itself, made once for the life of the app.
+    ///
+    /// A `static let` for the reason the lexer and the camera are: two readers exist — the scene root,
+    /// which draws the whole app in the chosen appearance, and the Settings sheet, which changes it —
+    /// and a second instance would give them two answers to one question.
+    private static let appearance = AppearanceModel(
+        preferences: UserDefaultsAppearancePreferences(defaults: .standard)
+    )
 
     /// The camera, made once for the life of the app.
     ///
@@ -246,6 +263,9 @@ public struct GranitaMobileScene: Scene {
                         isPaired: true,
                         repository: repository
                     ),
+                    // The one the scene root is observing, not a second one: the sheet's picker has to
+                    // move the value the whole app is drawing from.
+                    appearance: appearance,
                     onPair: onPairAgain
                 )
             }

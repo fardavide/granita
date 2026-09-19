@@ -2,6 +2,39 @@
 
 Where the project is. Update this when a slice lands.
 
+**The reader chooses the appearance and the code's colours — that is 0.16.0.** Issue
+[#70](https://github.com/fardavide/granita/issues/70). A fourth section on the phone's Settings sheet,
+below the receipt: a System / Light / Dark picker, and a *Code colours* row that pushes a list where
+every theme is drawn in both halves at once, with a mark under the one being shown. Both settings are
+device-local — no wire, no schema, no standing — so the section is the only one on that sheet with no
+failure state to draw, and it stays live in `no-mac-at-all` where the two above it are off. The calls
+are in [`design-appearance.md`](design-appearance.md); the four departures are there too and the two
+expensive ones are in [`decisions.md`](decisions.md).
+
+**Three of the five drawn themes ship, and the reason is a measurement rather than a judgement.**
+Highlightr keys CSS rules by selector in a `Dictionary` and understands neither `@media` blocks nor
+descendant selectors, so a stylesheet declaring a role twice renders differently on each launch —
+Swift randomises the iteration order per process. *Accessible* and *GitHub* fail that, and it was
+caught by two runs of unchanged code disagreeing rather than by reading the CSS. The filter gained a
+fifth criterion, and `CodeThemePaletteTests` is where a future pair fails it: it lexes one sample with
+the real highlighter and pins all six frozen palettes. **Losing *Accessible* costs the most** — it was
+the only pair drawn against a contrast target, and `SPEC.md` §10's colourblind-safe palette had been
+flagged as possibly one setting with it.
+
+**`ClientViewerUiTests` is the first test target on a Ui module**, which `Package.swift` had ruled out.
+The rule is about stateless views and the highlighter is an actor wrapping a JavaScript engine; moving
+it to `Data` was the alternative and would have made `Data` import SwiftUI. In
+[`decisions.md`](decisions.md).
+
+**Verified: 1,683 package tests in 158 suites pass, four runs in a row.** **What has not been pressed
+is the app**: the picker, the push and the re-lex on the way back are the checks only Davide can run,
+and this project says that is the only check that works.
+
+**0.15.0's three surfaces all landed**, so the *in progress* note further down about issues
+[#64](https://github.com/fardavide/granita/issues/64) and
+[#98](https://github.com/fardavide/granita/issues/98) is history rather than a plan — both are closed,
+and this slice builds on the sheet they shipped.
+
 **The diff is pulled to refresh — that is 0.15.1.** §4's scroll takes stock pull-to-refresh, on the
 same terms the worktree list already had: the scroll's own indicator is the whole report, and the
 spinner beside the worktree's name stays reserved for the read nobody asked for. The read on coming

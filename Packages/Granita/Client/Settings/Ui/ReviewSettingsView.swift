@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientSettingsDomain
+import ClientViewerDomain
 import CoreReviewDomain
 
 private extension Color {
@@ -31,9 +32,23 @@ public struct ReviewSettingsView: View {
     private let isOpeningLineDefault: Bool
     private let standing: ReviewSettingsStanding
     private let macName: String
+
+    /// What this device decides for itself, which is the fourth section and the only one on this sheet
+    /// with nothing to be out of step with.
+    private let appearance: AppAppearance
+    private let codeTheme: CodeTheme
+
+    /// Which half of the pair the phone is drawing right now.
+    ///
+    /// **Read from the environment rather than derived from `appearance`**, because *System* is an
+    /// answer this view cannot resolve on its own — and it is the common case. The *in use* marker is
+    /// the one thing on the screen that has to be right about it.
+    @Environment(\.colorScheme) private var colorScheme
     // `@Sendable` because a `Binding`'s setter is. Without it this compiles with a data-race
     // warning rather than an error, which is how it would have reached `main` unnoticed.
     private let onChoose: @Sendable (ReviewIdentifier) -> Void
+    private let onChooseAppearance: (AppAppearance) -> Void
+    private let onChooseCodeTheme: (CodeTheme) -> Void
     private let onCommitOpeningLine: () -> Void
     private let onReset: () -> Void
     private let onPair: () -> Void
@@ -47,7 +62,11 @@ public struct ReviewSettingsView: View {
         isOpeningLineDefault: Bool,
         standing: ReviewSettingsStanding,
         macName: String,
+        appearance: AppAppearance,
+        codeTheme: CodeTheme,
         onChoose: @escaping @Sendable (ReviewIdentifier) -> Void,
+        onChooseAppearance: @escaping (AppAppearance) -> Void,
+        onChooseCodeTheme: @escaping (CodeTheme) -> Void,
         onCommitOpeningLine: @escaping () -> Void,
         onReset: @escaping () -> Void,
         onPair: @escaping () -> Void,
@@ -58,7 +77,11 @@ public struct ReviewSettingsView: View {
         self.isOpeningLineDefault = isOpeningLineDefault
         self.standing = standing
         self.macName = macName
+        self.appearance = appearance
+        self.codeTheme = codeTheme
         self.onChoose = onChoose
+        self.onChooseAppearance = onChooseAppearance
+        self.onChooseCodeTheme = onChooseCodeTheme
         self.onCommitOpeningLine = onCommitOpeningLine
         self.onReset = onReset
         self.onPair = onPair
@@ -73,11 +96,21 @@ public struct ReviewSettingsView: View {
                 if standing != .noMac {
                     receiptSection
                 }
+                // **Fourth, below the receipt, and that position is the reason the three sections above
+                // it keep their nine baselines.** It is also the contrast the `no-mac-at-all` state
+                // exists to show: the two controls above are switched off with a sentence saying why,
+                // and this one is entirely live underneath them, because nothing about how a reader's
+                // code looks was ever the Mac's to answer.
+                appearanceSection
                 if standing == .noMac {
                     pairingSection
                 }
             }
-            .navigationTitle("Review")
+            // **No longer *Review*.** The sheet held one subject when it shipped and holds two now, and
+            // the chooser's back button reads *Settings* — a back button naming a screen called
+            // *Review* that also decides the app's appearance would be the first thing on it that is
+            // untrue.
+            .navigationTitle("Settings")
             // The Client compiles for macOS too — the Mac Client links these same views — and the
             // inline title is one of the modifiers that does not exist there.
             #if !os(macOS)
@@ -180,6 +213,67 @@ public struct ReviewSettingsView: View {
         Section {
             Button("Pair with a Mac", action: onPair)
         }
+    }
+
+    // MARK: - What this device decides for itself
+
+    /// The app's appearance and the code's colours, in one section with one sentence.
+    ///
+    /// **One section rather than two, and the footer is why.** Both rows are this device's and the
+    /// three above them are that Mac's, so one sentence states the divide once; two sections would need
+    /// it twice or leave one of them without it. They also belong together because the picker decides
+    /// which half of the pair the reader is looking at, and the *in use* marker under the samples is
+    /// only legible as an answer to the control directly above it.
+    ///
+    /// **Nothing in here is ever disabled and nothing in here can be pending.** Not even in `noMac`,
+    /// where the two controls above are off: an unreachable Mac has somewhere for a value to go later
+    /// and a missing one has nowhere ever, but neither is true of a value that never leaves this phone.
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: Binding(get: { appearance }, set: onChooseAppearance)) {
+                ForEach(AppAppearance.allCases, id: \.self) { choice in
+                    Text(choice.displayName).tag(choice)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            // A `NavigationLink` with its destination declared in this file, which is the rule this
+            // repository learned the expensive way: discovery's rows were links to a value no module
+            // declared a destination for, so tapping the Mac you opened the app to read did nothing,
+            // for eight releases.
+            NavigationLink {
+                CodeThemeChooserView(chosen: codeTheme, onChoose: onChooseCodeTheme)
+            } label: {
+                VStack(alignment: .leading, spacing: 9) {
+                    HStack(spacing: 8) {
+                        Text("Code colours")
+                        Spacer(minLength: 8)
+                        Text(codeTheme.displayName)
+                            .foregroundStyle(.secondary)
+                    }
+                    CodeThemePairView(theme: codeTheme, inUse: drawnAppearance)
+                }
+                .padding(.vertical, 2)
+            }
+            .accessibilityLabel("Code colours, \(codeTheme.displayName)")
+            .accessibilityValue("light and dark preview")
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text(
+                "Kept on this device. Neither changes what a review says, so other devices reading "
+                    + "\(macName) are unaffected."
+            )
+        }
+    }
+
+    /// Which half the phone is drawing, resolved where an environment exists.
+    ///
+    /// The picker's own value cannot answer this: *System* is the default and the common case, and what
+    /// it resolves to is a fact about the phone rather than about the setting.
+    private var drawnAppearance: HighlightAppearance {
+        appearance.highlightAppearance.resolved(whenFollowing: colorScheme == .dark ? .dark : .light)
     }
 
     // MARK: -

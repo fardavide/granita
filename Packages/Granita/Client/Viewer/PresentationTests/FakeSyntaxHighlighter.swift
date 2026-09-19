@@ -35,10 +35,13 @@ final class FakeSyntaxHighlighter: SyntaxHighlighter {
     func highlight(
         _ text: String,
         as language: String,
-        for appearance: HighlightAppearance
+        for appearance: HighlightAppearance,
+        themed theme: CodeTheme
     ) async -> [AttributedString]? {
         asked.withLock {
-            $0.append(HighlightRequest(text: text, language: language, appearance: appearance))
+            $0.append(
+                HighlightRequest(text: text, language: language, appearance: appearance, theme: theme)
+            )
         }
         guard refuses == false else { return nil }
         let lines = text.components(separatedBy: "\n").map(AttributedString.init)
@@ -54,4 +57,5 @@ struct HighlightRequest: Hashable, Sendable {
     let text: String
     let language: String
     let appearance: HighlightAppearance
+    let theme: CodeTheme
 }

@@ -15,10 +15,18 @@ import Foundation
 /// which is the whole reason `SPEC.md` §2 rules out the obvious library for this.
 public protocol SyntaxHighlighter: Sendable {
 
-    /// The lines of `text`, coloured for `appearance`, or nothing when this text cannot be lexed.
+    /// The lines of `text`, coloured for `appearance` in `theme`, or nothing when this text cannot be
+    /// lexed.
+    ///
+    /// **The theme and the appearance are two parameters rather than one stylesheet name**, because
+    /// which stylesheet a pair resolves to is the pairing table's answer and the table is a domain
+    /// fact. A caller that passed a name would be a caller that had to know `xcode` pairs with
+    /// `xcode-dark` and `github` with `github-dark`, which is the knowledge `CodeTheme` exists to hold
+    /// in one place.
     func highlight(
         _ text: String,
         as language: String,
-        for appearance: HighlightAppearance
+        for appearance: HighlightAppearance,
+        themed theme: CodeTheme
     ) async -> [AttributedString]?
 }

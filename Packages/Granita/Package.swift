@@ -24,6 +24,14 @@ import PackageDescription
 // screen that first needed it, and it is why a Ui target has no test target — there is nothing in
 // one a test would want to reach.
 //
+// ClientViewerUi is the one exception, and it is the sentence above's own reason that makes it one:
+// it holds `HighlightrSyntaxHighlighter`, which is not a view but an actor wrapping a JavaScript
+// engine, and the frozen palettes `CodeTheme` publishes are a fact about that engine's bundled
+// stylesheets. A table that can rot silently when a dependency updates belongs behind the suite that
+// runs on every change, so ClientViewerUiTests exists to lex one sample and pin ten palettes. It is
+// there because the highlighter is not a view, not because Ui targets gained tests. Recorded in
+// `.ai/docs/decisions.md`.
+//
 // The three composition roots are the `Main` layer, and that is a layer rather than a sentence in
 // this comment: ClientAppMain, ServerAppMain and the granita-server executable at Server/Cli/Main.
 // Nothing depends on them, which is what makes mixing layers there safe — and naming the layer is
@@ -429,19 +437,37 @@ let package = Package(
             path: "Client/Viewer/PresentationTests",
             swiftSettings: [swift6, mainActorByDefault]
         ),
+        // The one Ui test target, and the header comment says why it is allowed to exist: it pins
+        // `CodeTheme`'s frozen palettes against the stylesheets Highlightr actually ships.
+        .testTarget(
+            name: "ClientViewerUiTests",
+            dependencies: ["ClientViewerUi", "ClientViewerDomain", "CoreDiffDomain"],
+            path: "Client/Viewer/UiTests",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
 
         // What the reader decided about the shape of a review, and the one screen that sets it.
         // Its own feature rather than part of the viewer: the settings belong to a Mac rather than
         // to a worktree, and the way in is the sidebar's menu rather than the diff's toolbar.
         .target(
             name: "ClientSettingsDomain",
-            dependencies: ["CoreReviewDomain"],
+            // **`ClientViewerDomain` because the theme is a fact about lexing, not about settings.**
+            // `CodeTheme` lives where `HighlightAppearance` already does, and this unit stores it —
+            // a sibling Domain is exactly what a Domain target may see, so the setting can name the
+            // thing it sets without either unit owning the other.
+            dependencies: ["ClientViewerDomain", "CoreReviewDomain"],
             path: "Client/Settings/Domain",
             swiftSettings: [swift6]
         ),
         .target(
+            name: "ClientSettingsData",
+            dependencies: ["ClientSettingsDomain", "ClientViewerDomain"],
+            path: "Client/Settings/Data",
+            swiftSettings: [swift6]
+        ),
+        .target(
             name: "ClientSettingsUi",
-            dependencies: ["ClientSettingsDomain", "CoreReviewDomain"],
+            dependencies: ["ClientSettingsDomain", "ClientViewerDomain", "CoreReviewDomain"],
             path: "Client/Settings/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -450,6 +476,7 @@ let package = Package(
             dependencies: [
                 "ClientSettingsUi",
                 "ClientSettingsDomain",
+                "ClientViewerDomain",
                 "ClientConnectionDomain",
                 "CoreReviewDomain"
             ],
@@ -457,10 +484,23 @@ let package = Package(
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .testTarget(
+            name: "ClientSettingsDomainTests",
+            dependencies: ["ClientSettingsDomain", "ClientViewerDomain"],
+            path: "Client/Settings/DomainTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ClientSettingsDataTests",
+            dependencies: ["ClientSettingsData", "ClientSettingsDomain", "ClientViewerDomain"],
+            path: "Client/Settings/DataTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
             name: "ClientSettingsPresentationTests",
             dependencies: [
                 "ClientSettingsPresentation",
                 "ClientSettingsDomain",
+                "ClientViewerDomain",
                 "ClientConnectionDomain",
                 "CoreApiDomain",
                 "CoreDiffDomain",
@@ -492,7 +532,9 @@ let package = Package(
                 // pins the dependency to `ClientViewerUi` — and choosing the implementation behind a
                 // `Domain` protocol is a root's job wherever the implementation happens to live.
                 "ClientViewerUi",
-                "ClientSettingsPresentation"
+                "ClientSettingsPresentation",
+                "ClientSettingsData",
+                "ClientSettingsDomain"
             ],
             path: "Client/App/Main",
             swiftSettings: [swift6, mainActorByDefault]

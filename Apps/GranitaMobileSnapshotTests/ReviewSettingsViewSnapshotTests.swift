@@ -1,5 +1,6 @@
 import ClientSettingsDomain
 import ClientSettingsUi
+import ClientViewerDomain
 import CoreReviewDomain
 import SwiftUI
 import Testing
@@ -33,7 +34,11 @@ struct ReviewSettingsViewSnapshotTests {
                 isOpeningLineDefault: subject.isOpeningLineDefault,
                 standing: subject.standing,
                 macName: "MacBook Pro",
+                appearance: subject.appearance,
+                codeTheme: subject.codeTheme,
                 onChoose: { _ in },
+                onChooseAppearance: { _ in },
+                onChooseCodeTheme: { _ in },
                 onCommitOpeningLine: {},
                 onReset: {},
                 onPair: {},
@@ -54,6 +59,14 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
     var identifier: ReviewIdentifier = .letters
     var isOpeningLineDefault = false
     let standing: ReviewSettingsStanding
+
+    /// The fourth section's two values, defaulted so that the nine states above stay about the review.
+    ///
+    /// **`system` and Xcode's pair for every existing subject**, which is what an app nobody has
+    /// configured draws — so the nine baselines these replace differ from their old selves by one
+    /// section and by nothing else.
+    var appearance: AppAppearance = .system
+    var codeTheme: CodeTheme = .default
 
     var testDescription: String { name }
 
@@ -138,6 +151,38 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
             name: "the-mac-refused-plainly",
             openingLine: "Reply to each point by its letter.",
             standing: .refused(reason: nil)
+        ),
+
+        // **A pair the reader chose**, which differs from `a-line-of-their-own` by one word and eight
+        // colours. There is no Reset row and no badge for it: the list it came from still holds the
+        // default one tap away, so *chosen* is not a state this section has to report.
+        SettingsCase(
+            name: "a-theme-of-their-own",
+            openingLine: "Review the work in this worktree.",
+            standing: .settled,
+            codeTheme: .stackOverflow
+        ),
+
+        // **The two subjects that would catch a preview that started following the environment.** Each
+        // is rendered in both appearances by the layout axis, so `forced-light` in the dark layout is a
+        // dark sheet whose picker says Light — and the *in use* marker has to stay on the left sample
+        // in both of that subject's renders, because what it reports is the appearance being drawn
+        // rather than the one the phone would have chosen.
+        //
+        // **They are the frames the `resolved(whenFollowing:)` call exists for.** A view that read the
+        // picker's value would put the marker in the right place here and the wrong place on `system`,
+        // which is the common case and the one no frame can catch by itself.
+        SettingsCase(
+            name: "forced-light",
+            openingLine: "Review the work in this worktree.",
+            standing: .settled,
+            appearance: .light
+        ),
+        SettingsCase(
+            name: "forced-dark",
+            openingLine: "Review the work in this worktree.",
+            standing: .settled,
+            appearance: .dark
         )
     ]
 }
