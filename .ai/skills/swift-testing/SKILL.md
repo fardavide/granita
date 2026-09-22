@@ -122,16 +122,6 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
 - **The phone's baselines are recorded locally; the Mac's are recorded on the CI runner**, and
   `make snapshots-mac` is expected to be red on your machine. Never record the phone's on CI, and
   never re-record the Mac's locally to make it green.
-- **What makes the Mac's red is SF Symbols, and the tell is that the damage scales with ink.**
-  Measured 22 September 2026: every one of the ten macOS suites failed locally while CI passed the
-  same commit. The differing-pixel share tracks how much the view draws — about 9% of a 44 × 22
-  status item against 0.2% of a mostly-empty settings pane — because what differs is glyph
-  rasterisation and nothing else. `arrow.trianglehead.branch` renders with heavier arrowheads on
-  macOS 26.5.1 than on the runner image; the trianglehead family has been revised across releases.
-  **The cheap diagnostic is to open the smallest failing baseline beside its
-  `__SnapshotFailures__` twin and look**, which settles in one glance what pixel percentages argue
-  about: same size and same sRGB profile means it is neither scale nor colour space, and
-  `FixedScaleImage` already pins the first of those.
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
   and `.ai/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill. Review every changed PNG by eye before committing.
@@ -157,21 +147,11 @@ how to read a failure, and the four wrong fixes behind the keyboard rules:
 
 ## Cover it as you write it, and run the gate before the pull request
 
-**`make coverage` gives the same verdict CI gives on three rows of four.** It fetches `main`'s
-numbers, runs the same measurement script through the same predicates, and exits non-zero on the
-same rows. Run it before opening a pull request that adds code. Discovering a fallen row from a red
-pull request costs a full CI round trip to learn a number that was computable locally the whole time
-— that happened five times before the target existed, and the target exists because of it.
-
-**The exception is the Snapshot row, and it follows from the rule above about the Mac's baselines.**
-One of coverage's three passes renders the Mac's panes, and that pass is *expected* to be red on your
-machine — so every line of Mac view code goes unexercised and the Snapshot row is understated by
-roughly 0.3 points of lines and 0.7 of regions. **Read Unit and All tests locally and let CI arbitrate
-Snapshot.** A local Snapshot row that has fallen while Unit and All are flat is this, not your diff;
-confirm it by checking that every failing suite is a macOS one, and do not chase it by writing tests
-for view code the gate never saw. Measured 22 September 2026 on
-[#107](https://github.com/fardavide/granita/pull/107), where CI's `Snapshot tests (macOS)` passed the
-commit that was red here.
+**`make coverage` gives the same verdict CI gives.** It fetches `main`'s numbers, runs the same
+measurement script through the same predicates, and exits non-zero on the same rows. Run it before
+opening a pull request that adds code. Discovering a fallen row from a red pull request costs a full
+CI round trip to learn a number that was computable locally the whole time — that happened five
+times before the target existed, and the target exists because of it.
 
 It takes several minutes: three passes, one booting a simulator and one rendering the Mac's panes.
 That is the price of the answer and a fraction of what it replaces.
