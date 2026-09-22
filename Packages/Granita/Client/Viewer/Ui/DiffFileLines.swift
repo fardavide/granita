@@ -524,22 +524,15 @@ public struct DiffFileLines: View {
             )
     }
 
-    /// Which row a touch meant, and nothing when no row there can carry a comment.
+    /// Which line a touch meant, and nothing when no row there can carry a comment.
     ///
-    /// The unified answer is `GutterTarget`'s, unchanged — it resolves a touch anywhere in the strip
-    /// to the *nearest numbered* row, so there is no dead space to land in. A block's strip is its own
-    /// cell, so the row is the arithmetic and the side is which strip was touched.
+    /// **The arithmetic is `GutterTarget`'s and not this view's**, which is the same seam the
+    /// unified strip already used: deciding which line a coordinate points at is a fact about the
+    /// model, and a view body is the one place in this codebase where that cannot be asserted
+    /// directly. What is left here is handing over the two things only the view knows — the height
+    /// of a row, and which cell's strip was touched.
     private func position(at y: CGFloat, on side: DiffSide?) -> DiffLinePosition? {
-        guard let side else {
-            guard let index = GutterTarget.row(at: y, of: lines, rowHeight: rowHeight) else { return nil }
-            return DiffLinePosition.of(lines[index])
-        }
-        let row = Int(y / rowHeight)
-        guard rows.indices.contains(row), let line = rows[row].line(on: side) else { return nil }
-        // A cell with nothing in it is the run having run out on that side, and it is not a row to
-        // comment on.
-        guard DiffGutter.number(of: line) != nil else { return nil }
-        return DiffLinePosition.of(line)
+        GutterTarget.line(at: y, on: side, of: rows, lines: lines, rowHeight: rowHeight)
     }
 
     // MARK: - The indicator

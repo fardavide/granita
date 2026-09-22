@@ -516,8 +516,17 @@ public struct WorktreeDiffScreen: View {
     }
 
     /// **A toggle rather than a menu, because it has two states and the reader flips between them
-    /// while reading a block.** Design §4.5's call 5: `rectangle.split.2x1`, filled when it is on,
-    /// one tap from the code on all three presentations.
+    /// while reading a block.** Design §4.5's call 5: `rectangle.split.2x1`, one tap from the code on
+    /// all three presentations.
+    ///
+    /// **The glyph does not change, and that is a departure from the return.** §4.5 asks for it
+    /// filled when on; built that way it was the heaviest thing in a toolbar whose screen is the
+    /// code — two solid slabs sharing a capsule with *7 files*, so the two read as one control.
+    /// Davide's call on 22 September 2026: *"the fill state is too heavy."* What says the mode is on
+    /// instead is the platform's own selected background, which is what `.toggleStyle(.button)`
+    /// draws — one vocabulary the reader already knows from every other toolbar, rather than a glyph
+    /// swap they have to learn. A `Toggle` also announces its own on-and-off state, which is a better
+    /// accessibility answer than two hand-written labels.
     ///
     /// Rejected with it: the file header's unbuilt menu, which would make this feature also decide
     /// when that menu ships; a Settings row, which is two navigations from the code and would read as
@@ -533,12 +542,13 @@ public struct WorktreeDiffScreen: View {
         // with no code on it — a toggle over a spinner or a failure has nothing to turn over.
         if let choose = sideBySide.choose, case .reading = model.state {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    choose(sideBySide.isOn == false)
-                } label: {
-                    Image(systemName: sideBySide.isOn ? "rectangle.split.2x1.fill" : "rectangle.split.2x1")
+                // The setter is written out rather than handed `choose` directly, which is the same
+                // IRGen crash the sheet binding above works around: a bare function reference in a
+                // `Binding`'s setter makes swiftc emit a reabstraction thunk and abort.
+                Toggle(isOn: Binding(get: { sideBySide.isOn }, set: { isOn in choose(isOn) })) {
+                    Label("Side by Side", systemImage: "rectangle.split.2x1")
                 }
-                .accessibilityLabel(sideBySide.isOn ? "Show changes in one column" : "Show changes side by side")
+                .toggleStyle(.button)
             }
         }
     }

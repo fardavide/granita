@@ -77,8 +77,28 @@ than inside them, so this is structural rather than a decision.
 
 ## A toolbar toggle, called Side by Side
 
-One toolbar item on the diff screen: `rectangle.split.2x1`, filled when on. A toggle rather than a
-menu, because it has two states and the reader flips between them while reading a block.
+One toolbar item on the diff screen: `rectangle.split.2x1`. A toggle rather than a menu, because it
+has two states and the reader flips between them while reading a block.
+
+**The glyph is hollow in both states, which the return did not ask for.** §4.5 specifies it filled
+when on. Built that way and photographed, the filled pair is two solid slabs — the heaviest thing in
+a toolbar whose screen is the code, sharing a capsule with *7 files* so that the two read as one
+control, which is the fault `design.md` §2 already names on the iPad bar. Davide, 22 September 2026:
+*"the fill state is too heavy… I don't like the icon. It's too simple and doesn't represent
+anything."*
+
+The glyph survived the second half of that on a rendered comparison of twelve candidates: hollow, it
+is a thin outline rather than a slab, and the alternatives each cost more than they bought —
+`sidebar.squares.left` collides with the selector fold's own `sidebar.leading` two items away,
+`doc.on.doc` reads as duplicate, `arrow.left.arrow.right` as transfer,
+`chevron.left.forwardslash.chevron.right` as merely *code*, and `plus.forwardslash.minus` says
+*diff* while saying nothing about two columns. `arrow.left.and.right.text.vertical` was the one that
+genuinely depicts text being compared and was rejected as too busy at 20pt.
+
+**What says the mode is on is the platform's selected background**, drawn by `.toggleStyle(.button)`
+rather than by a second glyph. One vocabulary the reader already knows from every other toolbar,
+instead of a swap they have to learn — and a `Toggle` announces its own on-and-off state, which is a
+better accessibility answer than two hand-written labels.
 
 > Rejected: the file header's unbuilt menu, which would make this feature also specify when that menu
 > ships. Rejected: a Settings row, which is two navigations from the code and would read as a
@@ -126,8 +146,11 @@ are mutually exclusive. That is a decision wrap-on now inherits.
 
 ## Where the build departs from the return
 
-Four, and the first is the only expensive one. All four are in
-[`decisions.md`](decisions.md).
+Five, and the first is the only expensive one. All of them are in [`decisions.md`](decisions.md).
+
+- **The toolbar glyph is hollow in both states**, where §4.5 asks for it filled when on, and the
+  platform's selected background carries the mode instead. Davide's call on the built screen — the
+  section above has the argument and the twelve candidates it was tested against.
 
 - **The cells ride the hunk's scroll offset rather than sharing a scroll with it.** The return asks
   for "one drag moves the context and both cells together" and reaches for the shared hunk scroll to

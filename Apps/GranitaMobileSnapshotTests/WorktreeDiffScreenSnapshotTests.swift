@@ -34,6 +34,33 @@ struct WorktreeDiffScreenSnapshotTests {
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-change-set")
     }
 
+    /// **Design §4.1 on the real screen rather than on a hunk in isolation.**
+    ///
+    /// The change set is the partly-arrived one **because it is the only fixture here whose files
+    /// hold hunks** — `aChangeSetToSelectFrom` is a file list and every card in it is still on its
+    /// way, so a split drawn over it would photograph seven skeletons and assert nothing. Read this
+    /// against `a-change-set-partly-arrived`: the toolbar item is filled rather than hollow, and the
+    /// paired run in the first file has folded into two cells while the context around it keeps its
+    /// width.
+    ///
+    /// What it holds that `DiffFileLinesSnapshotTests` cannot is that the split survives the things
+    /// *around* a hunk — the sticky header, the card, the 10pt page between files, and a neighbour
+    /// that has not arrived — none of which a hunk drawn on its own has.
+    @Test(arguments: SnapshotLayout.all)
+    func `given side by side is on when the screen is rendered then the paired run has two cells`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, in: layout)
+
+        // when - then
+        assertScreenSnapshot(
+            screen(of: model, isSideBySide: true),
+            layout: layout,
+            named: "side-by-side"
+        )
+    }
+
     /// **The drawer is up in this one, and you cannot see it — which is the assertion.**
     ///
     /// A hosted view presents a sheet into a window of its own and the raster does not include it,
@@ -355,10 +382,17 @@ struct WorktreeDiffScreenSnapshotTests {
 /// Wrapped the way the composition root wraps it, because a baseline of a screen out of its stack
 /// asserts a toolbar nobody draws.
 @MainActor
-private func screen(of model: ClientViewerModel) -> some View {
+private func screen(of model: ClientViewerModel, isSideBySide: Bool = false) -> some View {
     NavigationStack {
         WorktreeDiffScreen(worktreeName: "TLS pinning", model: model, onPairAgain: {})
     }
+        // **A setter, because the composition root supplies one and a baseline asserts what ships.**
+        // `SideBySideSetting` withholds the toolbar item when nothing can be written to — that is
+        // what makes a forgotten wiring remove the control rather than deaden it — so a subject
+        // built without one photographs a screen that has no *Side by Side* button on it, which is
+        // not the screen. The closure does nothing because a raster cannot press it; what it buys is
+        // the item being drawn at all.
+        .environment(\.sideBySide, SideBySideSetting(isOn: isSideBySide, choose: { _ in }))
         // **Reduced Motion wherever a card is still on its way.** Design §9's sweep is an infinite
         // repeat, so a raster of it lands wherever the run loop happened to be — and the design says
         // in as many words that the still form is what a screenshot of this screen looks like. Asked
