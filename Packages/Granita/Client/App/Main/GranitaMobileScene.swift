@@ -34,7 +34,7 @@ public struct GranitaMobileScene: Scene {
             // diff as well as the sheet that sets it.** `AppearanceRoot` owns the observation and
             // applies `preferredColorScheme`; what is left here is the one modifier only a root can
             // apply, which is putting the chosen theme where `WorktreeDiffScreen` reads it.
-            AppearanceRoot(model: Self.appearance) { codeTheme in
+            AppearanceRoot(model: Self.appearance) { codeTheme, isSideBySide, chooseSideBySide in
             // The stack, the measure around it and where its two exits lead all belong to
             // `PairingSpineScreen`, and what is left here is the wiring that only a composition root
             // can do: which implementation answers each protocol, and which session each of the two
@@ -93,6 +93,10 @@ public struct GranitaMobileScene: Scene {
                 }
             )
             .environment(\.codeTheme, codeTheme)
+            // **The setter travels with the value**, which is what keeps the diff screen's toolbar
+            // toggle from being a control that moves an icon and writes nothing. Absent here, the
+            // item is not rendered at all rather than rendered dead.
+            .environment(\.sideBySide, SideBySideSetting(isOn: isSideBySide, choose: chooseSideBySide))
             }
         }
     }

@@ -35,6 +35,7 @@ struct DiffFileLinesSnapshotTests {
                     subject.lines.compactMap(\.newNumber).max() ?? 0
                 ),
                 pointSize: subject.pointSize,
+                isSplit: subject.isSplit,
                 runs: subject.runs,
                 highlighted: subject.highlighted
             )
@@ -98,6 +99,11 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
     /// measurement. The gutter, the marker and the row height all derive from it, so the two sizes
     /// are two different grids rather than one grid scaled.
     let pointSize: CGFloat
+
+    /// Whether a paired run opens into two columns. False for every case that predates §4.1's split,
+    /// so none of their baselines moves — which is itself the cheapest proof of the argument that
+    /// return makes, that the mode changes nothing outside a run.
+    var isSplit = false
 
     /// The comment rails this hunk draws. Empty for every case that predates §7, so none of their
     /// baselines moves.
@@ -231,7 +237,57 @@ struct DiffLinesCase: Sendable, CustomTestStringConvertible {
             lines: aChangedFunction,
             pointSize: 11,
             highlighted: aLexedChangedFunctionWithOneLineShort
-        )
+        ),
+
+        // MARK: - Design §4.1's split
+
+        // **The feature, photographed against the case it exists for.** Compare it against
+        // `a-changed-function`, which is these exact lines unified: the paired run folds from two
+        // rows into one, the two line starts land 181pt apart on the same row, and the context above
+        // and below keeps the 49 characters it had. The `+`/`−` column is gone *inside* the block
+        // and still there outside it, which is the one thing a reader could reasonably expect to
+        // have been thrown away.
+        DiffLinesCase(name: "a-paired-change-split", lines: aChangedFunction, pointSize: 11, isSplit: true),
+
+        // **The empty cell, which is design §4.1's call 2 and the only new absence in the app.** An
+        // old side running to four figures against a much shorter new one leaves rows whose new cell
+        // has nothing in it — no tint, no figure, no hatch — and what says the block continues past
+        // them is the vertical rule alone. If that hairline is going to disappear against a card,
+        // this is where it does.
+        DiffLinesCase(
+            name: "an-unbalanced-run-split",
+            lines: anOldSideThatOutrunsTheNew,
+            pointSize: 11,
+            isSplit: true
+        ),
+
+        // **The rail inside a cell, which is the one thing on the row that moves when the mode
+        // changes.** Unified, `a-rail-across-four-rows` draws one stripe in the file's single leading
+        // inset; split, the same comment becomes a piece per cell, each in its own cell's inset —
+        // saying which side it is about, which unified it never could.
+        DiffLinesCase(
+            name: "a-rail-in-one-cell-split",
+            lines: aChangedFunction,
+            pointSize: 11,
+            isSplit: true,
+            runs: [CommentRun(firstRow: 1, rowCount: 4, isPending: false)]
+        ),
+
+        // **The split at the iPad's size**, where a cell holds about 51 characters rather than 22 —
+        // the width at which this stops being a comparison of two line starts and becomes a
+        // comparison of two lines.
+        DiffLinesCase(
+            name: "a-paired-change-split-beside-the-selector",
+            lines: aChangedFunction,
+            pointSize: 12,
+            isSplit: true
+        ),
+
+        // **A file the split can do nothing to, asserted unchanged.** A conflicted hunk has no paired
+        // run in it, so this baseline must be byte-for-byte `a-conflicted-hunk` with the mode on.
+        // That is the cheapest possible proof of the return's central argument: the blast radius of
+        // this feature is a run, and a run is a thing the parser already finds.
+        DiffLinesCase(name: "a-conflicted-hunk-split", lines: aConflictedHunk, pointSize: 11, isSplit: true)
     ]
 }
 

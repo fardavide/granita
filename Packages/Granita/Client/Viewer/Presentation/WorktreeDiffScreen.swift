@@ -58,6 +58,11 @@ public struct WorktreeDiffScreen: View {
     /// scene root puts here. The other half of the same question `colorScheme` asks.
     @Environment(\.codeTheme) private var codeTheme
 
+    /// Whether a paired run opens into two columns, and how to change it. Design §4.5's call 5 puts
+    /// the control on this screen rather than in Settings, so the value and its setter arrive
+    /// together.
+    @Environment(\.sideBySide) private var sideBySide
+
     public init(worktreeName: String, model: ClientViewerModel, onPairAgain: @escaping () -> Void) {
         self.worktreeName = worktreeName
         self.onPairAgain = onPairAgain
@@ -86,6 +91,7 @@ public struct WorktreeDiffScreen: View {
             }
             .toolbar { filesButton }
             .toolbar { reviewToggle }
+            .toolbar { sideBySideToggle }
             // **One sheet for all three, because only one of them can ever present.** The setter is
             // written out rather than handed `model.dismissSheet`, which is the repository's IRGen
             // crash arriving from a new direction: a method reference in a `Binding`'s setter makes
@@ -294,6 +300,7 @@ public struct WorktreeDiffScreen: View {
             state: model.state,
             logCopyState: model.logCopyState,
             pointSize: layout.codePointSize,
+            isSplit: sideBySide.isOn,
             jumpTarget: model.jumpTarget,
             comments: model.reviewed,
             // **The held row draws a rail too, which is the state that most needs one.** Design
@@ -504,6 +511,34 @@ public struct WorktreeDiffScreen: View {
                     Image(systemName: "sidebar.leading")
                 }
                 .accessibilityLabel(isSelectorColumnOpen ? "Hide the file list" : "Show the file list")
+            }
+        }
+    }
+
+    /// **A toggle rather than a menu, because it has two states and the reader flips between them
+    /// while reading a block.** Design §4.5's call 5: `rectangle.split.2x1`, filled when it is on,
+    /// one tap from the code on all three presentations.
+    ///
+    /// Rejected with it: the file header's unbuilt menu, which would make this feature also decide
+    /// when that menu ships; a Settings row, which is two navigations from the code and would read as
+    /// a preference rather than a posture; and a segmented bar under the navigation bar, which is
+    /// permanent chrome on a screen that just bought 17pt back.
+    ///
+    /// **Present whenever there is a diff to look at, and live even when nothing on screen changes.**
+    /// A change set of nothing but new files has no paired run, so pressing it draws the same rows —
+    /// and still records how the next change set opens. Davide settled that on 22 September 2026: it
+    /// is a setting, and a setting's effect is that it is remembered.
+    @ToolbarContentBuilder private var sideBySideToggle: some ToolbarContent {
+        // Absent rather than dead where no composition root wired a setter, and absent on a screen
+        // with no code on it — a toggle over a spinner or a failure has nothing to turn over.
+        if let choose = sideBySide.choose, case .reading = model.state {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    choose(sideBySide.isOn == false)
+                } label: {
+                    Image(systemName: sideBySide.isOn ? "rectangle.split.2x1.fill" : "rectangle.split.2x1")
+                }
+                .accessibilityLabel(sideBySide.isOn ? "Show changes in one column" : "Show changes side by side")
             }
         }
     }

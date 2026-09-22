@@ -2,6 +2,34 @@
 
 Where the project is. Update this when a slice lands.
 
+**Side by side is 0.18.0.** Issue [#57](https://github.com/fardavide/granita/issues/57). A paired run
+— a maximal stretch of deletions immediately followed by additions, which is the run `WordDiff`
+already forms — opens into two columns when the reader asks; nothing else does. Context, a change
+with only one side, a conflict marker and git's no-newline annotation keep the width they have, which
+is what makes the feature survive a 390pt phone at all: a cell is 22 characters and it is spent on
+about one row in five. The control is a toolbar toggle, and the mode is one device-local flag beside
+the appearance and the code theme. All the calls are in
+[`design-side-by-side.md`](design-side-by-side.md); the four departures are there too, and the three
+expensive ones are in [`decisions.md`](decisions.md).
+
+**The return's scroll could not be built as drawn, and that is the one call Davide made himself.**
+Design §4.1 asks for "one drag moves the context and both cells together" and reaches for the shared
+hunk scroll; content inside a `ScrollView` travels as one piece, so two cells at fixed positions
+cannot both stay put while it slides. What ships reads the offset that scroll already reports and
+applies it to each cell — the same sentence from the other end, with one scroll and nothing to
+synchronise.
+
+**What has not been pressed is the app.** The domain is covered and the screens are photographed, but
+the three things only a thumb can answer are the drag across a block, the toggle's anchored relayout,
+and a Mac window dragged across the 20-character floor. This project says that is the only check that
+works, and none of it has had one.
+
+**The code size is not in this.** `SPEC.md` §10 has claimed since the beginning that the code size is
+its own setting; at `main` it is two constants in `DiffPaneLayout`. The return drew that setting —
+two halves, one per mode — and it is [#106](https://github.com/fardavide/granita/issues/106) rather
+than part of this slice, on Davide's call. It carries one genuine conflict to settle: at the largest
+Dynamic Type sizes, *Follow system* crosses the split's own floor.
+
 **Four new code-colour pairs are 0.17.0.** Issue
 [#103](https://github.com/fardavide/granita/issues/103). Accessible and GitHub return as stable,
 Granita-owned CSS, joined by Catppuccin Latte/Mocha and a high-separation, pastel-accented Granita

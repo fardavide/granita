@@ -78,6 +78,29 @@ struct UserDefaultsAppearancePreferencesTests {
         // when - then
         #expect(scenario.sut.codeTheme() == .xcode)
     }
+
+    @Test
+    func `given side by side was remembered when it is read then it is what was stored`() {
+        // given
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.remember(isSideBySide: true)
+
+        // then
+        #expect(scenario.sut.isSideBySide())
+    }
+
+    @Test
+    func `given no release ever wrote the key when side by side is read then it is off`() {
+        // given — every reader updating into this release, and the one case with no stored value at
+        // all. Unified is what they have been reading in, and a setting that turned itself on for
+        // them would be a layout change nobody asked for on first launch.
+        let scenario = Scenario()
+
+        // when - then
+        #expect(scenario.sut.isSideBySide() == false)
+    }
 }
 
 // MARK: -

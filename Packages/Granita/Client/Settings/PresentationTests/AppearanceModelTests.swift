@@ -74,6 +74,50 @@ struct AppearanceModelTests {
         #expect(scenario.sut.appearance == .dark)
     }
 
+    @Test
+    func `given side by side chosen when it is read back then the device remembered it`() {
+        // given — off is what every reader has been reading in, so the interesting direction is on.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.chooseSideBySide(true)
+
+        // then — the second expectation is the whole point of the control. A change set with no
+        // paired run in it draws identically either way, so being remembered is the *only*
+        // perceivable effect a press can have there, and a model that moved the flag without writing
+        // it would look right until the app was relaunched.
+        #expect(scenario.sut.isSideBySide)
+        #expect(scenario.preferences.isSideBySide())
+    }
+
+    @Test
+    func `given side by side turned back off when it is read back then that was remembered too`() {
+        // given — a reader who tried it and went back. The off direction has to persist as well, or
+        // the setting is a one-way door.
+        let scenario = Scenario(isSideBySide: true)
+
+        // when
+        scenario.sut.chooseSideBySide(false)
+
+        // then
+        #expect(scenario.sut.isSideBySide == false)
+        #expect(scenario.preferences.isSideBySide() == false)
+    }
+
+    @Test
+    func `given side by side chosen when the theme and appearance are read then neither moved`() {
+        // given — three settings share one device and nothing else. Asking for two columns is not
+        // asking for different colours.
+        let scenario = Scenario(appearance: .dark, codeTheme: .atomOne)
+
+        // when
+        scenario.sut.chooseSideBySide(true)
+
+        // then
+        #expect(scenario.sut.appearance == .dark)
+        #expect(scenario.sut.codeTheme == .atomOne)
+    }
+
     // MARK: - What the app draws in
 
     @Test
@@ -108,8 +152,16 @@ private struct Scenario {
     let sut: AppearanceModel
     let preferences: FakeAppearancePreferences
 
-    init(appearance: AppAppearance = .default, codeTheme: CodeTheme = .default) {
-        preferences = FakeAppearancePreferences(appearance: appearance, codeTheme: codeTheme)
+    init(
+        appearance: AppAppearance = .default,
+        codeTheme: CodeTheme = .default,
+        isSideBySide: Bool = false
+    ) {
+        preferences = FakeAppearancePreferences(
+            appearance: appearance,
+            codeTheme: codeTheme,
+            isSideBySide: isSideBySide
+        )
         sut = AppearanceModel(preferences: preferences)
     }
 }

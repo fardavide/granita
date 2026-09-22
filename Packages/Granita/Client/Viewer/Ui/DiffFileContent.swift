@@ -24,6 +24,10 @@ public struct DiffFileContent: View {
     private let diff: FileDiff
     private let pointSize: CGFloat
 
+    /// Whether the reader has asked for a paired run to open into two columns. Whether any actually
+    /// does is `DiffFileLines`' answer, because it depends on a width only the row knows.
+    private let isSplit: Bool
+
     /// Every comment the reader has written, not only this file's.
     ///
     /// **Filtered here rather than by the caller**, for the reason the expansion callback is shaped
@@ -51,6 +55,7 @@ public struct DiffFileContent: View {
     public init(
         diff: FileDiff,
         pointSize: CGFloat,
+        isSplit: Bool = false,
         comments: [ReviewComment] = [],
         pending: PendingComment? = nil,
         highlighted: HighlightedFile = .none,
@@ -61,6 +66,7 @@ public struct DiffFileContent: View {
     ) {
         self.diff = diff
         self.pointSize = pointSize
+        self.isSplit = isSplit
         self.comments = comments
         self.pending = pending
         self.highlighted = highlighted
@@ -83,6 +89,7 @@ public struct DiffFileContent: View {
                         lines: hunk.lines,
                         highestNumber: highestNumber,
                         pointSize: pointSize,
+                        isSplit: isSplit,
                         // **Clipped to this hunk, which is what makes a rail across a hunk boundary
                         // possible at all.** A file is several views with torn rows between them, so
                         // there is no coordinate space a single rail could span.
@@ -104,6 +111,10 @@ public struct DiffFileContent: View {
         // has to travel. A key of the whole `FileDiff` would also fire on a mark being set, which
         // moves nothing.
         .animation(.disclosure, value: diff.hunks.map(\.lines.count))
+        // **The fourth site of the same curve**, which is design §5.7 applied to a mode rather than
+        // to a disclosure: a run folding from six rows into three is a layout change the reader
+        // pressed for, and without motion the file reads as replaced rather than as turned over.
+        .animation(.disclosure, value: isSplit)
     }
 
     /// The column the expander puts its glyph in, so an arrow standing for hidden lines lands where

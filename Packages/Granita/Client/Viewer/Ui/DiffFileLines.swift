@@ -26,6 +26,20 @@ import CoreReviewDomain
 /// that — it says which side you are reading, so the figure no longer has to. What it costs is three
 /// characters of code, and the review's own argument for spending them is that the row which used to
 /// hold them was already cut off without saying so. Davide adopted both on 1 September 2026.
+///
+/// **A paired run opens into two columns when the reader asks, and nothing else does.** That is
+/// design §4.1's call 1 and the whole of what `isSplit` changes here: `SplitDiffRow` decides which
+/// rows are blocks, `SplitBlockLayout` decides whether the row is wide enough to hold any, and every
+/// layer below draws a block row differently and an ordinary row exactly as before. Context keeps its
+/// 49 characters; a cell gets 22.
+///
+/// **A block's cells are drawn outside the horizontal scroll and ride the offset it reports**, which
+/// is the one part of the return that could not be built as written. Design §4.1 asks for "one drag
+/// moves the context and both cells together" and reaches for the shared hunk scroll to get it — but
+/// content inside a `ScrollView` travels as one piece, so two cells at fixed positions cannot both
+/// stay put while it slides. Reading the offset and applying it to each cell gives the same sentence
+/// from the other end: one scroll, one gesture, and nothing that can desynchronise. In
+/// `.ai/docs/decisions.md`.
 public struct DiffFileLines: View {
 
     /// §4's inset between the last character of code and the trailing edge.
@@ -53,6 +67,13 @@ public struct DiffFileLines: View {
     private let highestNumber: Int
     private let pointSize: CGFloat
 
+    /// Whether the reader has asked for two columns.
+    ///
+    /// **Asked for rather than granted.** Whether any block is actually drawn is this view's own
+    /// answer, because it depends on a width only the layout knows — below `SplitBlockLayout`'s floor
+    /// the rows draw unified however the flag is set, and the control that set it says why.
+    private let isSplit: Bool
+
     /// The stretches of comment rail this hunk draws, decided by `CommentRail` in `Domain`.
     private let runs: [CommentRun]
 
@@ -75,6 +96,13 @@ public struct DiffFileLines: View {
     @State private var contentWidth: CGFloat = 0
     @State private var scrolledBy: CGFloat = 0
 
+    /// The whole row's width, which is what decides whether a block fits in it.
+    ///
+    /// Measured rather than handed in, because the answer differs between the phone, the iPad's pane
+    /// beside the selector, and a Mac window the reader is dragging — and the last of those changes
+    /// while the view is on screen.
+    @State private var rowWidth: CGFloat = 0
+
     /// Bumped when a long press is recognised, so the haptic is a declarative consequence of a state
     /// change rather than a call into the system from inside a view body.
     @State private var holds = 0
@@ -96,6 +124,7 @@ public struct DiffFileLines: View {
         lines: [DiffLine],
         highestNumber: Int,
         pointSize: CGFloat,
+        isSplit: Bool = false,
         runs: [CommentRun] = [],
         highlighted: HighlightedFile = .none,
         acceptsTargeting: Bool = true,
@@ -105,6 +134,7 @@ public struct DiffFileLines: View {
         self.lines = lines
         self.highestNumber = highestNumber
         self.pointSize = pointSize
+        self.isSplit = isSplit
         self.runs = runs
         self.highlighted = highlighted
         self.acceptsTargeting = acceptsTargeting
@@ -118,6 +148,7 @@ public struct DiffFileLines: View {
                 tints
                 selection
                 columns
+                blockCells
             }
             .font(.system(size: pointSize, design: .monospaced))
             // **Overlaid rather than added to the row, which is the whole of design §7.3's call 7.**
@@ -133,7 +164,276 @@ public struct DiffFileLines: View {
             .overlay(alignment: .topLeading) { tapStrip }
             indicator
         }
+        // Watched rather than read once: a Mac window is dragged while this is on screen, and
+        // crossing the floor has to close the blocks as it happens rather than at the next layout
+        // that happened to be asked for.
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            rowWidth = width
+        }
         .sensoryFeedback(.selection, trigger: holds)
+    }
+
+    // MARK: - What is drawn
+
+    /// Whether any block is actually drawn, which is the reader's ask and the room agreeing.
+    ///
+    /// Below `SplitBlockLayout`'s floor this is false however `isSplit` is set, and the toolbar item
+    /// that set it goes disabled carrying its reason — `SPEC.md`'s third permitted state for a
+    /// control, and the one that re-enables itself on the drag back.
+    private var drawsBlocks: Bool {
+        isSplit && SplitBlockLayout.fits(
+            rowWidth: rowWidth,
+            highestLineNumber: highestNumber,
+            atPointSize: pointSize,
+            trailingInset: Self.codeTrailingInset
+        )
+    }
+
+    private var rows: [SplitDiffRow] {
+        SplitDiffRow.rows(of: lines, splitting: drawsBlocks)
+    }
+
+    /// The rails as *drawn* rows, which is not the same as the runs once two lines share one.
+    private var segments: [SplitRailSegment] {
+        SplitCommentRail.segments(of: runs, in: lines, splitting: drawsBlocks)
+    }
+
+    private var indexedRows: [(offset: Int, element: SplitDiffRow)] {
+        // Indexed rather than keyed on the row: two blank context lines in one file are equal, and
+        // a `ForEach` over equal identities draws one of them.
+        Array(rows.enumerated())
+    }
+
+    // MARK: - The layers
+
+    /// A strip per row, full width, behind everything. Outside the scroll on purpose: a tint that
+    /// slid away with the code would stop saying which side the line is on halfway through a long
+    /// one.
+    ///
+    /// **Inside a block the tint is the cell's rather than the row's**, which is design §4.3: in two
+    /// columns the side is positional, so the colour covers a cell's figures and its code and stops
+    /// at the rule.
+    private var tints: some View {
+        VStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { _, row in
+                switch row {
+                case .full(let line):
+                    tint(of: line)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: rowHeight)
+                case .block(let old, let new):
+                    HStack(spacing: 0) {
+                        cellTint(of: old)
+                        Color.clear.frame(width: SplitBlockLayout.gap)
+                        // The one thing that says a block continues past an empty cell.
+                        Color.diffBlockRule.frame(width: SplitBlockLayout.ruleWidth)
+                        Color.clear.frame(width: SplitBlockLayout.gap)
+                        cellTint(of: new)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: rowHeight)
+                }
+            }
+        }
+    }
+
+    /// **An absent side draws nothing at all**, which is design §4.1's call 2. A tint would claim the
+    /// side has a line there and hatching would be a new drawn texture in an app that owns one, so
+    /// the card shows through — and absence reads as absence when everything around it is a filled
+    /// rectangle.
+    @ViewBuilder private func cellTint(of line: DiffLine?) -> some View {
+        if let line {
+            tint(of: line).frame(width: cellWidth)
+        } else {
+            Color.clear.frame(width: cellWidth)
+        }
+    }
+
+    /// The run being picked out, tinted across the row — or across the one cell it is in.
+    ///
+    /// **Only the pending run, and that is design §7 disagreeing with itself on purpose.** §7.3
+    /// rejects a row tint for a *saved* comment — it would need a third colour reading as both itself
+    /// and the `+`/`−` beneath it, and the word-diff background is already the loudest thing in the
+    /// row. §7.1 asks for one for the *held* state, which is a different job: it is not a mark that
+    /// has to live beside a diff for as long as the reader is reading, it is a selection that lasts a
+    /// few seconds and has to be unmissable while it does.
+    ///
+    /// Outside the horizontal scroll with the tints, so a held run stays held while the code slides
+    /// under it — §7.1's second rule.
+    private var selection: some View {
+        ForEach(segments.filter(\.isPending)) { segment in
+            Color.diffCommentRail.opacity(selectionAlpha)
+                .frame(
+                    width: segment.side == nil ? rowWidth : cellWidth,
+                    height: rowHeight * CGFloat(segment.rowCount)
+                )
+                .offset(x: leadingEdge(of: segment.side), y: rowHeight * CGFloat(segment.firstRow))
+        }
+    }
+
+    private var columns: some View {
+        HStack(alignment: .top, spacing: 0) {
+            numbers
+            markers
+            code
+        }
+    }
+
+    /// **A block row's figures belong to its cells, so the file's own column leaves that row empty.**
+    /// Design §4.3's call 3: one shared column cannot say which side it numbers on the rows where the
+    /// two differ, and inside a block most rows are exactly that.
+    private var numbers: some View {
+        VStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { offset, row in
+                switch row {
+                case .full(let line):
+                    figure(of: line, isPending: isPending(row: offset, side: nil))
+                        .frame(height: rowHeight)
+                case .block:
+                    Color.clear.frame(width: numberColumnWidth, height: rowHeight)
+                }
+            }
+        }
+    }
+
+    /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
+    /// whole argument. It frees the row tint to be almost nothing, and it is the only marker that
+    /// survives red-green colour blindness, sunlight, and a chat client that dims the screenshot.
+    ///
+    /// Outside the horizontal scroll with the numbers: a marker that scrolled away would leave the
+    /// row saying nothing on exactly the long lines the reader had to scroll to read.
+    /// **The gap after it is on the column rather than on the glyph**, so the `+` and the `−` stay
+    /// centred in one another's width down the file while the code clears them — a padding inside the
+    /// frame would move the glyph instead of the code.
+    ///
+    /// **A block row carries no marker at all.** Inside one, every left row is a deletion and every
+    /// right row an addition, so the glyph would be 18pt restating the column it is standing in —
+    /// design §4.3. Outside a block it is untouched, so the `+` and the `−` never leave the file.
+    private var markers: some View {
+        VStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { _, row in
+                switch row {
+                case .full(let line):
+                    marker(of: line)
+                        .frame(width: DiffGutter.markerWidth, height: rowHeight)
+                case .block:
+                    Color.clear.frame(width: DiffGutter.markerWidth, height: rowHeight)
+                }
+            }
+        }
+        .padding(.trailing, DiffGutter.markerTrailingSpace)
+    }
+
+    /// One scroll for the whole hunk rather than one per line, which is what keeps the lines aligned
+    /// with each other while they move — and, once blocks exist, what keeps the context aligned with
+    /// them.
+    private var code: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(indexedRows, id: \.offset) { _, row in
+                    switch row {
+                    case .full(let line):
+                        segmented(line)
+                            .lineLimit(1)
+                            .frame(height: rowHeight, alignment: .leading)
+                    case .block(let old, let new):
+                        // **What a block contributes here is travel and nothing visible.** Its cells
+                        // are drawn outside this scroll and ride its offset, so the only thing it
+                        // needs from the content is enough width that a drag can reach the end of
+                        // the longer of its two lines — which is further than the unified row needs,
+                        // because a cell is narrower than this scroll's own viewport.
+                        Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
+                    }
+                }
+            }
+            .padding(.trailing, Self.codeTrailingInset)
+            // Watched rather than read once: expanding a hunk splices longer lines into these rows,
+            // and an indicator sized on the width the hunk had before the expansion is an indicator
+            // that lies about how much is left.
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                contentWidth = width
+            }
+        }
+        // **Height stated, not inherited.** A `ScrollView` is greedy on both axes whatever its
+        // scroll axis is, so left alone this one fills the screen — which is invisible in a
+        // full-screen baseline and unbounded inside the lazy stack this file will be a section of.
+        // The same arithmetic the tints behind it use, so the two trees cannot come out different
+        // heights.
+        .frame(height: contentHeight)
+        // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
+        // scroll, so a gradient painted in the background colour would have to composite the tint
+        // back on top of itself to avoid a grey notch on every added and removed row. Fading the
+        // code away instead reveals whatever is behind it, which is already the right colour in both
+        // appearances and over every tint.
+        .mask(alignment: .leading) { fade }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.x
+        } action: { _, offset in
+            scrolledBy = offset
+        }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            visibleWidth = width
+        }
+    }
+
+    private var fade: some View {
+        HStack(spacing: 0) {
+            Rectangle()
+            LinearGradient(
+                colors: [.black, .black.opacity(0)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: Self.trailingFade)
+        }
+    }
+
+    /// The two cells of every block, drawn over the pinned columns and moving with the scroll.
+    private var blockCells: some View {
+        VStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { offset, row in
+                switch row {
+                case .full:
+                    Color.clear.frame(height: rowHeight)
+                case .block(let old, let new):
+                    HStack(spacing: 0) {
+                        cell(of: old, at: offset, on: .old)
+                        Color.clear.frame(width: 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth)
+                        cell(of: new, at: offset, on: .new)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: rowHeight)
+                }
+            }
+        }
+    }
+
+    /// One cell: its own figure column, pinned, and its own clipped view onto the code.
+    ///
+    /// The code is offset by the hunk's own scroll rather than by a scroll of its own, which is what
+    /// makes one drag move both cells and the context around them without anything to synchronise.
+    @ViewBuilder private func cell(of line: DiffLine?, at row: Int, on side: DiffSide) -> some View {
+        if let line {
+            HStack(spacing: 0) {
+                figure(of: line, isPending: isPending(row: row, side: side))
+                segmented(line)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .offset(x: -scrolledBy)
+                    .frame(width: cellCodeWidth, height: rowHeight, alignment: .leading)
+                    .clipped()
+                    .mask(alignment: .leading) { fade }
+            }
+            .frame(width: cellWidth, height: rowHeight, alignment: .leading)
+        } else {
+            Color.clear.frame(width: cellWidth, height: rowHeight)
+        }
     }
 
     /// One capsule per stretch, positioned by row rather than by point so the arithmetic is the same
@@ -143,16 +443,18 @@ public struct DiffFileLines: View {
     /// shape rather than in colour, so the state survives a greyscale screenshot, a dimmed one, and a
     /// reader who cannot tell indigo from blue.
     private var rails: some View {
-        ForEach(runs) { run in
+        ForEach(segments) { segment in
             // One shape rather than two, because the difference *is* the corner: a square-capped rail
             // is a run still being picked out and a round-capped one is a comment that exists.
-            RoundedRectangle(cornerRadius: run.isPending ? 0 : DiffGutter.railWidth / 2, style: .continuous)
+            RoundedRectangle(cornerRadius: segment.isPending ? 0 : DiffGutter.railWidth / 2, style: .continuous)
                 .fill(Color.diffCommentRail)
-                .frame(width: DiffGutter.railWidth, height: rowHeight * CGFloat(run.rowCount))
-                .offset(y: rowHeight * CGFloat(run.firstRow))
+                .frame(width: DiffGutter.railWidth, height: rowHeight * CGFloat(segment.rowCount))
+                .offset(x: leadingEdge(of: segment.side), y: rowHeight * CGFloat(segment.firstRow))
         }
         .accessibilityHidden(true)
     }
+
+    // MARK: - The target
 
     /// Everything to the left of the code, taking both gestures and drawing nothing.
     ///
@@ -160,22 +462,35 @@ public struct DiffFileLines: View {
     /// — a `contentShape` per row — needs 44pt to be a legal target, which overhangs its neighbours
     /// by 13pt on each side and leaves three rows claiming one point with z-order deciding. This has
     /// one answer everywhere in it.
+    ///
+    /// **In split there are two strips rather than one**, each the cell's own figures: smaller than
+    /// the unified strip's 51pt, and unambiguous about which side it meant.
     @ViewBuilder private var tapStrip: some View {
         if acceptsTargeting {
-            targetableStrip
+            if drawsBlocks {
+                HStack(spacing: 0) {
+                    strip(on: .old, width: numberColumnWidth)
+                    Color.clear.frame(width: cellWidth - numberColumnWidth + 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth)
+                    strip(on: .new, width: numberColumnWidth)
+                    Spacer(minLength: 0)
+                }
+                .frame(height: contentHeight)
+            } else {
+                strip(
+                    on: nil,
+                    width: DiffGutter.tapStripWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize)
+                )
+            }
         }
     }
 
-    private var targetableStrip: some View {
+    private func strip(on side: DiffSide?, width: CGFloat) -> some View {
         Color.clear
-            .frame(
-                width: DiffGutter.tapStripWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize),
-                height: rowHeight * CGFloat(lines.count)
-            )
+            .frame(width: width, height: contentHeight)
             .contentShape(.rect)
             .gesture(
                 SpatialTapGesture().onEnded { touch in
-                    if let row = row(at: touch.location.y) {
+                    if let row = position(at: touch.location.y, on: side) {
                         onTap(row)
                     }
                 }
@@ -199,7 +514,7 @@ public struct DiffFileLines: View {
                         // press.
                         case .second(let recognised, let touch):
                             guard recognised, isPressing == false, let touch,
-                                  let row = row(at: touch.startLocation.y) else { return }
+                                  let row = position(at: touch.startLocation.y, on: side) else { return }
                             isPressing = true
                             holds += 1
                             onLongPress(row)
@@ -210,147 +525,24 @@ public struct DiffFileLines: View {
     }
 
     /// Which row a touch meant, and nothing when no row there can carry a comment.
-    private func row(at y: CGFloat) -> DiffLinePosition? {
-        guard let index = GutterTarget.row(at: y, of: lines, rowHeight: rowHeight) else { return nil }
-        return DiffLinePosition.of(lines[index])
-    }
-
-    /// A strip per row, full width, behind everything. Outside the scroll on purpose: a tint that
-    /// slid away with the code would stop saying which side the line is on halfway through a long
-    /// one.
-    private var tints: some View {
-        VStack(spacing: 0) {
-            ForEach(numbered, id: \.offset) { _, line in
-                tint(of: line)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: rowHeight)
-            }
-        }
-    }
-
-    /// The run being picked out, tinted across the whole row.
     ///
-    /// **Only the pending run, and that is design §7 disagreeing with itself on purpose.** §7.3
-    /// rejects a row tint for a *saved* comment — it would need a third colour reading as both itself
-    /// and the `+`/`−` beneath it, and the word-diff background is already the loudest thing in the
-    /// row. §7.1 asks for one for the *held* state, which is a different job: it is not a mark that
-    /// has to live beside a diff for as long as the reader is reading, it is a selection that lasts a
-    /// few seconds and has to be unmissable while it does.
-    ///
-    /// Outside the horizontal scroll with the tints, so a held run stays held while the code slides
-    /// under it — §7.1's second rule.
-    private var selection: some View {
-        VStack(spacing: 0) {
-            ForEach(numbered, id: \.offset) { offset, _ in
-                (isPending(offset) ? Color.diffCommentRail.opacity(selectionAlpha) : .clear)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: rowHeight)
-            }
+    /// The unified answer is `GutterTarget`'s, unchanged — it resolves a touch anywhere in the strip
+    /// to the *nearest numbered* row, so there is no dead space to land in. A block's strip is its own
+    /// cell, so the row is the arithmetic and the side is which strip was touched.
+    private func position(at y: CGFloat, on side: DiffSide?) -> DiffLinePosition? {
+        guard let side else {
+            guard let index = GutterTarget.row(at: y, of: lines, rowHeight: rowHeight) else { return nil }
+            return DiffLinePosition.of(lines[index])
         }
+        let row = Int(y / rowHeight)
+        guard rows.indices.contains(row), let line = rows[row].line(on: side) else { return nil }
+        // A cell with nothing in it is the run having run out on that side, and it is not a row to
+        // comment on.
+        guard DiffGutter.number(of: line) != nil else { return nil }
+        return DiffLinePosition.of(line)
     }
 
-    private var columns: some View {
-        HStack(alignment: .top, spacing: 0) {
-            numbers
-            markers
-            code
-        }
-    }
-
-    private var numbers: some View {
-        VStack(spacing: 0) {
-            ForEach(numbered, id: \.offset) { offset, line in
-                figure(of: line, isPending: isPending(offset))
-                    .frame(height: rowHeight)
-            }
-        }
-    }
-
-    /// Whether this row is inside the run being picked out.
-    private func isPending(_ row: Int) -> Bool {
-        runs.contains { $0.isPending && row >= $0.firstRow && row < $0.firstRow + $0.rowCount }
-    }
-
-    /// **Two thirds again over the row tints**, which is what §7's frames measure: 14% in light and
-    /// 20% in dark, against the 6% and 10% an added or removed row carries. A selection has to win
-    /// against the tint it is drawn over, and it is the only thing on screen that has to.
-    private var selectionAlpha: Double {
-        colorScheme == .dark ? 0.20 : 0.14
-    }
-
-    /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
-    /// whole argument. It frees the row tint to be almost nothing, and it is the only marker that
-    /// survives red-green colour blindness, sunlight, and a chat client that dims the screenshot.
-    ///
-    /// Outside the horizontal scroll with the numbers: a marker that scrolled away would leave the
-    /// row saying nothing on exactly the long lines the reader had to scroll to read.
-    /// **The gap after it is on the column rather than on the glyph**, so the `+` and the `−` stay
-    /// centred in one another's width down the file while the code clears them — a padding inside the
-    /// frame would move the glyph instead of the code.
-    private var markers: some View {
-        VStack(spacing: 0) {
-            ForEach(numbered, id: \.offset) { _, line in
-                marker(of: line)
-                    .frame(width: DiffGutter.markerWidth, height: rowHeight)
-            }
-        }
-        .padding(.trailing, DiffGutter.markerTrailingSpace)
-    }
-
-    /// One scroll for the whole hunk rather than one per line, which is what keeps the lines aligned
-    /// with each other while they move.
-    private var code: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(numbered, id: \.offset) { _, line in
-                    segmented(line)
-                        .lineLimit(1)
-                        .frame(height: rowHeight, alignment: .leading)
-                }
-            }
-            .padding(.trailing, Self.codeTrailingInset)
-            // Watched rather than read once: expanding a hunk splices longer lines into these rows,
-            // and an indicator sized on the width the hunk had before the expansion is an indicator
-            // that lies about how much is left.
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                contentWidth = width
-            }
-        }
-        // **Height stated, not inherited.** A `ScrollView` is greedy on both axes whatever its
-        // scroll axis is, so left alone this one fills the screen — which is invisible in a
-        // full-screen baseline and unbounded inside the lazy stack this file will be a section of.
-        // The same arithmetic the tints behind it use, so the two trees cannot come out different
-        // heights.
-        .frame(height: rowHeight * CGFloat(lines.count))
-        // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
-        // scroll, so a gradient painted in the background colour would have to composite the tint
-        // back on top of itself to avoid a grey notch on every added and removed row. Fading the
-        // code away instead reveals whatever is behind it, which is already the right colour in both
-        // appearances and over every tint.
-        .mask(alignment: .leading) {
-            HStack(spacing: 0) {
-                Rectangle()
-                LinearGradient(
-                    colors: [.black, .black.opacity(0)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: Self.trailingFade)
-            }
-        }
-        .onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.x
-        } action: { _, offset in
-            scrolledBy = offset
-        }
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.width
-        } action: { width in
-            visibleWidth = width
-        }
-    }
+    // MARK: - The indicator
 
     /// The proportional thumb, and nothing at all when the hunk fits.
     ///
@@ -374,6 +566,8 @@ public struct DiffFileLines: View {
             .accessibilityHidden(true)
         }
     }
+
+    // MARK: - One row's parts
 
     /// Never blank now, which is the review's first fault answered: a deletion shows the old side's
     /// number and everything else the new side's, so a reader who wants to say "line 6 is wrong" has
@@ -414,6 +608,9 @@ public struct DiffFileLines: View {
     /// holds, and it is the thing that survives: the changed run reads at three times the row's own
     /// tint in both appearances, and what the segment's own alpha has to be for that is arithmetic
     /// over what it composites onto rather than a number picked per appearance.
+    ///
+    /// **It matters more inside a block than anywhere else**, which is design §4.3's note: in a
+    /// 22-character cell the background is the only thing left saying *this part*.
     private func segmented(_ line: DiffLine) -> Text {
         let drawn = DrawnDiffLine.of(line)
         var attributed = lexed(drawn, of: line) ?? AttributedString(drawn.text)
@@ -459,7 +656,7 @@ public struct DiffFileLines: View {
     /// Two translucent layers do not add, they composite — `1 - (1 - t)(1 - s)` — so a segment drawn
     /// at a fixed 28% reads as a different multiple of the row in each appearance, which is exactly
     /// the drift design §4 rejected the treatment for. Solving for the alpha that reaches `3t`
-    /// instead keeps the *ratio* fixed and lets the number move: about 22% in light and 38% in dark.
+    /// instead keeps the *ratio* fixed and lets the number move.
     private func segmentTint(of line: DiffLine) -> Color {
         let tint = tintAlpha
         let alpha = 1 - (1 - 3 * tint) / (1 - tint)
@@ -482,6 +679,13 @@ public struct DiffFileLines: View {
         colorScheme == .dark ? 0.10 : 0.06
     }
 
+    /// **Two thirds again over the row tints**, which is what §7's frames measure: 14% in light and
+    /// 20% in dark, against the 6% and 10% an added or removed row carries. A selection has to win
+    /// against the tint it is drawn over, and it is the only thing on screen that has to.
+    private var selectionAlpha: Double {
+        colorScheme == .dark ? 0.20 : 0.14
+    }
+
     private func tint(of line: DiffLine) -> Color {
         let alpha = tintAlpha
         switch line.kind {
@@ -494,14 +698,52 @@ public struct DiffFileLines: View {
         }
     }
 
-    private var numbered: [(offset: Int, element: DiffLine)] {
-        // Indexed rather than keyed on the line: two blank context lines in one file are equal, and
-        // a `ForEach` over equal identities draws one of them.
-        Array(lines.enumerated())
+    /// Whether this drawn row, in this cell, is inside the run being picked out.
+    private func isPending(row: Int, side: DiffSide?) -> Bool {
+        segments.contains { segment in
+            segment.isPending
+                && segment.side == side
+                && row >= segment.firstRow
+                && row < segment.firstRow + segment.rowCount
+        }
     }
+
+    // MARK: - The arithmetic two stacks agree on
 
     private var numberColumnWidth: CGFloat {
         DiffGutter.columnWidth(forHighestLineNumber: highestNumber, atPointSize: pointSize)
+    }
+
+    private var cellWidth: CGFloat {
+        SplitBlockLayout.cellWidth(inRowWidth: rowWidth, trailingInset: Self.codeTrailingInset)
+    }
+
+    private var cellCodeWidth: CGFloat {
+        SplitBlockLayout.codeWidth(
+            inCellWidth: cellWidth,
+            highestLineNumber: highestNumber,
+            atPointSize: pointSize
+        )
+    }
+
+    /// Where a cell begins, measured from the leading edge of the whole row.
+    private func leadingEdge(of side: DiffSide?) -> CGFloat {
+        side == .new ? cellWidth + 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth : 0
+    }
+
+    /// How much scroll a block row needs behind it so a drag can reach the end of its longer line.
+    ///
+    /// A cell is narrower than this scroll's own viewport, so a block needs *more* travel than the
+    /// unified row holding the same text would: the viewport's width, plus however far past the cell
+    /// the line runs.
+    private func travelNeeded(_ old: DiffLine?, _ new: DiffLine?) -> CGFloat {
+        let columns = max(old?.displayColumns ?? 0, new?.displayColumns ?? 0)
+        let lineWidth = CGFloat(columns) * DiffGutter.advanceWidth(atPointSize: pointSize)
+        return visibleWidth + max(0, lineWidth - cellCodeWidth)
+    }
+
+    private var contentHeight: CGFloat {
+        rowHeight * CGFloat(rows.count)
     }
 
     /// Stated once because two stacks depend on it.
