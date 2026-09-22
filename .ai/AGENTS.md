@@ -123,9 +123,13 @@ make project    # regenerate Granita.xcodeproj after editing project.yml
 ```
 
 **The coverage gate is a ratchet with no slack, so any change that adds code can fall under it.**
-`make coverage` answers that here instead of twenty minutes later in CI. What to cover as you write
-it — every `guard` failure branch, every `??`, every new `case`, every view fallback needs its own
-snapshot subject — is in the `swift-testing` skill.
+`make coverage` answers that here instead of twenty minutes later in CI — for Unit and All tests.
+**It cannot answer the Snapshot row**, because one of its passes renders the Mac's panes and the
+Mac's baselines belong to the CI runner, so that pass is expected to be red on your machine and its
+view code goes unmeasured. Read Unit and All locally, let CI arbitrate Snapshot, and never re-record
+the Mac's baselines to make the number move. What to cover as you write it — every `guard` failure
+branch, every `??`, every new `case`, every view fallback needs its own snapshot subject — is in the
+`swift-testing` skill.
 
 `make record-snapshots` re-records the baselines, and is only ever correct after a deliberate change
 to `.ai/docs/design.md`.
