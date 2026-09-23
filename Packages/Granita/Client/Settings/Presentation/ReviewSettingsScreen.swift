@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientSettingsUi
+import ClientViewerDomain
 
 /// The review's settings, with the model that reads and writes them.
 ///
@@ -44,12 +45,14 @@ public struct ReviewSettingsScreen: View {
             macName: model.macName,
             appearance: appearance.appearance,
             codeTheme: appearance.codeTheme,
+            codeSize: appearance.codeSizeReadout,
             onChoose: { identifier in Task { await model.choose(identifier) } },
             // No `Task` around either of these, and the asymmetry with the two above it is the point:
             // the review's settings are offered to a Mac and these are written to this device, so there
             // is nothing to await and no standing to report.
             onChooseAppearance: { appearance.choose($0) },
             onChooseCodeTheme: { appearance.choose($0) },
+            onChooseCodeSize: { appearance.choose($0) },
             onCommitOpeningLine: { Task { await model.commitOpeningLine() } },
             onReset: { Task { await model.resetOpeningLine() } },
             onPair: onPair,

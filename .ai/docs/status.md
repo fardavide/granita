@@ -2,6 +2,38 @@
 
 Where the project is. Update this when a slice lands.
 
+**The code's size is a setting, in two halves — that is 0.19.0.** Issue
+[#106](https://github.com/fardavide/granita/issues/106). *Code size* is a third row in the phone's
+Appearance section, pushing a screen with a group per mode: *Follow system* or a size the reader
+steps to between 8 and 17 points, with every readout stated in **characters** rather than in points.
+`SPEC.md` §10 has claimed since the beginning that this existed; until now it was two constants in
+`DiffPaneLayout`. All the calls are in [`design-code-size.md`](design-code-size.md).
+
+**Two settings rather than one, and only one of them is on screen at a time.** Unified is a question
+about legibility — 49 characters either way — and split is a question about width, where every point
+costs about two characters a side from a number that starts at 22. The split's size governs the whole
+scroll while the mode is on, because a block drawn at one size beside its own context drawn at
+another is two text sizes in one file.
+
+**Two calls Davide made on 23 September 2026, and the issue was filed blocked on the first.** Twelve
+points is exactly twenty characters a side at 390pt, so *Follow system* above Large would have left a
+reader with no columns at all. The split's *Follow system* is now held at the largest size two columns
+fit in **at this device's width** — the floor does not bend, an accessibility text size never takes
+the feature away, and an iPad or a wide Mac window clamps nothing. And the disabled toolbar item names
+the cause that applies: *Widen the window* where the room ran out, *Choose a smaller code size* where
+the size did.
+
+**That disabled state was designed in #57 and had never been built.** Below the floor the blocks
+closed, the item stayed live, and nothing said why — reachable only by dragging a Mac window until
+this setting made it reachable on a phone. It is built here, and both departures are in
+[`decisions.md`](decisions.md), including the one still open: **on the diff screen itself the reason
+is a tooltip and a VoiceOver hint, so a sighted phone reader sees a dimmed glyph and nothing else.**
+The sentence is in the *Code size* screen's own footer, which is where they can act on it.
+
+**What has not been pressed is the app.** The stepper, the segment, the re-lex on the way back from
+the screen, and the toolbar item dimming as a Mac window crosses the floor are all checks only a
+finger answers, and this project says that is the only check that works.
+
 **Side by side is 0.18.0.** Issue [#57](https://github.com/fardavide/granita/issues/57). A paired run
 — a maximal stretch of deletions immediately followed by additions, which is the run `WordDiff`
 already forms — opens into two columns when the reader asks; nothing else does. Context, a change
@@ -24,11 +56,9 @@ the three things only a thumb can answer are the drag across a block, the toggle
 and a Mac window dragged across the 20-character floor. This project says that is the only check that
 works, and none of it has had one.
 
-**The code size is not in this.** `SPEC.md` §10 has claimed since the beginning that the code size is
-its own setting; at `main` it is two constants in `DiffPaneLayout`. The return drew that setting —
-two halves, one per mode — and it is [#106](https://github.com/fardavide/granita/issues/106) rather
-than part of this slice, on Davide's call. It carries one genuine conflict to settle: at the largest
-Dynamic Type sizes, *Follow system* crosses the split's own floor.
+**The code size was not in this**, and is 0.19.0 — see the top of this file. The conflict it was
+filed carrying, that *Follow system* crosses the split's own floor at the largest Dynamic Type sizes,
+was settled by Davide on 23 September 2026 by clamping the split rather than bending the floor.
 
 **Four new code-colour pairs are 0.17.0.** Issue
 [#103](https://github.com/fardavide/granita/issues/103). Accessible and GitHub return as stable,

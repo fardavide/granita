@@ -24,6 +24,15 @@ public enum SplitBlockLayout {
     /// class, and not the iPad's pane width — a number the reader could in principle count.
     public static let floorCharacters = 20
 
+    /// The figure count every stated number in the design and in the *Code size* screen is taken at.
+    ///
+    /// **A file's own column is sized from its own highest line number**, so a thousand-line file
+    /// pays a fourth figure and loses a character — 21 a side rather than 22 at 11pt. The screen
+    /// cannot state a number per file, and the ordinary file in this product is under a thousand
+    /// lines, so three figures is what it quotes and `DiffFileLines` remains the authority on what is
+    /// actually drawn.
+    public static let statedHighestLineNumber = 999
+
     /// One cell's whole width, figures included.
     ///
     /// The two cells share what is left after the rule, its two gaps and the same trailing inset the
@@ -76,5 +85,26 @@ public enum SplitBlockLayout {
             atPointSize: pointSize,
             trailingInset: trailingInset
         ) >= floorCharacters
+    }
+
+    /// The largest size in the settable range at which a block still clears the floor, or nothing
+    /// where no size in it does.
+    ///
+    /// **Nothing rather than the smallest size**, and the difference is what the split group says: a
+    /// width that refuses two columns at 8pt refuses them at every size this setting can reach, so
+    /// holding *Follow system* back would clamp to a number that also draws nothing. That row is the
+    /// width's to answer, not the size's.
+    ///
+    /// Whole points, because the stepper offers whole points — a ceiling of 12.4 is a number the
+    /// reader cannot choose and would be shown as one they can.
+    public static func largestFittingPointSize(inRowWidth rowWidth: CGFloat, trailingInset: CGFloat) -> CGFloat? {
+        stride(from: CodeSize.largest, through: CodeSize.smallest, by: -1).first { points in
+            fits(
+                rowWidth: rowWidth,
+                highestLineNumber: statedHighestLineNumber,
+                atPointSize: points,
+                trailingInset: trailingInset
+            )
+        }
     }
 }

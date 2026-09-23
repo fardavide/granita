@@ -12,6 +12,8 @@ choice was made belongs here.
 | [`design-mac.md`](design-mac.md) | The same for the Mac's seven surfaces: the status item, the window, and the five Settings tabs |
 | [`design-review-settings.md`](design-review-settings.md) | The phone's Settings sheet, the sync caption, and the Mac's sixth tab — the calls from the 17 September 2026 return, built in 0.15.0 |
 | [`design-appearance.md`](design-appearance.md) | That sheet's fourth section and the chooser it pushes: the app's appearance, the code's colours, and why three of the five drawn theme pairs ship |
+| [`design-side-by-side.md`](design-side-by-side.md) | The split view: why a paired run and not a file, the twenty-character floor, and the five places the build departs from the return |
+| [`design-code-size.md`](design-code-size.md) | The code's own size in two halves, why *Follow system* clamps the split rather than bending its floor, and the two sentences a refused split carries |
 | [`status.md`](status.md) | Milestones, what exists, what Davide still owns |
 | [`verification.md`](verification.md) | What the spec's verify-first pass found against the real environment, with numbers |
 | [`design/`](design/) | Frames as Claude Design returned them; the calls they carry live in prose alongside |

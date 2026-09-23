@@ -18,9 +18,12 @@ public struct FileSelectorView: View {
     /// §3's iPad measure, and the same 320 the worktree sidebar takes: three columns at
     /// 320 / 320 / 554 is where design §4 says this product is pleasant to use.
     ///
-    /// It lives on the view because it is a fact about this list rather than about whatever is
-    /// beside it, which is where `WorktreeSidebarView` keeps its own for the same reason.
-    public static let widthBesideTheDiff: CGFloat = 320
+    /// **It moved to `DiffPaneLayout` when the code size became a setting**, and the reason is the
+    /// one this view could not satisfy: the *Code size* screen states what a size buys at the width
+    /// the diff is read at, which is the window less this column — arithmetic a settings sheet has to
+    /// do without being able to see a `Ui` module. It is still a fact about this list; it is now also
+    /// a fact somebody else has to subtract.
+    public static let widthBesideTheDiff = DiffPaneLayout.selectorColumnWidth
 
     /// §3's rows are 32pt and 34pt, which the list's own insets are roughly twice. A selector is
     /// worth having because it shows a whole change set at once, and default insets cost a third of

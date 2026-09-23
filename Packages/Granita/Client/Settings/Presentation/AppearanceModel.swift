@@ -28,11 +28,34 @@ public final class AppearanceModel {
     /// appearance and the code theme, read once and written straight through like both of them.
     public private(set) var isSideBySide: Bool
 
+    /// How big the code is drawn, in the two halves issue #106 splits it into.
+    public private(set) var codeSize: CodeSize
+
+    /// How wide a row of code is on this device, which is what a point size buys its characters out
+    /// of.
+    ///
+    /// **Measured rather than assumed, and held here because two screens need one answer.** The
+    /// *Code size* screen states what a size produces in characters and is a sheet, so it cannot see
+    /// the diff pane it is describing; the app's root can, because it is the window. Zero until a
+    /// first render reports one — an invented 390 would have the screen quote a phone's numbers on
+    /// an iPad.
+    public private(set) var diffRowWidth: CGFloat = 0
+
+    /// Whether a selector column fits beside the code here, which is what decides whether *Follow
+    /// system* is based on eleven points or twelve.
+    public private(set) var fitsSelectorColumn = false
+
+    /// What *Follow system* follows. Held here rather than read where it is needed, because the diff
+    /// and this sheet are siblings over `Domain` and only one of them may own the mapping onto
+    /// SwiftUI's enum.
+    public private(set) var textSize = ReaderTextSize.default
+
     public init(preferences: any AppearancePreferences) {
         self.preferences = preferences
         appearance = preferences.appearance()
         codeTheme = preferences.codeTheme()
         isSideBySide = preferences.isSideBySide()
+        codeSize = preferences.codeSize()
     }
 
     /// What the whole app draws in, or nothing where the phone decides.
@@ -70,5 +93,38 @@ public final class AppearanceModel {
     public func chooseSideBySide(_ isOn: Bool) {
         isSideBySide = isOn
         preferences.remember(isSideBySide: isOn)
+    }
+
+    /// What the *Code size* screen shows, for both halves at once.
+    ///
+    /// **Here rather than in the screen that draws it**, because what a point size buys in characters
+    /// is arithmetic over the gutter, the gap and the rule — and a composed screen's body is a place
+    /// no host test can reach. The model holds all four inputs already, so this is the one line that
+    /// puts them together.
+    public var codeSizeReadout: CodeSizeReadout {
+        CodeSizeReadout(
+            codeSize: codeSize,
+            textSize: textSize,
+            fitsSelectorColumn: fitsSelectorColumn,
+            rowWidth: diffRowWidth
+        )
+    }
+
+    /// Both halves at once, because the screen that sets them holds both and a write per half would
+    /// let a crash between the two leave a reader with one setting from each of two decisions.
+    public func choose(_ size: CodeSize) {
+        codeSize = size
+        preferences.remember(size)
+    }
+
+    /// What the window is, told by the one view that is the window.
+    ///
+    /// **The tree's width comes off it wherever a tree could be, open or not** — which is
+    /// `DiffPaneLayout`'s own rule taken to its conclusion: a size derived from the folded width
+    /// would change every time the fold did, and re-lex the file the reader is halfway down.
+    public func note(windowWidth: CGFloat, fitsSelectorColumn: Bool, textSize: ReaderTextSize) {
+        diffRowWidth = DiffPaneLayout.diffRowWidth(inWindowWidth: windowWidth, fitsSelectorColumn: fitsSelectorColumn)
+        self.fitsSelectorColumn = fitsSelectorColumn
+        self.textSize = textSize
     }
 }

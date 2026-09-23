@@ -34,7 +34,7 @@ public struct GranitaMobileScene: Scene {
             // diff as well as the sheet that sets it.** `AppearanceRoot` owns the observation and
             // applies `preferredColorScheme`; what is left here is the one modifier only a root can
             // apply, which is putting the chosen theme where `WorktreeDiffScreen` reads it.
-            AppearanceRoot(model: Self.appearance) { codeTheme, isSideBySide, chooseSideBySide in
+            AppearanceRoot(model: Self.appearance) { codeTheme, codeSize, readerTextSize, isSideBySide, chooseSideBySide in
             // The stack, the measure around it and where its two exits lead all belong to
             // `PairingSpineScreen`, and what is left here is the wiring that only a composition root
             // can do: which implementation answers each protocol, and which session each of the two
@@ -93,6 +93,13 @@ public struct GranitaMobileScene: Scene {
                 }
             )
             .environment(\.codeTheme, codeTheme)
+            .environment(\.codeSize, codeSize)
+            // **The one value that crosses a feature boundary because it can only be mapped once.**
+            // The diff draws the code at the reader's text size and the Settings sheet says what that
+            // size buys in characters; the two features are siblings over `Domain`, so the switch
+            // onto `DynamicTypeSize` lives on the settings side and this is where the answer is
+            // handed over. A composition root is the only module that may see both.
+            .environment(\.readerTextSize, readerTextSize)
             // **The setter travels with the value**, which is what keeps the diff screen's toolbar
             // toggle from being a control that moves an icon and writes nothing. Absent here, the
             // item is not rendered at all rather than rendered dead.

@@ -35,4 +35,13 @@ public protocol AppearancePreferences: Sendable {
     /// the next change set should open. Davide settled that on 22 September 2026.
     func isSideBySide() -> Bool
     func remember(isSideBySide: Bool)
+
+    /// How big the code is drawn, in the two halves issue #106 splits it into.
+    ///
+    /// **Device-local with the three above it, and for the sharper version of their reason**: a size
+    /// is how one screen is read, and the 390pt it is being read at is not a fact any other device
+    /// shares. A phone's answer forced onto an iPad would be the one setting on this list that is
+    /// wrong rather than merely different.
+    func codeSize() -> CodeSize
+    func remember(_ size: CodeSize)
 }

@@ -118,6 +118,90 @@ struct AppearanceModelTests {
         #expect(scenario.sut.codeTheme == .atomOne)
     }
 
+    // MARK: - The code's size
+
+    @Test
+    func `given a code size chosen when it is read back then the device remembered it`() {
+        // given
+        let scenario = Scenario()
+
+        // when — two halves that differ, so a model writing one of them into both fails here.
+        scenario.sut.choose(CodeSize(unified: .custom(13), split: .custom(10)))
+
+        // then
+        #expect(scenario.sut.codeSize == CodeSize(unified: .custom(13), split: .custom(10)))
+        #expect(scenario.preferences.codeSize() == CodeSize(unified: .custom(13), split: .custom(10)))
+    }
+
+    @Test
+    func `given a code size chosen when the other three settings are read then none of them moved`() {
+        // given — four settings share one device and nothing else.
+        let scenario = Scenario(appearance: .dark, codeTheme: .atomOne, isSideBySide: true)
+
+        // when
+        scenario.sut.choose(CodeSize(unified: .custom(13), split: .followSystem))
+
+        // then
+        #expect(scenario.sut.appearance == .dark)
+        #expect(scenario.sut.codeTheme == .atomOne)
+        #expect(scenario.sut.isSideBySide)
+    }
+
+    @Test
+    func `given a phone that has reported itself when the readout is asked for then it is that phone's`() {
+        // given — the four facts the screen's sentences are arithmetic over, and the only place they
+        // are all held at once.
+        let scenario = Scenario()
+        scenario.sut.note(windowWidth: 390, fitsSelectorColumn: false, textSize: .default)
+
+        // when
+        scenario.sut.choose(CodeSize(unified: .custom(10), split: .followSystem))
+
+        // then — 54 characters a line at 10pt and 22 a side at the system's 11, which is issue
+        // #106's own table read from the two halves at once.
+        #expect(scenario.sut.codeSizeReadout.unified.characters == 54)
+        #expect(scenario.sut.codeSizeReadout.split.pointSize == 11)
+        #expect(scenario.sut.codeSizeReadout.split.characters == 22)
+    }
+
+    // MARK: - How wide a row of code is here
+
+    @Test
+    func `given nothing has been measured when the row width is read then it is nothing`() {
+        // given - when - then — a first render has not reported a geometry yet, and an invented width
+        // would have the *Code size* screen state a character count for a device that is not there.
+        #expect(Scenario().sut.diffRowWidth == 0)
+    }
+
+    @Test
+    func `given a phone's window when it is noted then the whole of it is the row`() {
+        // given — no column fits, so the code has the window.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.note(windowWidth: 390, fitsSelectorColumn: false, textSize: .xLarge)
+
+        // then — 390pt, which is the width every number in design §4 and in issue #106 is stated at.
+        #expect(scenario.sut.diffRowWidth == 390)
+        #expect(scenario.sut.fitsSelectorColumn == false)
+        #expect(scenario.sut.textSize == .xLarge)
+    }
+
+    @Test
+    func `given a window wide enough for the tree when it is noted then the tree's width comes off it`() {
+        // given — **the room rather than the fold**, which is `DiffPaneLayout`'s own rule: folding the
+        // tree gives the code more space, and taking the size up with it would reflow every row of the
+        // file the reader is looking at in exchange for a fold they may undo a second later.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.note(windowWidth: 1_194, fitsSelectorColumn: true, textSize: .default)
+
+        // then
+        #expect(scenario.sut.diffRowWidth == 1_194 - DiffPaneLayout.selectorColumnWidth)
+        #expect(scenario.sut.fitsSelectorColumn)
+    }
+
     // MARK: - What the app draws in
 
     @Test
