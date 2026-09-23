@@ -126,6 +126,13 @@ clear of the dead-control rule rather than an exception to it.
 **Twenty characters a side.** Below it every block draws unified and the toolbar item goes disabled
 carrying *Widen the window to review side by side*, re-enabling on the drag back.
 
+> **This slice did not build the disabled state**, and 0.19.0 did. The blocks closed and the toolbar
+> item stayed live, because `SplitBlockLayout.fits` was consulted only inside `DiffFileLines`. It is
+> also two sentences now rather than one — *Choose a smaller code size to review side by side* where
+> the code size rather than the room crossed the floor, which is a state only
+> [#106](https://github.com/fardavide/granita/issues/106)'s own setting made reachable on a phone.
+> In [`design-code-size.md`](design-code-size.md).
+
 | Surface | Code columns | Split, a side |
 |---|---|---|
 | iPhone 390pt, 11pt, three figures | 49 | **22** (21 at four figures) |
@@ -181,7 +188,9 @@ Five, and the first is the only expensive one. All of them are in [`decisions.md
   rows unified and `max(d, a)` split, which is arithmetic over the model rather than a measurement.
   Either `SPEC.md` should say so or the cache should be scheduled.
 - **§10's "the code size is its own setting" was never true.** It is two constants in
-  `DiffPaneLayout`. The return's calls 10 and 11 build that setting for the first time and are
-  **out of scope here** — Davide's call, 22 September 2026 — filed as their own issue.
+  `DiffPaneLayout`. The return's calls 10 and 11 build that setting for the first time and were
+  **out of scope here** — Davide's call, 22 September 2026 — filed as
+  [#106](https://github.com/fardavide/granita/issues/106) and built in 0.19.0. The calls are in
+  [`design-code-size.md`](design-code-size.md).
 - **The 120pt short landing becomes load-bearing** the moment a toggle relies on the same mechanism.
   It was a question for a real thumb; it is now a question for a release.

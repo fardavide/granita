@@ -55,6 +55,13 @@ public enum DiffGutter {
     /// the point size — the gap wants to stay a gap.
     public static let trailingSpace: CGFloat = 9
 
+    /// Design §4's inset between the last character of code and the trailing edge of the row.
+    ///
+    /// **Here rather than on the view that draws it**, because the *Code size* screen states what a
+    /// size buys in characters and cannot reach a `Ui` module to find out. One constant, two readers:
+    /// `DiffFileLines` pads by it and the arithmetic below subtracts it.
+    public static let codeTrailingInset: CGFloat = 12
+
     public static func advanceWidth(atPointSize pointSize: CGFloat) -> CGFloat {
         pointSize * advanceRatio
     }
@@ -103,6 +110,22 @@ public enum DiffGutter {
     /// to land in.
     public static func tapStripWidth(forHighestLineNumber highest: Int, atPointSize pointSize: CGFloat) -> CGFloat {
         columnWidth(forHighestLineNumber: highest, atPointSize: pointSize) + markerWidth + markerTrailingSpace
+    }
+
+    /// How many characters of code one unified row shows, which is what the *Code size* screen says
+    /// instead of a point size.
+    ///
+    /// **Truncated rather than rounded**, for `SplitBlockLayout.characters`' reason exactly: a row
+    /// showing forty-nine characters and most of a fiftieth shows forty-nine, because the last one is
+    /// clipped. A count that rounds up is a count that is one character generous at every size.
+    public static func codeCharacters(
+        inRowWidth rowWidth: CGFloat,
+        highestLineNumber highest: Int,
+        atPointSize pointSize: CGFloat,
+        trailingInset: CGFloat
+    ) -> Int {
+        let code = rowWidth - tapStripWidth(forHighestLineNumber: highest, atPointSize: pointSize) - trailingInset
+        return max(0, Int(code / advanceWidth(atPointSize: pointSize)))
     }
 
     /// Which side's number a row shows, in the one column that now carries both.

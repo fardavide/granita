@@ -16,9 +16,17 @@ final class FakeAppearancePreferences: AppearancePreferences, Sendable {
     init(
         appearance: AppAppearance = .default,
         codeTheme: CodeTheme = .default,
-        isSideBySide: Bool = false
+        isSideBySide: Bool = false,
+        codeSize: CodeSize = .default
     ) {
-        state = Mutex(State(appearance: appearance, codeTheme: codeTheme, isSideBySide: isSideBySide))
+        state = Mutex(
+            State(
+                appearance: appearance,
+                codeTheme: codeTheme,
+                isSideBySide: isSideBySide,
+                codeSize: codeSize
+            )
+        )
     }
 
     func appearance() -> AppAppearance { state.withLock { $0.appearance } }
@@ -39,11 +47,18 @@ final class FakeAppearancePreferences: AppearancePreferences, Sendable {
         state.withLock { $0.isSideBySide = isSideBySide }
     }
 
+    func codeSize() -> CodeSize { state.withLock { $0.codeSize } }
+
+    func remember(_ size: CodeSize) {
+        state.withLock { $0.codeSize = size }
+    }
+
     // MARK: -
 
     private struct State {
         var appearance: AppAppearance
         var codeTheme: CodeTheme
         var isSideBySide: Bool
+        var codeSize: CodeSize
     }
 }

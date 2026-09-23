@@ -38,6 +38,9 @@ public struct ReviewSettingsView: View {
     private let appearance: AppAppearance
     private let codeTheme: CodeTheme
 
+    /// What the *Code size* screen would say, which this section shows one line of.
+    private let codeSize: CodeSizeReadout
+
     /// Which half of the pair the phone is drawing right now.
     ///
     /// **Read from the environment rather than derived from `appearance`**, because *System* is an
@@ -49,6 +52,7 @@ public struct ReviewSettingsView: View {
     private let onChoose: @Sendable (ReviewIdentifier) -> Void
     private let onChooseAppearance: (AppAppearance) -> Void
     private let onChooseCodeTheme: (CodeTheme) -> Void
+    private let onChooseCodeSize: (CodeSize) -> Void
     private let onCommitOpeningLine: () -> Void
     private let onReset: () -> Void
     private let onPair: () -> Void
@@ -64,9 +68,11 @@ public struct ReviewSettingsView: View {
         macName: String,
         appearance: AppAppearance,
         codeTheme: CodeTheme,
+        codeSize: CodeSizeReadout,
         onChoose: @escaping @Sendable (ReviewIdentifier) -> Void,
         onChooseAppearance: @escaping (AppAppearance) -> Void,
         onChooseCodeTheme: @escaping (CodeTheme) -> Void,
+        onChooseCodeSize: @escaping (CodeSize) -> Void,
         onCommitOpeningLine: @escaping () -> Void,
         onReset: @escaping () -> Void,
         onPair: @escaping () -> Void,
@@ -79,9 +85,11 @@ public struct ReviewSettingsView: View {
         self.macName = macName
         self.appearance = appearance
         self.codeTheme = codeTheme
+        self.codeSize = codeSize
         self.onChoose = onChoose
         self.onChooseAppearance = onChooseAppearance
         self.onChooseCodeTheme = onChooseCodeTheme
+        self.onChooseCodeSize = onChooseCodeSize
         self.onCommitOpeningLine = onCommitOpeningLine
         self.onReset = onReset
         self.onPair = onPair
@@ -258,12 +266,35 @@ public struct ReviewSettingsView: View {
             }
             .accessibilityLabel("Code colours, \(codeTheme.displayName)")
             .accessibilityValue("light and dark preview")
+
+            // **A third row rather than a second section**, which keeps the footer below saying the
+            // device divide once. Its value is the unified size, because that is the scroll the
+            // reader spends nearly all their time in — the split's own number is one push away and
+            // is only ever different when they have made it so.
+            //
+            // The destination is declared in this file for the rule this repository learned the
+            // expensive way, which the row above it already carries in full.
+            NavigationLink {
+                CodeSizeView(readout: codeSize, onChoose: onChooseCodeSize)
+            } label: {
+                HStack(spacing: 8) {
+                    Text("Code size")
+                    Spacer(minLength: 8)
+                    Text("\(Int(codeSize.unified.pointSize)) pt")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .accessibilityLabel("Code size, \(Int(codeSize.unified.pointSize)) points")
         } header: {
             Text("Appearance")
         } footer: {
+            // **"None of them" rather than "Neither", because there are three rows now.** The
+            // sentence is the only thing on this screen that counts the controls above it, so a
+            // fourth setting lands here too.
             Text(
-                "Kept on this device. Neither changes what a review says, so other devices reading "
-                    + "\(macName) are unaffected."
+                "Kept on this device. None of them changes what a review says, so other devices "
+                    + "reading \(macName) are unaffected."
             )
         }
     }

@@ -36,9 +36,18 @@ struct ReviewSettingsViewSnapshotTests {
                 macName: "MacBook Pro",
                 appearance: subject.appearance,
                 codeTheme: subject.codeTheme,
+                // Built from the layout's own width, so the row's value is the size this device
+                // would actually be read at rather than a number chosen by the suite.
+                codeSize: CodeSizeReadout(
+                    codeSize: subject.codeSize,
+                    textSize: .default,
+                    fitsSelectorColumn: layout.isRegularWidth,
+                    rowWidth: layout.diffRowWidth
+                ),
                 onChoose: { _ in },
                 onChooseAppearance: { _ in },
                 onChooseCodeTheme: { _ in },
+                onChooseCodeSize: { _ in },
                 onCommitOpeningLine: {},
                 onReset: {},
                 onPair: {},
@@ -67,6 +76,11 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
     /// section and by nothing else.
     var appearance: AppAppearance = .system
     var codeTheme: CodeTheme = .default
+
+    /// The third row's value, defaulted for the same reason the two above it are: *Follow system* at
+    /// Large is 11pt on the phone and 12 beside the selector, which is what every one of these
+    /// baselines drew before this row existed.
+    var codeSize: CodeSize = .default
 
     var testDescription: String { name }
 
@@ -183,6 +197,16 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
             openingLine: "Review the work in this worktree.",
             standing: .settled,
             appearance: .dark
+        ),
+
+        // **A size the reader chose**, which is the only thing that moves the third row: its value is
+        // the unified half's, because that is the scroll they spend nearly all their time in. The
+        // split's own number is one push away and only ever differs when they have made it so.
+        SettingsCase(
+            name: "a-size-of-their-own",
+            openingLine: "Review the work in this worktree.",
+            standing: .settled,
+            codeSize: CodeSize(unified: .custom(14), split: .custom(10))
         )
     ]
 }

@@ -54,6 +54,18 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
         configuration.traits.horizontalSizeClass == .regular
     }
 
+    /// How wide a row of code is in this layout, which is what a point size buys its characters out
+    /// of.
+    ///
+    /// The same arithmetic `AppearanceRoot` does on the real window: the device's width, less the
+    /// tree wherever a tree could stand.
+    var diffRowWidth: CGFloat {
+        DiffPaneLayout.diffRowWidth(
+            inWindowWidth: configuration.size?.width ?? 0,
+            fitsSelectorColumn: isRegularWidth
+        )
+    }
+
     /// Which stylesheet the code in this layout is lexed against.
     ///
     /// **It has to be asked, because a lexed answer carries baked colours.** A model highlighted for
@@ -69,17 +81,19 @@ struct SnapshotLayout: Sendable, CustomTestStringConvertible {
     ///
     /// The same question `WorktreeDiffScreen` asks, answered the same way, so a baseline photographs
     /// the grid the app builds rather than one the suite chose.
+    ///
+    /// **`CodeSize.default` at Large, which is what a reader who never opens the new screen gets.**
+    /// Issue #106 made the size a setting and these two constants its *Follow system* answers, so a
+    /// baseline that named a number would stop being a picture of the app the first time the
+    /// derivation changed.
     var codePointSize: CGFloat {
-        DiffPaneLayout(
+        DrawnCodeSize(
+            codeSize: .default,
+            textSize: .default,
             fitsSelectorColumn: isRegularWidth,
-            isSelectorColumnOpen: true,
-            hasFilesToSelect: true,
-            // The code size is taken from the room rather than from what is folded into it, so
-            // neither of these moves it — stated rather than defaulted, because a default here would
-            // be a second answer to a question this type exists to answer once.
-            isReviewOpen: false,
-            hasComments: false
-        ).codePointSize
+            isSplit: false,
+            rowWidth: diffRowWidth
+        ).pointSize
     }
 
     static let iPhoneLight = SnapshotLayout(name: "iPhone-light", configuration: .iPhone13Pro, style: .light)

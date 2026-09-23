@@ -61,6 +61,38 @@ struct WorktreeDiffScreenSnapshotTests {
         )
     }
 
+    /// **The toolbar item disabled, carrying a reason a raster cannot read.**
+    ///
+    /// Design §4.2 asked for this and #57 shipped without it: below the floor every block drew
+    /// unified, the item stayed live, and nothing said why. Issue #106's own setting is what made
+    /// the state reachable on a phone — fifteen points is fifteen characters a side at 390pt — so
+    /// the sentence had to be chosen as well as the state. What this holds is the dimming and the
+    /// rows staying unified underneath it; the sentence itself lives in a tooltip, a VoiceOver hint
+    /// and the *Code size* screen's own footer, and only the last of those is photographed.
+    ///
+    /// **The iPad's two renders are of the same setting not refusing**, and they are worth keeping
+    /// rather than narrowing the subject to the phone: fifteen points is forty-two characters a side
+    /// in an 874pt pane, which is the whole argument for the ceiling being this width's rather than
+    /// a constant twelve.
+    @Test(arguments: SnapshotLayout.all)
+    func `given a code size below the split's floor when the screen is rendered then the toggle is off`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(of: aChangeSetPartlyArrived, in: layout)
+
+        // when - then
+        assertScreenSnapshot(
+            screen(
+                of: model,
+                isSideBySide: true,
+                codeSize: CodeSize(unified: .followSystem, split: .custom(15))
+            ),
+            layout: layout,
+            named: "side-by-side-refused"
+        )
+    }
+
     /// **The drawer is up in this one, and you cannot see it — which is the assertion.**
     ///
     /// A hosted view presents a sheet into a window of its own and the raster does not include it,
@@ -382,10 +414,18 @@ struct WorktreeDiffScreenSnapshotTests {
 /// Wrapped the way the composition root wraps it, because a baseline of a screen out of its stack
 /// asserts a toolbar nobody draws.
 @MainActor
-private func screen(of model: ClientViewerModel, isSideBySide: Bool = false) -> some View {
+private func screen(
+    of model: ClientViewerModel,
+    isSideBySide: Bool = false,
+    codeSize: CodeSize = .default
+) -> some View {
     NavigationStack {
         WorktreeDiffScreen(worktreeName: "TLS pinning", model: model, onPairAgain: {})
     }
+        // **Defaulted to *Follow system*, which at Large is the 11pt and 12pt every baseline in this
+        // suite was recorded at.** A subject that names a size is naming it because the size is the
+        // subject — the toolbar item disabling below the split's floor is the only one so far.
+        .environment(\.codeSize, codeSize)
         // **A setter, because the composition root supplies one and a baseline asserts what ships.**
         // `SideBySideSetting` withholds the toolbar item when nothing can be written to — that is
         // what makes a forgotten wiring remove the control rather than deaden it — so a subject

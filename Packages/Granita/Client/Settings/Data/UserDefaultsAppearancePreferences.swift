@@ -19,6 +19,8 @@ public struct UserDefaultsAppearancePreferences: AppearancePreferences, @uncheck
     public static let appearanceKey = "granita.appearance.app"
     public static let codeThemeKey = "granita.appearance.codeTheme"
     public static let sideBySideKey = "granita.appearance.sideBySide"
+    public static let unifiedCodeSizeKey = "granita.appearance.codeSize.unified"
+    public static let splitCodeSizeKey = "granita.appearance.codeSize.split"
 
     private let defaults: UserDefaults
 
@@ -61,5 +63,37 @@ public struct UserDefaultsAppearancePreferences: AppearancePreferences, @uncheck
 
     public func remember(isSideBySide: Bool) {
         defaults.set(isSideBySide, forKey: Self.sideBySideKey)
+    }
+
+    /// **An absent key is *Follow system* rather than a missing number**, which is what lets the two
+    /// halves be stored as one optional figure each with no second key saying which segment is on.
+    /// `bool(forKey:)`'s trick does not work here — 0 is a point size somebody could believe in — so
+    /// the read asks for the object rather than for a `Double`.
+    ///
+    /// Nothing is clamped on the way out. `CodeSize` clamps at the one place every reader goes
+    /// through, so a figure from a hand-edited file or from a build with a wider range is brought
+    /// back into range once rather than twice.
+    public func codeSize() -> CodeSize {
+        CodeSize(unified: choice(under: Self.unifiedCodeSizeKey), split: choice(under: Self.splitCodeSizeKey))
+    }
+
+    public func remember(_ size: CodeSize) {
+        remember(size.unified, under: Self.unifiedCodeSizeKey)
+        remember(size.split, under: Self.splitCodeSizeKey)
+    }
+
+    private func choice(under key: String) -> CodeSizeChoice {
+        guard let points = defaults.object(forKey: key) as? Double else { return .followSystem }
+        return .custom(CGFloat(points))
+    }
+
+    /// **Removed rather than written as a sentinel**, because the way back to *Follow system* is the
+    /// segmented control's other segment: a number left behind under the key would be found by the
+    /// next read and silently turn the segment back.
+    private func remember(_ choice: CodeSizeChoice, under key: String) {
+        switch choice {
+        case .followSystem: defaults.removeObject(forKey: key)
+        case .custom(let points): defaults.set(Double(points), forKey: key)
+        }
     }
 }

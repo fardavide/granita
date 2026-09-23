@@ -42,9 +42,6 @@ import CoreReviewDomain
 /// `.ai/docs/decisions.md`.
 public struct DiffFileLines: View {
 
-    /// §4's inset between the last character of code and the trailing edge.
-    public static let codeTrailingInset: CGFloat = 12
-
     /// The width of the fade at the trailing edge, and the review's answer to its third fault.
     ///
     /// `extension Lce: Sendable where C: Sendable, E: Sendable` is 57 characters and the row fitted
@@ -187,7 +184,7 @@ public struct DiffFileLines: View {
             rowWidth: rowWidth,
             highestLineNumber: highestNumber,
             atPointSize: pointSize,
-            trailingInset: Self.codeTrailingInset
+            trailingInset: DiffGutter.codeTrailingInset
         )
     }
 
@@ -348,7 +345,7 @@ public struct DiffFileLines: View {
                     }
                 }
             }
-            .padding(.trailing, Self.codeTrailingInset)
+            .padding(.trailing, DiffGutter.codeTrailingInset)
             // Watched rather than read once: expanding a hunk splices longer lines into these rows,
             // and an indicator sized on the width the hunk had before the expansion is an indicator
             // that lies about how much is left.
@@ -555,7 +552,7 @@ public struct DiffFileLines: View {
             }
             .frame(height: Self.indicatorHeight)
             .padding(.leading, numberColumnWidth + DiffGutter.markerWidth + DiffGutter.markerTrailingSpace)
-            .padding(.trailing, Self.codeTrailingInset)
+            .padding(.trailing, DiffGutter.codeTrailingInset)
             .accessibilityHidden(true)
         }
     }
@@ -708,7 +705,7 @@ public struct DiffFileLines: View {
     }
 
     private var cellWidth: CGFloat {
-        SplitBlockLayout.cellWidth(inRowWidth: rowWidth, trailingInset: Self.codeTrailingInset)
+        SplitBlockLayout.cellWidth(inRowWidth: rowWidth, trailingInset: DiffGutter.codeTrailingInset)
     }
 
     private var cellCodeWidth: CGFloat {

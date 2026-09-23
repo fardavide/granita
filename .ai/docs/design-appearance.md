@@ -62,6 +62,10 @@ per half is not a summary of the stylesheet — it **is** the stylesheet.
   comes back, so a theme change with the key unchanged hands the reader the old colours for every
   file already lexed. The theme is a sixth part of the question exactly as the appearance is a fifth.
 
+> **The section has three rows since 0.19.0.** *Code size* joined it, with a push of its own; the
+> calls are in [`design-code-size.md`](design-code-size.md) and the footer below now reads *"None of
+> them changes what a review says"* rather than *"Neither"*. Everything else in this document stands.
+
 ## One section, two rows, seven pairs, and a push
 
 `APPEARANCE`, fourth on the sheet, below the receipt. Row one is the three-segment System / Light /

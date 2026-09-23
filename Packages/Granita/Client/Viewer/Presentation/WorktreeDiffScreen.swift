@@ -63,6 +63,27 @@ public struct WorktreeDiffScreen: View {
     /// together.
     @Environment(\.sideBySide) private var sideBySide
 
+    /// How big the reader has asked the code to be, which the Settings sheet sets and the scene root
+    /// puts here. The third part of the question the highlighter is keyed on.
+    @Environment(\.codeSize) private var codeSize
+
+    /// What *Follow system* follows. Dynamic Type governed every word on this screen except the code
+    /// itself until issue #106; it governs the code too now, as one point per step from Large.
+    ///
+    /// Carried rather than mapped here, because the mapping onto SwiftUI's own enum can exist in
+    /// only one place — see the entry's own note.
+    @Environment(\.readerTextSize) private var readerTextSize
+
+    /// How wide a row of code is here, measured on the pane that draws it.
+    ///
+    /// **Measured rather than derived from the window**, because this is the number that decides
+    /// whether the toolbar item is operable — and a control disabled by arithmetic that disagrees
+    /// with the layout by two points is the dead control this project refuses. The *Code size*
+    /// screen derives its own from the window, because a sheet cannot see this pane; it is a readout
+    /// rather than a control, so a point of disagreement costs a character in a sentence and never a
+    /// press.
+    @State private var paneWidth: CGFloat = 0
+
     public init(worktreeName: String, model: ClientViewerModel, onPairAgain: @escaping () -> Void) {
         self.worktreeName = worktreeName
         self.onPairAgain = onPairAgain
@@ -158,7 +179,20 @@ public struct WorktreeDiffScreen: View {
         DiffDrawing(
             appearance: colorScheme == .dark ? .dark : .light,
             theme: codeTheme,
-            pointSize: Double(layout.codePointSize)
+            pointSize: Double(drawn.pointSize)
+        )
+    }
+
+    /// Which of the reader's two sizes is on screen, and whether two columns can be had at the other
+    /// one. Decided in `Domain` rather than here, because one of its two answers makes a control
+    /// inoperable.
+    private var drawn: DrawnCodeSize {
+        DrawnCodeSize(
+            codeSize: codeSize,
+            textSize: readerTextSize,
+            fitsSelectorColumn: fitsSelectorColumn,
+            isSplit: sideBySide.isOn,
+            rowWidth: paneWidth
         )
     }
 
@@ -299,7 +333,7 @@ public struct WorktreeDiffScreen: View {
         ContinuousDiffView(
             state: model.state,
             logCopyState: model.logCopyState,
-            pointSize: layout.codePointSize,
+            pointSize: drawn.pointSize,
             isSplit: sideBySide.isOn,
             jumpTarget: model.jumpTarget,
             comments: model.reviewed,
@@ -358,6 +392,16 @@ public struct WorktreeDiffScreen: View {
         // rather than on the model, so an arriving diff does not restart them.
         .animation(.disclosure, value: model.draft.heldEnd)
         .animation(.disclosure, value: model.comments.isEmpty)
+        // **Watched rather than read once, because a Mac window is dragged while this is on screen.**
+        // It is the same measurement `DiffFileLines` takes per row, taken here as well because the
+        // toolbar item is outside that view and has to know whether pressing it would produce
+        // anything. Reading the pane rather than the window is what keeps the two answers from
+        // disagreeing across a fold, a rotation or a split-view drag.
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            paneWidth = width
+        }
         // **On the diff pane rather than on the screen, and that is load-bearing on one platform.**
         // A picture is presented over the pane it belongs to, which is true either way; on macOS it
         // is also the only way it can be presented at all. There is no full-screen cover there, so it
@@ -537,6 +581,13 @@ public struct WorktreeDiffScreen: View {
     /// A change set of nothing but new files has no paired run, so pressing it draws the same rows —
     /// and still records how the next change set opens. Davide settled that on 22 September 2026: it
     /// is a setting, and a setting's effect is that it is remembered.
+    ///
+    /// **Disabled below the floor, carrying the cause that applies.** Design §4.2 asked for that and
+    /// #57 shipped without it: the blocks closed, the item stayed live, and nothing said why. Issue
+    /// #106's own setting made the state reachable on a phone for the first time, which is what
+    /// forced it — a Mac window can be widened and a phone cannot, so *Widen the window* is a dead
+    /// end on one of the two. `SplitRefusal` names which lever is the reader's, and the *Code size*
+    /// screen carries the same sentence where they can act on it.
     @ToolbarContentBuilder private var sideBySideToggle: some ToolbarContent {
         // Absent rather than dead where no composition root wired a setter, and absent on a screen
         // with no code on it — a toggle over a spinner or a failure has nothing to turn over.
@@ -549,6 +600,13 @@ public struct WorktreeDiffScreen: View {
                     Label("Side by Side", systemImage: "rectangle.split.2x1")
                 }
                 .toggleStyle(.button)
+                .disabled(drawn.splitRefusal != nil)
+                // Both, because they reach different readers: `help` is the Mac's tooltip on the
+                // item a drag just disabled, and the hint is what VoiceOver reads instead of
+                // announcing a dimmed button and stopping. Neither is the sighted phone reader's
+                // answer, which is why the sentence is on the *Code size* screen too.
+                .help(drawn.splitRefusal?.sentence ?? "")
+                .accessibilityHint(drawn.splitRefusal?.sentence ?? "")
             }
         }
     }
@@ -618,18 +676,26 @@ public struct WorktreeDiffScreen: View {
     /// width is the phone's layout too — and a 320pt column taken out of 500 is the keyhole design
     /// §4 rejected two number columns for being.
     private var layout: DiffPaneLayout {
-        #if os(macOS)
-        let fits = true
-        #else
-        let fits = horizontalSizeClass == .regular
-        #endif
-        return DiffPaneLayout(
-            fitsSelectorColumn: fits,
+        DiffPaneLayout(
+            fitsSelectorColumn: fitsSelectorColumn,
             isSelectorColumnOpen: isSelectorColumnOpen,
             hasFilesToSelect: hasFilesToSelect,
             isReviewOpen: model.sheet == .review,
             hasComments: model.comments.isEmpty == false
         )
+    }
+
+    /// Whether a 320pt column could stand beside the code here, which two answers now need: whether
+    /// the tree is offered, and which of the two sizes *Follow system* is based on.
+    ///
+    /// The horizontal size class rather than the device, because an iPad in a narrow multitasking
+    /// width is the phone's layout too.
+    private var fitsSelectorColumn: Bool {
+        #if os(macOS)
+        true
+        #else
+        horizontalSizeClass == .regular
+        #endif
     }
 
     private var hasFilesToSelect: Bool {

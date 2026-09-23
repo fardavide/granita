@@ -98,36 +98,30 @@ struct DiffPaneLayoutTests {
         #expect(layout.showsSelectorColumnToggle)
     }
 
+    // MARK: - How wide a row of code is
+
     @Test
-    func `given a phone when the code is measured then it is the smaller size`() {
-        // given - when - then — 11pt is what makes the review's 54 characters fit at 402pt with one
-        // number column and a marker.
-        let layout = DiffPaneLayout(fitsSelectorColumn: false, isSelectorColumnOpen: false, hasFilesToSelect: true, isReviewOpen: false, hasComments: false)
-        #expect(layout.codePointSize == DiffPaneLayout.codePointSize)
+    func `given a phone's window when the row is measured then the code has all of it`() {
+        // given - when - then — 390pt, which is the width every number in design §4 is stated at.
+        #expect(DiffPaneLayout.diffRowWidth(inWindowWidth: 390, fitsSelectorColumn: false) == 390)
     }
 
     @Test
-    func `given a pane beside the column when the code is measured then it is one point larger`() {
-        // given — the review's iPad measurement: an 846pt pane holds about 110 characters at 12pt,
-        // so nothing in an ordinary change set is cut at all.
+    func `given a window that fits the tree when the row is measured then the tree's width comes off`() {
+        // given — **the room rather than the fold**, which is the same rule the point size follows:
+        // a width taken from the folded pane would change every time the fold did, and re-lex the
+        // file the reader is halfway down in exchange for a fold they may undo a second later.
         // when
-        let layout = DiffPaneLayout(fitsSelectorColumn: true, isSelectorColumnOpen: true, hasFilesToSelect: true, isReviewOpen: false, hasComments: false)
+        let rowWidth = DiffPaneLayout.diffRowWidth(inWindowWidth: 1_194, fitsSelectorColumn: true)
 
-        // then
-        #expect(layout.codePointSize == DiffPaneLayout.codePointSizeBesideTheSelector)
-        #expect(DiffPaneLayout.codePointSizeBesideTheSelector > DiffPaneLayout.codePointSize)
+        // then — an iPad Pro 11″ in landscape, less the tree.
+        #expect(rowWidth == 874)
     }
 
     @Test
-    func `given the column is folded when the code is measured then it keeps the wider pane's size`() {
-        // given — **folding the tree gives the code more room, not less.** Taking the point size
-        // down with the column would reflow every row of the file the reader is looking at, in
-        // exchange for nothing.
-        // when
-        let layout = DiffPaneLayout(fitsSelectorColumn: true, isSelectorColumnOpen: false, hasFilesToSelect: true, isReviewOpen: false, hasComments: false)
-
-        // then
-        #expect(layout.codePointSize == DiffPaneLayout.codePointSizeBesideTheSelector)
+    func `given a window narrower than the tree when the row is measured then it is nothing rather than negative`() {
+        // given - when - then — a negative frame traps in SwiftUI rather than drawing small.
+        #expect(DiffPaneLayout.diffRowWidth(inWindowWidth: 200, fitsSelectorColumn: true) == 0)
     }
 
     // MARK: - The review, which is a column at one width and a sheet at the other

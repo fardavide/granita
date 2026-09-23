@@ -7,6 +7,29 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.19.0 — 2026-09-23
+- **The code's size is yours to set, in Settings under Appearance.** *Code size* pushes a screen with
+  two groups — one for the ordinary scroll and one for side by side. Each is *Follow system* or a
+  size you step to yourself, between 8 and 17 points.
+- **It tells you what the size buys in characters, not in points.** Every group says how much of a
+  line fits on this device at the size you have chosen — 49 characters a line at 11pt on an iPhone,
+  and 22 a side when a block opens into two columns. Points are what you set; characters are what you
+  get, and one is much easier to judge than the other.
+- **Two sizes rather than one, because they are two questions.** How small you will go in the scroll
+  costs you almost nothing either way; how large you go side by side costs you about two characters a
+  column for every point. A single setting would make you pay for one in the other.
+- **Follow system now means the code grows with your text size too.** It did not before: every other
+  word on the phone followed Dynamic Type and the code stayed at eleven points. At the standard text
+  size nothing moves, so an update changes nothing you did not ask for.
+- **Side by side stays available at the largest text sizes.** Two columns need twenty characters a
+  side, and following a large text size would have taken you below that — so the side-by-side half
+  holds at the largest size that still fits on the screen you are reading on, and says so. On an iPad
+  or a wide Mac window there is nothing to hold back.
+- **The Side by Side button now says why when it cannot be used.** It has always switched itself off
+  below the width two columns need, and it never explained. It now reads *Widen the window* when the
+  room ran out and *Choose a smaller code size* when the size did — and the *Code size* screen says
+  the same thing where you can do something about it.
+
 ### 0.18.0 — 2026-09-22
 - **Read a changed block side by side.** A new toggle in the diff's toolbar opens every paired change
   — a run of removed lines immediately followed by added ones — into two columns facing each other.

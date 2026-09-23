@@ -21,7 +21,27 @@ public struct DiffPaneLayout: Hashable, Sendable {
     ///
     /// A second constant rather than a scale factor, because `SPEC.md` §10 makes the code size a
     /// setting and these are its two defaults rather than a rule about screens.
+    ///
+    /// **Both are now *Follow system* at Large rather than the size itself**, which is what keeps the
+    /// update from moving anybody's code: the setting `CodeSize` builds derives from these, so a
+    /// reader who never opens the screen reads exactly what they read before it existed.
     public static let codePointSizeBesideTheSelector: CGFloat = 12
+
+    /// The tree beside the code, which `FileSelectorView` draws at this width.
+    ///
+    /// **In `Domain` rather than on that view**, because the *Code size* screen has to say what a
+    /// size buys at the width the diff is read at, and a settings sheet cannot see a diff pane. The
+    /// arithmetic below is the only reader that needs it outside the view that draws it.
+    public static let selectorColumnWidth: CGFloat = 320
+
+    /// How wide a row of code is in a window of a given width.
+    ///
+    /// **The tree's width comes off wherever a tree could fit, open or shut.** Folding it gives the
+    /// code more room, and a size taken from the folded width would step every time the fold did —
+    /// which is the reflow `codePointSize` below already refuses for the same reason.
+    public static func diffRowWidth(inWindowWidth windowWidth: CGFloat, fitsSelectorColumn: Bool) -> CGFloat {
+        max(0, windowWidth - (fitsSelectorColumn ? selectorColumnWidth : 0))
+    }
 
     /// The tree beside the code, at `FileSelectorView.widthBesideTheDiff`.
     public let showsSelectorColumn: Bool
@@ -51,8 +71,6 @@ public struct DiffPaneLayout: Hashable, Sendable {
 
     /// The toolbar's bubble-and-count, which is what replaces the capsule at regular width.
     public let showsReviewToggle: Bool
-
-    public let codePointSize: CGFloat
 
     public init(
         fitsSelectorColumn: Bool,
@@ -96,9 +114,5 @@ public struct DiffPaneLayout: Hashable, Sendable {
         // own label and the screen did not move. Absent rather than dead — and nothing is lost,
         // because shutting the review brings the tree back by itself.
         showsSelectorColumnToggle = fitsSelectorColumn && hasFilesToSelect && showsReview == false
-        // **Taken from the room, not from the fold.** Folding the tree gives the code more space;
-        // taking the point size down with the column would reflow every row of the file the reader
-        // is looking at in exchange for nothing.
-        codePointSize = fitsSelectorColumn ? Self.codePointSizeBesideTheSelector : Self.codePointSize
     }
 }

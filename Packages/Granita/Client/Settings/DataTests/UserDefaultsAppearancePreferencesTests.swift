@@ -101,6 +101,42 @@ struct UserDefaultsAppearancePreferencesTests {
         // when - then
         #expect(scenario.sut.isSideBySide() == false)
     }
+
+    @Test
+    func `given no release ever wrote the key when the code size is read then both halves follow the system`() {
+        // given — every reader updating into this release. *Follow system* at Large is today's two
+        // constants, so nobody's code changes size on the first launch after the update.
+        let scenario = Scenario()
+
+        // when - then
+        #expect(scenario.sut.codeSize() == .default)
+    }
+
+    @Test
+    func `given a code size was remembered when it is read then both halves are what was stored`() {
+        // given — two halves that differ, so a read that returned one of them twice fails here.
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.remember(CodeSize(unified: .custom(14), split: .custom(9)))
+
+        // then
+        #expect(scenario.sut.codeSize() == CodeSize(unified: .custom(14), split: .custom(9)))
+    }
+
+    @Test
+    func `given one half was put back on the system when it is read then only that half moved`() {
+        // given — the segmented control's other direction, which has to clear the stored number
+        // rather than leave it behind for the next read to find.
+        let scenario = Scenario()
+        scenario.sut.remember(CodeSize(unified: .custom(14), split: .custom(9)))
+
+        // when
+        scenario.sut.remember(CodeSize(unified: .followSystem, split: .custom(9)))
+
+        // then
+        #expect(scenario.sut.codeSize() == CodeSize(unified: .followSystem, split: .custom(9)))
+    }
 }
 
 // MARK: -
