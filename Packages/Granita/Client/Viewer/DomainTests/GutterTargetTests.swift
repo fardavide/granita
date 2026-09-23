@@ -2,6 +2,7 @@ import Foundation
 import Testing
 
 import CoreDiffDomain
+import CoreReviewDomain
 
 @testable import ClientViewerDomain
 
@@ -206,6 +207,69 @@ struct GutterTargetTests {
         // then — 4 + 4 × 7.2 + 9 + 12 + 6.
         #expect(abs(width - 59.8) < 0.001)
     }
+
+    // MARK: - Which cell a thumb meant, once a row can be a block
+
+    @Test
+    func `given the unified strip when a touch is resolved then it answers as it always did`() {
+        // given — no side, which is the one-column strip. It must keep the clamping and the
+        // skipping of unnumbered rows that the whole gutter design rests on.
+        let lines = numbered(4)
+        let rows = SplitDiffRow.rows(of: lines, splitting: false)
+
+        // when - then
+        #expect(
+            GutterTarget.line(at: 30, on: nil, of: rows, lines: lines, rowHeight: 18)
+                == DiffLinePosition.of(lines[1])
+        )
+    }
+
+    @Test
+    func `given a block when a touch lands in the old cell then it resolves to the deletion`() {
+        // given — one row carrying two lines, which is the case this function exists for: the row
+        // is the same for both cells and only the strip that was touched tells them apart.
+        let lines = [aDeletion(96), anAddition(96)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when - then
+        #expect(
+            GutterTarget.line(at: 9, on: .old, of: rows, lines: lines, rowHeight: 18)
+                == DiffLinePosition.of(lines[0])
+        )
+        #expect(
+            GutterTarget.line(at: 9, on: .new, of: rows, lines: lines, rowHeight: 18)
+                == DiffLinePosition.of(lines[1])
+        )
+    }
+
+    @Test
+    func `given a cell the run ran out of when a touch lands in it then it resolves to nothing`() {
+        // given — three deletions against one addition, so the new cell of rows two and three is
+        // empty. **It must not fall back to a neighbour**: the unified strip resolves to the nearest
+        // numbered row because a miss there can only be a miss, and here the reader has aimed at a
+        // cell that genuinely has no line in it.
+        let lines = [aDeletion(10), aDeletion(11), aDeletion(12), anAddition(10)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when - then — the second row's old cell answers, its new cell does not.
+        #expect(
+            GutterTarget.line(at: 27, on: .old, of: rows, lines: lines, rowHeight: 18)
+                == DiffLinePosition.of(lines[1])
+        )
+        #expect(GutterTarget.line(at: 27, on: .new, of: rows, lines: lines, rowHeight: 18) == nil)
+    }
+
+    @Test
+    func `given a touch past the last block row when it is resolved then it answers nothing`() {
+        // given — a thumb below the hunk. Unified this clamps to the last row; inside a block there
+        // is nothing to clamp to, because the strip ends where the block does.
+        let lines = [aDeletion(96), anAddition(96)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when - then
+        #expect(GutterTarget.line(at: 400, on: .old, of: rows, lines: lines, rowHeight: 18) == nil)
+        #expect(GutterTarget.line(at: 9, on: .old, of: rows, lines: lines, rowHeight: 0) == nil)
+    }
 }
 
 // MARK: -
@@ -216,4 +280,12 @@ private func aLine(kind: DiffLineKind, old: Int?, new: Int?) -> DiffLine {
 
 private func numbered(_ count: Int) -> [DiffLine] {
     (1...count).map { aLine(kind: .context, old: $0, new: $0) }
+}
+
+private func aDeletion(_ number: Int) -> DiffLine {
+    aLine(kind: .deletion, old: number, new: nil)
+}
+
+private func anAddition(_ number: Int) -> DiffLine {
+    aLine(kind: .addition, old: nil, new: number)
 }

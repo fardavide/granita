@@ -41,6 +41,40 @@ public enum GutterTarget {
         return nearestNumbered(to: y, of: lines, rowHeight: rowHeight)
     }
 
+    /// Which line a thumb meant, once the rows may be blocks and the strip belongs to one cell.
+    ///
+    /// **The whole answer lives here rather than in the view, for the reason the unified case
+    /// already does.** It is arithmetic over a model — which drawn row the touch landed on, and
+    /// which of that row's two cells the strip it was aimed at belongs to — and a view is the one
+    /// place in this codebase where that cannot be asserted directly.
+    ///
+    /// `side` is `nil` for the unified strip, where there is one column and the question does not
+    /// arise; that case defers to `row(at:of:rowHeight:)` and keeps its clamping and its skipping of
+    /// unnumbered rows. Inside a block neither applies: a block's strip is its own cell, every row in
+    /// it is numbered on the side that has a line, and **a cell with nothing in it is the run having
+    /// run out on that side** — not a row to comment on, so it resolves to nothing rather than to a
+    /// neighbour.
+    public static func line(
+        at y: CGFloat,
+        on side: DiffSide?,
+        of rows: [SplitDiffRow],
+        lines: [DiffLine],
+        rowHeight: CGFloat
+    ) -> DiffLinePosition? {
+        guard let side else {
+            guard let index = row(at: y, of: lines, rowHeight: rowHeight) else { return nil }
+            return DiffLinePosition.of(lines[index])
+        }
+        guard rowHeight > 0 else { return nil }
+        let landed = Int((y / rowHeight).rounded(.down))
+        guard rows.indices.contains(landed),
+              let line = rows[landed].line(on: side),
+              DiffGutter.number(of: line) != nil else {
+            return nil
+        }
+        return DiffLinePosition.of(line)
+    }
+
     /// The numbered row whose centre is closest to the touch, preferring the earlier one when two are
     /// equally close.
     private static func nearestNumbered(to y: CGFloat, of lines: [DiffLine], rowHeight: CGFloat) -> Int? {

@@ -26,15 +26,26 @@ public struct AppearanceRoot<Content: View>: View {
     /// also replacing the object the rest of the app is observing.
     @State private var model: AppearanceModel
 
-    private let content: (CodeTheme) -> Content
+    /// **Three plain values rather than one type, because the keys they go under belong to the
+    /// feature that reads them and this target cannot see that feature's views.** That is the same
+    /// argument the theme already carried; the split mode arrives with its setter beside it because
+    /// the control that reads it is the control that writes it.
+    private let content: (CodeTheme, Bool, @escaping (Bool) -> Void) -> Content
 
-    public init(model: AppearanceModel, @ViewBuilder content: @escaping (CodeTheme) -> Content) {
+    public init(
+        model: AppearanceModel,
+        @ViewBuilder content: @escaping (CodeTheme, Bool, @escaping (Bool) -> Void) -> Content
+    ) {
         _model = State(initialValue: model)
         self.content = content
     }
 
     public var body: some View {
-        content(model.codeTheme)
-            .preferredColorScheme(model.colorScheme)
+        // Read inside `body` so observation sees them: a value read outside would be right at launch
+        // and deaf to every change after it, which is a control that works once.
+        content(model.codeTheme, model.isSideBySide) { [model] isOn in
+            model.chooseSideBySide(isOn)
+        }
+        .preferredColorScheme(model.colorScheme)
     }
 }

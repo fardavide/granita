@@ -41,6 +41,11 @@ public struct ContinuousDiffView: View {
     private let logCopyState: DiagnosticCopyState
     private let pointSize: CGFloat
 
+    /// Whether a paired run opens into two columns, which the reader sets from the toolbar and this
+    /// screen only carries. Design §4.5's call 6 keeps it global and device-local, so it arrives the
+    /// same way the code theme does and no file holds one of its own.
+    private let isSplit: Bool
+
     /// The file §3's selector asked this scroll to go to, and nothing about how far it got.
     private let jumpTarget: FileID?
 
@@ -99,6 +104,7 @@ public struct ContinuousDiffView: View {
         state: ContinuousDiffState,
         logCopyState: DiagnosticCopyState,
         pointSize: CGFloat,
+        isSplit: Bool = false,
         jumpTarget: FileID?,
         comments: [ReviewedComment] = [],
         pending: PendingComment? = nil,
@@ -130,6 +136,7 @@ public struct ContinuousDiffView: View {
         self.state = state
         self.logCopyState = logCopyState
         self.pointSize = pointSize
+        self.isSplit = isSplit
         self.jumpTarget = jumpTarget
         self.comments = comments
         self.pending = pending
@@ -396,6 +403,7 @@ public struct ContinuousDiffView: View {
                     DiffFileContent(
                         diff: diff,
                         pointSize: pointSize,
+                        isSplit: isSplit,
                         // The rails are drawn from the comments that still resolve; a stale one has
                         // the row above instead. Handed the raw comments because `CommentRail` is
                         // what decides which of them this file's hunks can place.

@@ -7,6 +7,20 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.18.0 — 2026-09-22
+- **Read a changed block side by side.** A new toggle in the diff's toolbar opens every paired change
+  — a run of removed lines immediately followed by added ones — into two columns facing each other.
+  An indentation change stops being four spaces of colour you have to interpret and becomes a
+  distance you can see, and three rows of red over three rows of green become three rows.
+- **The rest of the file stays as wide as it was.** Only a block splits. Context, a change with just
+  one side, a conflict marker and a file that is all new lines are untouched, so the narrow columns
+  are spent on the rows where there are genuinely two things to compare and nowhere else. On a phone
+  that is about one row in five.
+- **The setting is remembered, for every worktree and every Mac.** It is how you read rather than
+  something about a particular review, so it stays where you put it. On a Mac window dragged too
+  narrow for two columns the blocks close and the toggle says why, then comes back when you widen it
+  again.
+
 ### 0.17.0 — 2026-09-19
 - **Choose from four new code-colour pairs.** Accessible and GitHub return as stable Granita-owned
   styles, joined by Catppuccin's Latte/Mocha pair and a new Granita palette with vivid violet, teal,

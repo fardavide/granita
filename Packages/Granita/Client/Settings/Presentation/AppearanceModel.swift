@@ -24,10 +24,15 @@ public final class AppearanceModel {
     public private(set) var appearance: AppAppearance
     public private(set) var codeTheme: CodeTheme
 
+    /// Whether a paired run opens into two columns. Design §4.5's call 6 — one flag beside the
+    /// appearance and the code theme, read once and written straight through like both of them.
+    public private(set) var isSideBySide: Bool
+
     public init(preferences: any AppearancePreferences) {
         self.preferences = preferences
         appearance = preferences.appearance()
         codeTheme = preferences.codeTheme()
+        isSideBySide = preferences.isSideBySide()
     }
 
     /// What the whole app draws in, or nothing where the phone decides.
@@ -56,5 +61,14 @@ public final class AppearanceModel {
     public func choose(_ theme: CodeTheme) {
         codeTheme = theme
         preferences.remember(theme)
+    }
+
+    /// **Recorded whether or not anything on screen changes**, which is what makes it a setting
+    /// rather than an action. A change set of nothing but new files has no paired run, so the rows
+    /// draw the same either way — and the reader has still said how they want the *next* one to
+    /// open. Davide, 22 September 2026.
+    public func chooseSideBySide(_ isOn: Bool) {
+        isSideBySide = isOn
+        preferences.remember(isSideBySide: isOn)
     }
 }

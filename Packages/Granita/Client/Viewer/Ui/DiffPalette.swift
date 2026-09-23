@@ -47,6 +47,26 @@ extension Color {
         #endif
     }
 
+    /// The hairline between a block's two cells, and the only thing that says the block continues
+    /// past an empty one.
+    ///
+    /// **The system separator rather than a tint of its own.** Design §4.1's call 2 draws an absent
+    /// side as nothing at all, which works because everything around it is a filled rectangle — and
+    /// what makes the *row* still read as one row is this rule running down between the cells. It is
+    /// chrome standing between two pieces of content, which is the one thing `separator` is for, and
+    /// it is the treatment a reader already reads that way everywhere else on the platform.
+    ///
+    /// Worth its own baseline against the darkest theme's card, where a hairline can disappear.
+    static var diffBlockRule: Color {
+        #if canImport(UIKit)
+        Color(uiColor: .separator)
+        #else
+        // The package builds for the host so `make test` can run without a simulator, and nothing on
+        // that platform draws a diff. Near enough for a build that never renders.
+        Color.gray.opacity(0.22)
+        #endif
+    }
+
     /// The rail a commented run draws in the gutter's leading inset.
     ///
     /// **`.indigo`, and it is the only violet on the screen.** Green, red and orange are spoken for

@@ -66,12 +66,13 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.18.0** — read a changed block side by side, so an indentation change is a distance you can see
+  rather than four spaces of colour you have to interpret. Only paired changes split; the rest of the
+  file keeps its width.
 - **0.17.0** — choose Accessible, Granita, Catppuccin or GitHub code colours, each as a readable,
   stable light/dark pair alongside the three existing themes.
 - **0.16.0** — choose the app's appearance and the colours your code is lexed in, with every theme
   drawn in both light and dark at once so you can judge a pair without switching to see half of it.
-- **0.15.1** — pull a diff down to read it again, so a change set your agent has moved on from is one
-  gesture away from being current.
 
 [Every release](CHANGELOG.md).
 

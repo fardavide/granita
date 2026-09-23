@@ -18,6 +18,7 @@ public struct UserDefaultsAppearancePreferences: AppearancePreferences, @uncheck
     /// asserting what happens to a value no release ever wrote has to be able to write one.
     public static let appearanceKey = "granita.appearance.app"
     public static let codeThemeKey = "granita.appearance.codeTheme"
+    public static let sideBySideKey = "granita.appearance.sideBySide"
 
     private let defaults: UserDefaults
 
@@ -48,5 +49,17 @@ public struct UserDefaultsAppearancePreferences: AppearancePreferences, @uncheck
 
     public func remember(_ theme: CodeTheme) {
         defaults.set(theme.rawValue, forKey: Self.codeThemeKey)
+    }
+
+    /// **Absent means off, which is what `bool(forKey:)` already answers**, so there is no default to
+    /// state and no migration for the releases that never wrote this key. Unified is what every
+    /// reader has been reading in, and a setting that turned itself on for them would be a layout
+    /// change nobody asked for on first launch after an update.
+    public func isSideBySide() -> Bool {
+        defaults.bool(forKey: Self.sideBySideKey)
+    }
+
+    public func remember(isSideBySide: Bool) {
+        defaults.set(isSideBySide, forKey: Self.sideBySideKey)
     }
 }
