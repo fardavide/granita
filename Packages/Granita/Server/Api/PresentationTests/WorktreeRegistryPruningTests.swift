@@ -135,6 +135,7 @@ struct WorktreeRegistryPruningTests {
                     files: LocalWorktreeFiles(),
                     limits: .standard
                 ),
+                directory: LocalWorktreeDirectory(),
                 suggestedAliases: { _ in [:] }
             )
         }

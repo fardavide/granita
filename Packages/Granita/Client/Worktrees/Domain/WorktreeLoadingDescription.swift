@@ -26,6 +26,7 @@ public struct WorktreeLoadingDescription: Hashable, Sendable {
             case .unknown: "Waiting for your Mac’s response."
             case .local: "Connected on this network."
             case .tailnet: "Connected over Tailscale."
+            case .thisMac: "Running git on this Mac."
             }
         }
     }

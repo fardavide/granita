@@ -7143,3 +7143,134 @@ buys; the two features are siblings over `Domain` and neither may import the oth
 onto `DynamicTypeSize` lives beside `AppearanceModel` — in `Presentation` rather than in `Ui`, so a
 test calls it — and the composition root hands the answer to `ClientViewerUi`'s environment. One
 mapping, no new edge in the graph.
+
+## The merged Mac app keeps the server's bundle identifier, and the camera does not come with it
+
+Issue [#97](https://github.com/fardavide/granita/issues/97) joins *Granita Server* and *Granita
+Client* into one bundle, and the design return of 23 September 2026 answered it surface by surface in
+[`design-mac.md`](design-mac.md) §8. Four of its calls are expensive to reverse and belong here rather
+than only there.
+
+**The surviving bundle identifier is the server's.** Its Keychain TLS identity is what **every paired
+phone already pins**, and its login item and Local Network grant are registered to it — so taking the
+Client's identifier instead would silently unpair every phone in the world and re-prompt for local
+network access on a machine that had been serving for months. What the merge loses is the Mac
+Client's own Keychain of remembered Macs, which is a store with almost nobody in it, because that
+build was never shipped. **This is the cheapest thing on the list to get right and the most expensive
+to get wrong**, and it is not visible from either app's source.
+
+**The camera leaves.** `GranitaMobileMac.entitlements` is not merged into the server's and
+`NSCameraUsageDescription` stays in the phone's `Info.plist` alone, so a remote Mac is paired with the
+six words rather than a QR code. It beat keeping the camera for parity with the phone. Two reasons,
+and the second is the one that decided it: to scan, a reader would have to carry a laptop round to
+face another Mac's display; and `com.apple.security.device.camera` would otherwise land **on the one
+process that listens on a socket and execs `git`**. The stated cost is real — the six-word path is
+`trustingFirstAnswer` and pins whatever key answered, where the QR carries its pin in the link — so
+on a home network this is a first-use trust decision rather than a verified one. Reversing it means
+re-adding an entitlement to a shipped, notarised, unsandboxed binary.
+
+**The file selector is an inspector because the split view has no case for it.**
+`NavigationSplitViewVisibility` offers `.all`, `.doubleColumn` and `.detailOnly` and **nothing that
+hides the middle column alone**, so a third split-view column would leave `DiffPaneLayout`'s existing
+`showsSelectorColumnToggle` fold with nothing to bind to — and with no worktree chosen the window
+would show two empty columns. `.inspector` is the only Mac container that folds on its own. This is a
+fact about SwiftUI rather than a preference, and it is why the obvious answer is the wrong one.
+
+**One window, not one per worktree.** Two agents on one task is a genuine reason to want two diffs
+side by side, and it lost anyway: the Client has one list model per screen and one review store per
+worktree, so two windows editing the same viewed marks and comments is a synchronisation problem
+nobody has designed. The cheap later form is *Open in New Window* on a row's context menu over a
+`WindowGroup(for: WorktreeId)`, which is additive — so deferring costs nothing and building it now
+would commit the review store to a shape it has not been tested in.
+
+**And one thing that is a bug the merge creates rather than a call.** The merged process browses
+`_granita._tcp` while advertising it, so **This Mac will discover itself** under its Bonjour name and
+offer a second route to its own worktrees through TLS, a pin, and a pairing with itself. The browse
+has to drop the instance the server registered. Nothing in either app today has any reason to do
+that, because no process has ever done both.
+
+### Two departures from `SPEC.md`, both in §2
+
+§2 locks the macOS UI as *"`MenuBarExtra` plus `Settings` scene, `LSUIElement` true"*. A window a
+reader sits in for an hour is neither, and `LSUIElement` becomes false — the app gains a Dock icon and
+a ⌘-Tab entry. §2's target table also gives `GranitaMobile` as `[iOS, iPadOS]` and `GranitaMac` as
+`platform: macOS`; issue [#73](https://github.com/fardavide/granita/issues/73) departed from that by
+adding a third destination, and this departs again in the other direction, **ending closer to what the
+spec drew than the intermediate state did**.
+
+The consequence the spec does not cover is the one worth writing down: **closing the window must not
+stop the server.** A SwiftUI app whose only window scene is closed can terminate, and here that is a
+server that stopped serving for a reason its owner cannot see. No snapshot can photograph it, so it is
+a `GranitaMacUiTests` case — open the reader, close it, assert the status item is present and the host
+still serving.
+
+## The routes stopped owning how this Mac is read, and that is what the merge was for
+
+Issue [#97](https://github.com/fardavide/granita/issues/97)'s premise is that the Client's
+repository protocols are already the boundary, so a merged Mac app binds them to the server's own
+implementations and the diff arrives without a socket. **Reading the code showed the boundary was in
+the wrong place**, and this is the correction.
+
+`GranitaRouter`'s handlers were not thin. Between the registry and the wire they carried the
+behaviour that actually decides what a reader sees: folding the store's viewed marks into the git
+call, running four git processes at a time and returning them in the order they were asked for,
+taking a rename's committed side from its **old** path because `HEAD:<new path>` fails outright,
+refusing a mark against content nobody read, the alias tri-state, the `isPrimary` guard, and the
+presence-versus-null merge that stops a queued edit overwriting a field it never read.
+
+**Nine of the fourteen repository methods needed some of it.** A local repository written against
+the registry alone would have reimplemented that half, and the two readers would have drifted —
+invisibly, because nothing compares them, and the symptom would be one reader disagreeing with
+another about the same worktree on the same Mac.
+
+So `WorktreeReader` holds all fourteen operations in `ServerWorktreesDomain`, and the routes and the
+window are both callers. `GranitaRouter` is now parse, call, encode.
+
+**What each boundary keeps is the wording**, which is the whole reason the reader carries causes and
+not sentences: a wire message and a screen's sentence are different jobs, and `WorktreeReadError` is
+mapped once in each direction — to `ApiError` beside the routes, to `ApiFailure` beside the window.
+**Both mappings are exhaustive `switch`es the compiler checks**, so a case added to the reader cannot
+reach one reader and not the other.
+
+**The wire is unchanged, and it was verified rather than asserted.** Every refusal message was moved
+rather than retyped and the before-and-after literals diffed: four deltas, all explained — two
+interpolation variables renamed with identical output, and two sentences that moved out of
+`WorktreeRegistry` rather than out of the router. Worth writing down because **the acceptance suite
+asserts the error *codes* and only one message verbatim**, so it would not have caught a reworded
+refusal.
+
+### A cancelled read was about to become a git failure
+
+Found while wiring it, and it is the kind of defect the extraction exists to prevent rather than one
+it introduced. The diff fan-out is a task group, and a cancelled group throws `CancellationError`
+from inside it. Classified with the unknowns it would reach a screen as **git failed**, on a window
+the reader had just closed — which is exactly the defect `ApiFailure.cancelled` was added to prevent
+on the phone, recorded in this file under the `.task` teardown. `WorktreeReadError` gets its own
+`cancelled` case, the local path maps it to `ApiFailure.cancelled`, and the HTTP path answers a typed
+500 where it previously let the error escape the handler and become an **empty** one.
+
+### One layer move made it possible
+
+`WorktreeRegistry` was in `Server/Api/Presentation` and could not stay there: `Presentation` may not
+be imported by a `Data` target, and the routes it serves carry Hummingbird. Its only filesystem
+access was two `FileManager` calls — `fileExists` in `resolve(_:)` and `attributesOfItem` for a
+worktree's modification date — so those went behind `WorktreeDirectoryReading` with a
+`LocalWorktreeDirectory` conformer, and the type moved to `ServerWorktreesDomain` where both callers
+can reach it. It stops throwing the Hummingbird-bound `ApiError`.
+
+**`ApiError` itself cannot move down**, which is the fact that forced this shape: it conforms to
+`HTTPResponseError`, because an error the framework does not recognise becomes an empty 500.
+`ApiErrorCode` was already pure in `CoreApiDomain` and stayed there.
+
+`WorktreeReadProfiler.read` became generic over its thrown type in the same pass, rather than naming
+one caller's error for a measurement that does not care.
+
+### The new module, and why a `Server` target implements a `Client` protocol
+
+`LocalGranitaRepository` is at `Server/Reader/Data`. It implements `ClientConnectionDomain`'s
+`GranitaRepository` from a `Server` module, which is the one place the two units meet — and **they
+meet over `Domain` on both sides**, so no `Data` target is in the path and the phone's shell still
+links none of it. The alternative placements both failed the layer rules rather than taste: in
+`Presentation` it would have put Hummingbird in the reader's path, and in `Main` it would have been
+logic in a composition root, which is exempt from both coverage rows and therefore untested code that
+no longer looks untested.

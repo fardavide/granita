@@ -36,6 +36,11 @@ public enum WorktreeReadResult: Hashable, Sendable {
         if isStale { return "Showing worktrees read \(age)." }
         let connection: String = switch route {
         case .unknown: "."
+        // Nothing to name, for the same reason `unknown` names nothing: the other two clauses say
+        // which network carried the read, and no network carried this one. Saying "on this Mac"
+        // here would also be the second place the window mentions the source, which §8's call 6
+        // rejects — the source menu says it once and the title's subtitle carries it after that.
+        case .thisMac: "."
         case .local: ", on this network."
         case .tailnet: ", over Tailscale."
         }

@@ -38,7 +38,10 @@ struct WorktreeLoadingDescriptionTests {
         (.verifying, "Verifying Studio Mac", "Checking it against the key this device pinned when it paired."),
         (.reading(.unknown), "Reading worktrees", "Waiting for your Mac’s response."),
         (.reading(.local), "Reading worktrees", "Connected on this network."),
-        (.reading(.tailnet), "Reading worktrees", "Connected over Tailscale.")
+        (.reading(.tailnet), "Reading worktrees", "Connected over Tailscale."),
+        // There is no response to wait for and no connection to name: the read is this process
+        // running git. Every other sentence here describes a network that is not in the path.
+        (.reading(.thisMac), "Reading worktrees", "Running git on this Mac.")
     ])
     func `given an observed stage when describing the wait then only observed connection facts are named`(
         stage: WorktreeReadStage,

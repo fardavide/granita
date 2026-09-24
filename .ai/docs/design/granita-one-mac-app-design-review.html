@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  @media print { body { background: #fff } }
+  a { color: #6B5B3E; text-decoration: underline; text-underline-offset: 2px }
+  a:hover { color: #23211E }
+  body { margin: 0; background: #F4F2EE }
+</style>
+</helmet>
+
+<div style="background:#F4F2EE;width:1608px;box-sizing:border-box;padding:80px 64px 200px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;color:#23211E;-webkit-font-smoothing:antialiased">
+<div style="width:1480px;margin:0 auto;display:flex;flex-direction:column;gap:96px">
+
+  <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:end;border-bottom:1px solid #D8D2C6;padding-bottom:40px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:20px">Granita 0.19.0 &nbsp;·&nbsp; one Mac app &nbsp;·&nbsp; the window a reader reads in</div>
+      <h1 style="font-size:52px;line-height:1.04;font-weight:400;letter-spacing:-0.02em;margin:0 0 20px">The window reads the disk. The menu bar keeps answering for the phone.</h1>
+      <p style="font-size:19px;line-height:1.55;margin:0 0 14px;max-width:54ch;color:#4A463F">Merged, Granita is one bundle with two surfaces that never report on each other. The status item goes on answering the question it answers today — can the phone reach this Mac — and the new window reads worktrees through <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px">GranitaRepository</span> bound to the server's own registry: no socket, so no interest in whether anything is serving.</p>
+      <p style="font-size:19px;line-height:1.55;margin:0;max-width:54ch;color:#4A463F">Almost every call below follows from keeping those two apart. The window never mentions the server, the menu never mentions reading, and the one place they touch is a single new row in the menu that opens the window.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Drawn against</div>
+      <div style="font-size:15px;line-height:1.7;color:#4A463F">macOS 26 at 1:1, light and dark, against <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">main</span> today. The images attached to the message were the side-by-side round's, so the baselines shown here were pulled from the repository instead.<br>Read: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MenuBarContent</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MenuBarLabel</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMacScene</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MacComposition</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaSettingsScreen</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">SettingsTab</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeRegistry</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaApi</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMobileScene</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeSplitScreen</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeSidebarView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">NoWorktreeChosenView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ServerDiscoveryView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">FileSelectorView</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffPaneLayout</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeLoadingDescription</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMobileMac.entitlements</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">design-mac.md</span>.</div>
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#E7E2D8;color:#5E594F">Review · built, baselined</div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div>
+      </div>
+      <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px">Every frame carries one of these two marks.</div>
+    </div>
+  </div>
+
+  <div id="findings" style="border:1px solid #C9B98F;background:#FBFAF7;padding:30px 34px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#B4453C;margin-bottom:18px">Read this first &nbsp;·&nbsp; four things at main that change the drawing</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 48px">
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">This Mac will discover itself.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F">The merged process browses <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">_granita._tcp</span> while advertising it, under <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MachineName.computer</span>. Unfiltered, the discovered list gains a row for this Mac under its Bonjour name — a second way to the same worktrees, through TLS, a pin and a pairing with itself. The browse has to drop the instance the server registered. Every §4.4 frame is drawn with it dropped.</div>
+      </div>
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">One bundle is one Local Network grant.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F">Today the server's <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.failed</span> and the Client's permission-refused are two decisions in two bundles. Merged they are one privacy entry, so the reader cannot find other Macs exactly when the phone cannot find this one. That is what makes §4.4's strange state ordinary: it is the menu's <em>Not serving</em> seen from the window, and it gets the menu's button. This Mac is not affected by it at all.</div>
+      </div>
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">The seam is built on one side only.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaRepository</span> is the boundary on the Client side. On the server side <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeRegistry</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeService</span> are made inside <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MacComposition.init</span> and handed only to <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ApiDependencies</span>; nothing keeps them. The local repository needs the composition to hold them, to map <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ApiError</span> onto <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ApiFailure</span>, and to report a read route of its own: the protocol's default reports <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.reading(.unknown)</span>, which the loading block spells <em>“Waiting for your Mac's response.”</em> There is no response to wait for.</div>
+      </div>
+      <div>
+        <div style="font-size:19px;line-height:1.35;margin-bottom:10px">One server state does stop This Mac.</div>
+        <div style="font-size:15px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">StoreLockingServerHost</span> takes the store's lock for the whole launch. When another process holds it, a reader writing viewed marks, names and reviews into that document is the two-writers case design-mac's answer (b) already refused. So <em>blocked by another process</em> is the single exception to “the local source works when the server does not”, and §4.7 draws it as its own state. Failed and stopped are not exceptions.</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #E3DCCB;margin-top:30px;padding-top:22px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A8378;margin-bottom:10px">Sentences the merge makes false</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#4A463F">General › Startup: <em>“Granita has no window and no Dock icon. If it is not running, your phone finds nothing.”</em> The sidebar's no-projects text, which sends a Mac reader to <em>“Granita's menu bar item on your Mac”</em>. The connecting failure's <em>“Check that Granita is running on your Mac”</em>, which cannot happen on This Mac. The gone worktree's fallback title <em>This worktree</em>, which now sits beside <em>This Mac</em>.</div>
+      </div>
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A8378;margin-bottom:10px">Settings is not quite as briefed</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">SettingsTab</span> and the window ship General, Projects, Devices, <strong style="font-weight:400;color:#23211E">Review, Connections</strong>, Advanced — Review before Connections, not after. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaSettingsScreen</span>'s doc comment still says five tabs. Nothing here depends on the order; it is recorded so §4.3 is reviewed against what is built.</div>
+      </div>
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A8378;margin-bottom:10px">The list has no refresh on a Mac</div>
+        <div style="font-size:14.5px;line-height:1.6;color:#4A463F">The sidebar's only refresh is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.refreshable</span>, and on macOS that modifier draws no gesture. Without a <em>Refresh</em> command the list is read once per window and never again. The drawing adds one: a toolbar button at the head of the sidebar and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘R</span> in the View menu, both calling the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">onRefresh</span> the view already takes.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="feel" style="border-top:2px solid #23211E;padding-top:34px;display:grid;grid-template-columns:1fr 460px;gap:80px">
+    <div>
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">§8's last question &nbsp;·&nbsp; what it is, as one thing</div>
+      <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">A server with a reading room, and a door between them</h2>
+      <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F">The window should feel like Preview open on a long document: a list of what there is to read, the document, and its contents beside it. Nothing in it is about serving, pairing phones or ports. A reader who never owns a phone should be able to use it for a year without learning that Granita serves anything.</p>
+      <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F">The Dock icon makes the whole thing behave like Mail with no window open: running is normal, closing a window means closing a window, and clicking the icon brings the window back where it was. That is the ordinary Mac contract, and it is what keeps <em>close</em> from ever reading as <em>quit</em>.</p>
+      <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F">The status item's “open me twice a year” character survives, and it survives because of the local seam. If the window depended on the server, every reading problem would send the reader to the menu bar to find out why, and the status item would become a place visited daily. It does not, so the menu bar stays the phone's business. The one new habit is <em>Show Worktrees</em>, which is a door rather than a panel.</p>
+    </div>
+    <div style="border-left:1px solid #D8D2C6;padding-left:32px;align-self:start">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">The three surfaces, each in one line</div>
+      <div style="display:flex;flex-direction:column;gap:16px;font-size:15px;line-height:1.6;color:#4A463F">
+        <div><strong style="font-weight:400;color:#23211E">Status item</strong> — the Time Machine menu, unchanged: whether the phone can reach this Mac.</div>
+        <div><strong style="font-weight:400;color:#23211E">Settings</strong> — Terminal's Settings, unchanged: six plain panes, one of them a door target for the window.</div>
+        <div><strong style="font-weight:400;color:#23211E">The window</strong> — Preview on a long document: sources, worktrees, the diff and its contents. Sat in for an hour, closed without consequence.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="calls" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">The calls &nbsp;·&nbsp; recommendation first, then what it beat</div>
+    <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 30px;line-height:1.06">Twelve calls</h2>
+    <div style="display:flex;flex-direction:column">
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">1 · 6(c)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Choosing a source is a pop-up menu at the head of the sidebar.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">One stock pop-up button, labelled with the source it is showing, above the worktree list it chooses for. <em>This Mac</em> is first and ticked by default; discovered Macs follow under a heading; a Mac this device has not paired with ends in an ellipsis because choosing it asks for more. The phone's whole screen becomes six rows, which is the right size for a choice made a few times a year. <a href="#s44">§4.4</a> draws all six states.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> sources as sections of the same sidebar, which puts two Macs' 122-second reads on screen at once and gives the sidebar two meanings; a toolbar control over the diff, which is the far side of the window from the list it changes; a chooser window that opens first, which asks a question whose answer is <em>This Mac</em> nearly every time; and the phone's pushed screen, which is where the back-chevron came from.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">2 · 6(a)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">The file selector is a trailing inspector, open by default, 240pt.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">SwiftUI's <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.inspector</span>, toggled by <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">sidebar.trailing</span> at the end of the toolbar and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌥⌘0</span>. The decisive reason is that <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffPaneLayout</span> already has a fold — <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">showsSelectorColumnToggle</span> — and an inspector is the only Mac container that can fold on its own. The list keeps both of its jobs: it jumps, and it stays on screen to show how much of the change set has been read.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> a third split-view column. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">NavigationSplitViewVisibility</span> has <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.all</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.doubleColumn</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.detailOnly</span> and no case that hides the middle column alone, so the existing fold would have nothing to bind to — and with nothing chosen the window would show two empty columns. A popover, which gives up the second job the moment it closes. A sheet at a detent, which is the thumb idiom the brief rules out.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">3 · 6(b)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">The review takes the same inspector, in the files' place, while it is open.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">This is the iPad's rule moved unchanged: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">showsReviewColumn</span> wins the slot, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">showsSelectorColumnToggle</span> goes while it has it, and the toolbar's bubble-and-count is the way back. Nothing new is decided; the Mac binds the same value to a different container.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> a sheet, which stops the reader scrolling the code the comments are about; a separate window, which outlives a change of worktree and would show one worktree's review beside another's diff; a fourth column, which at 260 + 760 + 240 + 280 is 1540pt and wider than a 13-inch MacBook Air's 1470pt screen.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">4 · 6(d)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">One window. The Dock icon reopens it on the last source and worktree.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">A single <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">Window</span> scene with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">.defaultLaunchBehavior(.suppressed)</span> and restoration off, which is 5(d) in two modifiers. Clicking the Dock icon with no window open opens it; with one minimised, restores it. What it reopens on is remembered in defaults rather than by window restoration, so a login launch still opens nothing. Reopen has to be handled explicitly: the first <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">Window</span> in the scene body is the invisible <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">SettingsOpener</span>, declared first on purpose.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected, for now:</span> a window per worktree. Two agents on one task is a real reason to want two diffs side by side, but the Client has one list model per screen and one review store per worktree, and two windows editing the same marks is a synchronisation problem nobody has designed. The cheap later form is <em>Open in New Window</em> on the row's context menu over a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WindowGroup(for: WorktreeID)</span>.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">5 · 6(e)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Keep pairing for a remote Mac. Drop the camera. Six words, typed or pasted.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended — the call you left open</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">A two-Mac household is the realistic remote case — a laptop reading what an agent wrote on a Mac Studio — and the Client already pairs, so removing it saves nothing. The camera is the wrong half of it here. To scan, the reader would have to carry a laptop round to face another Mac's display; and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">com.apple.security.device.camera</span> would move from <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMobileMac.entitlements</span> onto the one process that listens on a socket and execs git. The six words are already a first-class credential, and this Mac has a keyboard. The field also accepts the words pasted as one line, which is what the Devices pane's Copy button already produces.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">The cost, stated rather than hidden:</span> the words path is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">trustingFirstAnswer</span> — it pins whatever key answered — where the QR carries its pin in the link. On a home network that is a first-use trust decision rather than a verified one. <span style="color:#B4453C">Rejected:</span> keeping the camera for parity with the phone; and dropping remote Macs, which deletes working code to save one sheet.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">6 · 6(f)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Say it once, in the source menu. Never in the window's chrome.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended — your 5(e) call</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F"><em>This Mac</em> carries a menu-item subtitle — <em>“Read on this Mac, without the network”</em> — because the menu is the one place sources are compared, so it is the one place the difference is a choice. In the window the source appears only as the second half of the title's subtitle, <em>granita · This Mac</em>, which is also what tells two remote windows' worth of Macs apart. There is no banner, badge or line about the server, ever: the window holds only the reader (5(c)), and the status item already answers that question.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> a sidebar footer or badge saying <em>local</em>, which is chrome a reader sits in front of for an hour to learn something once; a <em>Server not running — still reading</em> notice, which makes the window report on the server and invites the question it is trying to answer; and saying nothing anywhere, which leaves the menu's two kinds of row looking the same when they cost differently.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">7 · 5(g)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Default 1260 × 800pt. Minimum 640 × 480pt.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended — derivation in <a href="#s45">§4.5</a></div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">The width is three columns added up: a 260pt sidebar, a 760pt diff and a 240pt inspector. The height is what a 13-inch MacBook Air shows under its menu bar and above its Dock. The minimum is the diff's floor plus the inspector's, with the sidebar folded: 420 + 220. Unlike Settings, it resizes; unlike Settings, nothing in it is a fixed-size picture.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> the iPad's 320 / 320 / 554, which is iOS type sizes measured in iOS points; and a fixed size like Settings, which would forbid the one thing a Mac reader will do in the first minute — make the diff wider.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">8 · 4.2</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px"><em>Show Worktrees</em>, first in the menu's second group, in every state.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">Directly under the status line's divider and above <em>Pair a device…</em>. No ellipsis, because it asks nothing further. When the window is already open the same row activates the app and brings the window forward; the label does not change. It is enabled in all six server states, because the window always has something true to say — including when the store is held by another process. <a href="#s42">§4.2</a> redraws the menu.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> <em>Open Granita</em>, which names an app that is already running; above the status line, which takes the glance's first line away from the glance; a group of its own, which is a fourth group for one row; and a verb that flips to <em>Hide Worktrees</em>, which makes a reader read the row every time and duplicates <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘W</span>.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">9 · 5(a)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Close closes. Quit quits, with no alert, from either menu.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">The red button and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘W</span> close the window; the Dock icon stays lit and the status item stays put, which is how a Mac shows that an app is still running. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘Q</span> from the app menu and <em>Quit Granita</em> from the status menu are the same act and behave the same. This wants a UI test in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMacUiTests</span> rather than trust: a SwiftUI app whose only window scene is closed can terminate, and here that would be a server that stopped for a reason its owner cannot see.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> a <em>Quit Granita?</em> alert, which a login item would show every time its owner quits it on purpose; and hiding the Dock icon when the window closes by switching activation policy, which breaks 5(a) and makes the Dock icon a window indicator that jumps in and out of <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘-Tab</span>.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">10 · 4.5</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">The back-chevron goes because the detail stops being a stack.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">On the iPad the detail column is a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">NavigationStack</span> and a chosen row is pushed onto it, which is where the chevron comes from and why the worktree list is replaced by <em>Files</em> in the iPad baseline. On the Mac the list binds a selection — <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">List(selection:)</span> — and the detail draws the chosen worktree directly. Nothing is pushed, so there is nothing to go back from, and the worktree list stays where it is. The iPad keeps its links, per 5(j).<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> hiding the chevron with a toolbar modifier, which leaves a push the reader cannot see and a stack that still needs a way out.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">11 · 5(i)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">The row gets nothing new. The file count simply stops dropping.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Recommended</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">The Mac's text styles are smaller than iOS's — headline 13pt against 17, subheadline 11 against 15 — so the 260pt sidebar holds more than the iPad's 320. The second line has about 190pt, and the fixture's widest, <em>granita · 34 files · +1,204 −318</em>, needs about 186. What the width buys is that the first field in the drop order stays on realistic rows. Spending it on a new field would make the drop order live again on exactly the rows it just stopped touching.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> the branch under an alias, which is the rename sheet's business; and a single-line Mac row, which would respend the two name tiers.</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:60px 400px 1fr;gap:32px;padding:24px 0;border-top:1px solid #D8D2C6;border-bottom:1px solid #D8D2C6">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px;color:#8A8378">12 · 5(c)</div>
+        <div>
+          <div style="font-size:21px;line-height:1.3;margin-bottom:8px">Nothing moves off the status item, and the phone's settings sheet does not come to the Mac.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Agreed, and drawn so</div>
+        </div>
+        <div style="font-size:15.5px;line-height:1.6;color:#4A463F">5(c) holds as written. What it leaves open is where the reader's own preferences go, since on the phone they live in the sheet behind the sidebar's <em>Review settings…</em>. On the Mac they become the View menu, which is where a Mac puts them: <em>Side by Side</em>, the code size as <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘+</span> <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘−</span> <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">⌘0</span>, and <em>Code Colours</em>. Appearance follows the system, as Settings does. For This Mac, <em>Review settings…</em> becomes a door to Settings › Review — the same door <em>Pair a device…</em> is to Devices. For a remote Mac it opens the existing review form as a window sheet, since those two values belong to that Mac. <a href="#s43">§4.3</a> draws the View menu.<div style="margin-top:10px;color:#6A655C"><span style="color:#B4453C">Rejected:</span> a seventh Settings pane for the reader, which breaks 5(c); and bringing the phone's sheet across whole, which puts a forced-appearance picker and <em>Follow system</em> code size on a platform with no Dynamic Type.</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="s41" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#E7E2D8;color:#5E594F">Review · built, baselined</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.1 &nbsp;·&nbsp; the status item</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">It keeps answering the same question, and it becomes a better answer</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Recommendation: no change.</strong> It says whether the phone can reach this Mac, in three symbols, with no text. A Dock icon and a window do not give it a second job — they take one away. Under <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">LSUIElement</span> the symbol had to stand for “Granita is running” as well, because nothing else could; after the merge the Dock and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">⌘-Tab</span> say that, and the triangle means only what <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">MenuBarLabel</span>'s doc comment already says it means.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F">It must not learn anything about the window. A symbol that changed while a worktree was open, or counted what was unread, would be the menu bar reporting on reading — and 5(f)'s arithmetic applies to anything it counts.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Rejected</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">A fourth symbol for “serving, and the reader is open”, which answers a question nobody asks the menu bar. Dropping the status item now that there is a Dock icon, which 5(c) rules out and which would hide the server's state whenever the window is shut — the normal case for a login item.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="background:#ECECF0;padding:14px 22px;border:1px solid #D8D2C6;display:flex;gap:24px;align-items:center"><img src="baselines/status-item-serving-light.png" style="width:44px;height:22px"><img src="baselines/status-item-starting-light.png" style="width:44px;height:22px"><img src="baselines/status-item-failed-light.png" style="width:44px;height:22px"></div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378">status-item · serving, starting, failed = stopped · light</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><div style="background:#26262A;padding:14px 22px;border:1px solid #D8D2C6;display:flex;gap:24px;align-items:center"><img src="baselines/status-item-serving-dark.png" style="width:44px;height:22px"><img src="baselines/status-item-starting-dark.png" style="width:44px;height:22px"><img src="baselines/status-item-failed-dark.png" style="width:44px;height:22px"></div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378">the same three · dark</div></div>
+      <div style="font-size:14px;line-height:1.55;color:#6A655C;max-width:46ch;align-self:center">Six of the eight baselines; failed and stopped are byte-identical, by design. Nothing here is redrawn.</div>
+    </div>
+  </div>
+
+  <div id="s42" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#E7E2D8;color:#5E594F">Review · built, baselined</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.2 &nbsp;·&nbsp; the menu, and the one row it gains</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">One row, under the glance, in every state</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E"><em>Show Worktrees</em> goes first in the second group</strong>, between the status line's divider and <em>Pair a device…</em>. The first line stays the glance. The second group is where the menu's verbs live, and this is the one a reader will press most.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">When the window is already open</strong> the row activates Granita and orders the window front — the same thing a Dock click does — so pressing it is never a no-op, which is the thing this project refuses to ship. The label does not change with the window's state.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">It is enabled in all six server states.</strong> Serving or not, the window can read This Mac; blocked, the window opens and says in one sentence why This Mac cannot be read and that other Macs can. <em>Pair a device…</em> keeps its own rule, disabled under <em>Not serving</em>, because the QR encodes an address that does not exist.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Why the menu does not change otherwise</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MenuBarContent</span>'s doc comment says each row earns its place because “this menu is the entire app when Settings is shut”. That reason expires, and the rows stay anyway, each for a reason of its own: the status line copies an address nobody can memorise, <em>Pair a device…</em> is the one gesture a new phone needs, and a login item needs a <em>Quit</em> that does not require opening a window first. The doc comment is what changes.</div>
+      </div>
+    </div>
+
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#8A8378;margin-bottom:12px">As built &nbsp;·&nbsp; menu-serving, menu-failed, menu-blocked-by-another-process, light · menu-serving, dark</div>
+    <div style="display:flex;gap:24px;margin-bottom:44px;flex-wrap:wrap">
+      <img src="baselines/menu-serving-light.png" style="width:320px;border:1px solid #D8D2C6">
+      <img src="baselines/menu-failed-light.png" style="width:320px;border:1px solid #D8D2C6">
+      <img src="baselines/menu-blocked-by-another-process-light.png" style="width:320px;border:1px solid #D8D2C6">
+      <img src="baselines/menu-serving-dark.png" style="width:320px;border:1px solid #D8D2C6">
+    </div>
+
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="margin-bottom:36px">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:4px 8px;background:#DCE8DE;color:#2F6B3C">Redrawn</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">serving · not serving · blocked &nbsp;·&nbsp; {{ t.name }}</div></div>
+        <div style="{{ t.s }}">
+          <div style="background:var(--desk);padding:0 0 30px;display:flex;gap:0;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased;border:1px solid #D8D2C6">
+
+            <div style="flex:1;display:flex;flex-direction:column;align-items:flex-end;padding-right:40px">
+              <div style="height:24px;background:var(--bar);align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px"><div style="background:var(--sel);border-radius:5px;padding:1px 6px;display:flex"><img src="{{ t.serving }}" style="width:44px;height:22px"></div><div style="font-size:13px">Wed 23 Sep 14:20</div></div>
+              <div style="width:320px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);margin:4px 108px 0 0;display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;gap:8px;padding:4px 10px;border-radius:6px"><svg width="14" height="16" fill="none" stroke="currentColor" style="stroke-width:1.1;flex:none"><rect x="3.6" y="0.6" width="9.8" height="11.8" rx="1.8"></rect><path d="M1 3.8V13.4A2 2 0 0 0 3 15.4H10.4"></path></svg><span>Serving on macbook-pro.local:59144</span></div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px;background:var(--hi);color:#FFFFFF">Show Worktrees</div>
+                <div style="padding:4px 10px;border-radius:6px">Pair a device…</div>
+                <div style="padding:4px 10px;border-radius:6px">Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px">Quit Granita</div>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;align-items:flex-end;padding-right:40px">
+              <div style="height:24px;background:var(--bar);align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px"><div style="background:var(--sel);border-radius:5px;padding:1px 6px;display:flex"><img src="{{ t.failed }}" style="width:44px;height:22px"></div><div style="font-size:13px">Wed 23 Sep 14:20</div></div>
+              <div style="width:320px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);margin:4px 108px 0 0;display:flex;flex-direction:column">
+                <div style="padding:4px 10px;color:var(--ink2)">Not serving</div>
+                <div style="padding:4px 10px;border-radius:6px">Open Local Network Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px">Show Worktrees</div>
+                <div style="padding:4px 10px;border-radius:6px;color:var(--ink3)">Pair a device…</div>
+                <div style="padding:4px 10px;border-radius:6px">Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px">Quit Granita</div>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;align-items:flex-end;padding-right:40px">
+              <div style="height:24px;background:var(--bar);align-self:stretch;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 12px"><div style="background:var(--sel);border-radius:5px;padding:1px 6px;display:flex"><img src="{{ t.failed }}" style="width:44px;height:22px"></div><div style="font-size:13px">Wed 23 Sep 14:20</div></div>
+              <div style="width:320px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);margin:4px 108px 0 0;display:flex;flex-direction:column">
+                <div style="padding:4px 10px;color:var(--ink2);text-wrap:pretty">Not serving — granita-server (process 4213) has the settings</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px">Show Worktrees</div>
+                <div style="padding:4px 10px;border-radius:6px;color:var(--ink3)">Pair a device…</div>
+                <div style="padding:4px 10px;border-radius:6px">Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px;border-radius:6px">Quit Granita</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </sc-for>
+    <div style="font-size:15px;line-height:1.6;color:#6A655C;max-width:90ch">Starting, stopped and blocked-by-an-unreadable-process differ from these three only in the status group, which is unchanged; <em>Show Worktrees</em> is the same enabled row in all of them. The highlight in the first frame is the pointer resting on it, to show the new row's position — not a default selection.</div>
+  </div>
+
+  <div id="s43" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#E7E2D8;color:#5E594F">Review · built, baselined</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.3 &nbsp;·&nbsp; the Settings window, as context</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">A fixed panel beside a resizable document is the most ordinary thing a Mac does</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">It is not wrong to put a differently shaped window beside it.</strong> Mail, Safari, Xcode and Terminal itself pair a fixed Settings panel with a resizable main window, and they are different shapes because they are different kinds of window: one is opened, changed and shut; the other is sat in. Making the reader match Settings would forbid resizing it; making Settings match the reader would undo 5(g). The visual language they share is the one that matters — stock controls, semantic colours, SF Symbols, and the grouped form's section headers.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">One sentence in it becomes false.</strong> General's Startup footnote reads <em>“Granita has no window and no Dock icon. If it is not running, your phone finds nothing.”</em> It is the only line in the six panes the merge contradicts. Suggested: <em>“Closing Granita's window leaves it serving. If Granita is not running, your phone finds nothing.”</em> — the first sentence is the thing 5(a) most needs a reader to know, and this footnote sits under the toggle that decides whether Granita runs at all.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Two doors into it from the window</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">The window opens Settings on a particular pane in three places, all through the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">requestSettings(showing:)</span> the menu already uses: <em>Open Projects Settings…</em> when This Mac has nothing enabled, <em>Open Local Network Settings…</em> is the system's own pane rather than ours, and <em>Review settings…</em> for This Mac lands on Review. No pane is added and none is redrawn.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:40px;margin-bottom:48px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:8px"><img src="baselines/settings-window-serving-general-light.png" style="width:620px;border:1px solid #D8D2C6"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378">settings-window · serving-general · light — the footnote under Startup is the false one</div></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><img src="baselines/settings-window-serving-projects-light.png" style="width:620px;border:1px solid #D8D2C6"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378">settings-window · serving-projects · light — the target of This Mac's empty state</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:28px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">call 12 &nbsp;·&nbsp; where the phone's sheet goes: the View menu</div></div>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F">Four of the phone sheet's settings are about how this device draws code, and a Mac keeps those in View. <em>Bigger</em>, <em>Smaller</em> and <em>Actual Size</em> write the <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">CodeSize</span> setting's <em>Custom</em> value, and <em>Actual Size</em> returns it to 12pt; a Mac has no Dynamic Type for <em>Follow system</em> to follow. <em>Hide Files</em> is the inspector's fold. <em>Refresh</em> is the list's missing gesture.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">Every item works or is absent. <em>Hide Files</em> is absent when <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">showsSelectorColumnToggle</span> is false; <em>Side by Side</em> is disabled only where the side-by-side round already disables it, with that round's reason as its tooltip.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:40px">
+      <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="{{ t.s }}">
+            <div style="width:560px;height:392px;background:var(--desk);font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased;border:1px solid #D8D2C6;position:relative">
+              <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:18px;padding:0 14px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span style="background:var(--sel);border-radius:5px;padding:2px 7px;margin:0 -7px">View</span><span>Window</span><span>Help</span></div>
+              <div style="position:absolute;left:128px;top:27px;width:280px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Refresh</span><span style="color:var(--ink2)">⌘R</span></div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Hide Sidebar</span><span style="color:var(--ink2)">⌃⌘S</span></div>
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Hide Files</span><span style="color:var(--ink2)">⌥⌘0</span></div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="display:flex;padding:4px 10px;gap:6px;margin-left:-4px"><span style="width:12px">✓</span><span style="flex:1">Side by Side</span></div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Bigger</span><span style="color:var(--ink2)">⌘+</span></div>
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Smaller</span><span style="color:var(--ink2)">⌘−</span></div>
+                <div style="display:flex;padding:4px 10px"><span style="flex:1">Actual Size</span><span style="color:var(--ink2)">⌘0</span></div>
+                <div style="display:flex;padding:4px 10px;border-radius:6px;background:var(--hi);color:#FFFFFF"><span style="flex:1">Code Colours</span><span>›</span></div>
+              </div>
+              <div style="position:absolute;left:404px;top:246px;width:150px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                <div style="display:flex;padding:4px 10px;gap:6px;margin-left:-4px"><span style="width:12px">✓</span><span>Xcode</span></div>
+                <div style="display:flex;padding:4px 10px;gap:6px;margin-left:-4px"><span style="width:12px"></span><span>Accessible</span></div>
+                <div style="display:flex;padding:4px 10px;gap:6px;margin-left:-4px"><span style="width:12px"></span><span>Atom One</span></div>
+                <div style="display:flex;padding:4px 10px;gap:6px;margin-left:-4px"><span style="width:12px"></span><span>GitHub</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:#8A8378">View menu · {{ t.name }} · Code Colours lists the appearance round's five pairs; four shown</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="s45" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.5 &nbsp;·&nbsp; the reader window — drawn first, because §4.4 is a control inside it</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">Worktrees, the diff, and its contents, with nothing pushed</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">The sidebar</strong> is the source pop-up, <em>Refresh</em> and the existing <em>Arrange</em> menu on one line, then the worktree list exactly as built: its sections, its two-tier rows, its quiet-worktrees line. Stock sidebar selection, which is grey while the diff has focus.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">The toolbar</strong> carries the worktree's name as the window title and <em>project · source</em> as its subtitle, then the diff screen's existing items — <em>Side by Side</em> and, once a comment exists, the review's bubble and count — and the inspector's fold at the far end, over the inspector it folds. The sidebar's fold sits beside the traffic lights, where the system puts it.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">The back-chevron is gone</strong>, per call 10: the Mac's list binds a selection and the detail draws it, so there is no push to go back from and the worktree list never leaves the screen.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">What it replaces</div>
+        <img src="baselines/split-with-a-worktree-chosen-iPad-light.png" style="width:100%;border:1px solid #D8D2C6;display:block">
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px">split-with-a-worktree-chosen · iPad · light. The Client on a Mac draws this today: the worktree list pushed off, <em>Files</em> in its place, and a chevron back to it.</div>
+      </div>
+    </div>
+
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="margin-bottom:44px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A;margin-bottom:12px">A worktree chosen and reading &nbsp;·&nbsp; 1260 × 800pt, the default size, at 1:1 &nbsp;·&nbsp; {{ t.name }}</div>
+        <div style="{{ t.s }}">
+          <div style="background:var(--desk);padding:0 0 34px;border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+            <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:18px;padding:0 14px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span><span style="flex:1"></span><img src="{{ t.serving }}" style="width:44px;height:22px"><span>Wed 23 Sep 14:20</span></div>
+            <div style="padding:26px 0 0 28px">
+            <div style="width:1260px;height:800px;border-radius:16px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+
+              <div style="width:260px;flex:none;padding:8px 0 8px 8px;box-sizing:border-box;display:flex">
+                <div style="flex:1;background:var(--side);border-radius:12px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                  <div style="height:44px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px">
+                    <div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div>
+                    <div style="flex:1"></div>
+                    <div style="width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="5.6" y1="0.6" x2="5.6" y2="13.4"></line></svg></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:2px;padding:2px 8px 8px 10px">
+                    <div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex;margin-left:2px"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                    <div style="flex:1"></div>
+                    <div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="15" height="15" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M12.8 7.5A5.3 5.3 0 1 1 11.2 3.7"></path><path d="M11.8 1.2V4.2H8.8"></path></svg></div>
+                    <div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2"><circle cx="8" cy="8" r="7"></circle><circle cx="4.9" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="11.1" cy="8" r="0.9" fill="currentColor" stroke="none"></circle></svg></div>
+                  </div>
+                  <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:8px 18px 4px">Pinned</div>
+                  <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline;background:var(--sel)"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">TLS pinning</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">granita · 12 files · <span style="color:var(--grn)">+248</span> <span style="color:var(--red)">−31</span></div></div><div style="font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums">4m</div></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:14px 18px 4px">granita</div>
+                  <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Make the diff scroll never reflow above the reader's line</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">34 files · <span style="color:var(--grn)">+1,204</span> <span style="color:var(--red)">−318</span></div></div><div style="font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums">22m</div></div>
+                  <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">feat/session-index</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">3 files · <span style="color:var(--grn)">+47</span> <span style="color:var(--red)">−6</span></div></div><div style="font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums">2h</div></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:14px 18px 4px">aura</div>
+                  <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font:600 12.5px/16px var(--mono);word-break:break-all">bridge-cse_01W9sY8PbT2Du1…</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">detached · 8 files · <span style="color:var(--grn)">+96</span> <span style="color:var(--red)">−204</span></div></div><div style="font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums">5h</div></div>
+                  <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">Fix the coverage script's 3.13 warning</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">1 file · <span style="color:var(--grn)">+2</span> <span style="color:var(--red)">−2</span></div></div><div style="font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums">1d</div></div>
+                  <div style="font-size:11px;color:var(--acc);padding:16px 18px;line-height:1.4">2 worktrees with no changes are hidden. Show them.</div>
+                </div>
+              </div>
+
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 10px 0 18px;gap:10px">
+                  <div style="display:flex;flex-direction:column;gap:1px"><div style="font-size:13px;font-weight:700">TLS pinning</div><div style="font-size:11px;color:var(--ink2)">granita · This Mac</div></div>
+                  <div style="flex:1"></div>
+                  <div style="display:flex;height:32px;border-radius:16px;background:var(--glass);box-shadow:0 0 0 0.5px var(--glassb),0 1px 4px rgba(0,0,0,0.08);padding:0 4px;align-items:center">
+                    <div style="width:36px;height:32px;display:flex;align-items:center;justify-content:center"><svg width="18" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="16.8" height="12.8" rx="2.4"></rect><line x1="9" y1="0.6" x2="9" y2="13.4"></line></svg></div>
+                    <div style="height:32px;display:flex;align-items:center;gap:5px;padding:0 10px 0 8px"><svg width="18" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2;stroke-linejoin:round"><path d="M3.4 1H14.6A2.4 2.4 0 0 1 17 3.4V9.2A2.4 2.4 0 0 1 14.6 11.6H8.4L4.6 14.8V11.6H3.4A2.4 2.4 0 0 1 1 9.2V3.4A2.4 2.4 0 0 1 3.4 1Z"></path><path d="M5 4.6H13M5 7.8H10.6" style="stroke-linecap:round"></path></svg><span style="font-size:12px;font-variant-numeric:tabular-nums">2</span></div>
+                  </div>
+                  <div style="width:32px;height:32px;border-radius:16px;background:var(--glass);box-shadow:0 0 0 0.5px var(--glassb),0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="10.4" y1="0.6" x2="10.4" y2="13.4"></line></svg></div>
+                </div>
+                <div style="flex:1;min-height:0;display:flex">
+                  <div style="flex:1;min-width:0;background:var(--page);overflow:hidden;display:flex;flex-direction:column;gap:10px;padding-top:2px">
+
+                    <div style="background:var(--card);flex:none">
+                      <div style="height:46px;display:flex;align-items:center;gap:9px;padding:0 12px 0 10px;border-bottom:0.5px solid var(--sep)">
+                        <svg width="10" height="6" fill="none" stroke="currentColor" style="stroke-width:1.3;color:var(--ink2);stroke-linecap:round;stroke-linejoin:round"><path d="M1 1L5 5L9 1"></path></svg>
+                        <div style="width:3px;height:22px;background:#C8912E;border-radius:1.5px"></div>
+                        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">HttpServerPairing.swift</div><div style="font:10px/1.3 var(--mono);color:var(--ink2)">Packages/Granita/Client/Connection/Data</div></div>
+                        <div style="font-size:12px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+12</span> <span style="color:var(--red)">−4</span></div>
+                        <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.2px var(--ink3);margin-left:8px"></div>
+                      </div>
+                      <div style="height:28px;display:flex;align-items:center;background:var(--exp);color:var(--expi);font:11.5px/1 var(--mono);padding:0 12px 0 16px;gap:16px"><span>⇡</span><span style="flex:1">func health() async throws(ApiFailure) -&gt; HealthResponse</span><span>137 lines</span></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">138</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--com)">    /// Reads the Mac's health before spending anything.</div></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">139</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">func</span> health() <span style="color:var(--kw)">async throws</span>(<span style="color:var(--typ)">ApiFailure</span>) -&gt; <span style="color:var(--typ)">HealthResponse</span> {</div></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">140</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--kw)">let</span> request = <span style="color:var(--typ)">Request</span>(path: <span style="color:var(--str)">"/v1/health"</span>)</div></div>
+                      <div style="display:flex;height:19px;align-items:center;background:var(--del)"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">141</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--red)">−</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">let</span> trust = <span style="color:var(--kw)">try await</span> verify(<span style="background:var(--dels)">cert</span>)</div></div>
+                      <div style="display:flex;height:19px;align-items:center;background:var(--add)"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">141</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">let</span> trust = <span style="color:var(--kw)">try await</span> verify(<span style="background:var(--adds)">certificate</span>)</div></div>
+                      <div style="display:flex;height:19px;align-items:center;background:var(--add)"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">142</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">guard</span> trust.isPinned <span style="color:var(--kw)">else</span> { <span style="color:var(--kw)">throw</span> .notUnderstood(diagnostic: <span style="color:var(--kw)">nil</span>) }</div></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">143</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    }</div></div>
+                      <div style="height:28px;display:flex;align-items:center;background:var(--exp);color:var(--expi);font:11.5px/1 var(--mono);padding:0 14px 0 64px;gap:18px"><span style="flex:1">1060 lines not shown</span><span>⌃</span><span>⌄</span></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">1203</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">private let</span> reshapingScriptRanges: [<span style="color:var(--typ)">ClosedRange</span>&lt;<span style="color:var(--typ)">UInt32</span>&gt;] = [</div></div>
+                      <div style="display:flex;height:19px;align-items:center;background:var(--add)"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">1204</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--num)">0x0590</span>...<span style="color:var(--num)">0x08FF</span>, <span style="color:var(--com)">// Hebrew, Arabic, Syriac, Thaana, N'Ko, Samaritan, Arabic extended A</span></div></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">1205</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    ]</div></div>
+                      <div style="height:6px"></div>
+                    </div>
+
+                    <div style="background:var(--card);flex:none">
+                      <div style="height:46px;display:flex;align-items:center;gap:9px;padding:0 12px 0 10px;border-bottom:0.5px solid var(--sep)">
+                        <svg width="10" height="6" fill="none" stroke="currentColor" style="stroke-width:1.3;color:var(--ink2);stroke-linecap:round;stroke-linejoin:round"><path d="M1 1L5 5L9 1"></path></svg>
+                        <div style="width:3px;height:22px;background:var(--grn);border-radius:1.5px"></div>
+                        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">ContinuousDiffView.swift</div><div style="font:10px/1.3 var(--mono);color:var(--ink2)">Packages/Granita/Client/Viewer/Ui</div></div>
+                        <div style="font-size:12px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+68</span></div>
+                        <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.2px var(--ink3);margin-left:8px"></div>
+                      </div>
+                      <div style="background:var(--add)">
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">1</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)"><span style="color:var(--kw)">import</span> SwiftUI</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">2</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">3</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--com)">/// One scroll for every file in a worktree, in the order the selector lists them.</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">4</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)"><span style="color:var(--kw)">struct</span> ContinuousDiffView: <span style="color:var(--typ)">View</span> {</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">5</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">let</span> entries: [<span style="color:var(--typ)">ContinuousDiffEntry</span>]</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">6</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">let</span> lineHeight: <span style="color:var(--typ)">CGFloat</span></div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">7</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">let</span> onReachEnd: () -&gt; <span style="color:var(--typ)">Void</span></div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">8</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">9</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">var</span> body: <span style="color:var(--kw)">some</span> <span style="color:var(--typ)">View</span> {</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">10</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--typ)">ScrollView</span> {</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">11</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--typ)">LazyVStack</span>(alignment: .leading, spacing: <span style="color:var(--num)">12</span>) {</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">12</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">                <span style="color:var(--typ)">ForEach</span>(entries) { entry <span style="color:var(--kw)">in</span></div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">13</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">                    <span style="color:var(--typ)">DiffFileCard</span>(entry: entry, lineHeight: lineHeight)</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">14</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">                }</div></div>
+                      </div>
+                    </div>
+
+                    <div style="background:var(--card);flex:none">
+                      <div style="height:46px;display:flex;align-items:center;gap:9px;padding:0 12px 0 10px;border-bottom:0.5px solid var(--sep)">
+                        <svg width="10" height="6" fill="none" stroke="currentColor" style="stroke-width:1.3;color:var(--ink2);stroke-linecap:round;stroke-linejoin:round"><path d="M1 1L5 5L9 1"></path></svg>
+                        <div style="width:3px;height:22px;background:var(--org);border-radius:1.5px"></div>
+                        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">WordDiff.swift</div><div style="font:10px/1.3 var(--mono);color:var(--ink2)">Packages/Granita/Core/Diff/Domain</div></div>
+                        <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;color:var(--org)">CONFLICTED</div>
+                        <div style="font-size:12px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+3</span> <span style="color:var(--red)">−2</span></div>
+                        <div style="width:16px;height:16px;border-radius:8px;box-shadow:inset 0 0 0 1.2px var(--ink3);margin-left:8px"></div>
+                      </div>
+                      <div style="height:28px;display:flex;align-items:center;background:var(--exp);color:var(--expi);font:11.5px/1 var(--mono);padding:0 12px 0 16px;gap:16px"><span>⇡</span><span style="flex:1">func merged() -&gt; [WordSegment]</span><span>60 lines</span></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">61</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--kw)">let</span> segments = pair(old, new)</div></div>
+                      <div style="display:flex;height:19px;align-items:center;background:var(--cfl)"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">62</div><div style="width:18px;flex:none"></div><div style="font:600 12px/1 var(--mono);white-space:pre;color:var(--ink)">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</div></div>
+                      <div style="display:flex;height:19px;align-items:center"><div style="width:46px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">63</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--kw)">return</span> segments.merged()</div></div>
+                    </div>
+
+                  </div>
+
+                  <div style="width:240px;flex:none;background:var(--bg);border-left:0.5px solid var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                    <div style="display:flex;align-items:center;padding:8px 12px 8px 14px"><div style="font-size:13px;font-weight:700;flex:1">Files</div><span style="color:var(--acc);display:flex"><svg width="16" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2"><circle cx="8" cy="8" r="7"></circle><circle cx="4.9" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="11.1" cy="8" r="0.9" fill="currentColor" stroke="none"></circle></svg></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Apps/GranitaMobileConnectionTests</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">LoopbackTlsServer.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums;color:var(--grn)">+5</span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PinnedConnectionTests.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+3</span> <span style="color:var(--red)">−5</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Packages/Granita</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Client/Connection</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 38px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Data</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 53px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">HttpServerPairing.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+12</span> <span style="color:var(--red)">−4</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 53px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PinnedTransport.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums;color:var(--grn)">+84</span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 38px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Domain</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 53px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2)">ApiFailure.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+6</span> <span style="color:var(--red)">−1</span></span><span style="width:14px;color:var(--acc);font-size:11px;text-align:center">✓</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 53px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">SpkiFingerprint.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+22</span> <span style="color:var(--red)">−3</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Client/Viewer/Ui</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ContinuousDiffView.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums;color:var(--grn)">+68</span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">DiffPalette.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+4</span> <span style="color:var(--red)">−4</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Core/Diff/Domain</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">DiffModels.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+9</span> <span style="color:var(--red)">−2</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--org)">C</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WordDiff.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+3</span> <span style="color:var(--red)">−2</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Server/Identity/Data</span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">KeychainServerIdentityStore.swift</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+31</span> <span style="color:var(--red)">−9</span></span><span style="width:14px"></span></div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">project.yml</span><span style="font-size:10px;font-variant-numeric:tabular-nums"><span style="color:var(--grn)">+1</span> <span style="color:var(--red)">−1</span></span><span style="width:14px"></span></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+
+    <div id="size" style="display:grid;grid-template-columns:1fr 1fr;gap:56px;margin:8px 0 56px;border:1px solid #D8D2C6;background:#FBFAF7;padding:30px 34px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">5(g) &nbsp;·&nbsp; the default, 1260 × 800pt, and where each number comes from</div>
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:12px 20px;font-size:15px;line-height:1.55;color:#4A463F">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">7.2pt</div><div>One character of code: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">codePointSizeBesideTheSelector</span> is 12pt, because the inspector is beside it, and SF Mono advances 0.6em.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">60pt</div><div>The gutter at four figures, by <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffGutter</span>'s own rule at 12pt: 4 + 4 × 7.2 + 9, then the 12pt marker and 6pt gap.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">760pt</div><div>The diff. It is the width the side-by-side round already drew the Mac at, and it holds (760 − 60 − 16) ÷ 7.2 = <strong style="font-weight:400;color:#23211E">95 characters</strong> unified and about 45 a side split — past the 554pt, 67-character width §6(a) calls pleasant, and close to the 100-column line length most of these repositories are formatted to.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">260pt</div><div>The sidebar. The iPad's 320 at a 17pt headline is 320 × 13 ⁄ 17 = 245 at the Mac's 13pt; 260 is what lets the file count survive the fixture's widest row (call 11).</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">240pt</div><div>The inspector. The iPad's 320 at a 15pt subheadline is 320 × 11 ⁄ 15 = 235 at the Mac's 11pt.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">800pt</div><div>A 13-inch MacBook Air is 1470 × 956pt; less a 37pt menu bar under the notch and a default Dock, about 850pt is visible. 800 fits with room for the shadow and shows (800 − 52) ÷ 19 = <strong style="font-weight:400;color:#23211E">39 rows</strong> of code under the toolbar.</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">The minimum, 640 × 480pt, and what folds on the way down</div>
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:12px 20px;font-size:15px;line-height:1.55;color:#4A463F">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">420pt</div><div>The diff's floor: the phone's 49 characters at 12pt, 49 × 7.2 + 60 + 8. It also keeps side by side above that round's 20-a-side floor, at 22 a side, so the toolbar item never has to disable itself inside the window's own range.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">220pt</div><div>The inspector's minimum, where the file row has dropped its figures and still holds a name.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">900pt</div><div>Below 260 + 420 + 220 the sidebar folds, which the split view does on its own. Folding it first is right: a reader switches worktree a few times an hour and reads the whole time.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">640pt</div><div>420 + 220. Below this the only thing left to fold is the inspector, so this is the floor. It is 20pt from Settings' 620 by coincidence; neither number is derived from the other.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">480pt</div><div>A 52pt toolbar, one 46pt file header and 20 rows of 19pt.</div>
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:14px;color:#23211E">one constant</div><div><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffPaneLayout.selectorColumnWidth</span> is 320 and the Code size screen subtracts it. On the Mac it is 240, so it has to become a per-platform value — not a changed one, per 5(j).</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:26px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">§4.5, two more states &nbsp;·&nbsp; nothing chosen, and a worktree that is no longer listed</div>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Nothing chosen</strong> is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">NoWorktreeChosenView</span> unchanged, in the detail, with the toolbar holding only the source's name. It is drawn only while the sidebar is listing: when the sidebar is itself an empty or failed state, the detail shows nothing, because <em>“Pick one from the list”</em> under a sidebar with no list is an instruction that cannot be followed. The iPad draws exactly that today; the Mac gates it.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">No longer listed</strong> replaces the diff rather than titling it <em>This worktree</em> the way the iPad does. On a Mac the list and the detail are on screen together, so a diff under no highlighted row reads as the list being wrong — and its viewed marks and comments would be refused with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">worktreeGone</span>. The name is the one captured when the row was chosen. There is no button: the next move is a row in the sidebar.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Drawn at 680 × 460pt</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">Above the minimum and below the 900pt at which the sidebar would fold with a worktree open. Neither state has a worktree open, so the inspector is not shown and the sidebar keeps its width.</div>
+      </div>
+    </div>
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="display:flex;gap:40px;margin-bottom:36px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">Nothing chosen yet · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);padding:18px;border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+                <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex">
+                  <div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                    <div style="height:42px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px"><div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div><div style="flex:1"></div><div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="5.6" y1="0.6" x2="5.6" y2="13.4"></line></svg></div></div>
+                    <div style="display:flex;align-items:center;gap:2px;padding:2px 8px 8px 10px"><div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex;margin-left:2px"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div><div style="flex:1"></div><div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="15" height="15" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M12.8 7.5A5.3 5.3 0 1 1 11.2 3.7"></path><path d="M11.8 1.2V4.2H8.8"></path></svg></div><div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2"><circle cx="8" cy="8" r="7"></circle><circle cx="4.9" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="11.1" cy="8" r="0.9" fill="currentColor" stroke="none"></circle></svg></div></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:8px 18px 4px">Pinned</div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">TLS pinning</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">granita · 12 files · <span style="color:var(--grn)">+248</span> <span style="color:var(--red)">−31</span></div></div><div style="font-size:11px;color:var(--ink2)">4m</div></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:14px 18px 4px">granita</div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Make the diff scroll never reflow above the reader's line</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">34 files · <span style="color:var(--grn)">+1,204</span> <span style="color:var(--red)">−318</span></div></div><div style="font-size:11px;color:var(--ink2)">22m</div></div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">feat/session-index</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">3 files · <span style="color:var(--grn)">+47</span> <span style="color:var(--red)">−6</span></div></div><div style="font-size:11px;color:var(--ink2)">2h</div></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:14px 18px 4px">aura</div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">Fix the coverage script's 3.13 warning</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">1 file · <span style="color:var(--grn)">+2</span> <span style="color:var(--red)">−2</span></div></div><div style="font-size:11px;color:var(--ink2)">1d</div></div>
+                  </div>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                  <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 18px"><div style="font-size:13px;font-weight:700">This Mac</div></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-bottom:52px;text-align:center">
+                    <div style="color:var(--ink2);margin-bottom:6px"><svg width="44" height="36" fill="none" stroke="currentColor" style="stroke-width:2"><rect x="1.5" y="1.5" width="41" height="33" rx="6"></rect><line x1="15" y1="1.5" x2="15" y2="34.5"></line><path d="M5.5 8H10.5M5.5 13H10.5M5.5 18H10.5" style="stroke-linecap:round"></path></svg></div>
+                    <div style="font-size:17px;font-weight:700">Choose a worktree</div>
+                    <div style="font-size:13px;color:var(--ink2)">Pick one from the list to open it.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">A worktree that is no longer listed · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);padding:18px;border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+                <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex">
+                  <div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                    <div style="height:42px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px"><div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div><div style="flex:1"></div><div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="5.6" y1="0.6" x2="5.6" y2="13.4"></line></svg></div></div>
+                    <div style="display:flex;align-items:center;gap:2px;padding:2px 8px 8px 10px"><div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex;margin-left:2px"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div><div style="flex:1"></div><div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="15" height="15" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M12.8 7.5A5.3 5.3 0 1 1 11.2 3.7"></path><path d="M11.8 1.2V4.2H8.8"></path></svg></div><div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:var(--ink2)"><svg width="16" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2"><circle cx="8" cy="8" r="7"></circle><circle cx="4.9" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="11.1" cy="8" r="0.9" fill="currentColor" stroke="none"></circle></svg></div></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:8px 18px 4px">granita</div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Make the diff scroll never reflow above the reader's line</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">34 files · <span style="color:var(--grn)">+1,204</span> <span style="color:var(--red)">−318</span></div></div><div style="font-size:11px;color:var(--ink2)">22m</div></div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">feat/session-index</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">3 files · <span style="color:var(--grn)">+47</span> <span style="color:var(--red)">−6</span></div></div><div style="font-size:11px;color:var(--ink2)">2h</div></div>
+                    <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:14px 18px 4px">aura</div>
+                    <div style="margin:0 8px;padding:6px 10px;border-radius:8px;display:flex;gap:8px;align-items:baseline"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;line-height:16px">Fix the coverage script's 3.13 warning</div><div style="font-size:11px;color:var(--ink2);line-height:14px;margin-top:2px;white-space:nowrap">1 file · <span style="color:var(--grn)">+2</span> <span style="color:var(--red)">−2</span></div></div><div style="font-size:11px;color:var(--ink2)">1d</div></div>
+                  </div>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                  <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 18px"><div style="display:flex;flex-direction:column;gap:1px"><div style="font-size:13px;font-weight:700">TLS pinning</div><div style="font-size:11px;color:var(--ink2)">granita · This Mac</div></div></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 40px 52px;text-align:center">
+                    <div style="color:var(--ink2);margin-bottom:6px"><svg width="44" height="34" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linejoin:round"><path d="M2 5A3 3 0 0 1 5 2H16L20 6H39A3 3 0 0 1 42 9V29A3 3 0 0 1 39 32H5A3 3 0 0 1 2 29Z"></path><path d="M15 23L29 13" style="stroke-linecap:round"></path></svg></div>
+                    <div style="font-size:17px;font-weight:700">TLS pinning is no longer listed</div>
+                    <div style="font-size:13px;color:var(--ink2);line-height:1.45;text-wrap:pretty">Its directory is gone from this Mac, or its project was switched off in Settings.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div id="s44" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.4 &nbsp;·&nbsp; choosing a source</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">The phone's whole screen, as the menu behind one pop-up button</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">This Mac is always the first row and never depends on the rest of the menu.</strong> Everything <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ServerDiscoveryView</span> can say lives below its divider, in an <em>Other Macs</em> group, and each of the phone's six states becomes one or two rows there: a disabled line that says what is happening, and the one control that acts on it where one exists. The phone's <em>Copy Logs</em> survives only in the failure, where it is the one thing to do.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">A Mac this device has not paired with ends in an ellipsis</strong>, because choosing it opens the six-word sheet below. A paired one switches the sidebar at once, into the loading block's finding, verifying and reading stages. The browse drops this Mac's own advertisement, per the first finding; none of these frames lists it twice.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Permission refused is not strange once there is one grant.</strong> It is the same privacy decision that puts the triangle in the menu bar, so a reader meets it in both places at once, with the same button — <em>Open Local Network Settings…</em> — in both. This Mac stays ticked and readable above it, which is the whole of what makes the state safe to show.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">What it replaces</div>
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <img src="baselines/discovery-several-macs-iPad-light.png" style="width:250px;border:1px solid #D8D2C6">
+          <img src="baselines/discovery-permission-refused-iPhone-light.png" style="width:120px;border:1px solid #D8D2C6">
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px">discovery · several-macs · iPad, and permission-refused · iPhone. A screen the reader navigates out of, twice in the app's life.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px">Rows found while the menu is open should arrive in place. If the stock menu will not redraw while open, they appear on the next open — which costs nothing, because This Mac was usable the whole time.</div>
+      </div>
+    </div>
+
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="margin-bottom:40px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A;margin-bottom:12px">The source menu, six states &nbsp;·&nbsp; {{ t.name }}</div>
+        <div style="{{ t.s }}">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">1 · This Mac alone, nothing else found</div>
+              <div style="height:250px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="padding:4px 10px 4px 27px;color:var(--ink3)">No other Mac found on this network</div>
+                  <div style="padding:4px 10px 4px 27px;border-radius:6px">Search Again</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">2 · This Mac above one discovered Mac, not yet paired</div>
+              <div style="height:250px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:3px 10px 3px 27px">Other Macs</div>
+                  <div style="display:flex;gap:7px;align-items:center;padding:4px 10px 4px 6px;border-radius:6px;background:var(--hi);color:#FFFFFF"><span style="width:14px"></span><span style="display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span>Mac Studio…</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">3 · This Mac above several, one of them paired</div>
+              <div style="height:250px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="font-size:11px;font-weight:700;color:var(--ink2);padding:3px 10px 3px 27px">Other Macs</div>
+                  <div style="display:flex;gap:7px;align-items:center;padding:4px 10px 4px 6px"><span style="width:14px"></span><span style="display:flex;color:var(--ink2)"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span>MacBook Pro</span></div>
+                  <div style="display:flex;gap:7px;align-items:center;padding:4px 10px 4px 6px"><span style="width:14px"></span><span style="display:flex;color:var(--ink2)"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span>Mac Studio…</span></div>
+                  <div style="display:flex;gap:7px;align-items:center;padding:4px 10px 4px 6px"><span style="width:14px"></span><span style="display:flex;color:var(--ink2)"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span>Davide's 16-inch MacBook Pro (work)…</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">4 · This Mac while the search is still running</div>
+              <div style="height:210px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="padding:4px 10px 4px 27px;color:var(--ink3)">Looking for other Macs on this network…</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">5 · Local network permission refused</div>
+              <div style="height:210px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="padding:4px 10px 4px 27px;color:var(--ink3)">Local network access is off for Granita</div>
+                  <div style="padding:4px 10px 4px 27px;border-radius:6px">Open Local Network Settings…</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:Georgia,serif;font-size:14px;color:#4A463F">6 · The search failed</div>
+              <div style="height:210px;background:var(--side);border:1px solid #D8D2C6;border-radius:12px;padding:12px;position:relative;overflow:hidden">
+                <div style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--sel)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div>
+                <div style="position:absolute;left:8px;top:44px;width:330px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                  <div style="display:flex;gap:7px;align-items:flex-start;padding:5px 10px 5px 6px"><span style="width:14px;text-align:center;line-height:16px">✓</span><span style="color:var(--acc);display:flex;padding-top:2px"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><div><div style="line-height:16px">This Mac</div><div style="font-size:11px;color:var(--ink2);line-height:14px">Read on this Mac, without the network</div></div></div>
+                  <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                  <div style="padding:4px 10px 4px 27px;color:var(--ink3)">Could not search for other Macs</div>
+                  <div style="padding:4px 10px 4px 27px;border-radius:6px">Try Again</div>
+                  <div style="padding:4px 10px 4px 27px;border-radius:6px">Copy Logs</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin:20px 0 26px">
+      <div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Call 5, drawn &nbsp;·&nbsp; choosing <em style="text-transform:none">Mac Studio…</em> — pairing with a remote Mac, no camera</div>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F">A window sheet from the toolbar, 440pt wide. One field takes the six words typed with spaces, hyphens or the Devices pane's middle dots, or pasted from that pane's Copy button in one piece. <em>Pair</em> is the default button and stays disabled until six words are present; the counter under the field is the reason, stated where the eye already is. What follows a press is the phone's six outcomes of spending a code, unchanged in wording.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">The sheet names the other Mac in its first line because this device has two pairing flows now, pointing in opposite directions: <em>Pair a device…</em> in the status menu lets a phone read this Mac; this sheet lets this Mac read another. Neither sentence says “your Mac”.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:40px">
+      <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">The six-word sheet · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);padding:18px;border:1px solid #D8D2C6;font:13px/1.35 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="width:680px;height:330px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;position:relative">
+                <div style="position:absolute;inset:0;display:flex">
+                  <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex"><div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep)"></div></div>
+                  <div style="flex:1"></div>
+                </div>
+                <div style="position:absolute;inset:0;background:rgba(0,0,0,0.12)"></div>
+                <div style="position:absolute;left:120px;top:38px;width:440px;box-sizing:border-box;padding:20px 20px 16px;border-radius:14px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column;gap:12px">
+                  <div style="font-size:13px;font-weight:700">Pair with Mac Studio</div>
+                  <div style="color:var(--ink);text-wrap:pretty">On Mac Studio, open Granita's Settings and choose Devices. Type the six words shown under the code, or copy them there and paste them here.</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="height:26px;border-radius:6px;background:var(--field);box-shadow:0 0 0 1px var(--acc),0 0 0 3.5px rgba(0,122,255,0.25);display:flex;align-items:center;padding:0 8px;font:13px/1 var(--mono)">emerald beetle harbor violet<span style="width:1px;height:15px;background:var(--ink);margin-left:2px"></span></div>
+                    <div style="font-size:11px;color:var(--ink2)">4 of 6 words · A code works once, for two minutes.</div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
+                    <div style="height:24px;padding:0 14px;border-radius:7px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.08);display:flex;align-items:center">Cancel</div>
+                    <div style="height:24px;padding:0 18px;border-radius:7px;background:var(--acc);color:#FFFFFF;opacity:0.4;display:flex;align-items:center">Pair</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="s46" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.6 &nbsp;·&nbsp; the file selector, and the review that takes its place</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">The same list in an inspector, and the same rule for who gets the slot</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">FileSelectorView</span> goes in unchanged — its heading, its <em>Arrange</em> menu, its rows and drop order, its footers. At 240pt and the Mac's 11pt the flat list's stats are the first thing to go, exactly as the view's <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ViewThatFits</span> intends, and the check stays.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Nothing changed</strong> is the one place the Mac needs a rule the iPad does not have. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">DiffPaneLayout</span> keeps the column while withholding its toggle when there are no files, and the iPad baseline shows the result: a column headed <em>Files</em> with nothing under it and no way to fold it. On the Mac that would be an inspector that cannot be closed, so the Mac view presents it only when <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">showsSelectorColumn</span> and there is something to select. The value itself is not changed, per 5(j).</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">What it replaces</div>
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <img src="baselines/file-selector-a-tree-iPad-light.png" style="width:250px;border:1px solid #D8D2C6">
+          <img src="baselines/file-selector-nothing-changed-iPhone-light.png" style="width:90px;border:1px solid #D8D2C6">
+        </div>
+        <div style="font-size:14px;line-height:1.55;color:#6A655C;margin-top:10px">file-selector · a-tree · iPad, and nothing-changed · iPhone: a heading over an empty list.</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F;margin-top:18px"><strong style="font-weight:400;color:#23211E">The review</strong> takes the inspector while it is open, which is <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">showsReviewColumn</span> as built. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">ReviewSheetView</span>'s cards, rail and pinned footer carry over; its 52pt sheet header becomes the inspector's title row.</div>
+      </div>
+    </div>
+
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="margin-bottom:40px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A;margin-bottom:12px">Tree with a shut directory · too few files for a tree · the review · nothing changed &nbsp;·&nbsp; {{ t.name }}</div>
+        <div style="{{ t.s }}">
+          <div style="display:flex;gap:28px;align-items:flex-start;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+
+            <div style="width:240px;height:460px;flex:none;background:var(--bg);border:1px solid #D8D2C6;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;align-items:center;padding:10px 12px 8px 14px"><div style="font-size:13px;font-weight:700;flex:1">Files</div><span style="color:var(--acc);display:flex"><svg width="16" height="16" fill="none" stroke="currentColor" style="stroke-width:1.2"><circle cx="8" cy="8" r="7"></circle><circle cx="4.9" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="8" cy="8" r="0.9" fill="currentColor" stroke="none"></circle><circle cx="11.1" cy="8" r="0.9" fill="currentColor" stroke="none"></circle></svg></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Apps/GranitaMobileConnectionTests</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">LoopbackTlsServer.swift</span><span style="font-size:10px;color:var(--grn)">+5</span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PinnedConnectionTests.swift</span><span style="font-size:10px"><span style="color:var(--grn)">+3</span> <span style="color:var(--red)">−5</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Packages/Granita</span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▸</span><span style="flex:1;font:10.5px/1.3 var(--mono);color:var(--ink2)">Client/Connection</span><span style="font-size:10px"><span style="color:var(--grn)">+124</span> <span style="color:var(--red)">−8</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Client/Viewer/Ui</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ContinuousDiffView.swift</span><span style="font-size:10px;color:var(--grn)">+68</span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink2)">DiffPalette.swift</span><span style="font-size:10px"><span style="color:var(--grn)">+4</span> <span style="color:var(--red)">−4</span></span><span style="width:14px;color:var(--acc);font-size:11px;text-align:center">✓</span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Core/Diff/Domain</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">DiffModels.swift</span><span style="font-size:10px"><span style="color:var(--grn)">+9</span> <span style="color:var(--red)">−2</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--org)">C</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WordDiff.swift</span><span style="font-size:10px"><span style="color:var(--grn)">+3</span> <span style="color:var(--red)">−2</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 25px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Server/Identity/Data</span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 40px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">KeychainServerIdentityStore.swift</span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">project.yml</span><span style="font-size:10px"><span style="color:var(--grn)">+1</span> <span style="color:var(--red)">−1</span></span><span style="width:14px"></span></div>
+            </div>
+
+            <div style="width:240px;height:460px;flex:none;background:var(--bg);border:1px solid #D8D2C6;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;align-items:center;padding:10px 12px 8px 14px;height:18px"><div style="font-size:13px;font-weight:700;flex:1">Files</div></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden"><span style="font-size:10px;color:var(--ink2)">…Data/</span><span style="font-size:11.5px">HttpServerPairing.swift</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden"><span style="font-size:10px;color:var(--ink2)">…Ui/</span><span style="font-size:11.5px">ContinuousDiffView.swift</span></span><span style="width:14px"></span></div>
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--org)">C</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden"><span style="font-size:10px;color:var(--ink2)">…Diff/Domain/</span><span style="font-size:11.5px">WordDiff.swift</span></span><span style="width:14px"></span></div>
+              <div style="flex:1"></div>
+              <div style="font-family:Georgia,serif;font-size:12.5px;line-height:1.5;color:#6A655C;padding:12px 14px;background:#FBFAF7;border-top:1px solid #D8D2C6">Three files: no <em>Arrange</em> menu, as built. The stats have dropped at 240pt; the file headers repeat them.</div>
+            </div>
+
+            <div style="width:280px;height:460px;flex:none;background:var(--bg);border:1px solid #D8D2C6;display:flex;flex-direction:column;overflow:hidden">
+              <div style="display:flex;align-items:baseline;padding:10px 14px 10px;gap:8px"><div style="font-size:13px;font-weight:700;flex:1">Review</div><div style="font-size:11px;color:var(--ink2)">2 comments</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:10px;padding:0 12px;background:var(--page);padding-top:12px">
+                <div style="border-radius:10px;background:var(--card);box-shadow:0 0 0 0.5px var(--sep);display:flex;overflow:hidden"><div style="width:3px;flex:none;background:var(--ind)"></div><div style="padding:9px 10px;display:flex;flex-direction:column;gap:6px;min-width:0"><div style="font:10.5px/1.3 var(--mono);color:var(--ink2)">HttpServerPairing.swift · 141–142</div><div style="font:11px/1.3 var(--mono);background:var(--add);padding:3px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">guard trust.isPinned else { throw …</div><div style="font-size:12px;line-height:1.4">A pin mismatch thrown as .notUnderstood reads as a parse failure. Should it be .unauthorized?</div></div></div>
+                <div style="border-radius:10px;background:var(--card);box-shadow:0 0 0 0.5px var(--sep);display:flex;overflow:hidden"><div style="width:3px;flex:none;background:var(--ind)"></div><div style="padding:9px 10px;display:flex;flex-direction:column;gap:6px;min-width:0"><div style="font:10.5px/1.3 var(--mono);color:var(--ink2)">PinnedTransport.swift · 12</div><div style="font:11px/1.3 var(--mono);background:var(--add);padding:3px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">let session = URLSession(configur…</div><div style="font-size:12px;line-height:1.4">One session per request. Is that deliberate, or should it be one per pin?</div></div></div>
+              </div>
+              <div style="border-top:0.5px solid var(--sep);padding:10px 12px;display:flex;justify-content:flex-end;background:var(--bg)"><div style="height:24px;padding:0 14px;border-radius:7px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center">Copy Review</div></div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:var(--desk);padding:14px;border:1px solid #D8D2C6">
+                <div style="width:520px;height:300px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column">
+                  <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 18px"><div style="display:flex;flex-direction:column;gap:1px"><div style="font-size:13px;font-weight:700">main</div><div style="font-size:11px;color:var(--ink2)">granita · This Mac</div></div></div>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-bottom:40px">
+                    <div style="color:var(--ink2);margin-bottom:6px"><svg width="40" height="40" fill="none" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><circle cx="20" cy="20" r="18"></circle><path d="M12 20.5L17.5 26L28.5 14.5"></path></svg></div>
+                    <div style="font-size:17px;font-weight:700">Nothing to review</div>
+                  </div>
+                </div>
+              </div>
+              <div style="font-family:Georgia,serif;font-size:13.5px;line-height:1.5;color:#6A655C;max-width:548px">Nothing changed: the diff's own empty state, as built, with no inspector and no fold — the detail is the window's whole width. Reached from <em>Show them</em> under the list, which is the only way a clean worktree is listed.</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div id="s47" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="display:grid;grid-template-columns:1fr 460px;gap:80px;align-items:start;margin-bottom:34px">
+      <div>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:5px 9px;background:#DCE8DE;color:#2F6B3C">First drawing · no baseline</div><div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378">§4.7 &nbsp;·&nbsp; the states only a Mac reader can land in</div></div>
+        <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 20px;line-height:1.06">The server's state is not an input to This Mac — except through the lock</h2>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Not serving is drawn as the reading state, unchanged.</strong> The only difference on screen is the symbol in the menu bar and what its menu says. The way to make that impossible to get wrong is structural: the local repository is built in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">MacComposition</span> from the registry, the service and the store, and never from <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">ServerMacModel.serverState</span>. Then a baseline of this window with the host held in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">.failed</span> asserts it.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">No projects yet</strong> gets a real button on the Mac, because here the fix is one window away: <em>Open Projects Settings…</em>, through the same <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">requestSettings(showing:)</span> the menu's <em>Pair a device…</em> uses. For a remote Mac the phone's sentence stays, naming that Mac, because nothing on this one can fix it.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0 0 16px;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">Blocked by another process</strong> is the exception from the findings, and it says so in one sentence with the holder's name, as the menu does. It has no button: the fix is quitting a process this app did not start, and <em>Quit Granita</em> would be the wrong process. Other Macs remain one click away in the pop-up.</p>
+        <p style="font-size:18px;line-height:1.55;margin:0;max-width:58ch;color:#4A463F"><strong style="font-weight:400;color:#23211E">A long read</strong> is 5(f) on screen. Only the reading stage exists for This Mac — there is nothing to find or verify — so the block starts at <em>Reading worktrees</em>, and after ten seconds it grows the clock and the sentence the phone already carries about enabled projects. Its second line is the new route: <em>Running git on this Mac</em>, in place of <em>Waiting for your Mac's response</em>.</p>
+      </div>
+      <div style="border-left:1px solid #D8D2C6;padding-left:32px">
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:16px">Why the detail is empty in three of these</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">When the sidebar is an empty, failed or loading state, the sentence in it is the instruction, and <em>Choose a worktree</em> beside it would contradict it. The toolbar keeps the source's name so the window still says what it is showing.</div>
+        <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin:24px 0 12px">Not drawn, and why</div>
+        <div style="font-size:15px;line-height:1.65;color:#4A463F">git that cannot be run. <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeRegistry</span> reads every project with <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">try? … ?? []</span>, so a Mac whose git is broken lists nothing rather than failing, over HTTP and locally alike. On This Mac that is a diagnosable fact Advanced already shows; drawing a state for it needs the registry to stop swallowing it first. Flagged below.</div>
+      </div>
+    </div>
+
+    <sc-for list="{{ themes }}" as="t" hint-placeholder-count="2">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 40px;margin-bottom:44px">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">a · This Mac with no project enabled · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:16px;padding:0 12px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span style="flex:1"></span><img src="{{ t.serving }}" style="width:44px;height:22px"><span>14:20</span></div>
+              <div style="padding:14px 17px 18px">
+                <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+                  <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex">
+                    <div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                      <div style="height:42px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px"><div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div></div>
+                      <div style="display:flex;align-items:center;padding:2px 8px 8px 10px"><div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:0 20px 40px;text-align:center">
+                        <div style="color:var(--ink2);margin-bottom:4px"><svg width="36" height="30" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linejoin:round"><path d="M2 16L7.5 2.5H28.5L34 16V27.5H2Z"></path><path d="M2 16H12L14 20H22L24 16H34"></path></svg></div>
+                        <div style="font-size:13px;font-weight:700">No projects yet</div>
+                        <div style="font-size:11px;color:var(--ink2);line-height:1.45;text-wrap:pretty">Choose which repositories Granita can read in Settings, under Projects.</div>
+                        <div style="margin-top:8px;height:24px;padding:0 12px;border-radius:7px;background:var(--acc);color:#FFFFFF;display:flex;align-items:center">Open Projects Settings…</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column"><div style="height:52px;display:flex;align-items:center;padding:0 18px"><div style="font-size:13px;font-weight:700">This Mac</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">b · Reading while the server is not running · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased;position:relative">
+              <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:16px;padding:0 12px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span style="flex:1"></span><div style="background:var(--sel);border-radius:5px;padding:1px 6px;display:flex"><img src="{{ t.failed }}" style="width:44px;height:22px"></div><span>14:20</span></div>
+              <div style="padding:14px 17px 18px">
+                <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column">
+                  <div style="height:52px;flex:none;display:flex;align-items:center;padding:0 10px 0 14px;gap:10px">
+                    <div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div>
+                    <div style="width:32px;height:32px;border-radius:16px;background:var(--glass);box-shadow:0 0 0 0.5px var(--glassb),0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;margin-left:6px"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="5.6" y1="0.6" x2="5.6" y2="13.4"></line></svg></div>
+                    <div style="display:flex;flex-direction:column;gap:1px;margin-left:4px"><div style="font-size:13px;font-weight:700">TLS pinning</div><div style="font-size:11px;color:var(--ink2)">granita · This Mac</div></div>
+                    <div style="flex:1"></div>
+                    <div style="width:36px;height:32px;border-radius:16px;background:var(--glass);box-shadow:0 0 0 0.5px var(--glassb),0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center"><svg width="18" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="16.8" height="12.8" rx="2.4"></rect><line x1="9" y1="0.6" x2="9" y2="13.4"></line></svg></div>
+                    <div style="width:32px;height:32px;border-radius:16px;background:var(--glass);box-shadow:0 0 0 0.5px var(--glassb),0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center"><svg width="16" height="14" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="0.6" y="0.6" width="14.8" height="12.8" rx="2.6"></rect><line x1="10.4" y1="0.6" x2="10.4" y2="13.4"></line></svg></div>
+                  </div>
+                  <div style="flex:1;min-height:0;display:flex">
+                    <div style="flex:1;min-width:0;background:var(--page);overflow:hidden">
+                      <div style="background:var(--card)">
+                        <div style="height:46px;display:flex;align-items:center;gap:9px;padding:0 12px 0 10px;border-bottom:0.5px solid var(--sep)"><svg width="10" height="6" fill="none" stroke="currentColor" style="stroke-width:1.3;color:var(--ink2);stroke-linecap:round;stroke-linejoin:round"><path d="M1 1L5 5L9 1"></path></svg><div style="width:3px;height:22px;background:#C8912E;border-radius:1.5px"></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">HttpServerPairing.swift</div><div style="font:10px/1.3 var(--mono);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Packages/Granita/Client/Connection/Data</div></div><div style="font-size:12px"><span style="color:var(--grn)">+12</span> <span style="color:var(--red)">−4</span></div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">139</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    <span style="color:var(--kw)">func</span> health() <span style="color:var(--kw)">async throws</span>(<span style="color:var(--typ)">ApiFailure</span>) -&gt; …</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">140</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">        <span style="color:var(--kw)">let</span> request = <span style="color:var(--typ)">Request</span>(path: <span style="color:var(--str)">"/v1/health"</span>)</div></div>
+                        <div style="display:flex;height:19px;align-items:center;background:var(--del)"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">141</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--red)">−</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">let</span> trust = <span style="color:var(--kw)">try await</span> verify(<span style="background:var(--dels)">cert</span>)</div></div>
+                        <div style="display:flex;height:19px;align-items:center;background:var(--add)"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">141</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">let</span> trust = <span style="color:var(--kw)">try await</span> verify(<span style="background:var(--adds)">certificate</span>)</div></div>
+                        <div style="display:flex;height:19px;align-items:center;background:var(--add)"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">142</div><div style="width:12px;flex:none;text-align:center;font:12px/1 var(--mono);color:var(--grn)">+</div><div style="width:6px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">            <span style="color:var(--kw)">guard</span> trust.isPinned <span style="color:var(--kw)">else</span> { …</div></div>
+                        <div style="display:flex;height:19px;align-items:center"><div style="width:42px;flex:none;box-sizing:border-box;padding-right:9px;text-align:right;font:11px/1 var(--mono);color:var(--ink3)">143</div><div style="width:18px;flex:none"></div><div style="font:12px/1 var(--mono);white-space:pre;color:var(--ink)">    }</div></div>
+                      </div>
+                    </div>
+                    <div style="width:220px;flex:none;border-left:0.5px solid var(--sep);background:var(--bg)">
+                      <div style="padding:8px 12px 8px 14px;font-size:13px;font-weight:700">Files</div>
+                      <div style="display:flex;gap:6px;padding:5px 12px;border-bottom:0.5px solid var(--sep)"><span style="color:var(--ink2);font-size:8px;width:9px">▾</span><span style="font:10.5px/1.3 var(--mono);color:var(--ink2)">Client/Connection/Data</span></div>
+                      <div style="display:flex;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:#C8912E">M</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">HttpServerPairing.swift</span></div>
+                      <div style="display:flex;gap:8px;padding:5px 12px 5px 27px;border-bottom:0.5px solid var(--sep)"><span style="width:11px;font:600 11px/1 var(--mono);color:var(--grn)">A</span><span style="flex:1;min-width:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PinnedTransport.swift</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;right:52px;top:26px;width:290px;padding:5px;box-sizing:border-box;border-radius:12px;background:var(--menu);box-shadow:var(--menushadow);display:flex;flex-direction:column">
+                <div style="padding:4px 10px;color:var(--ink2)">Not serving</div>
+                <div style="padding:4px 10px">Open Local Network Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px">Show Worktrees</div>
+                <div style="padding:4px 10px;color:var(--ink3)">Pair a device…</div>
+                <div style="padding:4px 10px">Settings…</div>
+                <div style="height:1px;background:var(--sep);margin:5px 10px"></div>
+                <div style="padding:4px 10px">Quit Granita</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-family:Georgia,serif;font-size:13.5px;line-height:1.5;color:#6A655C">At 680pt with a worktree open the sidebar has folded, per the size rule; the window is otherwise the reading state. The menu is open only to show both halves at once.</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">c · Blocked: another process holds the store · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:16px;padding:0 12px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span style="flex:1"></span><img src="{{ t.failed }}" style="width:44px;height:22px"><span>14:20</span></div>
+              <div style="padding:14px 17px 18px">
+                <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+                  <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex">
+                    <div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                      <div style="height:42px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px"><div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div></div>
+                      <div style="display:flex;align-items:center;padding:2px 8px 8px 10px"><div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:0 20px 40px;text-align:center">
+                        <div style="color:var(--ink2);margin-bottom:4px"><svg width="36" height="32" fill="none" stroke="currentColor" style="stroke-width:1.8;stroke-linejoin:round"><path d="M18 2.5L34 29.5H2Z"></path><path d="M18 11.5V19.5" style="stroke-linecap:round"></path><circle cx="18" cy="24.2" r="1.3" fill="currentColor" stroke="none"></circle></svg></div>
+                        <div style="font-size:13px;font-weight:700;text-wrap:pretty">Another process has Granita's settings</div>
+                        <div style="font-size:11px;color:var(--ink2);line-height:1.45;text-wrap:pretty">granita-server (process 4213) is using them. This Mac can be read here once it quits; other Macs can be read now.</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column"><div style="height:52px;display:flex;align-items:center;padding:0 18px"><div style="font-size:13px;font-weight:700">This Mac</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#3E7C4A">d · This Mac, still reading at 47 seconds · {{ t.name }}</div>
+          <div style="{{ t.s }}">
+            <div style="background:var(--desk);border:1px solid #D8D2C6;font:13px/1.25 var(--sf);color:var(--ink);-webkit-font-smoothing:antialiased">
+              <div style="height:24px;background:var(--bar);display:flex;align-items:center;gap:16px;padding:0 12px"><span style="font-weight:700">Granita</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span style="flex:1"></span><img src="{{ t.serving }}" style="width:44px;height:22px"><span>14:20</span></div>
+              <div style="padding:14px 17px 18px">
+                <div style="width:680px;height:460px;border-radius:14px;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex">
+                  <div style="width:240px;flex:none;padding:7px 0 7px 7px;box-sizing:border-box;display:flex">
+                    <div style="flex:1;background:var(--side);border-radius:11px;box-shadow:0 0 0 0.5px var(--sep);display:flex;flex-direction:column;overflow:hidden">
+                      <div style="height:42px;flex:none;display:flex;align-items:center;padding:0 8px 0 12px"><div style="display:flex;gap:8px"><div style="width:12px;height:12px;border-radius:6px;background:#FF5F57"></div><div style="width:12px;height:12px;border-radius:6px;background:#FEBC2E"></div><div style="width:12px;height:12px;border-radius:6px;background:#28C840"></div></div></div>
+                      <div style="display:flex;align-items:center;padding:2px 8px 8px 10px"><div style="display:flex;align-items:center;gap:7px;height:28px;padding:0 9px 0 8px;border-radius:8px;background:var(--btn);box-shadow:0 0 0 0.5px var(--glassb),0 1px 2px rgba(0,0,0,0.06)"><span style="color:var(--acc);display:flex"><svg width="18" height="12" fill="none" stroke="currentColor" style="stroke-width:1.2"><rect x="3.1" y="0.6" width="11.8" height="8.6" rx="1.2"></rect><path d="M0.8 11.2H17.2" style="stroke-linecap:round"></path></svg></span><span style="font-weight:600">This Mac</span><span style="color:var(--ink2);display:flex"><svg width="7" height="10" fill="none" stroke="currentColor" style="stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round"><path d="M1 3.6L3.5 1.2L6 3.6M1 6.4L3.5 8.8L6 6.4"></path></svg></span></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:120px 20px 20px;text-align:center">
+                        <svg width="20" height="20" stroke="currentColor" style="stroke-width:2;stroke-linecap:round;color:var(--ink2)"><line x1="10" y1="1.5" x2="10" y2="5.5"></line><line x1="16.01" y1="3.99" x2="13.18" y2="6.82" style="opacity:0.85"></line><line x1="18.5" y1="10" x2="14.5" y2="10" style="opacity:0.7"></line><line x1="16.01" y1="16.01" x2="13.18" y2="13.18" style="opacity:0.55"></line><line x1="10" y1="18.5" x2="10" y2="14.5" style="opacity:0.45"></line><line x1="3.99" y1="16.01" x2="6.82" y2="13.18" style="opacity:0.35"></line><line x1="1.5" y1="10" x2="5.5" y2="10" style="opacity:0.28"></line><line x1="3.99" y1="3.99" x2="6.82" y2="6.82" style="opacity:0.22"></line></svg>
+                        <div style="font-size:13px;font-weight:700;margin-top:2px">Still reading worktrees</div>
+                        <div style="font-size:11px;color:var(--ink2)">Running git on this Mac.</div>
+                        <div style="font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;margin-top:6px">Waiting 0:47</div>
+                        <div style="font-size:10px;color:var(--ink2);line-height:1.45;text-wrap:pretty">Your Mac describes every worktree in every enabled project before it answers, so this grows with the number of projects you have enabled.</div>
+                        <div style="font-size:13px;color:var(--acc);margin-top:4px">Copy Logs</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:column"><div style="height:52px;display:flex;align-items:center;padding:0 18px"><div style="font-size:13px;font-weight:700">This Mac</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </sc-for>
+  </div>
+
+  <div id="flags" style="border-top:2px solid #23211E;padding-top:34px">
+    <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;letter-spacing:0.09em;text-transform:uppercase;color:#8A8378;margin-bottom:14px">Flagged &nbsp;·&nbsp; for the pull request rather than the drawing</div>
+    <h2 style="font-size:44px;font-weight:400;letter-spacing:-0.018em;margin:0 0 30px;line-height:1.06">Nine things to decide or check while building it</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px 44px;font-size:15px;line-height:1.6;color:#4A463F">
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">Keep the server's bundle identifier.</div>Its Keychain TLS identity is what every paired phone pins, and its login item and Local Network grant are registered to it. What the merge loses is the Mac Client's own Keychain of remembered Macs — a store with almost no one in it, since that build was never shipped.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">This Mac's review is one copy, not two.</div><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MacReviewCommentStore</span> wraps a <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">UserDefaults</span> copy around the repository so a closed laptop costs a phone nothing. On This Mac the two are the same disk; bind the local source to the repository alone, or the review settings pane's counts and the window can disagree.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">The registry swallows git failures.</div><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">(try? await service.worktrees(in:)) ?? []</span> in <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">projects()</span>, <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">worktrees(inProject:)</span> and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">resolve(_:)</span>. A Mac with broken git lists nothing, which on This Mac is a state with a known cause and a pane that shows it.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">The camera leaves with the Client's Mac entitlements.</div>Per call 5: <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMobileMac.entitlements</span> is not merged into the server's, and <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">NSCameraUsageDescription</span> stays in the phone's Info.plist only. The six-word path's first-answer trust is the stated cost.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px"><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:15px">SettingsOpener</span> may be removable — check before deleting.</div>It exists because an <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">LSUIElement</span> app cannot open Settings without a window of its own. A regular app can. Until it goes, Dock reopen and the Window menu must be pointed at the reader explicitly, since the opener is the first <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">Window</span> declared.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">Doc comments that describe the old app.</div><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MenuBarLabel</span> (“the whole of Granita's presence on the Mac”), <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">MenuBarContent</span> (“the entire app when Settings is shut”), <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">GranitaMacScene</span> (“no Dock icon and no main window”), <span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">WorktreeSplitScreen</span> (“no macOS surface presents this screen”). Each carries an argument that the merge ends.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">The first Client views ever rendered on a Mac.</div>The Mac snapshot kind exists for the server; the reader's views have only iOS destinations. Every frame in §4.4–4.7 is a candidate baseline — fourteen states, light and dark, no device axis — and the window's 640 × 480 minimum has to be asserted from inside the app, as design-mac said of Settings.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">One layout constant becomes per-platform.</div><span style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13px">DiffPaneLayout.selectorColumnWidth</span> is 320 and the Code size readout subtracts it. The Mac's is 240. Branch the value; do not change the phone's.</div>
+      <div><div style="font-size:18px;color:#23211E;margin-bottom:8px">A test that closing is not quitting.</div>Open the reader, close it, assert the status item is present and the host is still serving. It is the one behaviour in 5(a) a snapshot cannot photograph, and the failure it prevents is silent.</div>
+    </div>
+  </div>
+
+
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;frames&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Light and dark&quot;, &quot;Light only&quot;, &quot;Dark only&quot;], &quot;default&quot;: &quot;Light and dark&quot;, &quot;tsType&quot;: &quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const mono = "ui-monospace,'SF Mono',Menlo,monospace";
+    const sf = "-apple-system,'SF Pro Text','SF Pro',system-ui,sans-serif";
+    const light = {
+      '--mono': mono, '--sf': sf,
+      '--desk': '#D5D9E0', '--bg': '#FFFFFF', '--page': '#F2F2F4', '--card': '#FFFFFF', '--side': '#F3F3F5',
+      '--ink': '#1D1D1F', '--ink2': '#6E6E73', '--ink3': '#AEAEB2', '--sep': 'rgba(0,0,0,0.10)',
+      '--acc': '#007AFF', '--grn': '#28A745', '--red': '#FF3B30', '--org': '#FF9500', '--yel': '#FFCC00', '--ind': '#5856D6', '--pur': '#AF52DE',
+      '--sel': 'rgba(0,0,0,0.075)', '--glass': 'rgba(255,255,255,0.92)', '--glassb': 'rgba(0,0,0,0.10)',
+      '--menu': 'rgba(240,240,242,0.98)', '--hi': '#007AFF',
+      '--del': '#FFF1F0', '--add': '#EFFAF1', '--dels': '#FFD6D3', '--adds': '#CDEFD4', '--cfl': '#FFF4E5',
+      '--kw': '#9B2393', '--str': '#C41A16', '--typ': '#3900A0', '--com': '#5D6C79', '--num': '#1C00CF',
+      '--exp': '#EEF4FD', '--expi': '#0A65D8', '--bar': 'rgba(236,236,240,0.96)',
+      '--shadow': '0 22px 60px rgba(0,0,0,0.20), 0 0 0 0.5px rgba(0,0,0,0.22)',
+      '--menushadow': '0 12px 36px rgba(0,0,0,0.20), 0 0 0 0.5px rgba(0,0,0,0.16)',
+      '--btn': '#FFFFFF', '--field': '#FFFFFF'
+    };
+    const dark = {
+      '--mono': mono, '--sf': sf,
+      '--desk': '#1F2228', '--bg': '#1E1E20', '--page': '#1A1A1C', '--card': '#262628', '--side': '#2B2B2E',
+      '--ink': '#F2F2F4', '--ink2': '#98989D', '--ink3': '#5C5C61', '--sep': 'rgba(255,255,255,0.11)',
+      '--acc': '#0A84FF', '--grn': '#32D74B', '--red': '#FF453A', '--org': '#FF9F0A', '--yel': '#FFD60A', '--ind': '#5E5CE6', '--pur': '#BF5AF2',
+      '--sel': 'rgba(255,255,255,0.09)', '--glass': 'rgba(58,58,62,0.92)', '--glassb': 'rgba(255,255,255,0.12)',
+      '--menu': 'rgba(42,42,45,0.98)', '--hi': '#0A84FF',
+      '--del': '#3A2424', '--add': '#1E3324', '--dels': '#5E2D2A', '--adds': '#2A5532', '--cfl': '#3A2C18',
+      '--kw': '#FC5FA3', '--str': '#FC6A5D', '--typ': '#D0A8FF', '--com': '#7F8C98', '--num': '#D0BF69',
+      '--exp': '#1D2838', '--expi': '#5AB0FF', '--bar': 'rgba(34,34,37,0.96)',
+      '--shadow': '0 22px 60px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.16)',
+      '--menushadow': '0 12px 36px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(255,255,255,0.16)',
+      '--btn': '#48484C', '--field': '#1E1E20'
+    };
+    const all = [
+      { name: 'Light', s: light, serving: 'baselines/status-item-serving-light.png', failed: 'baselines/status-item-failed-light.png' },
+      { name: 'Dark', s: dark, serving: 'baselines/status-item-serving-dark.png', failed: 'baselines/status-item-failed-dark.png' }
+    ];
+    const f = this.props.frames ?? 'Light and dark';
+    const themes = f === 'Light only' ? [all[0]] : f === 'Dark only' ? [all[1]] : all;
+    return { themes };
+  }
+}
+</script>
+</body>
+</html>
+

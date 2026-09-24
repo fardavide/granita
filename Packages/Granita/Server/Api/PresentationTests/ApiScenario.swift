@@ -35,6 +35,12 @@ struct ApiScenario {
     /// how much of this Mac a request read before it answered.
     let git: RecordingGitClient
 
+    /// The very reader the routes are answering from.
+    ///
+    /// Exposed so the merged Mac app's local path can be driven against the **same** wiring in the
+    /// same test, which is the only way to assert the two agree rather than hope they do.
+    let reader: WorktreeReader
+
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
         try self.init(at: try repository.location(), requiresAuthentication: requiresAuthentication)
     }
@@ -59,16 +65,26 @@ struct ApiScenario {
         // Unfiltered, deliberately: what the middleware records is this suite's question, and
         // whether the verbose switch would have suppressed it is `VerbosityFilteringDiagnostics`'s.
         diagnostics = FakeDiagnostics()
-        let dependencies = ApiDependencies(
+        reader = WorktreeReader(
             registry: WorktreeRegistry(
                 store: store,
                 service: service,
+                // The real one, because these drive the real git binary against the fixture
+                // repositories: the directories the registry asks about are on disk for the
+                // length of the run, and a fake would answer for a filesystem that is right
+                // there.
+                directory: LocalWorktreeDirectory(),
                 // The session index reads the developer's own `~/.claude`, which is neither
-                // present nor predictable on a runner. Suggested names are best effort by design,
-                // so the seam is closed here with none rather than with someone's real transcripts.
+                // present nor predictable on a runner. Suggested names are best effort by
+                // design, so the seam is closed here with none rather than with someone's real
+                // transcripts.
                 suggestedAliases: { _ in [:] }
             ),
             service: service,
+            store: store
+        )
+        let dependencies = ApiDependencies(
+            reader: reader,
             store: store,
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
@@ -88,6 +104,26 @@ struct ApiScenario {
     func recordedAttempts() async -> [ConnectionAttempt] {
         var readings = await connectionLog.attempts().makeAsyncIterator()
         return await readings.next() ?? []
+    }
+
+    /// The same reader, over a Mac whose worktree directories have all gone.
+    ///
+    /// **git still lists them, which is the point.** `worktree list` keeps naming a directory that
+    /// has been deleted until somebody prunes it, so this is the ordinary shape of an agent removing
+    /// a checkout mid-read rather than a contrived one — and the only way to reach it without
+    /// deleting a fixture the rest of the suite shares.
+    func readerWithoutDirectories() -> WorktreeReader {
+        let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
+        return WorktreeReader(
+            registry: WorktreeRegistry(
+                store: store,
+                service: service,
+                directory: FakeWorktreeDirectoryReading(directoriesExist: false),
+                suggestedAliases: { _ in [:] }
+            ),
+            service: service,
+            store: store
+        )
     }
 
     /// Enables the fixture repository, the way `--add-project` does.
@@ -318,8 +354,16 @@ extension ApiScenario {
             limits: .standard
         )
         return ApiDependencies(
-            registry: WorktreeRegistry(store: store, service: service, suggestedAliases: { _ in [:] }),
-            service: service,
+            reader: WorktreeReader(
+                registry: WorktreeRegistry(
+                    store: store,
+                    service: service,
+                    directory: LocalWorktreeDirectory(),
+                    suggestedAliases: { _ in [:] }
+                ),
+                service: service,
+                store: store
+            ),
             store: store,
             pairing: Pairing(store: store, now: { Date() }),
             failedAttempts: FailedAttempts(now: { Date() }),

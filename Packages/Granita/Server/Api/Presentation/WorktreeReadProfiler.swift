@@ -16,10 +16,16 @@ public actor WorktreeReadProfiler {
         measurements.append(measurement)
     }
 
-    public func read(
+    /// Times a read, whatever the read refuses with.
+    ///
+    /// **Generic over the thrown type rather than fixed to the API's**, because the thing being
+    /// timed is now the registry, which refuses in this Mac's own vocabulary and has no HTTP in it.
+    /// A profiler that named one caller's error would make the CLI translate a refusal it only ever
+    /// prints.
+    public func read<Failure: Error>(
         enabledProjectCount: Int,
-        using reading: @Sendable () async throws(ApiError) -> [Worktree]
-    ) async throws(ApiError) -> WorktreeReadProfile {
+        using reading: @Sendable () async throws(Failure) -> [Worktree]
+    ) async throws(Failure) -> WorktreeReadProfile {
         let started = ContinuousClock.now
         let worktrees = try await reading()
         return WorktreeReadProfile(

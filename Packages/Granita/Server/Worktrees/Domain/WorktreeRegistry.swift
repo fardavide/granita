@@ -1,9 +1,38 @@
 import Foundation
 
+import CoreApiDomain
 import CoreDiffDomain
 import ServerGitDomain
 import ServerStoreDomain
-import ServerWorktreesDomain
+
+/// Why a worktree could not be handed over, in the vocabulary of this Mac rather than of HTTP.
+///
+/// **It carries no message, and that is the point of it being here.** The sentences a refusal
+/// travels with are the API's, and this type is imported by the repository that reads this Mac with
+/// no API in the path at all — so the wording lives at whichever boundary is doing the refusing, and
+/// both of them spell the same three cases.
+public enum WorktreeRegistryError: Error, Hashable, Sendable {
+
+    /// The identifier names a project that exists but the reader has not enabled.
+    ///
+    /// Distinguished from finding nothing, because "you have not switched that on" and "there is no
+    /// such thing" are different answers and only one of them is actionable.
+    case projectNotVisible
+
+    /// Resolved to a directory that is no longer on disk.
+    case directoryGone
+
+    /// No enabled project holds that worktree at all.
+    case notFound
+
+    /// How it travels, which is the one thing both boundaries agree on.
+    public var code: ApiErrorCode {
+        switch self {
+        case .projectNotVisible: .projectNotVisible
+        case .directoryGone, .notFound: .worktreeGone
+        }
+    }
+}
 
 /// Turns an opaque identifier into somewhere on this Mac, and refuses when it cannot.
 ///
@@ -11,6 +40,11 @@ import ServerWorktreesDomain
 /// it sends a hash, and the only paths that exist are the ones in the store, which are the ones the
 /// user added by hand. A traversal attempt is not rejected here so much as unrepresentable: there
 /// is nothing to traverse from.
+///
+/// **It is `Domain` because two things need it and they are on opposite sides of the layer graph**:
+/// the routes that serve a phone, which are `Presentation` and carry Hummingbird, and the repository
+/// that reads this Mac with no socket in the path. Its only filesystem access is behind
+/// ``WorktreeDirectoryReading`` for exactly that reason.
 public struct WorktreeRegistry: Sendable {
 
     /// Somewhere resolvable, with everything needed to describe it.
@@ -29,15 +63,18 @@ public struct WorktreeRegistry: Sendable {
 
     private let store: any Store
     private let service: WorktreeService
+    private let directory: any WorktreeDirectoryReading
     private let suggestedAliases: @Sendable ([(path: String, branch: String?)]) async -> [String: String]
 
     public init(
         store: any Store,
         service: WorktreeService,
+        directory: any WorktreeDirectoryReading,
         suggestedAliases: @escaping @Sendable ([(path: String, branch: String?)]) async -> [String: String]
     ) {
         self.store = store
         self.service = service
+        self.directory = directory
         self.suggestedAliases = suggestedAliases
     }
 
@@ -89,11 +126,11 @@ public struct WorktreeRegistry: Sendable {
         try? await store.prune(keeping: living, markLimit: markLimit)
     }
 
-    public func worktrees(inProject filter: ProjectID?) async throws(ApiError) -> [Worktree] {
+    public func worktrees(inProject filter: ProjectID?) async throws(WorktreeRegistryError) -> [Worktree] {
         let state = await store.state()
         let projects = state.projects.filter { $0.isVisible && (filter == nil || $0.id == filter) }
         if let filter, projects.isEmpty, state.projects.contains(where: { $0.id == filter }) {
-            throw ApiError(.projectNotVisible, message: "that project is not enabled")
+            throw .projectNotVisible
         }
 
         var records: [(StoredProject, WorktreeRecord)] = []
@@ -180,19 +217,19 @@ public struct WorktreeRegistry: Sendable {
             directoryName: directoryName,
             isPinned: stored?.isPinned ?? false,
             stats: changes?.stats ?? .zero,
-            lastModified: modificationDate(of: record.location),
+            lastModified: directory.lastModified(at: record.location),
             revision: changes?.revision ?? ""
         )
     }
 
     /// Where a worktree is, or why it cannot be served.
-    public func resolve(_ id: WorktreeID) async throws(ApiError) -> Resolved {
+    public func resolve(_ id: WorktreeID) async throws(WorktreeRegistryError) -> Resolved {
         let state = await store.state()
         for project in state.projects where project.isVisible {
             let records = (try? await service.worktrees(in: RepositoryLocation(path: project.path))) ?? []
             for record in records where WorktreeID(canonicalPath: record.location.path) == id {
-                guard FileManager.default.fileExists(atPath: record.location.path) else {
-                    throw ApiError(.worktreeGone, message: "that worktree's directory is no longer there")
+                guard directory.exists(at: record.location) else {
+                    throw .directoryGone
                 }
                 return Resolved(
                     location: record.location,
@@ -202,12 +239,7 @@ public struct WorktreeRegistry: Sendable {
                 )
             }
         }
-        throw ApiError(.worktreeGone, message: "no enabled project has that worktree")
-    }
-
-    private func modificationDate(of location: RepositoryLocation) -> Date {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: location.path)
-        return attributes?[.modificationDate] as? Date ?? Date(timeIntervalSince1970: 0)
+        throw .notFound
     }
 
     private static func shortBranch(_ ref: String) -> String {

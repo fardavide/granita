@@ -1,7 +1,12 @@
 # Design — the Mac
 
-The menu bar app's seven surfaces, drawn for the first time. This is the authority on **what the Mac
-looks like and why**; [`design.md`](design.md) is the same thing for the phone and the iPad.
+The menu bar app's seven surfaces, drawn for the first time, **and §8, which is what happens when the
+Client's macOS destination joins them in one bundle.** This is the authority on **what the Mac looks
+like and why**; [`design.md`](design.md) is the same thing for the phone and the iPad.
+
+**Read §8 before §1–§7 if the question is about the merged app.** The seven sections below describe a
+menu bar app under `LSUIElement` with no window a reader sits in. §8 keeps all seven and adds the one
+they do not cover, and where it contradicts them it says so in as many words.
 
 The drawings were working material and did not last. `design/granita-mac-design-review.html` held
 the frames at 1:1, each section deleted from it as it was implemented; **§1 and §2 were the last two
@@ -31,6 +36,7 @@ becomes.
 | §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The six words grew a Copy button in 0.3.1, which the frames do not draw — below. The Allow-from-the-Mac path is still out: no frames and no protocol |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**; the `Pair…` affordance landed in 0.0.15 with the tab it opens. Frames deleted |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
+| §8 | One Mac app — the reader window, the source pop-up, the inspector, the View menu | **returned 23 September 2026, nothing built.** Twelve calls, all drawn; the frames are in [`design/`](design/granita-one-mac-app-design-review.html) until they ship. Issues [#97](https://github.com/fardavide/granita/issues/97) and [#91](https://github.com/fardavide/granita/issues/91) |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
 and the answers are below rather than in the review because neither came from a drawing.
@@ -518,12 +524,313 @@ developer's own machine.
 
 Should feel like Xcode's Advanced pane.
 
+## §8 — One Mac app *(returned 23 September 2026, drawn against 0.19.0)*
+
+The seven sections above describe a menu bar app. This one describes what happens when the Client's
+macOS destination and that app become **one bundle**, which is issue
+[#97](https://github.com/fardavide/granita/issues/97), and it absorbs the window chrome that
+[#91](https://github.com/fardavide/granita/issues/91) owed. The `design-handoff` waiver
+[#91](https://github.com/fardavide/granita/issues/91) recorded was **withdrawn** for this surface on
+23 September 2026 and it went through the round trip instead.
+
+**The organising sentence, and every call below follows from it.** The window reads the disk; the
+menu bar goes on answering for the phone. Merged, Granita is one bundle with two surfaces that
+**never report on each other** — the window never mentions the server, the menu never mentions
+reading, and the one place they touch is a single row that opens the window.
+
+### Four things true at `main` that changed the drawing
+
+These are facts about the code, found by reading it, and each one moves a frame.
+
+**This Mac will discover itself.** The merged process browses `_granita._tcp` while advertising it,
+under `MachineName.computer`. Unfiltered, the discovered list gains a row for this Mac under its
+Bonjour name — a second route to the same worktrees, through TLS, a pin and a pairing with itself.
+**The browse has to drop the instance the server registered**, and every source-menu frame is drawn
+with it dropped.
+
+**One bundle is one Local Network grant.** Today the server's `.failed` and the Client's
+permission-refused are two decisions in two bundles. Merged they are **one privacy entry**, so the
+reader cannot find other Macs exactly when the phone cannot find this one. That is what makes the
+permission-refused source menu ordinary rather than strange: it is the menu's *Not serving* seen from
+the window, and it gets the menu's button. This Mac is not affected by it at all.
+
+**The seam is built on one side only.** `GranitaRepository` is the boundary on the Client side. On
+the server side `WorktreeRegistry` and `WorktreeService` are made inside `MacComposition.init` and
+handed only to `ApiDependencies`; nothing keeps them. The local repository needs the composition to
+hold them, to map `ApiError` onto `ApiFailure`, and to **report a read route of its own** — the
+protocol's default reports `.reading(.unknown)`, which the loading block spells *"Waiting for your
+Mac's response."* There is no response to wait for.
+
+**One server state does stop This Mac.** `StoreLockingServerHost` takes the store's lock for the
+whole launch. When another process holds it, a reader writing viewed marks, names and reviews into
+that document is the two-writers case [answer (b) above](#what-is-settled-and-what-is-still-open)
+already refused. So **blocked by another process is the single exception** to "the local source works
+when the server does not". Failed and stopped are not exceptions.
+
+### The twelve calls
+
+**1 — Choosing a source is a pop-up menu at the head of the sidebar.** One stock pop-up button
+labelled with the source it is showing, above the worktree list it chooses for. This Mac is first and
+ticked by default; discovered Macs follow under a heading; an unpaired one ends in an ellipsis
+because choosing it asks for more. The phone's whole screen becomes six rows, which is the right size
+for a choice made a few times a year.
+*Rejected:* sources as sections of the same sidebar, which puts two Macs' 122-second reads on screen
+at once and gives the sidebar two meanings; a toolbar control over the diff, which is the far side of
+the window from the list it changes; a chooser window that opens first, which asks a question whose
+answer is *This Mac* nearly every time; and the phone's pushed screen, which is where the
+back-chevron came from.
+
+**2 — The file selector is a trailing inspector, open by default, 240pt.** SwiftUI's `.inspector`,
+toggled by `sidebar.trailing` at the end of the toolbar and ⌥⌘0. The decisive reason is that
+`DiffPaneLayout` **already has a fold** — `showsSelectorColumnToggle` — and an inspector is the only
+Mac container that can fold on its own. The list keeps both of its jobs: it jumps, and it stays on
+screen to show how much of the change set has been read.
+*Rejected:* a third split-view column — `NavigationSplitViewVisibility` has `.all`, `.doubleColumn`
+and `.detailOnly` and **no case that hides the middle column alone**, so the existing fold would have
+nothing to bind to, and with nothing chosen the window would show two empty columns. A popover, which
+gives up the second job the moment it closes. A sheet at a detent, which is the thumb idiom the brief
+rules out.
+
+**3 — The review takes the same inspector, in the files' place, while it is open.** The iPad's rule
+moved unchanged: `showsReviewColumn` wins the slot, `showsSelectorColumnToggle` goes while it has it,
+and the toolbar's bubble-and-count is the way back. Nothing new is decided; the Mac binds the same
+value to a different container.
+*Rejected:* a sheet, which stops the reader scrolling the code the comments are about; a separate
+window, which outlives a change of worktree and would show one worktree's review beside another's
+diff; and a fourth column, which at 260 + 760 + 240 + 280 is **1540pt — wider than a 13-inch MacBook
+Air's 1470pt screen**.
+
+**4 — One window. The Dock icon reopens it on the last source and worktree.** A single `Window` scene
+with `.defaultLaunchBehavior(.suppressed)` and restoration off, which is the "no window at launch"
+call in two modifiers. Clicking the Dock icon with no window open opens it; with one minimised,
+restores it. What it reopens *on* is remembered in defaults rather than by window restoration, so a
+login launch still opens nothing. **Reopen has to be handled explicitly**, because the first `Window`
+in the scene body is the invisible `SettingsOpener`, declared first on purpose.
+*Rejected, for now:* a window per worktree. Two agents on one task is a real reason to want two diffs
+side by side, but the Client has one list model per screen and one review store per worktree, and two
+windows editing the same marks is a synchronisation problem nobody has designed. The cheap later form
+is *Open in New Window* on the row's context menu over a `WindowGroup(for: WorktreeId)`.
+
+**5 — Keep pairing for a remote Mac. Drop the camera. Six words, typed or pasted.** This is the one
+question Davide left open. A two-Mac household is the realistic remote case — a laptop reading what
+an agent wrote on a Mac Studio — and the Client already pairs, so removing it saves nothing. **The
+camera is the wrong half of it here**: to scan, the reader would have to carry a laptop round to face
+another Mac's display, and `com.apple.security.device.camera` would move onto the one process that
+listens on a socket and execs `git`. The six words are already a first-class credential and this Mac
+has a keyboard. The field also accepts them pasted as one line, which is what the Devices pane's Copy
+button already produces.
+**The cost, stated rather than hidden:** the words path is `trustingFirstAnswer` — it pins whatever
+key answered — where the QR carries its pin in the link. On a home network that is a first-use trust
+decision rather than a verified one.
+*Rejected:* keeping the camera for parity with the phone; and dropping remote Macs, which deletes
+working code to save one sheet.
+
+**6 — Say it once, in the source menu. Never in the window's chrome.** *This Mac* carries a menu-item
+subtitle — *"Read on this Mac, without the network"* — because the menu is the one place sources are
+compared, so it is the one place the difference is a choice. In the window the source appears only as
+the second half of the title's subtitle, `granita · This Mac`, which is also what tells two remote
+Macs' windows apart. **There is no banner, badge or line about the server, ever.**
+*Rejected:* a sidebar footer or badge saying *local*, which is chrome a reader sits in front of for an
+hour to learn something once; a *Server not running — still reading* notice, which makes the window
+report on the server and invites the question it is trying to avoid; and saying nothing anywhere,
+which leaves the menu's two kinds of row looking the same when they cost differently.
+
+**7 — Default 1260 × 800pt. Minimum 640 × 480pt.** Derivation below. Unlike Settings it resizes, and
+unlike Settings nothing in it is a fixed-size picture.
+*Rejected:* the iPad's 320 / 320 / 554, which is iOS type sizes measured in iOS points; and a fixed
+size like Settings, which would forbid the one thing a Mac reader does in the first minute — make the
+diff wider.
+
+**8 — *Show Worktrees*, first in the menu's second group, in every state.** Directly under the status
+line's divider and above *Pair a device…*. No ellipsis, because it asks nothing further. When the
+window is already open the same row activates the app and orders the window front, **so pressing it
+is never a no-op** — the thing this project refuses to ship. It is enabled in all six server states,
+because the window always has something true to say, including when the store is held.
+*Rejected:* *Open Granita*, which names an app that is already running; a position above the status
+line, which takes the glance's first line away from the glance; a group of its own, which is a fourth
+group for one row; and a verb that flips to *Hide Worktrees*, which makes a reader read the row every
+time and duplicates ⌘W.
+
+**9 — Close closes. Quit quits, with no alert, from either menu.** The red button and ⌘W close the
+window; the Dock icon stays lit and the status item stays put, which is how a Mac shows an app is
+still running. ⌘Q from the app menu and *Quit Granita* from the status menu are the same act. **This
+wants a UI test rather than trust**: a SwiftUI app whose only window scene is closed can terminate,
+and here that would be a server that stopped for a reason its owner cannot see.
+*Rejected:* a *Quit Granita?* alert, which a login item would show every time its owner quits it on
+purpose; and hiding the Dock icon when the window closes by switching activation policy, which breaks
+the Dock-icon call and makes the icon a window indicator that jumps in and out of ⌘-Tab.
+
+**10 — The back-chevron goes because the detail stops being a stack.** On the iPad the detail column
+is a `NavigationStack` and a chosen row is *pushed* onto it, which is where the chevron comes from and
+why the worktree list is replaced by *Files* in the iPad baseline. On the Mac the list binds a
+selection — `List(selection:)` — and the detail draws the chosen worktree directly. Nothing is pushed,
+so there is nothing to go back from, and **the worktree list never leaves the screen**. The iPad keeps
+its links.
+*Rejected:* hiding the chevron with a toolbar modifier, which leaves a push the reader cannot see and
+a stack that still needs a way out.
+
+**11 — The row gets nothing new. The file count simply stops dropping.** The Mac's text styles are
+smaller than iOS's — headline 13pt against 17, subheadline 11 against 15 — so the 260pt sidebar holds
+more than the iPad's 320. The second line has about 190pt, and the fixture's widest,
+`granita · 34 files · +1,204 −318`, needs about 186. **What the width buys is that the first field in
+the drop order stays on realistic rows.** Spending it on a new field would make the drop order live
+again on exactly the rows it just stopped touching.
+*Rejected:* the branch under an alias, which is the rename sheet's business; and a single-line Mac
+row, which would respend the two name tiers.
+
+**12 — Nothing moves off the status item, and the phone's settings sheet does not come to the Mac.**
+Davide's call holds as written. What it leaves open is where the *reader's own* preferences go, since
+on the phone they live in the sheet behind the sidebar's *Review settings…*. On the Mac they become
+**the View menu**, which is where a Mac puts them: Side by Side, the code size as ⌘+ ⌘− ⌘0, and Code
+Colours. Appearance follows the system, as Settings does. For This Mac, *Review settings…* becomes a
+door to Settings › Review — the same door *Pair a device…* is to Devices. For a remote Mac it opens
+the existing review form as a window sheet, since those two values belong to that Mac.
+*Rejected:* a seventh Settings pane for the reader, which breaks the call above; and bringing the
+phone's sheet across whole, which puts a forced-appearance picker and *Follow system* code size on a
+platform with no Dynamic Type.
+
+### Where each number in 1260 × 800 comes from
+
+| | |
+|---|---|
+| **7.2pt** | One character of code: the size beside the selector is 12pt and SF Mono advances 0.6em |
+| **60pt** | The gutter at four figures, by `DiffGutter`'s own rule at 12pt: 4 + 4 × 7.2 + 9, then the 12pt marker and 6pt gap |
+| **760pt** | The diff — the width the side-by-side round already drew the Mac at. It holds (760 − 60 − 16) ÷ 7.2 = **95 characters** unified and about 45 a side split: past the 554pt, 67-character width §6(a) calls pleasant, and close to the 100-column length these repositories are formatted to |
+| **260pt** | The sidebar. The iPad's 320 at a 17pt headline is 320 × 13 ⁄ 17 = 245 at the Mac's 13pt; 260 is what lets the file count survive the fixture's widest row (call 11) |
+| **240pt** | The inspector. The iPad's 320 at a 15pt subheadline is 320 × 11 ⁄ 15 = 235 at the Mac's 11pt |
+| **800pt** | A 13-inch MacBook Air is 1470 × 956pt; less a 37pt menu bar under the notch and a default Dock, about 850pt is visible. 800 fits with room for the shadow and shows (800 − 52) ÷ 19 = **39 rows of code** |
+
+**And the minimum, with what folds on the way down.** The diff's floor is **420pt** — the phone's 49
+characters at 12pt, 49 × 7.2 + 60 + 8 — which also keeps side by side above the side-by-side round's
+20-a-side floor, at 22 a side, **so the toolbar item never has to disable itself inside the window's
+own range**. The inspector's floor is **220pt**, where the file row has dropped its figures and still
+holds a name. Below 260 + 420 + 220 = **900pt the sidebar folds**, which the split view does on its
+own, and folding it first is right because a reader switches worktree a few times an hour and reads
+the whole time. **640pt** is 420 + 220, below which the only thing left to fold is the inspector, so
+that is the floor. **480pt** is a 52pt toolbar, one 46pt file header and 20 rows of 19pt.
+
+640 is 20pt from Settings' 620 **by coincidence**; neither number is derived from the other.
+
+### The surfaces above that this changes
+
+**§1, the status item: no change, and it becomes a better answer.** Under `LSUIElement` the symbol had
+to stand for "Granita is running" as well, because nothing else could. After the merge the Dock and
+⌘-Tab say that, and the triangle means only what it already meant. **It must not learn anything about
+the window** — a symbol that changed while a worktree was open, or counted what was unread, would be
+the menu bar reporting on reading, and the 122.7-second arithmetic applies to anything it counts.
+*Rejected:* a fourth symbol for "serving, and the reader is open", which answers a question nobody
+asks the menu bar; and dropping the status item now there is a Dock icon, which would hide the
+server's state whenever the window is shut — the normal case for a login item.
+
+**§1's menu gains one row and loses its reason.** `MenuBarContent`'s doc comment says each row earns
+its place because *"this menu is the entire app when Settings is shut"*. **That reason expires and the
+rows stay anyway**, each for a reason of its own: the status line copies an address nobody can
+memorise, *Pair a device…* is the one gesture a new phone needs, and a login item needs a Quit that
+does not require opening a window first. The doc comment is what changes.
+
+**§2, the Settings window: unchanged, and a fixed panel beside a resizable document is the most
+ordinary thing a Mac does.** Mail, Safari, Xcode and Terminal itself pair a fixed Settings panel with
+a resizable main window, and they are different shapes because they are different kinds of window:
+one is opened, changed and shut, the other is sat in. Making the reader match Settings would forbid
+resizing it; making Settings match the reader would undo call 7.
+
+**§3's Startup footnote is the one sentence in six panes the merge contradicts.** It reads *"Granita
+has no window and no Dock icon. If it is not running, your phone finds nothing."* It becomes
+**"Closing Granita's window leaves it serving. If Granita is not running, your phone finds nothing."**
+— the first sentence being the thing call 9 most needs a reader to know, under the toggle that
+decides whether Granita runs at all.
+
+**The window opens Settings in three places**, all through the `requestSettings(showing:)` the menu
+already uses: *Open Projects Settings…* when This Mac has nothing enabled, *Open Local Network
+Settings…* which is the system's own pane rather than ours, and *Review settings…* for This Mac. **No
+pane is added and none is redrawn.**
+
+**What is built is not quite what was briefed:** the window ships General, Projects, Devices, Review,
+Connections, Advanced — **Review before Connections**, not after — while `GranitaSettingsScreen`'s doc
+comment still says five tabs. Nothing depends on the order; it is recorded so the section above is
+read against what exists.
+
+### The window's own states
+
+**Nothing chosen** is `NoWorktreeChosenView` unchanged, in the detail, with the toolbar holding only
+the source's name — and it is drawn **only while the sidebar is listing**. When the sidebar is itself
+an empty, failed or loading state, the detail shows nothing, because *"Pick one from the list"* under
+a sidebar with no list is an instruction that cannot be followed. The iPad draws exactly that today;
+the Mac gates it.
+
+**A worktree no longer listed** replaces the diff rather than titling it *This worktree* the way the
+iPad does. On a Mac the list and the detail are on screen together, so a diff under no highlighted row
+reads as the list being wrong — and its viewed marks and comments would be refused with
+`worktreeGone`. The name is the one captured when the row was chosen. **There is no button**: the next
+move is a row in the sidebar.
+
+**The list has no refresh on a Mac.** The sidebar's only refresh is `.refreshable`, and on macOS that
+modifier **draws no gesture** — so without a Refresh command the list is read once per window and
+never again. A toolbar button at the head of the sidebar and ⌘R in the View menu both call the
+`onRefresh` the view already takes.
+
+**Nothing changed** needs a rule the iPad does not have. `DiffPaneLayout` keeps the column while
+withholding its toggle when there are no files, and the iPad baseline shows the result: a column
+headed *Files* with nothing under it and no way to fold it. On the Mac that would be **an inspector
+that cannot be closed**, so the Mac presents it only when `showsSelectorColumn` *and* there is
+something to select. The value itself does not change.
+
+**Not serving is drawn as the reading state, unchanged.** The only difference on screen is the symbol
+in the menu bar. The way to make that impossible to get wrong is structural: the local repository is
+built in `MacComposition` from the registry, the service and the store, and **never from
+`ServerMacModel.serverState`** — then a baseline of this window with the host held in `.failed`
+asserts it.
+
+**No projects yet gets a real button on the Mac**, because here the fix is one window away. For a
+remote Mac the phone's sentence stays, naming that Mac, because nothing on this one can fix it.
+
+**Blocked by another process** says so in one sentence with the holder's name, as the menu does. It
+has **no button**: the fix is quitting a process this app did not start, and *Quit Granita* would be
+the wrong process. Other Macs remain one click away in the pop-up.
+
+**A long read is the 122.7 seconds on screen.** Only the reading stage exists for This Mac — there is
+nothing to find or verify — so the block starts at *Reading worktrees*, and after ten seconds it grows
+the clock and the sentence the phone already carries. Its second line is the new route: **"Running git
+on this Mac"**, in place of *"Waiting for your Mac's response."*
+
+**Not drawn, and why:** a `git` that cannot be run. `WorktreeRegistry` reads every project with
+`try? … ?? []`, so a Mac with broken git **lists nothing rather than failing**, over HTTP and locally
+alike. On This Mac that is a diagnosable fact Advanced already shows; drawing a state for it needs the
+registry to stop swallowing it first.
+
+### Sentences the merge makes false
+
+Four, and they are part of the diff rather than a follow-up: §3's Startup footnote above; the
+sidebar's no-projects text, which sends a Mac reader to *"Granita's menu bar item on your Mac"*; the
+connecting failure's *"Check that Granita is running on your Mac"*, which cannot happen on This Mac;
+and the gone worktree's fallback title *This worktree*, which now sits beside *This Mac*.
+
+### What it should feel like
+
+**A server with a reading room, and a door between them.** The window should feel like Preview open on
+a long document: a list of what there is to read, the document, and its contents beside it. Nothing in
+it is about serving, pairing phones or ports — **a reader who never owns a phone should be able to use
+it for a year without learning that Granita serves anything.**
+
+The Dock icon makes the whole thing behave like Mail with no window open: running is normal, closing a
+window means closing a window, and clicking the icon brings the window back where it was.
+
+**The status item's "open me twice a year" character survives, and it survives because of the local
+seam.** If the window depended on the server, every reading problem would send the reader to the menu
+bar to find out why, and the status item would become a place visited daily. It does not, so the menu
+bar stays the phone's business. The one new habit is *Show Worktrees*, which is a door rather than a
+panel.
+
 ## What the Mac still has no way to check
 
-Every surface above is code that **nothing renders**: the snapshot suite is the iOS target, and the
-Mac has no snapshot kind at all. The frames are drawn at 1:1 precisely so they can become the
-baselines, and the review is explicit that the window's real minimum has to be asserted from inside
-the app — window geometry is not measurable from outside while Stage Manager is on.
+The seven settings surfaces are built and baselined, and the macOS snapshot kind that landed with the
+first of them is what pins them. **The reader's views are where that sentence is still true**: every
+Client `Ui` and `Presentation` target has only iOS destinations, so every macOS-specific line in one
+is code nothing renders. §8's frames are drawn at 1:1 precisely so they can become those baselines —
+fourteen states, light and dark, no device axis.
 
-So the macOS snapshot kind lands in the same pull request as the first tab built from a frame. That
-is not a preference: without it, "we built the design" is an assertion nobody can check.
+Two things no baseline reaches, in either half. **The window's real minimum has to be asserted from
+inside the app**, because window geometry is not measurable from outside while Stage Manager is on.
+And **closing the window must be shown not to quit the server** — a UI test that opens the reader,
+closes it, and asserts the status item is present and the host still serving. That is the one
+behaviour in call 9 a snapshot cannot photograph, and the failure it prevents is silent.

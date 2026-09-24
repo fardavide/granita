@@ -25,6 +25,23 @@ The Mac app embeds the backend in-process. The same backend is also an executabl
 server side builds, runs and is tested from a terminal with no Xcode in the loop. The menu bar app is
 a delivery mechanism for it, not its host.
 
+**And on the Mac holding the worktrees there is no wire at all.** Issue
+[#97](https://github.com/fardavide/granita/issues/97) merges the two Mac apps into one bundle, so the
+reader and the server are one process — and there the client's `GranitaRepository` binds to
+`WorktreeReader` rather than to HTTP. Pairing, TLS pinning, Bonjour and the camera leave the path
+entirely: the same screens call the same protocol and the diff arrives without a socket.
+
+**`WorktreeReader` is why the routes are thin.** It holds every operation this Mac can be asked
+about its own worktrees, in `ServerWorktreesDomain`, and both the HTTP routes and the window are
+callers. What each keeps is the wording — a wire message and a screen's sentence are different
+jobs — so the reader carries causes and each boundary maps them once, exhaustively. Before this the
+behaviour lived in the route handlers, which would have forced the window to reimplement it and let
+the two readers drift. `.ai/docs/decisions.md` has the full argument.
+
+`LocalGranitaRepository` at `Server/Reader/Data` is the one place a `Server` module implements a
+`Client` protocol. **They meet over `Domain` on both sides**, so no `Data` target is in the path and
+the phone's shell still links none of it.
+
 ## One package, four layers, module boundaries as the enforcement
 
 Everything testable lives in a single local Swift package. The two Xcode targets are thin `@main`

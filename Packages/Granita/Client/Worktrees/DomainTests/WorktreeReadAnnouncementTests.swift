@@ -15,7 +15,8 @@ struct WorktreeReadAnnouncementTests {
         (.verifying, "Verifying Studio Mac. Checking it against the key this device pinned when it paired."),
         (.reading(.unknown), "Reading worktrees. Waiting for your Mac’s response."),
         (.reading(.local), "Reading worktrees. Connected on this network."),
-        (.reading(.tailnet), "Reading worktrees. Connected over Tailscale.")
+        (.reading(.tailnet), "Reading worktrees. Connected over Tailscale."),
+        (.reading(.thisMac), "Reading worktrees. Running git on this Mac.")
     ])
     func `given an observed read stage when announcing it then the label and connection facts are combined`(
         stage: WorktreeReadStage,
