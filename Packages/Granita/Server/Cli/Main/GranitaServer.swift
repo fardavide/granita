@@ -82,13 +82,14 @@ struct GranitaServer {
         let registry = WorktreeRegistry(
             store: store,
             service: service,
+            directory: LocalWorktreeDirectory(),
             suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
         )
         if arguments.wantsWorktreeProfile {
             do {
                 let projects = await store.state().projects.filter(\.isVisible)
                 let profile = try await profiler.read(enabledProjectCount: projects.count) {
-                    () async throws(ApiError) -> [Worktree] in
+                    () async throws(WorktreeRegistryError) -> [Worktree] in
                     try await registry.worktrees(inProject: nil)
                 }
                 print(profile.text)
@@ -109,8 +110,7 @@ struct GranitaServer {
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
 
         let dependencies = ApiDependencies(
-            registry: registry,
-            service: service,
+            reader: WorktreeReader(registry: registry, service: service, store: store),
             store: store,
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),

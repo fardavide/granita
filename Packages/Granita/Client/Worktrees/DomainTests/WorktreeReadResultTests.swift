@@ -55,6 +55,9 @@ struct WorktreeReadResultTests {
         (WorktreeReadResult.read(at: Date(timeIntervalSince1970: 1_800_000_000), route: .local), 0.0, "Read just now, on this network."),
         (.read(at: Date(timeIntervalSince1970: 1_800_000_000), route: .tailnet), 840.0, "Read 14 minutes ago, over Tailscale."),
         (.read(at: Date(timeIntervalSince1970: 1_800_000_000), route: .unknown), 0.0, "Read just now."),
+        // The age, and no route clause: no network carried this read, and the source is named in
+        // the one place §8's call 6 allows it to be.
+        (.read(at: Date(timeIntervalSince1970: 1_800_000_000), route: .thisMac), 840.0, "Read 14 minutes ago."),
         (.notRead, 840.0, ""),
         (.stale(at: Date(timeIntervalSince1970: 1_800_000_000), route: .local, failure: .unreachable(diagnostic: "The refresh timed out")), 840.0, "Showing worktrees read 14 minutes ago.")
     ])

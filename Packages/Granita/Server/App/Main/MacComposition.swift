@@ -84,13 +84,20 @@ final class MacComposition {
         let tailnetEndpoint = LocalAddresses
             .tailscaleIpv4Address(in: LocalAddresses.current())
             .map { TailnetEndpoint(host: $0.description, port: Branding.defaultPort) }
-        let dependencies = ApiDependencies(
+        // Held rather than handed straight to the routes, because the merged Mac app's window reads
+        // this Mac through the same reader with no socket in the path.
+        let reader = WorktreeReader(
             registry: WorktreeRegistry(
                 store: store,
                 service: service,
+                directory: LocalWorktreeDirectory(),
                 suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
             ),
             service: service,
+            store: store
+        )
+        let dependencies = ApiDependencies(
+            reader: reader,
             store: store,
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),
@@ -111,7 +118,7 @@ final class MacComposition {
         // since deleted, and cap the marks. Detached here rather than awaited, unlike the CLI's —
         // this runs on the way to drawing a menu bar, and a git process per enabled project is not
         // something a reader should watch an icon wait for.
-        Task { await dependencies.registry.pruneStore() }
+        Task { await reader.pruneStore() }
 
         // The Mac woke, or someone pressed Restart. One stream, because what a rebind *does* is
         // identical either way and the teardown ordering is delicate enough to want one owner.

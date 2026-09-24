@@ -601,15 +601,32 @@ let package = Package(
             swiftSettings: [swift6]
         ),
 
+        // Holds `WorktreeRegistry`, which was in the API's `Presentation` until the merged Mac app
+        // needed it from a second place. The routes that serve a phone are `Presentation` and carry
+        // Hummingbird; the repository that reads this Mac with no socket cannot import either. A
+        // module both may depend on is `Domain`, so the registry's two `FileManager` calls went
+        // behind `WorktreeDirectoryReading` and the type came down with them.
         .target(
             name: "ServerWorktreesDomain",
-            dependencies: ["ServerGitDomain", "CoreDiffDomain", "CoreTreeDomain"],
+            dependencies: [
+                "CoreApiDomain",
+                "CoreDiffDomain",
+                "CoreTreeDomain",
+                "ServerGitDomain",
+                "ServerStoreDomain"
+            ],
             path: "Server/Worktrees/Domain",
             swiftSettings: [swift6]
         ),
         .testTarget(
             name: "ServerWorktreesDomainTests",
-            dependencies: ["ServerWorktreesDomain", "ServerGitDomain", "CoreDiffDomain"],
+            dependencies: [
+                "CoreApiDomain",
+                "CoreDiffDomain",
+                "ServerGitDomain",
+                "ServerStoreDomain",
+                "ServerWorktreesDomain"
+            ],
             path: "Server/Worktrees/DomainTests",
             swiftSettings: [swift6]
         ),
@@ -629,6 +646,27 @@ let package = Package(
             path: "Server/Worktrees/DataTests",
             swiftSettings: [swift6]
         ),
+
+        // The merged Mac app's reader, bound to this Mac rather than to a socket. It implements a
+        // *client* protocol from a *server* module, which is the one place the two units meet — and
+        // they meet over `Domain` on both sides, so no `Data` target is in the path and the phone's
+        // shell still links none of this.
+        .target(
+            name: "ServerReaderData",
+            dependencies: [
+                "ClientConnectionDomain",
+                "CoreApiDomain",
+                "CoreDiffDomain",
+                "CoreReviewDomain",
+                "ServerGitDomain",
+                "ServerWorktreesDomain"
+            ],
+            path: "Server/Reader/Data",
+            swiftSettings: [swift6]
+        ),
+        // No test target of its own, deliberately: what is worth asserting about this module is
+        // that it agrees with the routes, and that is only askable where the fixture repositories
+        // and the real git client already are. `LocalReaderAgreementTests` lives beside them.
 
         .target(
             name: "ServerSessionsData",
@@ -711,6 +749,12 @@ let package = Package(
             name: "ServerApiPresentationTests",
             dependencies: [
                 "ServerApiPresentation",
+                // The merged Mac app's local path, driven against the same reader the routes answer
+                // from. It lives here rather than beside its own module because the fixture
+                // repositories and the real git client are already wired here, and the assertion
+                // that matters is that the two halves agree.
+                "ServerReaderData",
+                "ClientConnectionDomain",
                 "CoreApiDomain",
                 "CoreDiagnosticsDomain",
                 "CoreReviewDomain",

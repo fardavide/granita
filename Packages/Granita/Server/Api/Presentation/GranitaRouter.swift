@@ -14,8 +14,12 @@ import ServerWorktreesDomain
 /// Everything the server wires together to answer a request.
 public struct ApiDependencies: Sendable {
 
-    public let registry: WorktreeRegistry
-    public let service: WorktreeService
+    /// Everything this Mac can be asked about its own worktrees.
+    ///
+    /// **The routes hold a reader rather than a registry and a service**, because the merged Mac
+    /// app's window reads the same disk through the same type. What is left here is parsing a
+    /// request, calling one method, and encoding the answer.
+    public let reader: WorktreeReader
     public let store: any Store
     public let pairing: Pairing
     public let failedAttempts: FailedAttempts
@@ -47,8 +51,7 @@ public struct ApiDependencies: Sendable {
     public let requiresAuthentication: Bool
 
     public init(
-        registry: WorktreeRegistry,
-        service: WorktreeService,
+        reader: WorktreeReader,
         store: any Store,
         pairing: Pairing,
         failedAttempts: FailedAttempts,
@@ -59,8 +62,7 @@ public struct ApiDependencies: Sendable {
         tailnetEndpoint: TailnetEndpoint?,
         requiresAuthentication: Bool
     ) {
-        self.registry = registry
-        self.service = service
+        self.reader = reader
         self.store = store
         self.pairing = pairing
         self.failedAttempts = failedAttempts
@@ -143,12 +145,12 @@ public enum GranitaRouter {
         let authenticated = router.group().add(middleware: AuthenticationMiddleware(dependencies: dependencies))
 
         authenticated.get("/v1/projects") { _, _ in
-            await dependencies.registry.projects()
+            await dependencies.reader.projects()
         }
 
         authenticated.get("/v1/worktrees") { request, _ in
             let filter = request.uri.queryParameters["projectID"].map { ProjectID(rawValue: String($0)) }
-            return try await dependencies.registry.worktrees(inProject: filter)
+            return try await answering { try await dependencies.reader.worktrees(inProject: filter) }
         }
 
         // **It answers about the one worktree it wrote to, and that is the difference between a
@@ -160,22 +162,7 @@ public enum GranitaRouter {
         authenticated.patch("/v1/worktrees/:worktreeId") { request, context -> Worktree in
             let id = try worktreeId(from: context)
             let patch = try await decoded(WorktreePatch.self, from: request, context: context)
-            let resolved = try await dependencies.registry.resolve(id)
-
-            do {
-                switch patch.alias {
-                case .unchanged: break
-                case .cleared: try await dependencies.store.setAlias(nil, for: id)
-                case .set(let alias): try await dependencies.store.setAlias(alias, for: id)
-                }
-                if let isPinned = patch.isPinned {
-                    try await dependencies.store.setPinned(isPinned, for: id)
-                }
-            } catch {
-                throw ApiError(.badRequest, message: "could not save that: \(error)")
-            }
-
-            return await dependencies.registry.worktree(resolved)
+            return try await answering { try await dependencies.reader.update(id, with: patch) }
         }
 
         // **The only route that destroys anything**, and the only one that writes to a repository
@@ -193,109 +180,55 @@ public enum GranitaRouter {
         // and taking it would take unmerged commits with it.
         authenticated.delete("/v1/worktrees/:worktreeId") { _, context -> Response in
             let id = try worktreeId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-
-            // Refused here rather than by git, for the one case this Mac can see coming. Git refuses
-            // it as well — exit 128, `is a main working tree` — so this is a better sentence rather
-            // than the only guard, and the phone gets a code it can branch on instead of a git
-            // message it can only print.
-            guard resolved.isPrimary == false else {
-                throw ApiError(
-                    .worktreeNotDeletable,
-                    message: "that is the project's own checkout rather than one of its worktrees"
-                )
-            }
-
-            do {
-                try await dependencies.service.remove(
-                    resolved.location,
-                    ofProjectAt: RepositoryLocation(path: resolved.project.path)
-                )
-            } catch {
-                throw gitFailure(error)
-            }
+            try await answering { try await dependencies.reader.delete(id) }
             return Response(status: .noContent)
         }
 
-        authenticated.get("/v1/worktrees/:worktreeId/changes") { request, context -> WorktreeChanges in
+        authenticated.get("/v1/worktrees/:worktreeId/changes") { _, context -> WorktreeChanges in
             let id = try worktreeId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-            return WorktreeChanges(
-                revision: changes.revision,
-                stats: changes.stats,
-                files: changes.files,
-                isTruncated: changes.isTruncated
-            )
+            return try await answering { try await dependencies.reader.changes(in: id) }
         }
 
         authenticated.get("/v1/worktrees/:worktreeId/diffs") { request, context -> [FileDiff] in
             let id = try worktreeId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let lines = contextLines(from: request)
-
             let requested = (request.uri.queryParameters["fileIDs"] ?? "")
                 .split(separator: ",")
                 .map { FileID(rawValue: String($0)) }
-            guard requested.count <= maximumBatchedFiles else {
-                throw ApiError(.tooLarge, message: "at most \(maximumBatchedFiles) files at a time")
+            return try await answering {
+                try await dependencies.reader.diffs(
+                    of: requested,
+                    in: id,
+                    contextLines: contextLines(from: request)
+                )
             }
-
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-            return try await diffs(
-                for: requested,
-                in: changes,
-                at: resolved.location,
-                contextLines: lines,
-                dependencies: dependencies
-            )
         }
 
         authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/diff") { request, context -> FileDiff in
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-            let produced = try await diffs(
-                for: [file],
-                in: changes,
-                at: resolved.location,
-                contextLines: contextLines(from: request),
-                dependencies: dependencies
-            )
-            guard let only = produced.first else {
-                throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
+            return try await answering {
+                try await dependencies.reader.diff(
+                    of: file,
+                    in: id,
+                    contextLines: contextLines(from: request)
+                )
             }
-            return only
         }
 
         authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/lines") { request, context -> FileLines in
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-            guard let path = changes.paths[file] else {
-                throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
-            }
-
             let side = DiffSide(rawValue: request.uri.queryParameters["side"].map(String.init) ?? "new") ?? .new
-            // A rename has two paths and the committed side only exists at the old one, so asking
-            // for `HEAD:<new path>` fails outright rather than returning nothing.
-            let readFrom = side == .old ? (changes.oldPaths[file] ?? path) : path
             let start = request.uri.queryParameters["start"].flatMap { Int($0) } ?? 1
-            let count = min(500, request.uri.queryParameters["count"].flatMap { Int($0) } ?? 100)
-
-            do {
-                let read = try await dependencies.service.lines(
-                    of: readFrom,
+            let count = request.uri.queryParameters["count"].flatMap { Int($0) } ?? 100
+            return try await answering {
+                try await dependencies.reader.lines(
+                    of: file,
+                    in: id,
                     side: side,
                     start: start,
-                    count: count,
-                    in: resolved.location
+                    count: count
                 )
-                return FileLines(lines: read.lines, eof: read.isAtEnd)
-            } catch {
-                throw gitFailure(error)
             }
         }
 
@@ -309,55 +242,14 @@ public enum GranitaRouter {
         authenticated.get("/v1/worktrees/:worktreeId/files/:fileId/image") { request, context -> Response in
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-            guard let path = changes.paths[file], let current = changes.files.first(where: { $0.id == file })
-            else {
-                throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
-            }
-
-            // **Refused on what the path claims rather than on what git called binary**, which is the
-            // same rule the phone applies: an untracked file is never reported binary, so a screenshot
-            // an agent has just written would otherwise be the one picture this route would not serve.
-            guard let format = ImageFormat.forPath(current.path) else {
-                throw ApiError(.badRequest, message: "that file is not a picture this Mac can serve")
-            }
-
             let side = DiffSide(rawValue: request.uri.queryParameters["side"].map(String.init) ?? "new") ?? .new
-            // A rename's two sides live at two paths and the committed one only exists at the old
-            // one, so asking for `HEAD:<new path>` fails outright — the same trap the lines route
-            // documents, reached here by a file that was moved and edited in one go.
-            let readFrom = side == .old ? (changes.oldPaths[file] ?? path) : path
-
-            let bytes: Data
-            do {
-                bytes = try await dependencies.service.imageBytes(
-                    of: readFrom,
-                    side: side,
-                    in: resolved.location
-                )
-            } catch let refusal as WorktreeImageError {
-                // A `switch` rather than three `catch` patterns, because this closure may throw
-                // anything: a pattern list the compiler does not check for exhaustiveness would let a
-                // fourth reason escape as an empty 500, which is the one answer a reader three rooms
-                // away can do nothing with.
-                switch refusal {
-                case .git(let failure):
-                    throw gitFailure(failure)
-                case .tooLarge:
-                    throw ApiError(
-                        .tooLarge,
-                        message: "that picture is larger than this Mac serves in one piece"
-                    )
-                case .unreadable(let reason):
-                    throw ApiError(.fileGone, message: "that file could not be read: \(reason)")
-                }
+            let picture = try await answering {
+                try await dependencies.reader.image(of: file, in: id, side: side)
             }
-
             return Response(
                 status: .ok,
-                headers: [.contentType: format.mediaType],
-                body: ResponseBody(byteBuffer: ByteBuffer(bytes: bytes))
+                headers: [.contentType: picture.format.mediaType],
+                body: ResponseBody(byteBuffer: ByteBuffer(bytes: picture.bytes))
             )
         }
 
@@ -365,30 +257,14 @@ public enum GranitaRouter {
             let id = try worktreeId(from: context)
             let file = try fileId(from: context)
             let body = try await decoded(ViewedRequest.self, from: request, context: context)
-            let resolved = try await dependencies.registry.resolve(id)
-            let changes = try await changeSet(at: resolved.location, for: id, dependencies: dependencies)
-
-            guard let current = changes.files.first(where: { $0.id == file }) else {
-                throw ApiError(.fileGone, message: "that file is not in this worktree's changes")
-            }
-            // Refused rather than applied: marking a version nobody read as read is the one way
-            // this feature can actively mislead someone.
-            guard current.contentHash == body.contentHash else {
-                throw ApiError(.staleContentHash, message: "that file has changed since you read it")
-            }
-
-            do {
-                // The worktree was always in the path; until now it stopped at the route and the
-                // store kept one flat map of marks for every checkout on this Mac.
-                try await dependencies.store.setViewed(
+            try await answering {
+                try await dependencies.reader.markViewed(
                     body.viewed,
                     file: file,
-                    in: id,
                     contentHash: body.contentHash,
+                    in: id,
                     at: Date()
                 )
-            } catch {
-                throw ApiError(.badRequest, message: "could not save that: \(error)")
             }
             return Response(status: .noContent)
         }
@@ -397,26 +273,18 @@ public enum GranitaRouter {
 
         authenticated.get("/v1/worktrees/:worktreeId/review") { _, context -> ReviewRequest in
             let id = try worktreeId(from: context)
-            // Resolved rather than trusted, like every other worktree route: an identifier that
-            // names nothing this Mac serves is answered the same way everywhere.
-            _ = try await dependencies.registry.resolve(id)
-            return ReviewRequest(comments: await dependencies.store.state().reviews[id] ?? [])
+            return try await answering { ReviewRequest(comments: try await dependencies.reader.review(in: id)) }
         }
 
         authenticated.put("/v1/worktrees/:worktreeId/review") { request, context -> Response in
             let id = try worktreeId(from: context)
             let body = try await decoded(ReviewRequest.self, from: request, context: context)
-            _ = try await dependencies.registry.resolve(id)
-            do {
-                try await dependencies.store.setReview(body.comments, in: id)
-            } catch {
-                throw ApiError(.badRequest, message: "could not save that: \(error)")
-            }
+            try await answering { try await dependencies.reader.putReview(body.comments, in: id) }
             return Response(status: .noContent)
         }
 
         authenticated.get("/v1/review-settings") { _, _ -> ReviewSettingsResponse in
-            let settings = await dependencies.store.state().reviewSettings
+            let settings = await dependencies.reader.reviewSettings()
             return ReviewSettingsResponse(
                 openingLine: settings.openingLine,
                 identifier: settings.identifier
@@ -429,18 +297,11 @@ public enum GranitaRouter {
                 from: request,
                 context: context
             )
-            let current = await dependencies.store.state().reviewSettings
-            // Only what was named. The double optional is doing the work: an absent key leaves the
-            // setting alone, a null one clears it, so an edit queued on a phone that never read this
-            // Mac's values cannot overwrite the one it did not touch.
-            let updated = ReviewSettings(
-                openingLine: body.openingLine ?? current.openingLine,
-                identifier: body.identifier ?? current.identifier
-            )
-            do {
-                try await dependencies.store.setReviewSettings(updated)
-            } catch {
-                throw ApiError(.badRequest, message: "could not save that: \(error)")
+            let updated = try await answering {
+                try await dependencies.reader.updateReviewSettings(
+                    openingLine: body.openingLine,
+                    identifier: body.identifier
+                )
             }
             return ReviewSettingsResponse(
                 openingLine: updated.openingLine,
@@ -451,65 +312,28 @@ public enum GranitaRouter {
         return router
     }
 
-    // MARK: - Shared work
+    // MARK: - The boundary
 
-    private static func changeSet(
-        at location: RepositoryLocation,
-        for worktree: WorktreeID,
-        dependencies: ApiDependencies
-    ) async throws -> WorktreeChangeSet {
+    /// Runs one read of this Mac and puts its refusal on the wire.
+    ///
+    /// **Every route goes through this, and that is the whole of what the routes now do about
+    /// failure.** The reader refuses in this Mac's vocabulary because the window reading the same
+    /// disk has no wire to put a code on; here each case becomes the code and the sentence it has
+    /// always travelled with, in `ApiError.init(_ refusal:)`.
+    /// Untyped in and typed out, which is the one place that trade is right.
+    ///
+    /// A handler closure is `throws` because that is the shape Hummingbird calls, so a typed
+    /// parameter here infers `any Error` at every call site and the annotation costs more than it
+    /// buys. **Nothing is lost**: the exhaustiveness that matters is in `ApiError.init(_ refusal:)`,
+    /// which the compiler still checks case by case, and this only decides which errors reach it.
+    private static func answering<Answer>(
+        _ read: () async throws -> Answer
+    ) async throws -> Answer {
         do {
-            // This worktree's marks and no other's. The service asks only which file was read at
-            // which content, so the date the store keeps beside each mark stops here.
-            let marks = await dependencies.store.state().viewed[worktree] ?? [:]
-            return try await dependencies.service.changeSet(
-                in: location,
-                viewed: marks.mapValues(\.contentHash)
-            )
-        } catch {
-            throw gitFailure(error)
+            return try await read()
+        } catch let refusal as WorktreeReadError {
+            throw ApiError(refusal)
         }
-    }
-
-    /// Computes several files' diffs at once, four git processes at a time.
-    private static func diffs(
-        for requested: [FileID],
-        in changes: WorktreeChangeSet,
-        at location: RepositoryLocation,
-        contextLines: Int,
-        dependencies: ApiDependencies
-    ) async throws -> [FileDiff] {
-        let wanted = changes.files.filter { requested.contains($0.id) }
-        var produced: [FileID: FileDiff] = [:]
-
-        try await withThrowingTaskGroup(of: (FileID, FileDiff)?.self) { group in
-            var pending = wanted.makeIterator()
-            var running = 0
-
-            func addNext() -> Bool {
-                guard let file = pending.next(), let path = changes.paths[file.id] else { return false }
-                group.addTask {
-                    let diff = try await dependencies.service.fileDiff(
-                        for: file,
-                        at: path,
-                        in: location,
-                        contextLines: contextLines
-                    )
-                    return (file.id, diff)
-                }
-                return true
-            }
-
-            while running < concurrentGitProcesses, addNext() { running += 1 }
-            while let finished = try await group.next() {
-                if let finished { produced[finished.0] = finished.1 }
-                _ = addNext()
-            }
-        }
-
-        // In the order the client asked for, so a prefetch of the next five files arrives in the
-        // order it will scroll through them.
-        return requested.compactMap { produced[$0] }
     }
 
     private static func contextLines(from request: Request) -> Int {

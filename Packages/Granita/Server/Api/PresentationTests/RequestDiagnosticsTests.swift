@@ -108,8 +108,16 @@ struct RequestDiagnosticsTests {
             )
             diagnostics = FakeDiagnostics()
             sut = Application(router: GranitaRouter.build(ApiDependencies(
-                registry: WorktreeRegistry(store: store, service: service, suggestedAliases: { _ in [:] }),
-                service: service,
+                reader: WorktreeReader(
+                    registry: WorktreeRegistry(
+                        store: store,
+                        service: service,
+                        directory: LocalWorktreeDirectory(),
+                        suggestedAliases: { _ in [:] }
+                    ),
+                    service: service,
+                    store: store
+                ),
                 store: store,
                 pairing: Pairing(store: store, now: { Date(timeIntervalSince1970: 0) }),
                 failedAttempts: FailedAttempts(now: { Date(timeIntervalSince1970: 0) }),

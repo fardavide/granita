@@ -216,8 +216,16 @@ struct PairingRouteTests {
             application = Application(
                 router: GranitaRouter.build(
                     ApiDependencies(
-                        registry: WorktreeRegistry(store: store, service: service, suggestedAliases: { _ in [:] }),
-                        service: service,
+                        reader: WorktreeReader(
+                            registry: WorktreeRegistry(
+                                store: store,
+                                service: service,
+                                directory: LocalWorktreeDirectory(),
+                                suggestedAliases: { _ in [:] }
+                            ),
+                            service: service,
+                            store: store
+                        ),
                         store: store,
                         pairing: pairing,
                         failedAttempts: FailedAttempts(now: { clock.reading }),

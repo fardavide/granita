@@ -1550,6 +1550,51 @@ sets up delivery.
 
 ## What to pick up next
 
+**The seam is built; the app around it is not** *(23 September 2026)*. `WorktreeReader` holds all
+fourteen operations in `ServerWorktreesDomain`, the routes are parse–call–encode, and
+`LocalGranitaRepository` at `Server/Reader/Data` binds the client's `GranitaRepository` to this Mac
+with no socket in the path. `WorktreeConnectionRoute.thisMac` reports the read as *"Running git on
+this Mac"* rather than *"Waiting for your Mac's response."* Everything above it — the window, the
+source pop-up, the inspector, the View menu, the target surgery and the fourteen Mac baselines — is
+still ahead. The argument and the two boundary mappings are in [`decisions.md`](decisions.md).
+
+**One Mac app is designed and the rest of it is not built** *(23 September 2026)*. The round trip for issue
+[#97](https://github.com/fardavide/granita/issues/97) came back with twelve calls, six sections of
+frames and nine things to decide while building — all recorded in
+[`design-mac.md`](design-mac.md) §8, with the expensive ones in
+[`decisions.md`](decisions.md) and the frames in [`design/`](design/granita-one-mac-app-design-review.html)
+until they ship. Issue [#91](https://github.com/fardavide/granita/issues/91)'s chrome work is inside
+it; its prose-in-repo waiver was withdrawn to send this, and nothing in either issue was built while
+the ask was outstanding.
+
+**The nine build flags the return raised**, because each is a thing to check rather than a thing to
+draw, and none is visible from the frames:
+
+- **Keep the server's bundle identifier** — every paired phone pins its Keychain identity, and the
+  login item and Local Network grant are registered to it. In [`decisions.md`](decisions.md).
+- **This Mac's review is one copy, not two.** `MacReviewCommentStore` wraps a `UserDefaults` copy
+  around the repository so a closed laptop costs a phone nothing. On This Mac the two are the same
+  disk; bind the local source to the repository alone, or the Review pane's counts and the window
+  disagree.
+- **`WorktreeRegistry` swallows git failures** — `(try? await service.worktrees(in:)) ?? []` in
+  `projects()`, `worktrees(inProject:)` and `resolve(_:)`. A Mac with broken git lists nothing rather
+  than failing, over HTTP and locally alike. That is why the design draws no state for it. **Still
+  true after the reader extraction** — the registry kept this behaviour unchanged.
+- **The camera leaves with the Client's Mac entitlements.** In [`decisions.md`](decisions.md).
+- **`SettingsOpener` may be removable — check before deleting.** It exists because an `LSUIElement`
+  app cannot open Settings without a window of its own; a regular app can. Until it goes, Dock reopen
+  and the Window menu must be pointed at the reader explicitly, since the opener is the first
+  `Window` declared.
+- **Four doc comments describe the old app** — `MenuBarLabel` ("the whole of Granita's presence on the
+  Mac"), `MenuBarContent` ("the entire app when Settings is shut"), `GranitaMacScene` ("no Dock icon
+  and no main window"), `WorktreeSplitScreen` ("no macOS surface presents this screen"). Each carries
+  an argument the merge ends.
+- **These would be the first Client views ever rendered on a Mac.** Fourteen states, light and dark,
+  no device axis, into the Mac snapshot bundle that already exists.
+- **`DiffPaneLayout.selectorColumnWidth` becomes per-platform** — 320 on the phone, 240 on the Mac,
+  and the Code size readout subtracts it. Branch the value; do not change the phone's.
+- **A test that closing is not quitting.** The one behaviour a snapshot cannot photograph.
+
 ~~**The connection does not persist, and it is two defects rather than one.**~~ Both confirmed by
 reading the code after Davide hit them on 26 August; **both fixed in 0.4.1**, after he hit the first
 one again — *every single time I tap on my Mac, it asks me to do QR code or six words*.
