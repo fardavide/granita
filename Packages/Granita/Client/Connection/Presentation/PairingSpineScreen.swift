@@ -19,7 +19,11 @@ import ClientConnectionDomain
 /// The two destinations past the spine are handed in, because both are built over a session pinned
 /// to one Mac and neither may be seen from here: a `Presentation` target sees its own `Ui` and any
 /// `Domain`, never a sibling `Presentation`. What this screen contributes is that they are the *same*
-/// two — the only two ways out of the spine — declared within four lines of each other.
+/// two — the only two ways out of the spine — declared within a dozen lines of each other.
+///
+/// **Three declarations for those two**, because a launch resuming onto a Mac and a row tapped for
+/// one reach the same screen by different values, and the value is what decides which of them a
+/// branch is asked about. `ResumedMac` is not asked, which is its whole purpose.
 public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
 
     /// Where the stack is. Pinned here because the container is.
@@ -30,17 +34,18 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
     private let readingARememberedMac: (DiscoveredServer, @escaping () -> Void) -> Remembered
     private let readingAJustPairedMac: (PairedMac, @escaping () -> Void) -> JustPaired
 
-    /// - Parameter path: where the stack opens. The app opens at the Mac list; the snapshot suite
-    ///   opens at whichever push it is photographing, which is what lets a baseline assert that a
-    ///   value put on this path comes back as a screen.
+    /// - Parameter path: where the stack opens when there is nothing to resume. The app passes an
+    ///   empty one; the snapshot suite passes whichever push it is photographing, which is what lets
+    ///   a baseline assert that a value put on this path comes back as a screen.
     public init(
         model: ClientConnectionModel,
         phone: ThisPhone,
         startingAt path: NavigationPath,
+        remembering lastOpened: any LastOpenedMacPreference,
         @ViewBuilder readingARememberedMac: @escaping (DiscoveredServer, @escaping () -> Void) -> Remembered,
         @ViewBuilder readingAJustPairedMac: @escaping (PairedMac, @escaping () -> Void) -> JustPaired
     ) {
-        _navigation = State(initialValue: PairingSpineNavigation(startingAt: path))
+        _navigation = State(initialValue: PairingSpineNavigation(startingAt: path, remembering: lastOpened))
         self.model = model
         self.phone = phone
         self.readingARememberedMac = readingARememberedMac
@@ -59,8 +64,21 @@ public struct PairingSpineScreen<Remembered: View, JustPaired: View>: View {
                 // behind the list's own loading state.
                 readingARememberedMac: { server in
                     readingARememberedMac(server, { navigation.pairAgain(with: server) })
+                        // **Written down where the worktrees actually appear, rather than where the
+                        // row is tapped.** This closure is drawn only in the remembered branch, so
+                        // nothing a pairing screen reaches can be recorded as a Mac the next launch
+                        // may open — which is what keeps a resume from landing somewhere that can
+                        // only ask for a code.
+                        .onAppear { navigation.opened(server) }
                 }
             )
+            // **Where a launch opens, and the only destination whose value nothing ever pushes.** It
+            // is on the path before the first frame, put there by the rule in `PairingSpineNavigation`
+            // — and it is a value of its own rather than the Mac itself for the reason `ResumedMac`
+            // carries: a browsed Mac's destination branches against a set that is empty this early.
+            .navigationDestination(for: ResumedMac.self) { resumed in
+                readingARememberedMac(resumed.server, { navigation.pairAgain(with: resumed.server) })
+            }
             // **The one destination the discovery screen does not declare for itself**, because the
             // value on the path is not one of its rows: it is the Mac a pairing just produced.
             .navigationDestination(for: PairedMac.self) { mac in

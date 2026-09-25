@@ -566,6 +566,41 @@ Do not build for a collision the protocol prevents.
 
 *Should feel like* a list you never actually read after the first week.
 
+### The app opens at the Mac you were reading, not at this list *(Davide, 25 September 2026 — written here, not returned)*
+
+The sentence above was true of the list and false of the app, for every release it had. *"Every time
+the app has been closed for a while and I open it, it takes me back to the devices list… What I want
+is to skip the part of selecting a device and waiting for all the worktrees to load from scratch."*
+One reader, usually one machine, and a picker in front of it every morning.
+
+**A launch opens the worktree list of the Mac this phone last opened**, and the list is one tap back
+where it belongs — needed when a different machine is wanted or a new one is being paired with, which
+is what its own *should feel like* has always said.
+
+**Seeded before the first frame rather than pushed after one**, which is why the record is a
+preference read synchronously and not a Keychain read. A resume that suspended would draw this screen
+for the frame it took, and a list that appears in order to be left is worse than one that is simply
+there.
+
+**Only the Mac, not the worktree.** Davide named coming back to an open worktree as *"not a strict
+requirement"*, and it is a different question: the worktree list is the screen the reader was going to
+reach anyway, where a file list is somewhere they did not ask to be this session. Filed for its own
+answer rather than assumed here.
+
+**Being asked to pair again stops the resume.** *Pair Again* is the one control §8's refusal offers,
+so reaching it says the credential behind the resume is what is in question — and a launch that went
+on assuming it would land on a worktree list that can only fail, every morning, until the reader
+paired again. Nothing else clears it: a reader who simply walks back to this list is not saying they
+want it tomorrow.
+
+> Rejected: resuming only when exactly one Mac is remembered — it makes the app's behaviour depend on
+> a count the reader cannot see, and the Mac they last opened is a better answer than the Mac they
+> happen to own one of. Rejected: verifying the pairing before seeding — it buys one tap in a case
+> §8 already draws, and costs the flicker this exists to remove.
+
+*Should feel like* the app having been left open. What is behind the first frame is the same read the
+list would have started, begun earlier.
+
 ## §2 — The worktree sidebar *(M4, drawn)*
 
 Six fields do not fit. What fits is **two lines and a trailing time**, and what makes it fit is

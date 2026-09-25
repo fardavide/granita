@@ -159,6 +159,29 @@ struct PairingSpineSnapshotTests {
             named: "a-mac-just-paired-with"
         )
     }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given a Mac this phone opened last when the app opens then the worktrees are what it opens at`(
+        layout: SnapshotLayout
+    ) async {
+        // given — **no push at all, which is what a launch is.** What is on the stack was put there
+        // by the resume rule rather than by a tap, and reading this baseline beside `the-mac` is the
+        // whole assertion: same Mac, same model, and one of them is not the entry screen.
+        //
+        // **The model is deliberately not told it remembers this Mac.** That set is what the Mac
+        // list's own destination branches on, and it is empty this early in a real launch — so a
+        // resume routed through that value would draw the pairing screens here. Leaving it empty is
+        // what makes the picture say `ResumedMac` does not ask.
+        let model = aModel(camera: .granted, joining: .refused(.pairingExpired), resolving: .failure(.localNetworkDenied))
+        await model.start()
+
+        // when - then
+        assertScreenSnapshot(
+            theSpine(model, resuming: aDiscoveredMac, on: aPhone()),
+            layout: layout,
+            named: "a-mac-resumed-on-launch"
+        )
+    }
 }
 
 // MARK: -
@@ -197,16 +220,33 @@ private func theSpine(
     theSpine(model, startingAt: NavigationPath([mac]), on: phone)
 }
 
+/// The same stack as a launch finds it: nothing pushed, and a record of the Mac the reader was last
+/// reading. Where every other subject here opens at a push, this one opens at the rule.
+@MainActor
+private func theSpine(
+    _ model: ClientConnectionModel,
+    resuming mac: DiscoveredServer,
+    on phone: ThisPhone
+) -> some View {
+    theSpine(model, startingAt: NavigationPath(), lastOpening: mac, on: phone)
+}
+
 @MainActor
 private func theSpine(
     _ model: ClientConnectionModel,
     startingAt path: NavigationPath,
+    lastOpening mac: DiscoveredServer? = nil,
     on phone: ThisPhone
 ) -> some View {
     PairingSpineScreen(
         model: model,
         phone: phone,
         startingAt: path,
+        // A given path is what the resume rule stands down for, so for every subject that opens at a
+        // push this says the same thing twice on purpose: nothing to resume, and nowhere for it to go
+        // if there were. The suite owns the answer either way — a baseline that read this machine's
+        // defaults would be a different picture on CI.
+        remembering: FakeLastOpenedMacPreference(opened: mac),
         // **Where a Mac already paired with goes, standing in for the worktree list.**
         //
         // The composition root puts the real one here, over a session pinned to that Mac. This
