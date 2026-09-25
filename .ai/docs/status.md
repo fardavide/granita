@@ -2,6 +2,36 @@
 
 Where the project is. Update this when a slice lands.
 
+**The app opens where the reader was — that is 0.19.1.** Davide, 25 September 2026: *"Every time the
+app has been closed for a while and I open it, it takes me back to the devices list… What I want is to
+skip the part of selecting a device and waiting for all the worktrees to load from scratch."* A launch
+now opens the worktree list of the Mac this phone last opened, seeded before the first frame, with the
+Mac list one tap back. The calls are in [design §1](design.md) and
+[`decisions.md`](decisions.md).
+
+**The whole of the difficulty is which value carries it.** Seeding the browsed Mac's own value would
+have reopened the defect §5 and 0.4.0 exist to have ended: that destination branches on whether this
+phone remembers the Mac, against a set filled by a task that has not run when the seeded path is
+first resolved, and the branch is pinned — so every launch would have asked for a code again. The
+resume is `ResumedMac`, with one destination and no branch. The record is a device-local preference
+holding two names, never the pairing, and *Pair Again* clears it.
+
+**Only the Mac, not the worktree** — Davide's own scoping, and a separate question rather than a
+smaller one. **No design round trip**, on his call: no new pixels, no baseline moved.
+
+**Verified for 0.19.1:** 1,816 package tests in 169 suites, up from 1,809 — seven added, none
+removed. `make build` passes on all four destinations, unsigned. The iOS snapshot suite passes clean
+on a second run with four PNGs added and **no existing baseline moved**, and the probe printed
+nothing. All six coverage values hold against main at `bb1757c` — unit 97.4%/94.9%, snapshot
+99.2%/97.9%, all-tests 97.9%/95.4%, at 245 uncovered lines.
+
+**What has not been pressed is the app.** The seven host tests say where a launch opens and what
+writes the record, and the new baseline says the resumed value reaches the worktrees rather than the
+pairing screens — on a model that deliberately does not remember that Mac, which is what makes the
+picture an assertion about the race rather than about the screen. None of that is a cold launch on a
+phone with a Mac in its defaults. That check is Davide's, and this project says it is the only one
+that works.
+
 **The code's size is a setting, in two halves — that is 0.19.0.** Issue
 [#106](https://github.com/fardavide/granita/issues/106). *Code size* is a third row in the phone's
 Appearance section, pushing a screen with a group per mode: *Follow system* or a size the reader

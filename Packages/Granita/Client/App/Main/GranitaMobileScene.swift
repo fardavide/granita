@@ -65,6 +65,10 @@ public struct GranitaMobileScene: Scene {
                 ),
                 phone: Self.phone,
                 startingAt: NavigationPath(),
+                // **Which is what makes a launch land on the worktrees rather than on the Mac
+                // list.** Read synchronously, before the stack draws its first frame, so the list a
+                // reader is being carried past is never on screen at all.
+                remembering: UserDefaultsLastOpenedMac(defaults: .standard),
                 // A Mac this phone has paired with before looks its address and its key up on the
                 // first request, behind the list's own loading state.
                 readingARememberedMac: { server, pairAgain in

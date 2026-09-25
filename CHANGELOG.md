@@ -7,6 +7,15 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.19.1 — 2026-09-25
+- **Opening the app takes you back to the Mac you were reading, not to the list of Macs.** The
+  worktrees are on screen from the first frame and start loading straight away; the list you used to
+  have to walk past is one tap back, where you need it only when you are picking a different machine
+  or pairing a new one.
+- **A Mac you are asked to pair with again stops being where the app opens.** Pairing again means the
+  key that made that Mac openable is the thing in question, so the next launch starts at the list
+  rather than at a worktree list that could only fail.
+
 ### 0.19.0 — 2026-09-23
 - **The code's size is yours to set, in Settings under Appearance.** *Code size* pushes a screen with
   two groups — one for the ordinary scroll and one for side by side. Each is *Follow system* or a
