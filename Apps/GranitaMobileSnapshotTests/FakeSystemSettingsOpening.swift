@@ -5,5 +5,8 @@ import ClientConnectionDomain
 /// rendered screen has a seam to hold.
 struct FakeSystemSettingsOpening: SystemSettingsOpening {
 
+    // Spelled out because this target has no default isolation of its own, unlike the package's view
+    // layers: the requirement is main-actor and a nonisolated method cannot satisfy it.
+    @MainActor
     func open(_ pane: SystemSettingsPane) {}
 }
