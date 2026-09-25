@@ -17,6 +17,7 @@ public struct SystemSettingsOpener: SystemSettingsOpening {
 
     public init() {}
 
+    @MainActor
     public func open(_ pane: SystemSettingsPane) {
         guard let url = Self.url(of: pane) else { return }
         #if canImport(AppKit)

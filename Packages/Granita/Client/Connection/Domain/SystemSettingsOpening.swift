@@ -27,5 +27,13 @@ public enum SystemSettingsPane: Hashable, Sendable {
 /// no state could draw.
 public protocol SystemSettingsOpening: Sendable {
 
+    /// **On the main actor, because both implementations of it are.** `NSWorkspace.shared` and
+    /// `UIApplication.shared` are main-actor isolated, and a nonisolated requirement let the one
+    /// conformer that touches them reach both from a nonisolated method — two warnings that Swift 6
+    /// promotes to errors, on the act behind a control a reader presses. Stated here rather than
+    /// asserted at the call site or hopped onto with a `Task`, so the compiler holds it: every caller
+    /// is a screen, the act stays synchronous, and nothing can call this from somewhere it would be
+    /// a race.
+    @MainActor
     func open(_ pane: SystemSettingsPane)
 }
