@@ -2,6 +2,21 @@
 
 Where the project is. Update this when a slice lands.
 
+**A new icon, and a second one to choose — that is 0.20.0.** Davide, 26 September 2026: *"I'm not very
+happy with the app icon."* The app's own icon is now a glass of granita whose syrup layers are a diff's
+rows; *App icon*, a fourth row in the phone's Appearance section, offers the diff frozen in an ice cube
+as an alternate. The Mac ships the glass and has no setting, because macOS has no alternate icons. The
+calls are in [`design-appearance.md`](design-appearance.md#the-app-icon) and
+[`decisions.md`](decisions.md).
+
+**No design round trip, on Davide's call**: he will send it to Claude Design if the result does not
+satisfy him. The row and the chooser copy *Code colours* exactly.
+
+**What has not been pressed is the app.** The model's seven tests say what a choice and a refusal do,
+and the baselines photograph the row, its absence, the chooser and the refused state. None of that is
+iOS actually swapping the Home Screen icon and putting up its alert, which is the one effect a reader
+perceives, and the only check that proves it is a finger on a phone.
+
 **The app opens where the reader was — that is 0.19.1.** Davide, 25 September 2026: *"Every time the
 app has been closed for a while and I open it, it takes me back to the devices list… What I want is to
 skip the part of selecting a device and waiting for all the worktrees to load from scratch."* A launch

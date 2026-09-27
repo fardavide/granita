@@ -66,13 +66,11 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.20.0** — a new icon, and a second one to choose in Settings: the diff frozen in an ice cube.
 - **0.19.1** — opening the app takes you back to the Mac you were reading rather than to the list of
   Macs, so the worktrees start loading from the first frame.
 - **0.19.0** — set the code's size, separately for the ordinary scroll and for side by side, and see
   what each size buys you in characters rather than in points.
-- **0.18.0** — read a changed block side by side, so an indentation change is a distance you can see
-  rather than four spaces of colour you have to interpret. Only paired changes split; the rest of the
-  file keeps its width.
 
 [Every release](CHANGELOG.md).
 

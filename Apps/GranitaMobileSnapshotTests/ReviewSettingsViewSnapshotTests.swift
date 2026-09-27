@@ -44,10 +44,12 @@ struct ReviewSettingsViewSnapshotTests {
                     fitsSelectorColumn: layout.isRegularWidth,
                     rowWidth: layout.diffRowWidth
                 ),
+                appIcon: subject.appIcon,
                 onChoose: { _ in },
                 onChooseAppearance: { _ in },
                 onChooseCodeTheme: { _ in },
                 onChooseCodeSize: { _ in },
+                onChooseAppIcon: { _ in },
                 onCommitOpeningLine: {},
                 onReset: {},
                 onPair: {},
@@ -81,6 +83,9 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
     /// Large is 11pt on the phone and 12 beside the selector, which is what every one of these
     /// baselines drew before this row existed.
     var codeSize: CodeSize = .default
+
+    /// The fourth row's value: the glass, which is what a phone that never opened the chooser shows.
+    var appIcon: AppIconStanding = .available(.showing(.default))
 
     var testDescription: String { name }
 
@@ -207,6 +212,29 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
             openingLine: "Review the work in this worktree.",
             standing: .settled,
             codeSize: CodeSize(unified: .custom(14), split: .custom(10))
+        ),
+
+        // **The alternate icon on the Home Screen**, which moves the fourth row's name and drawing and
+        // nothing else. On `noMac`'s sheet rather than a settled one, because that is the shortest the
+        // sheet gets: with the receipt drawn, the fourth row is below the fold on a phone and a subject
+        // about it would photograph everything except it. Compare with `no-mac-at-all`.
+        SettingsCase(
+            name: "the-ice-cube",
+            openingLine: ReviewSettings.defaultOpeningLine,
+            isOpeningLineDefault: true,
+            standing: .noMac,
+            appIcon: .available(.showing(.iceCube))
+        ),
+
+        // **A device that cannot change its icon: the row is absent, not disabled.** This is the sheet
+        // a Mac draws; photographed on the phone's layouts because this suite is where the section is,
+        // and on the same short sheet as the subject above, so the absence is on screen to be seen.
+        SettingsCase(
+            name: "no-icon-choice",
+            openingLine: ReviewSettings.defaultOpeningLine,
+            isOpeningLineDefault: true,
+            standing: .noMac,
+            appIcon: .unavailable
         )
     ]
 }

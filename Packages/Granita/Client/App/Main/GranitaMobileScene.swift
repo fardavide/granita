@@ -121,6 +121,10 @@ public struct GranitaMobileScene: Scene {
         preferences: UserDefaultsAppearancePreferences(defaults: .standard)
     )
 
+    /// The Home Screen icon, made once for the life of the app for the reason the appearance is: the
+    /// sheet is rebuilt per Mac, and the icon is a fact about this device rather than about that Mac.
+    private static let appIcon = AppIconModel(switcher: SystemAppIconSwitcher())
+
     /// The camera, made once for the life of the app.
     ///
     /// A `static let` rather than a property, because this scene's body is re-evaluated and the
@@ -281,6 +285,7 @@ public struct GranitaMobileScene: Scene {
                     // The one the scene root is observing, not a second one: the sheet's picker has to
                     // move the value the whole app is drawing from.
                     appearance: appearance,
+                    appIcon: appIcon,
                     onPair: onPairAgain
                 )
             }

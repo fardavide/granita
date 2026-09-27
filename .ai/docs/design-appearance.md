@@ -65,6 +65,9 @@ per half is not a summary of the stylesheet — it **is** the stylesheet.
 > **The section has three rows since 0.19.0.** *Code size* joined it, with a push of its own; the
 > calls are in [`design-code-size.md`](design-code-size.md) and the footer below now reads *"None of
 > them changes what a review says"* rather than *"Neither"*. Everything else in this document stands.
+>
+> **And four since 0.20.0.** *App icon* is the last row; its calls are at the end of this document,
+> under [The app icon](#the-app-icon).
 
 ## One section, two rows, seven pairs, and a push
 
@@ -349,3 +352,42 @@ reads *‹ Settings*. It held one subject when it shipped and holds two now.
   > **It does not fail on that.** Its comment measures 3.2:1 on our card rather than the 2.4:1 claimed,
   > which is better than shipped Atom One. It fails because `solarized-light` gives `.hljs-keyword` two
   > different colours once Highlightr splits its descendant selectors — the same defect as `github`.
+
+## The app icon
+
+0.20.0, built without a design round trip on Davide's call — he will send it to Claude Design if the
+result does not satisfy him. Every call below copies one this document already made for *Code
+colours*, and says which.
+
+**A fourth row, last in the section**, so the three above keep their positions and their meaning.
+*App icon*, the icon's name in secondary, **the icon itself at 29pt**, and a chevron. The drawing is on
+the row for the section's own rule: the reader is choosing a drawing, so no surface shows a name on
+its own.
+
+> Rejected: two tappable icons inline in the section, the way some apps draw it. Two 60pt drawings
+> side by side make the section as tall as the three rows above it put together, for a setting a
+> reader changes about once a year.
+
+**The push is the *Code colours* chooser's shape exactly**: a stock grouped list, one row per icon at
+60pt with its name, *Default* beside the glass and nowhere else, a checkmark on the one the Home
+Screen shows. No Apply, no confirmation of ours — **iOS confirms a changed icon with its own alert**,
+which is the feedback a reader perceives, and a second one from us would be the same sentence twice.
+
+**The checkmark moves only when the system agrees.** A refusal leaves it on the icon the Home Screen
+still shows and says so in the footer: *"The icon did not change, so your Home Screen still shows
+Granita. Try again in a moment."* The system's own words go underneath at caption2, monospaced,
+tertiary and selectable, with their code — the same place every system error in this app goes.
+
+**Tapping the ticked row does nothing, and that is not a dead control.** It is the list's selected
+state, as in *Code colours*; asking the system for the icon it already shows would put up iOS's alert
+to announce that nothing changed.
+
+**Absent on a Mac, not disabled.** macOS has no alternate app icons, so there is nothing a reader
+could do about the row; its absence is the state the never-ship-a-dead-control rule permits, and the
+footer's *"None of them"* stays true either way.
+
+**The previews follow the reader's appearance**: each has a dark variant, drawn from the dark icon,
+so a phone in dark mode shows the drawing its Home Screen shows.
+
+**VoiceOver:** the row reads *"App icon, Granita"*. Each chooser row is one element — the drawing is
+decorative — reading the icon's name, marked selected when it is the one on the Home Screen.

@@ -16,6 +16,11 @@ build failure:
   macOS   the shaped icon WITH alpha, at every slot in the ladder. Nothing masks a Mac icon for you,
           and with the mac slots empty the asset compiler emits no macOS icon at all (ITMS-90236).
 
+The phone carries two icons since 0.20.0: the glass as its own icon and the ice cube as an alternate
+the reader picks in Settings. Each is three drawings, and each gets a preview image set beside the
+icon sets — shaped and with alpha, like the Mac's — because an app icon set is not something a view
+can load, and the chooser draws the icons rather than naming them.
+
 Usage:  Scripts/make-app-icons.py
 """
 
@@ -38,6 +43,19 @@ APPEARANCES = {
     "dark": [{"appearance": "luminosity", "value": "dark"}],
     "tinted": [{"appearance": "luminosity", "value": "tinted"}],
 }
+
+# Every icon the phone can show: the asset catalog set it is built under, the artwork's file prefix,
+# and the preview image set the Settings chooser draws it from. The first is the app's own icon; the
+# rest are alternates, and `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in `project.yml` has to
+# list them, as does `SystemAppIconSwitcher.alternateName(for:)`.
+MOBILE_ICONS = [
+    ("AppIcon", "granita", "AppIconPreview-Granita"),
+    ("AppIcon-IceCube", "granita-icecube", "AppIconPreview-IceCube"),
+]
+
+# A preview is drawn at 60pt at most, in the chooser's rows.
+PREVIEW_POINTS = 60
+PREVIEW_SCALES = (2, 3)
 
 MAC_SLOTS = [(16, 1), (16, 2), (32, 1), (32, 2), (128, 1), (128, 2), (256, 1), (256, 2), (512, 1), (512, 2)]
 
@@ -68,8 +86,8 @@ def png_colour_type(png: pathlib.Path) -> int:
     return struct.unpack(">IIBB", png.read_bytes()[16:26])[3]
 
 
-def reset(app: str) -> pathlib.Path:
-    out = ROOT / "Apps" / app / "Assets.xcassets" / "AppIcon.appiconset"
+def reset(app: str, directory: str = "AppIcon.appiconset") -> pathlib.Path:
+    out = ROOT / "Apps" / app / "Assets.xcassets" / directory
     out.mkdir(parents=True, exist_ok=True)
     for stale in out.glob("*.png"):
         stale.unlink()
@@ -86,19 +104,40 @@ def write_contents(directory: pathlib.Path, images: list[dict]) -> None:
 
 
 def write_mobile(scratch: pathlib.Path) -> None:
-    out = reset("GranitaMobile")
-    images = []
-    for name, appearance in APPEARANCES.items():
-        png = out / f"icon-{name}-1024.png"
-        rasterise(unclipped(ART / f"granita-{name}.svg", scratch), 1024, png, opaque=True)
-        if png_colour_type(png) in (4, 6):
-            raise SystemExit(f"error: {png.name} carries an alpha channel; the iOS icon must not")
-        entry = {"filename": png.name, "idiom": "universal", "platform": "ios", "size": "1024x1024"}
-        if appearance is not None:
-            entry["appearances"] = appearance
-        images.append(entry)
-    write_contents(out, images)
-    print(f"  GranitaMobile: {len(images)} appearances, opaque, unclipped")
+    for icon_set, artwork, _ in MOBILE_ICONS:
+        out = reset("GranitaMobile", f"{icon_set}.appiconset")
+        images = []
+        for name, appearance in APPEARANCES.items():
+            png = out / f"icon-{name}-1024.png"
+            rasterise(unclipped(ART / f"{artwork}-{name}.svg", scratch), 1024, png, opaque=True)
+            if png_colour_type(png) in (4, 6):
+                raise SystemExit(f"error: {png.name} carries an alpha channel; the iOS icon must not")
+            entry = {"filename": png.name, "idiom": "universal", "platform": "ios", "size": "1024x1024"}
+            if appearance is not None:
+                entry["appearances"] = appearance
+            images.append(entry)
+        write_contents(out, images)
+        print(f"  GranitaMobile {icon_set}: {len(images)} appearances, opaque, unclipped")
+
+
+def write_previews() -> None:
+    """The drawings the Settings chooser shows: shaped, with alpha, light and dark."""
+    for _, artwork, image_set in MOBILE_ICONS:
+        out = reset("GranitaMobile", f"{image_set}.imageset")
+        images = []
+        # Tinted is left to the system: it has no meaning for an image inside the app.
+        for name, appearance in (("any", None), ("dark", APPEARANCES["dark"])):
+            for scale in PREVIEW_SCALES:
+                png = out / f"preview-{name}@{scale}x.png"
+                rasterise(ART / f"{artwork}-{name}.svg", PREVIEW_POINTS * scale, png, opaque=False)
+                if png_colour_type(png) not in (4, 6):
+                    raise SystemExit(f"error: {png.name} has no alpha channel; a preview needs its shape")
+                entry = {"filename": png.name, "idiom": "universal", "scale": f"{scale}x"}
+                if appearance is not None:
+                    entry["appearances"] = appearance
+                images.append(entry)
+        write_contents(out, images)
+        print(f"  GranitaMobile {image_set}: {len(images)} images, shaped, with alpha")
 
 
 def write_mac() -> None:
@@ -119,12 +158,14 @@ def write_mac() -> None:
 
 
 def main() -> None:
-    for name in APPEARANCES:
-        svg = ART / f"granita-{name}.svg"
-        if not svg.is_file():
-            raise SystemExit(f"error: missing {svg.relative_to(ROOT)}")
+    for _, artwork, _ in MOBILE_ICONS:
+        for name in APPEARANCES:
+            svg = ART / f"{artwork}-{name}.svg"
+            if not svg.is_file():
+                raise SystemExit(f"error: missing {svg.relative_to(ROOT)}")
     with tempfile.TemporaryDirectory() as scratch:
         write_mobile(pathlib.Path(scratch))
+    write_previews()
     write_mac()
 
 
