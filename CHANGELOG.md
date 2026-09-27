@@ -7,6 +7,15 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.20.0 — 2026-09-27
+- **A new icon.** A glass of granita whose syrup layers are the rows of a diff — a green one added, a
+  red one removed — under a heap of cream, with a spoon in it.
+- **Choose the icon yourself, in Settings under Appearance.** *App icon* offers the glass and a
+  wintry alternative: the diff frozen in an ice cube, with a straw pushed into it. Your iPhone or iPad
+  confirms the change itself, and if it ever refuses, the screen says so and keeps the icon you have.
+- **The Mac keeps the glass.** macOS has no alternate app icons, so the setting is not there rather
+  than there and doing nothing.
+
 ### 0.19.1 — 2026-09-25
 - **Opening the app takes you back to the Mac you were reading, not to the list of Macs.** The
   worktrees are on screen from the first frame and start loading straight away; the list you used to

@@ -17,7 +17,7 @@ only surfaces at release time, and each has its own rule about staleness.
 |---|---|---|---|
 | `Granita.xcodeproj` | `project.yml` | `make project` | yes |
 | `Core/Diff/DomainTests/Fixtures/*` | `Scripts/make-fixture-repo.sh` | `make fixtures` | yes |
-| `Apps/*/Assets.xcassets/AppIcon.appiconset/*` | `Art/icon/*.svg` | `make icons` | **no** |
+| `Apps/*/Assets.xcassets/AppIcon*.appiconset/*`, `AppIconPreview-*.imageset/*` | `Art/icon/*.svg` | `make icons` | **no** |
 
 `make verify-generated` runs the gated two and fails if anything moved. **Never hand-edit any of
 them** — edit the source and regenerate.
@@ -77,7 +77,17 @@ Committed, but deliberately **not** gated — rasterising an SVG is not reproduc
 comes back with opaque white corners. `Scripts/rasterise-svg.swift` draws through CoreGraphics and
 the generator asserts the resulting PNG colour type on both paths.
 
-The three SVGs are the three appearances iOS 26 and macOS 26 render — any, dark, tinted.
+Each icon is three SVGs, the three appearances iOS 26 and macOS 26 render — any, dark, tinted. There
+are two icons: `granita-*` is the app's own, and `granita-icecube-*` is the phone's alternate.
+
+- **An alternate icon is named in three places, and all three must agree**: its set in
+  `Scripts/make-app-icons.py`, `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` in `project.yml`, and
+  `SystemAppIconSwitcher.alternateName(for:)`. A set the build setting does not list is left out of
+  the bundle, and iOS then refuses the name with nothing on screen to say why.
+- **The previews are generated too**: `AppIconPreview-*.imageset`, shaped with alpha and with a dark
+  variant, because Settings draws the icons and an icon set is not something a view can load.
+- **Each SVG's squircle clip id is `sq` plus one letter.** The generator strips that clip for iOS by
+  matching exactly that shape, and refuses an SVG where it finds none.
 
 ## Inspecting a build product without destroying it
 

@@ -19,6 +19,9 @@ public struct ReviewSettingsScreen: View {
     /// rest of the app was not watching.
     private let appearance: AppearanceModel
 
+    /// Not pinned either, for the same reason: one for the whole app, held by the composition root.
+    private let appIcon: AppIconModel
+
     /// **The sheet's own dismissal rather than a closure handed down.** A `onClose: {}` passed from
     /// the composition root is a *Done* button that does nothing, which is the one defect this
     /// project will not ship — and the environment already carries the real thing here.
@@ -29,10 +32,12 @@ public struct ReviewSettingsScreen: View {
     public init(
         model: ClientSettingsModel,
         appearance: AppearanceModel,
+        appIcon: AppIconModel,
         onPair: @escaping () -> Void
     ) {
         _model = State(initialValue: model)
         self.appearance = appearance
+        self.appIcon = appIcon
         self.onPair = onPair
     }
 
@@ -46,6 +51,7 @@ public struct ReviewSettingsScreen: View {
             appearance: appearance.appearance,
             codeTheme: appearance.codeTheme,
             codeSize: appearance.codeSizeReadout,
+            appIcon: appIcon.standing,
             onChoose: { identifier in Task { await model.choose(identifier) } },
             // No `Task` around either of these, and the asymmetry with the two above it is the point:
             // the review's settings are offered to a Mac and these are written to this device, so there
@@ -53,6 +59,8 @@ public struct ReviewSettingsScreen: View {
             onChooseAppearance: { appearance.choose($0) },
             onChooseCodeTheme: { appearance.choose($0) },
             onChooseCodeSize: { appearance.choose($0) },
+            // Awaited like the review's two, because the system can refuse — unlike the three above.
+            onChooseAppIcon: { icon in Task { await appIcon.choose(icon) } },
             onCommitOpeningLine: { Task { await model.commitOpeningLine() } },
             onReset: { Task { await model.resetOpeningLine() } },
             onPair: onPair,

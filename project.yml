@@ -33,7 +33,7 @@ packages:
 # .ai/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.19.1
+    MARKETING_VERSION: 0.20.0
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -214,6 +214,12 @@ targets:
         # and it refuses it at the end of a build rather than at the start. The Mac needs nothing in
         # its place: broadcast is ungated there, and the app is unsandboxed like its menu bar sibling.
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Apps/GranitaMobile/GranitaMobileMac.entitlements
+        # **The ice cube, as an alternate Home Screen icon the reader picks in Settings.** An icon set
+        # the asset compiler is not told about is left out of the bundle, and `setAlternateIconName`
+        # then refuses the name with nothing on screen to say why. Scoped to the phone and iPad SDKs
+        # because macOS has no alternate icons — the Mac ships the glass, on Davide's call. The name
+        # is spelled in `SystemAppIconSwitcher` and in `Scripts/make-app-icons.py` too.
+        "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]": AppIcon-IceCube
         # 1,2 = iPhone and iPad. With iPhone alone iPadOS runs the app in compatibility mode: a
         # fixed iPhone-shaped window that cannot be resized, with no multitasking.
         TARGETED_DEVICE_FAMILY: "1,2"
