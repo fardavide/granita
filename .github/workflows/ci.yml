@@ -16,6 +16,11 @@ concurrency:
 # One concern per job, on its own runner. Each job name below is a required status check in
 # .github/rulesets/protect-main.json — renaming one here without renaming it there leaves every
 # pull request pending forever, with no error to explain it.
+#
+# Every job runs on `xcode-27`, GitHub's image for Xcode 27 and its iOS 27 simulators, because that is
+# the Xcode Granita is developed against. `macos-26` carries only Xcode 26.x. The two caches below that
+# hold compiled objects carry `xcode27` in their keys, so no restore can hand this toolchain a build
+# made by the previous one.
 jobs:
 
   # The deterministic TDD suite: the package's own tests, run on the host with no simulator. This
@@ -23,7 +28,7 @@ jobs:
   # one that must stay fast enough to be run on every save locally.
   unit-tests:
     name: Unit tests (Granita)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +37,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: Packages/Granita/.build
-          key: spm-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
-          restore-keys: spm-${{ runner.os }}-
+          key: spm-xcode27-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: spm-xcode27-${{ runner.os }}-
       # The git layer's tests drive the real binary against real repositories, which are gitignored
       # and therefore absent from a checkout. Regenerating them here also means every run asserts
       # the git behaviours the generator checks, against whatever git this image ships.
@@ -47,7 +52,7 @@ jobs:
   # platform. Unsigned: a compile check needs no signed binary and the runner holds no identity.
   build:
     name: Build app (${{ matrix.app.name }})
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -89,7 +94,7 @@ jobs:
   # reading the wrong field.
   generated:
     name: Generated files
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +137,7 @@ jobs:
   # reddens one job rather than two.
   coverage:
     name: Coverage
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 60
     permissions:
       contents: read
@@ -180,8 +185,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/derived/package
-          key: spm-coverage-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
-          restore-keys: spm-coverage-${{ runner.os }}-
+          key: spm-coverage-xcode27-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: spm-coverage-xcode27-${{ runner.os }}-
 
       # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
       # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
@@ -291,7 +296,7 @@ jobs:
   # unit or build failure. This job GATES the pull request.
   snapshot-tests:
     name: Snapshot tests (iOS)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -325,13 +330,14 @@ jobs:
         run: |
           runtimes="$(xcrun simctl list runtimes available)"
           devices="$(xcrun simctl list devices available)"
-          if ! grep -q 'iOS 26' <<< "$runtimes"; then
-            echo "::error::No iOS 26 simulator runtime on this runner image"
+          if ! grep -q 'iOS 27' <<< "$runtimes"; then
+            echo "::error::No iOS 27 simulator runtime on this runner image"
             exit 1
           fi
           # The name is resolved rather than hardcoded: this image ships "iPhone 17 Pro" and not a
           # plain "iPhone 17", and that has already changed once between releases.
-          name="$(grep -oE 'iPhone 1[6-9][A-Za-z ]*' <<< "$devices" | head -1 | sed 's/ *$//')"
+          # The first iPhone of the newest iOS runtime, the same expression as the Makefile's.
+          name="$(awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH)} END{sub(/ +$/, "", name); print name}' <<< "$devices")"
           if [ -z "$name" ]; then
             echo "::error::No recent iPhone simulator on this runner image"
             exit 1
@@ -402,7 +408,7 @@ jobs:
   # This job GATES the pull request, and needs adding to .github/rulesets/protect-main.json to do so.
   snapshot-tests-mac:
     name: Snapshot tests (macOS)
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4

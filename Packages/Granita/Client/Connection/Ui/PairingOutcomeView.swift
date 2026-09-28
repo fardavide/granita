@@ -110,12 +110,14 @@ public struct PairingOutcomeView: View {
             // No recovery: the update belongs on the other machine.
             ContentUnavailableView {
                 Label("Your Mac needs a newer Granita", systemImage: "laptopcomputer.and.arrow.down")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Update Granita on \(macName), then pair again. The code was not used.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 copyLogs
             }
@@ -123,12 +125,14 @@ public struct PairingOutcomeView: View {
         case .phoneIsBehind:
             ContentUnavailableView {
                 Label("This iPhone needs a newer Granita", systemImage: "arrow.down.app")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Install the latest Granita from TestFlight, then pair again. The code was not used.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 // It leaves the app, so it appears only where there is an app to leave for.
                 // Absent is a legitimate state, and the sentence above already says what to do.
@@ -154,12 +158,14 @@ public struct PairingOutcomeView: View {
             // limiter counts per source address, so the kinder sentence is the true one.
             ContentUnavailableView {
                 Label("Too many attempts", systemImage: "clock.badge.exclamationmark")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Wait a minute, then ask your Mac for a new code.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 copyLogs
             }
@@ -170,8 +176,10 @@ public struct PairingOutcomeView: View {
             // remedy is a new code, and that is minted on the other machine.
             ContentUnavailableView {
                 Label("That code is no longer valid", systemImage: "clock.badge.xmark")
+                    .emptyStateTitle()
             } description: {
                 Text("On your Mac, choose “Pair a device” for a new one.")
+                    .emptyStateDescription()
             } actions: {
                 copyLogs
             }
@@ -197,8 +205,10 @@ public struct PairingOutcomeView: View {
     private var unreachable: some View {
         ContentUnavailableView {
             Label("Could not reach \(macName)", systemImage: "wifi.exclamationmark")
+                .emptyStateTitle()
         } description: {
             Text("Check that Granita is running on your Mac, then try again.")
+                .emptyStateDescription()
         } actions: {
             Button("Try Again", action: onTryAgain)
                 .buttonStyle(.borderedProminent)
@@ -210,8 +220,10 @@ public struct PairingOutcomeView: View {
     private var couldNotPair: some View {
         ContentUnavailableView {
             Label("Could not pair with \(macName)", systemImage: "exclamationmark.triangle")
+                .emptyStateTitle()
         } description: {
             Text("Try again. If it still fails, ask your Mac for a new code.")
+                .emptyStateDescription()
         } actions: {
             Button("Try Again", action: onTryAgain)
                 .buttonStyle(.borderedProminent)
@@ -231,6 +243,7 @@ public struct PairingOutcomeView: View {
     private var keyNotSaved: some View {
         ContentUnavailableView {
             Label("Paired, but the key was not saved", systemImage: "key.slash")
+                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -240,6 +253,7 @@ public struct PairingOutcomeView: View {
                 then pair again.
                 """
             )
+            .emptyStateDescription()
         } actions: {
             Button("Try Saving Again", action: onSaveTokenAgain)
                 .buttonStyle(.borderedProminent)
@@ -263,12 +277,14 @@ public struct PairingOutcomeView: View {
             // sentence and the same button an unreachable Mac gets, because it is the same remedy.
             ContentUnavailableView {
                 Label("\(macName) stopped answering", systemImage: "clock.badge.exclamationmark")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     The code was not used. Try checking your Mac again.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 Button("Try Again", action: onTryAgain)
                     .buttonStyle(.borderedProminent)
@@ -281,6 +297,7 @@ public struct PairingOutcomeView: View {
             // the code, so *Try Again* would offer to spend a credential that may already be gone.
             ContentUnavailableView {
                 Label("The code was sent and nothing came back", systemImage: "clock.badge.questionmark")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -290,6 +307,7 @@ public struct PairingOutcomeView: View {
                     Then ask for a new code and pair again.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 copyLogs
             }
@@ -299,6 +317,7 @@ public struct PairingOutcomeView: View {
             // survives in the outcome, and the code that bought it is spent either way.
             ContentUnavailableView {
                 Label("Paired, and the key is still not saved", systemImage: "key.slash")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -308,6 +327,7 @@ public struct PairingOutcomeView: View {
                     then pair again.
                     """
                 )
+                .emptyStateDescription()
             } actions: {
                 Button("Try Saving Again", action: onSaveTokenAgain)
                     .buttonStyle(.borderedProminent)
@@ -320,8 +340,10 @@ public struct PairingOutcomeView: View {
     private var localNetworkDenied: some View {
         ContentUnavailableView {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
+                .emptyStateTitle()
         } description: {
             Text("Allow Local Network access in Settings so Granita can find your Mac.")
+                .emptyStateDescription()
         } actions: {
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)

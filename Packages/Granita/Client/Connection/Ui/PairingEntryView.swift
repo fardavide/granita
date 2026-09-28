@@ -55,6 +55,7 @@ public struct PairingEntryView: View {
             // the shape the frame draws, in the same idiom as every other empty state in the app.
             ContentUnavailableView {
                 Label("Pair with this Mac", systemImage: "macbook.and.iphone")
+                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -62,6 +63,7 @@ public struct PairingEntryView: View {
                     It shows a QR code and six words. Either one pairs this iPhone.
                     """
                 )
+                .emptyStateDescription()
             }
 
             Button(action: onScanCode) {

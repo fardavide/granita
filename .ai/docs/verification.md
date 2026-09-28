@@ -14,7 +14,7 @@ milestone that will close them. Anything measured is recorded with its number.
 | | |
 |---|---|
 | macOS | 26.5.1 |
-| Xcode | 26.6, pinned on CI by a composite action |
+| Xcode | 27.0, pinned on CI by a composite action, on the `xcode-27` runner image |
 | Swift | 6.3.3 |
 | git, local | 2.52.0 |
 | git, CI runner | 2.55.0 |
@@ -250,6 +250,9 @@ line — is M1, and a fixture line with tabs, wide characters, a combining mark 
 is already in the corpus waiting for it. **M5.**
 
 ## 10. CI runner image — confirmed
+
+> Since 28 September 2026 every job runs on `xcode-27`, which carries Xcode 27 and the iOS 27
+> simulators; see the Xcode 27 entry in `decisions.md`. What follows is the original confirmation.
 
 `macos-26` carries Xcode 26.6, so the pinned selection succeeds rather than falling back with a
 warning. All four jobs pass. The iOS build targets a generic simulator destination and needs no

@@ -18,11 +18,13 @@ public struct NoWorktreeChosenView: View {
             // The leading spelling rather than `sidebar.left`, so the glyph points at the list in a
             // right-to-left layout too — where the list is on the other side.
             Label("Choose a worktree", systemImage: "sidebar.leading")
+                .emptyStateTitle()
         } description: {
             // No action, and no promise about what opens. A button here would either duplicate a row
             // or choose for the reader, and a sentence describing the diff would describe a screen
             // design §3 has not built yet.
             Text("Pick one from the list to open it.")
+                .emptyStateDescription()
         }
     }
 }
