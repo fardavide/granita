@@ -125,6 +125,10 @@ snapshot Xcode targets and never to `Package.swift`, so the two shipped apps sta
 - **A re-record is a design change, and needs the design to have changed first.** If baselines move
   and `.ai/docs/design.md` did not, the screen has drifted from the document; fix the screen, not
   the baseline. See the `design` skill. Review every changed PNG by eye before committing.
+- **An OS or SDK update does not make a moved baseline acceptable.** Judge each changed PNG as a
+  reader would, and if the screen got worse, fix the screen. "The system restyled it" explains a
+  regression; it does not excuse it. The Xcode 27 move re-recorded 25 empty states whose titles had
+  shrunk below their descriptions, calling it the system's look, until Davide read them.
 - **Every `@Suite` here carries `.serialized`**, all twenty of them. The suites share one real window,
   so anything a render leaves behind is the next render's input, and waiting for it to clear means
   spinning the run loop — which lets another suite take the window mid-assertion unless nothing else

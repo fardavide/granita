@@ -61,18 +61,22 @@ public struct ServerDiscoveryView: View {
         ContentUnavailableView {
             Label("Looking for your Mac", systemImage: "antenna.radiowaves.left.and.right")
                 .symbolEffect(.variableColor.iterative)
+                .emptyStateTitle()
         } description: {
             // Permission leads, because on a cold first launch the system's local-network alert
             // appears over this screen and this is the sentence that has to earn the tap on Allow.
             Text("Granita needs permission to look on this network, and has to be running on a Mac that is on it.")
+                .emptyStateDescription()
         }
     }
 
     private var nothingFound: some View {
         ContentUnavailableView {
             Label("No Mac found", systemImage: "laptopcomputer.slash")
+                .emptyStateTitle()
         } description: {
             Text("Check that Granita is running on your Mac, and that both are on the same network.")
+                .emptyStateDescription()
         } actions: {
             // A reader who plugged the Mac in after the browse went quiet otherwise has one
             // recourse, which is to kill the app.
@@ -86,8 +90,10 @@ public struct ServerDiscoveryView: View {
     private var permissionRefused: some View {
         ContentUnavailableView {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
+                .emptyStateTitle()
         } description: {
             Text("Allow Local Network access in Settings so Granita can find your Mac.")
+                .emptyStateDescription()
         } actions: {
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
@@ -99,8 +105,10 @@ public struct ServerDiscoveryView: View {
     private var failed: some View {
         ContentUnavailableView {
             Label("Could not search", systemImage: "exclamationmark.triangle")
+                .emptyStateTitle()
         } description: {
             Text("Try searching again. If it still fails, check Local Network access in Settings.")
+                .emptyStateDescription()
         } actions: {
             Button("Try Again", action: onSearchAgain)
                 .buttonStyle(.borderedProminent)

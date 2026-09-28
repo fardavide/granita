@@ -7410,6 +7410,14 @@ on the runner. Only those are replaced, not the whole directory the recorder rew
 the change itself. Both causes are the system's: a toolbar button's glass gains a hairline border,
 and `ContentUnavailableView` sets its title smaller and its description larger.
 
+**The empty-state hierarchy is pinned rather than taken from 27.** The first draft of this entry
+called the `ContentUnavailableView` change "the system's own" and re-recorded the baselines to
+match. Davide read them and said the title was smaller than the body, which is a defect, not a
+look. All 25 empty states now set their title at title2 bold and their description at body, the
+hierarchy iOS 26 drew, through a pair of modifiers. **There is one copy per `Ui` module**, because a
+`Ui` module may depend only on `Domain` and SwiftUI, so no module can hold it for all four. The call
+is in `design.md`, beside the rest of the empty-state rules.
+
 **With two runtimes installed, `make snapshots` rendered on the older one.** It took the first
 recent iPhone in the list, "iPhone 17 Pro", which only iOS 26.5 ships, so `OS=latest` resolved to
 26.5. The Makefile, `ci.yml` and the coverage script now take the first iPhone of the newest iOS

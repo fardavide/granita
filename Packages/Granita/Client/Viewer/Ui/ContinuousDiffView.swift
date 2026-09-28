@@ -426,8 +426,10 @@ public struct ContinuousDiffView: View {
     private var failed: some View {
         ContentUnavailableView {
             Label("Could not read this worktree", systemImage: "exclamationmark.triangle")
+                .emptyStateTitle()
         } description: {
             Text("Try again. If it still fails, check that Granita is running on your Mac.")
+                .emptyStateDescription()
         } actions: {
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
@@ -473,8 +475,10 @@ public struct ContinuousDiffView: View {
     private var nothingChanged: some View {
         ContentUnavailableView {
             Label("Nothing to review", systemImage: "checkmark.circle")
+                .emptyStateTitle()
         } description: {
             Text("This worktree has no uncommitted changes.")
+                .emptyStateDescription()
         }
     }
 }

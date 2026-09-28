@@ -297,6 +297,7 @@ public struct WorktreeSidebarView: View {
     private var noProjects: some View {
         ContentUnavailableView {
             Label("No projects yet", systemImage: "tray")
+                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -304,6 +305,7 @@ public struct WorktreeSidebarView: View {
                 It will appear here straight away.
                 """
             )
+            .emptyStateDescription()
         }
     }
 
@@ -313,9 +315,11 @@ public struct WorktreeSidebarView: View {
     private func allQuiet(worktreeCount: Int, projectNames: [String]) -> some View {
         ContentUnavailableView {
             Label("Nothing to review", systemImage: "checkmark.circle")
+                .emptyStateTitle()
         } description: {
             if worktreeCount == 1 {
                 Text("The one worktree in \(projectNames, format: .list(type: .and)) is clean.")
+                    .emptyStateDescription()
             } else {
                 Text(
                     """
@@ -323,6 +327,7 @@ public struct WorktreeSidebarView: View {
                     \(projectNames, format: .list(type: .and)) are clean.
                     """
                 )
+                .emptyStateDescription()
             }
         } actions: {
             Button("Show them anyway") { onShowQuietWorktrees(true) }
@@ -340,13 +345,17 @@ public struct WorktreeSidebarView: View {
             ScrollView {
                 ContentUnavailableView {
                     Label(unauthorized ? "Pairing was revoked" : connecting ? "Could not reach \(macName)" : "Could not read your Mac", systemImage: "exclamationmark.triangle")
+                        .emptyStateTitle()
                 } description: {
                     if unauthorized {
                         Text("Pair this device with your Mac again to read its worktrees.")
+                            .emptyStateDescription()
                     } else if connecting {
                         Text("Check that Granita is running on your Mac and that both devices are on the same network or connected over Tailscale.")
+                            .emptyStateDescription()
                     } else {
                         Text("Try again. If it still fails, check that Granita is running on your Mac.")
+                            .emptyStateDescription()
                     }
                 } actions: {
                     VStack(spacing: 16) {

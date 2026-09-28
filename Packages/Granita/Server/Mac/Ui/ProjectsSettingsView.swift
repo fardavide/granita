@@ -73,8 +73,10 @@ public struct ProjectsSettingsView: View {
     @ViewBuilder private var empty: some View {
         ContentUnavailableView {
             Label("No projects yet", systemImage: "folder.badge.plus")
+                .emptyStateTitle()
         } description: {
             Text("Nothing on this Mac is visible to your phone until you add a repository here and switch it on.")
+                .emptyStateDescription()
         } actions: {
             HStack(spacing: 10) {
                 Button("Add Repository…", action: onAddRepository)

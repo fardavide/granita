@@ -32,8 +32,10 @@ public struct ConnectionLogView: View {
             // working while it is showing you nothing.
             ContentUnavailableView {
                 Label("Nothing has tried to connect", systemImage: "point.3.connected.trianglepath.dotted")
+                    .emptyStateTitle()
             } description: {
                 Text("Every device that reaches this Mac appears here, whether or not it gets in.")
+                    .emptyStateDescription()
             }
         } else {
             VStack(spacing: 0) {

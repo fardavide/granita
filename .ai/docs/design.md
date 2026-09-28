@@ -496,6 +496,16 @@ no fixed-height spacer, 420pt measure,
 tiny selectable footer, disclosure, alert or decorative error card. Respect Dynamic Type and
 Reduce Motion, and animate the copy-status change with the framework's default animation.
 
+**The title is title2, bold, over a body-sized description, and we say so rather than inherit it.**
+iOS 27 and macOS 27 inverted the stock hierarchy, setting the title at headline size over a larger
+description, so every empty state in the app read as a caption over its own advice. Davide, 28
+September 2026: *"The title is smaller than the body."* Each view applies `emptyStateTitle()` to its
+title and `emptyStateDescription()` to its description; both are semantic text styles, so Dynamic
+Type still scales them.
+
+> Rejected: keeping the system's new hierarchy as the platform look. The title is the one line that
+> says what happened; drawn smaller than the advice under it, it stops being read first.
+
 The report contains app/build/system versions, timestamps, sanitized request endpoints,
 structured error domains/codes and the current screen's safe failure summary. Keychain refusals
 retain their numeric status; discovery and API failures retain only app-owned identifiers.

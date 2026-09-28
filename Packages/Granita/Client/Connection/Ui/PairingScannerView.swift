@@ -118,6 +118,7 @@ public struct PairingScannerView<CameraPreview: View>: View {
     private func cameraOff(offeringSettings: Bool) -> some View {
         ContentUnavailableView {
             Label("Camera access is off", systemImage: "video.slash")
+                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -125,6 +126,7 @@ public struct PairingScannerView<CameraPreview: View>: View {
                 and typing them pairs this iPhone just as well.
                 """
             )
+            .emptyStateDescription()
         } actions: {
             Button("Enter the Six Words", action: onEnterWords)
                 .buttonStyle(.borderedProminent)
