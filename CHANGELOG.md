@@ -7,6 +7,13 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.20.1 — 2026-09-28
+- **Settings is called Settings.** The worktree list's menu said *Review settings…* for a sheet that
+  also chooses the app's icon; it now says *Settings…*.
+- **The sheet is in two groups: App, then Review.** The icon has a group of its own at the top, rather
+  than sitting among the rows about how your code is drawn. Everything else is under *Review*, where
+  it was. On the Mac, which has no icon to choose, the sheet starts at *Review*.
+
 ### 0.20.0 — 2026-09-27
 - **A new icon.** A glass of granita whose syrup layers are the rows of a diff — a green one added, a
   red one removed — under a heap of cream, with a spoon in it.

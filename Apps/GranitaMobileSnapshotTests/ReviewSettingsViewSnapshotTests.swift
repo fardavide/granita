@@ -84,7 +84,7 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
     /// baselines drew before this row existed.
     var codeSize: CodeSize = .default
 
-    /// The fourth row's value: the glass, which is what a phone that never opened the chooser shows.
+    /// The App group's one value: the glass, which is what a phone that never opened the chooser shows.
     var appIcon: AppIconStanding = .available(.showing(.default))
 
     var testDescription: String { name }
@@ -214,10 +214,8 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
             codeSize: CodeSize(unified: .custom(14), split: .custom(10))
         ),
 
-        // **The alternate icon on the Home Screen**, which moves the fourth row's name and drawing and
-        // nothing else. On `noMac`'s sheet rather than a settled one, because that is the shortest the
-        // sheet gets: with the receipt drawn, the fourth row is below the fold on a phone and a subject
-        // about it would photograph everything except it. Compare with `no-mac-at-all`.
+        // **The alternate icon on the Home Screen**, which moves the App group's name and drawing and
+        // nothing else. Compare with `no-mac-at-all`.
         SettingsCase(
             name: "the-ice-cube",
             openingLine: ReviewSettings.defaultOpeningLine,
@@ -226,9 +224,9 @@ struct SettingsCase: Sendable, CustomTestStringConvertible {
             appIcon: .available(.showing(.iceCube))
         ),
 
-        // **A device that cannot change its icon: the row is absent, not disabled.** This is the sheet
-        // a Mac draws; photographed on the phone's layouts because this suite is where the section is,
-        // and on the same short sheet as the subject above, so the absence is on screen to be seen.
+        // **A device that cannot change its icon: the whole App group is absent, not disabled**, since
+        // the icon is all it holds, and the sheet opens on the Review header. This is the sheet a Mac
+        // draws; photographed on the phone's layouts because this suite is where the group is.
         SettingsCase(
             name: "no-icon-choice",
             openingLine: ReviewSettings.defaultOpeningLine,
