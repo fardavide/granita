@@ -7417,6 +7417,13 @@ Build. That puts products under `<scratch>/out/Products/Debug` rather than
 used to be a single `GranitaPackageTests`. So the unit pass now asks `swift build --show-bin-path`
 for the directory and takes every `*.xctest` under it, which is correct under either layout.
 
+**The unit row's export is ours now, not SwiftPM's.** The first green run on 27 said unit lines fell
+from 97.4% to 97.0% on a branch that adds no code, and the per-file exports explained it: SwiftPM's
+`--show-codecov-path` export covered 98 files where `main`'s covered 1,385. It had exported one
+test bundle of many. So the row was measuring a tenth of the package. The unit pass now runs
+`llvm-cov export` itself over every bundle against SwiftPM's merged profile, the same way the
+snapshot and all rows already did.
+
 > Rejected: keep the repository on 26.6 and install it beside 27 locally. It was the lower-risk
 > option, and it would have left a toolchain on the development Mac that the Mac no longer ships.
 >

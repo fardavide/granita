@@ -110,29 +110,12 @@ echo "::group::Coverage — unit"
 # the machine, and it costs about ten seconds on a job that already runs the suite four times.
 ( cd "$PACKAGE" && swift test --enable-code-coverage --no-parallel --scratch-path "$SCRATCH" )
 
-# SwiftPM writes the llvm-cov export itself and will tell you where — no locating a .profdata and a
-# test bundle by hand, and no `xcrun llvm-cov` invocation to keep in step with the toolchain. The
-# scratch path has to be repeated: without it this reports the default `.build` location, which is
-# where `make test` builds and therefore holds no coverage export at all.
-UNIT_EXPORT="$(cd "$PACKAGE" && swift test --show-codecov-path --scratch-path "$SCRATCH")"
-if [ ! -f "$UNIT_EXPORT" ]; then
-    echo "::error::SwiftPM reported no coverage export at ${UNIT_EXPORT}"
-    exit 1
-fi
-
-python3 .github/scripts/coverage.py collect \
-    --category unit --export "$UNIT_EXPORT" --out "$OUT" --ref "$REF"
-# Kept beside the other two so the job can upload all three. A row that falls is diagnosed by
-# reading the per-file export and nothing else — this repository has three recorded instances of
-# algebra reaching the wrong conclusion about which files moved a number, and the export settles in
-# one read what estimating kept getting wrong. Without this the only copy is on a runner that is
-# thrown away, and the same question has to be re-asked by pushing another commit.
-cp "$UNIT_EXPORT" "${COVERAGE}/unit.json"
-echo "::endgroup::"
-
-# The merge below needs the binary the profile was written against. `--show-codecov-path` rebuilds
-# if anything is stale, so this is resolved after it: a relinked binary and an older profile produce
-# "no coverage data found" rather than a wrong number, but it fails the job either way.
+# **The export is ours, not SwiftPM's.** Under Xcode 26, `swift test --show-codecov-path` pointed at
+# an export SwiftPM wrote over its one test bundle, and this row read it. Under Xcode 27, SwiftPM
+# builds one bundle per test target and exports only one of them: 98 files where `main` had 1,385,
+# so the row measured a tenth of the package and reported a fall that was nothing but the sample
+# shrinking. So the export is taken the way the other two rows take theirs, one `llvm-cov export`
+# over every bundle against SwiftPM's merged profile.
 #
 # The binaries are every test bundle SwiftPM built, however many there are: one under Xcode 26, one per
 # test target under Xcode 27. Each links the modules it tests, so a module appears in several; llvm-cov
@@ -149,6 +132,16 @@ if [ ! -f "$UNIT_PROFILE" ] || [ ${#UNIT_OBJECTS[@]} -eq 0 ]; then
     echo "::error::Found no unit profile or test bundle under ${UNIT_BIN}"
     exit 1
 fi
+
+# Written straight into `build/coverage`, where the job uploads it. A row that falls is diagnosed by
+# reading the per-file export and nothing else: this repository has three recorded cases of
+# arithmetic reaching the wrong conclusion about which files moved a number, and one read of the
+# export settles it. Without it, the only copy is on a runner that gets thrown away.
+xcrun llvm-cov export -instr-profile "$UNIT_PROFILE" "${UNIT_OBJECTS[@]}" > "${COVERAGE}/unit.json"
+
+python3 .github/scripts/coverage.py collect \
+    --category unit --export "${COVERAGE}/unit.json" --out "$OUT" --ref "$REF"
+echo "::endgroup::"
 
 # ---------------------------------------------------------------------------------------------
 # snapshot — the iOS suite, on a simulator
