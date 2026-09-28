@@ -12,7 +12,11 @@ import SwiftUI
 ///
 /// The bites are punched with an even-odd fill: the rectangle and the circles are both in the path,
 /// so the overlap is what is left out. A mask would work and would cost a separate layer per row.
-struct TornEdge: Shape {
+///
+/// **`nonisolated` because `Shape` asks for it.** The SDK's `path(in:)` is a nonisolated requirement,
+/// and this module is main-actor by default, so a plain struct here cannot satisfy it — Xcode 27
+/// refuses the conformance outright. Nothing in it needs the main actor: it is geometry.
+nonisolated struct TornEdge: Shape {
 
     /// How deep the tear is. Half a bite, so a scallop meets the strip's far edge exactly and the
     /// pattern reads as a torn line rather than as a row of holes.
@@ -58,8 +62,8 @@ struct TornEdge: Shape {
 /// exactly what the column is empty for.
 ///
 /// Design §4's own drawing, at its own size. Stroked by the caller so the width and the colour are
-/// stated once beside the row that uses them.
-struct HiddenLines: Shape {
+/// stated once beside the row that uses them. `nonisolated` for the reason `TornEdge` gives.
+nonisolated struct HiddenLines: Shape {
 
     enum Direction: Hashable {
         /// Arrow above the dashes: the missing lines are above, and pressing goes up into them.

@@ -2,6 +2,12 @@
 
 Where the project is. Update this when a slice lands.
 
+**Granita builds on Xcode 27, and so does CI.** The development Mac moved to 27.0 on 28 September 2026.
+Two `Shape` conformances became `nonisolated`, `Package.resolved` now names `swift-issue-reporting`,
+and every CI job runs on the `xcode-27` image. The phone's baselines are re-recorded on iOS 27 and the
+Mac's are adopted from the runner. **Xcode Cloud has to be set to 27 when this merges.** The reasons
+are in [`decisions.md`](decisions.md).
+
 **A new icon, and a second one to choose — that is 0.20.0.** Davide, 26 September 2026: *"I'm not very
 happy with the app icon."* The app's own icon is now a glass of granita whose syrup layers are a diff's
 rows; *App icon*, a fourth row in the phone's Appearance section, offers the diff frozen in an ice cube

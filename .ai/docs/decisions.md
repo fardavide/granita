@@ -6418,6 +6418,9 @@ reproducible". Xcode Cloud chooses its own version in the workflow settings, and
 this right is what reports `swift-issue-reporting` as *added*. Cloud is not disagreeing with the
 repository; it is disagreeing with a bug the repository's pinned toolchain committed to a file.
 
+> **Superseded by the move to Xcode 27** (see the last entry in this file). The 27 resolver writes
+> the correct graph, and Xcode Cloud moves to 27 along with it.
+
 So the targeted fix is **to pin Xcode Cloud to 26.6 as well**, which is the pin that already exists
 everywhere else and is the version the baselines were recorded against. Upgrading the repository to
 Cloud's newer Xcode instead is the other direction, and it is a deliberate bump with re-recorded
@@ -7370,3 +7373,45 @@ written into [`design-appearance.md`](design-appearance.md) in this repository's
 eye at 1024, 64 and 32 points across three rounds. It uses Gaussian blur, which that rasteriser
 honours and which the old cup did not need. The generators are not committed; the SVGs in `Art/icon`
 are the source.
+
+## Granita moves to Xcode 27, and the lockfile stops describing an impossible graph
+
+28 September 2026. The development Mac updated itself to Xcode 27.0 (27A266a), and it refused two
+`Shape` conformances that every Xcode 26 had accepted. Davide's call was to move the repository with
+it rather than install 26.6 beside it, and then to move CI too rather than keep it on 26.6.
+
+**The code change is one file.** `TornEdge` and `HiddenLines` are `nonisolated` now. The package
+builds main-actor by default, and the Xcode 27 SDK declares `Shape.path(in:)` as a nonisolated
+requirement, so a main-actor struct cannot satisfy it. `nonisolated` on a type is Swift 6.2, so the
+change builds on 26.6 as well. Nothing else in the package failed to build, and every package test
+passed on 27.0 unchanged. The 27 SDK does raise 135 new warnings, mostly the deprecated `Text` `+`
+and `Binding` setters that are now `@isolated(any) @Sendable`. They are warnings, and fixing them is
+separate work.
+
+**`Package.resolved` changes by exactly the rename that the entry above was about.** Under 27, the
+resolver pins `swift-issue-reporting` 2.1.1 in place of `xctest-dynamic-overlay` 1.13.1, and
+nothing else moves. So the file finally describes a graph that can exist. The resolver fault that
+entry traced to Swift 6.3.3 is gone. The consequence is that **Xcode Cloud has to move to 27
+together with this merge**. Cloud does not resolve on its own, and a Cloud still pinned to 26.6 would
+be the stale resolver judging a correct file.
+
+**CI runs on `xcode-27`**, GitHub's image for Xcode 27 and its iOS 27 simulators. `macos-26` carries
+only 26.x. The image was a public preview when this was written, which is a known risk: a queue or a
+flaky runner there is GitHub's to fix. The pin in `select-xcode` prefers 27.0 and warns on any other
+27.x. The two caches that hold compiled objects (the unit-test package build and the instrumented
+coverage build) carry `xcode27` in their keys, so a restore can never hand the new compiler a build
+made by the old one. The caches that hold only source clones keep their keys.
+
+**Every baseline moves, and each set moves by its own procedure.** The phone's are recorded locally
+on the iOS 27 simulator, so the recording machine needs that runtime installed. With only the 26.5
+runtime present, Xcode 27 renders every phone baseline identically to 26.6, which is how the move
+was shown to be the SDK's fault and not a layout change. The Mac's are the runner's renders, and
+the image's host OS is macOS 27, so they are adopted from the first red run through
+`Scripts/adopt-mac-baselines.py`, as always.
+
+> Rejected: keep the repository on 26.6 and install it beside 27 locally. It was the lower-risk
+> option, and it would have left a toolchain on the development Mac that the Mac no longer ships.
+>
+> Rejected: land the `nonisolated` fix alone and leave CI on 26.6 until the image leaves preview.
+> The fix does build on both. But recording the phone's baselines on a runtime CI does not use is
+> the environment drift the pin exists to prevent, and Davide chose to move CI as well.
