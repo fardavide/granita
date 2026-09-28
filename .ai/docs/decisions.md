@@ -7402,10 +7402,18 @@ flaky runner there is GitHub's to fix. The pin in `select-xcode` prefers 27.0 an
 coverage build) carry `xcode27` in their keys, so a restore can never hand the new compiler a build
 made by the old one. The caches that hold only source clones keep their keys.
 
-**Every baseline moves, and each set moves by its own procedure.** The phone's are recorded locally
-on the iOS 27 simulator, so the recording machine needs that runtime installed. With only the 26.5
-runtime present, Xcode 27 renders every phone baseline identically to 26.6, which is how the move
-was shown to be the SDK's fault and not a layout change. The Mac's are the runner's renders, and
+**The baselines that move, move by their own procedures.** The phone's are recorded locally on the
+iOS 27 simulator, so the recording machine needs that runtime installed. With only the 26.5 runtime
+present, Xcode 27 renders every phone baseline identically to 26.6, which is how the move was shown
+to be the SDK's fault and not a layout change. On iOS 27, 301 of 1,091 fail, the same count here and
+on the runner. Only those are replaced, not the whole directory the recorder rewrites, so the diff is
+the change itself. Both causes are the system's: a toolbar button's glass gains a hairline border,
+and `ContentUnavailableView` sets its title smaller and its description larger.
+
+**With two runtimes installed, `make snapshots` rendered on the older one.** It took the first
+recent iPhone in the list, "iPhone 17 Pro", which only iOS 26.5 ships, so `OS=latest` resolved to
+26.5. The Makefile, `ci.yml` and the coverage script now take the first iPhone of the newest iOS
+runtime. The Mac's are the runner's renders, and
 the image's host OS is macOS 27, so they are adopted from the first red run through
 `Scripts/adopt-mac-baselines.py`, as always. Eleven moved, and both changes are the system's
 own: `ContentUnavailableView` sets its title smaller and its description larger, and the Review

@@ -151,7 +151,8 @@ echo "::group::Coverage — snapshot"
 
 # The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
 # "iPhone 17", and that has already changed once between releases.
-SIMULATOR="$(xcrun simctl list devices available | grep -oE 'iPhone 1[6-9][A-Za-z ]*' | head -1 | sed 's/ *$//')"
+# The first iPhone of the newest iOS runtime, the same expression the Makefile gives its reason for.
+SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH)} END{sub(/ +$/, "", name); print name}')"
 if [ -z "$SIMULATOR" ]; then
     echo "::error::No recent iPhone simulator on this machine"
     exit 1
