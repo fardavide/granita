@@ -55,6 +55,14 @@ MAC_DERIVED="${ROOT}/build/derived/mac"
 # from scratch every time. Two directories, two warm builds, at the cost of some disk.
 SCRATCH="${ROOT}/build/derived/package"
 
+# **Asked of SwiftPM, never spelled out.** Xcode 26's SwiftPM put products under
+# `<scratch>/arm64-apple-macosx/debug` and linked every test target into one `GranitaPackageTests`
+# bundle. Xcode 27's builds through Swift Build, which puts them under `<scratch>/out/Products/Debug`
+# with one bundle per test target, and the hardcoded path failed the job with nothing but a `find`
+# error. The coverage export, its profile and every test bundle all sit under this one directory in
+# both layouts. `--show-bin-path` only prints the path; it does not build anything.
+UNIT_BIN="$(cd "$PACKAGE" && swift build --show-bin-path --scratch-path "$SCRATCH")"
+
 rm -rf "$COVERAGE"
 mkdir -p "$COVERAGE"
 rm -rf "${DERIVED}/Build/ProfileData" "${MAC_DERIVED}/Build/ProfileData"
@@ -64,8 +72,8 @@ rm -rf "${DERIVED}/Build/ProfileData" "${MAC_DERIVED}/Build/ProfileData"
 # run of an earlier commit would be added to this run's numbers — coverage credited to lines that
 # this commit's tests never executed, and possibly to lines it no longer has. Harmless while the
 # directory was rebuilt from nothing every time; the moment it is kept warm, this is what keeps the
-# number honest. The glob covers whichever architecture triple the host builds under.
-rm -rf "${SCRATCH}"/*/debug/codecov
+# number honest.
+rm -rf "${UNIT_BIN}/codecov"
 
 # Xcode instruments the *test bundle* on `-enableCodeCoverage YES` alone; the app and the local
 # package targets it links keep no coverage mapping at all, and the export then comes back with zero
@@ -125,8 +133,22 @@ echo "::endgroup::"
 # The merge below needs the binary the profile was written against. `--show-codecov-path` rebuilds
 # if anything is stale, so this is resolved after it: a relinked binary and an older profile produce
 # "no coverage data found" rather than a wrong number, but it fails the job either way.
-UNIT_PROFILE="${SCRATCH}/arm64-apple-macosx/debug/codecov/default.profdata"
-UNIT_BINARY="$(find "${SCRATCH}/arm64-apple-macosx/debug/GranitaPackageTests.xctest" -type f -name GranitaPackageTests | head -1)"
+#
+# The binaries are every test bundle SwiftPM built, however many there are: one under Xcode 26, one per
+# test target under Xcode 27. Each links the modules it tests, so a module appears in several; llvm-cov
+# merges a function's records across objects rather than counting it twice.
+UNIT_PROFILE="${UNIT_BIN}/codecov/default.profdata"
+UNIT_OBJECTS=()
+for bundle in "${UNIT_BIN}"/*.xctest; do
+    executable="${bundle}/Contents/MacOS/$(basename "$bundle" .xctest)"
+    if [ -f "$executable" ]; then
+        UNIT_OBJECTS+=(-object "$executable")
+    fi
+done
+if [ ! -f "$UNIT_PROFILE" ] || [ ${#UNIT_OBJECTS[@]} -eq 0 ]; then
+    echo "::error::Found no unit profile or test bundle under ${UNIT_BIN}"
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------------------------
 # snapshot — the iOS suite, on a simulator
@@ -285,7 +307,7 @@ xcrun llvm-profdata merge -sparse "$UNIT_PROFILE" "$SNAPSHOT_PROFILE" "$MAC_SNAP
 
 xcrun llvm-cov export \
     -instr-profile "${COVERAGE}/all.profdata" \
-    "$UNIT_BINARY" \
+    "${UNIT_OBJECTS[@]}" \
     "${SNAPSHOT_OBJECTS[@]}" \
     "${MAC_SNAPSHOT_OBJECTS[@]}" \
     > "${COVERAGE}/all.json"

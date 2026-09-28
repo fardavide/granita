@@ -7407,7 +7407,15 @@ on the iOS 27 simulator, so the recording machine needs that runtime installed. 
 runtime present, Xcode 27 renders every phone baseline identically to 26.6, which is how the move
 was shown to be the SDK's fault and not a layout change. The Mac's are the runner's renders, and
 the image's host OS is macOS 27, so they are adopted from the first red run through
-`Scripts/adopt-mac-baselines.py`, as always.
+`Scripts/adopt-mac-baselines.py`, as always. Eleven moved, and both changes are the system's
+own: `ContentUnavailableView` sets its title smaller and its description larger, and the Review
+pane's segmented control is a few points narrower. Nothing Granita draws itself moved.
+
+**The coverage script stopped hardcoding SwiftPM's layout.** Xcode 27's SwiftPM builds through Swift
+Build. That puts products under `<scratch>/out/Products/Debug` rather than
+`<scratch>/arm64-apple-macosx/debug`, and it builds one test bundle per test target where there
+used to be a single `GranitaPackageTests`. So the unit pass now asks `swift build --show-bin-path`
+for the directory and takes every `*.xctest` under it, which is correct under either layout.
 
 > Rejected: keep the repository on 26.6 and install it beside 27 locally. It was the lower-risk
 > option, and it would have left a toolchain on the development Mac that the Mac no longer ships.
