@@ -7,7 +7,7 @@ choice was made belongs here.
 | Doc | Holds |
 |---|---|
 | [`architecture.md`](architecture.md) | The two halves, the layer rules and how the compiler enforces them, dependency inversion, opaque identifiers |
-| [`decisions.md`](decisions.md) | Why each choice was made and what it beat — including every deliberate departure from `SPEC.md` |
+| [`decisions.md`](decisions.md) | The index of every choice and every deliberate departure from `SPEC.md`, one line each; the reasoning and what each beat are in [`decisions/`](decisions/), one file per decision |
 | [`design.md`](design.md) | The client's four screens, the control each one must use, and every call with the alternative it beat — the design sheet the round trip writes into |
 | [`design-mac.md`](design-mac.md) | The same for the Mac's seven surfaces: the status item, the window, and the five Settings tabs |
 | [`design-review-settings.md`](design-review-settings.md) | The phone's Settings sheet, the sync caption, and the Mac's sixth tab — the calls from the 17 September 2026 return, built in 0.15.0 |
@@ -23,16 +23,19 @@ build. `decisions.md` is the authority on where this repository knowingly differ
 
 ## For agents
 
-- **Read `architecture.md` and `decisions.md` before any non-trivial change**, so you do not break a
-  layer boundary or re-open something already settled.
+- **Read `architecture.md` and the `decisions.md` index before any non-trivial change**, then open
+  the entries it points you to, so you do not break a layer boundary or re-open something already
+  settled.
 - **Read the relevant section of `design.md` before writing any client SwiftUI**, or of
   `design-mac.md` before any of the menu bar app's. The screens are drawn and each call names the
   alternative it beat, so choosing the other one is re-opening a settled question rather than
   exercising judgement. The `/design` skill holds the actionable form.
 - **Record a decision here whenever a choice would be expensive to reverse** — layering, an error
-  model, a dependency, a naming convention. Append it to `decisions.md`, newest last, and name the
-  alternative it beat: a decision without its discarded options gets re-litigated within a month.
-  When a fork is settled with Davide, the answer becomes an entry in the same pull request.
+  model, a dependency, a naming convention. Write it as a new file in `decisions/` with the next
+  number, name the alternative it beat — a decision without its discarded options gets
+  re-litigated within a month — and add its one line to the `decisions.md` index. The index's own
+  header says how. When a fork is settled with Davide, the answer becomes an entry in the same pull
+  request.
 - **Update `status.md` when a slice lands**, and `architecture.md` only when the structure actually
   changes.
 - **Describe concepts and contracts, not type or function names.** Names rot on rename; the shape

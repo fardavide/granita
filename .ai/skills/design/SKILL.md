@@ -114,8 +114,8 @@ session suggestion rather than prefilling it. That departure is recorded in
 [`../../docs/decisions.md`](../../docs/decisions.md), like every other.
 
 If you find a second disagreement, **stop and ask Davide**; do not resolve it by picking the one you
-read most recently. Whichever wins, the answer becomes a `decisions.md` entry in the same pull
-request.
+read most recently. Whichever wins, the answer becomes a decision entry — a file in
+`.ai/docs/decisions/` and its line in the index — in the same pull request.
 
 ## Changing the design
 

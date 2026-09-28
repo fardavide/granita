@@ -111,7 +111,7 @@ Three destinations, and **the second is the one that matters**.
 |---|---|---|
 | The frames, as returned | `.ai/docs/design/`, with a row in that README | So a drawing can be looked at rather than remembered |
 | The calls, in this repository's own voice | A design sheet under `.ai/docs/`, and `status.md` when a slice moves | Prose survives a re-render; a frame is a snapshot of one moment's answer |
-| Anything expensive to reverse | `decisions.md`, newest last, naming what it beat | The standing rule for every decision here |
+| Anything expensive to reverse | A new file in `.ai/docs/decisions/` naming what it beat, plus its one line in the `decisions.md` index | The standing rule for every decision here |
 
 **A return is a recommendation, not a decision.** Where a frame and a locked item in `SPEC.md`
 disagree, the spec wins until Davide says otherwise, and the disagreement is worth one line in the
