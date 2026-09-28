@@ -29,9 +29,12 @@ public struct AppIconChooserView: View {
                 ForEach(AppIcon.allCases, id: \.self) { icon in
                     Button { onChoose(icon) } label: {
                         row(for: icon)
+                            // **Without this, only the drawing and the name answer a tap.** A `.plain`
+                            // button is hit only where its label draws, and the spacer between the
+                            // name and the checkmark draws nothing, so most of the row was a hole.
+                            .contentShape(Rectangle())
                     }
-                    // The whole cell is the hit area, and `.plain` keeps the name from turning blue —
-                    // it is content, not a link.
+                    // `.plain` keeps the name from turning blue: it is content, not a link.
                     .buttonStyle(.plain)
                 }
             } header: {
