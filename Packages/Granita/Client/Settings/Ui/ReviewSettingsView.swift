@@ -106,14 +106,21 @@ public struct ReviewSettingsView: View {
 
     public var body: some View {
         NavigationStack {
+            // **Two groups, the app's and the review's, each under a prominent header.** A form cannot
+            // nest sections, so the review's own headers stay underneath its group header as they
+            // were. The app's group comes first and is absent where the icon cannot change, because the
+            // icon is the only thing in it.
             Form {
+                if case .available(let choice) = appIcon {
+                    appSection(choice)
+                }
+                reviewHeading
                 openingLineSection
                 labelSection
                 if standing != .noMac {
                     receiptSection
                 }
-                // **Fourth, below the receipt, and that position is the reason the three sections above
-                // it keep their nine baselines.** It is also the contrast the `no-mac-at-all` state
+                // **Below the receipt**, and that position is the contrast the `no-mac-at-all` state
                 // exists to show: the two controls above are switched off with a sentence saying why,
                 // and this one is entirely live underneath them, because nothing about how a reader's
                 // code looks was ever the Mac's to answer.
@@ -140,7 +147,44 @@ public struct ReviewSettingsView: View {
         }
     }
 
-    // MARK: - The two controls
+    // MARK: - The app's group
+
+    /// The icon, which is about the app on the Home Screen rather than about any review.
+    ///
+    /// The row carries the drawing as well as its name: the reader is choosing a drawing. The
+    /// destination is declared in this file, for the rule the *Code colours* row carries.
+    private func appSection(_ choice: AppIconChoice) -> some View {
+        Section {
+            NavigationLink {
+                AppIconChooserView(choice: choice, onChoose: onChooseAppIcon)
+            } label: {
+                HStack(spacing: 8) {
+                    Text("App icon")
+                    Spacer(minLength: 8)
+                    Text(choice.shown.displayName)
+                        .foregroundStyle(.secondary)
+                    AppIconPreviewView(icon: choice.shown, size: 29)
+                }
+            }
+            .accessibilityLabel("App icon, \(choice.shown.displayName)")
+        } header: {
+            Text("App")
+        }
+        .headerProminence(.increased)
+    }
+
+    // MARK: - The review's group
+
+    /// The review group's header, as a section with no rows, because the first section below it
+    /// already has a header of its own and a section holds only one.
+    private var reviewHeading: some View {
+        Section {
+            EmptyView()
+        } header: {
+            Text("Review")
+        }
+        .headerProminence(.increased)
+    }
 
     /// **Real editable text, never a placeholder.** A placeholder says *type something here*; these
     /// grey words would be the exact string that gets exported, which is a different claim — and
@@ -294,33 +338,12 @@ public struct ReviewSettingsView: View {
                 }
             }
             .accessibilityLabel("Code size, \(Int(codeSize.unified.pointSize)) points")
-
-            // **A fourth row, and absent rather than disabled where the icon cannot change.** A Mac
-            // has no alternate icons, and a row there would push a chooser whose every tap did
-            // nothing Finder could show. The row carries the drawing as well as its name, for the
-            // section's own rule: the reader is choosing a drawing.
-            //
-            // The destination is declared in this file, for the rule the *Code colours* row carries.
-            if case .available(let choice) = appIcon {
-                NavigationLink {
-                    AppIconChooserView(choice: choice, onChoose: onChooseAppIcon)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("App icon")
-                        Spacer(minLength: 8)
-                        Text(choice.shown.displayName)
-                            .foregroundStyle(.secondary)
-                        AppIconPreviewView(icon: choice.shown, size: 29)
-                    }
-                }
-                .accessibilityLabel("App icon, \(choice.shown.displayName)")
-            }
         } header: {
             Text("Appearance")
         } footer: {
-            // **"None of them" rather than "Neither", because there are four rows now.** The
-            // sentence is the only thing on this screen that counts the controls above it, so the
-            // next setting lands here too — and the icon, too, changes nothing a review says.
+            // **"None of them" rather than "Neither", because there are three rows.** The sentence is
+            // the only thing on this screen that counts the controls above it, so the next setting
+            // about how the review looks lands here too.
             Text(
                 "Kept on this device. None of them changes what a review says, so other devices "
                     + "reading \(macName) are unaffected."
