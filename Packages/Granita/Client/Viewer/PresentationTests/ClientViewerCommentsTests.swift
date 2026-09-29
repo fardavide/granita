@@ -305,6 +305,115 @@ struct ClientViewerCommentsTests {
         #expect(document.contains("Review of uncommitted changes\n\n---\n\nA. Sources/File0.swift:2"))
     }
 
+    @Test
+    func `given the Mac holds an opening line when the review settings are loaded then the feedback begins with it`() async {
+        // given — what the reader saved in Settings, which the copy ignored for as long as nothing
+        // asked the Mac for it.
+        let scenario = Scenario(settings: ReviewSettings(openingLine: "Please address these.", identifier: .numbers))
+        await scenario.load()
+        scenario.sut.comment(
+            on: FileID(rawValue: "file-0"),
+            from: DiffLinePosition(oldNumber: nil, newNumber: 2),
+            to: DiffLinePosition(oldNumber: nil, newNumber: 2),
+            saying: "One thing."
+        )
+
+        // when
+        await scenario.sut.loadReviewSettings()
+
+        // then
+        #expect(scenario.sut.feedback(note: nil).hasPrefix("Please address these.\n\n---\n\n1. Sources/File0.swift:2"))
+    }
+
+    // MARK: - The Mac's copy
+
+    @Test
+    func `given the Mac holds a comment this phone lacks when the review syncs then both are in the review`() async {
+        // given
+        let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "Mine.")])
+        scenario.store.onTheMac = [aStoredComment(on: "file-1", at: 2, saying: "From the iPad.")]
+        await scenario.load()
+
+        // when
+        await scenario.sut.syncReview()
+
+        // then
+        #expect(scenario.sut.comments.map(\.text) == ["Mine.", "From the iPad."])
+    }
+
+    @Test
+    func `given the Mac is unreachable when the review syncs then the whole merged review is offered and reported pending`() async {
+        // given
+        let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "Mine.")])
+        scenario.store.onTheMac = [aStoredComment(on: "file-1", at: 2, saying: "From the iPad.")]
+        scenario.store.pushAnswers = .pending(count: 2, of: 2)
+        await scenario.load()
+
+        // when
+        await scenario.sut.syncReview()
+
+        // then
+        #expect(scenario.store.pushed.map { $0.map(\.text) } == [["Mine.", "From the iPad."]])
+        #expect(scenario.sut.reviewSync == .pending(count: 2, of: 2))
+    }
+
+    @Test
+    func `given a diff on screen when a comment is written then the review is offered to the Mac`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.load()
+
+        // when
+        scenario.sut.comment(
+            on: FileID(rawValue: "file-0"),
+            from: anAddition,
+            to: anAddition,
+            saying: "This wants a name."
+        )
+        await scenario.store.waitUntilPushed(count: 1)
+
+        // then
+        #expect(scenario.store.pushed.map { $0.map(\.text) } == [["This wants a name."]])
+    }
+
+    @Test
+    func `given a copied review when it is cleared then the Mac is offered an empty one`() async {
+        // given — the flow Davide runs: copy, paste, clear. Without this push the Mac kept the
+        // review, and the next open's union put every comment back.
+        let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "Done now.")])
+        await scenario.load()
+        scenario.sut.copyReview()
+
+        // when
+        scenario.sut.clearComments()
+        await scenario.store.waitUntilPushed(count: 1)
+
+        // then
+        #expect(scenario.store.pushed == [[]])
+    }
+
+    @Test
+    func `given a push still on its way when a second change is made then the second waits for it`() async {
+        // given — two pushes racing could land the older review last, and the Mac would keep it.
+        let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "First.")])
+        scenario.store.holdsPushes = true
+        await scenario.load()
+        scenario.sut.removeComment(aStoredComment(on: "file-0", at: 2, saying: "First.").anchor)
+        await scenario.store.waitUntilPushed(count: 1)
+
+        // when
+        scenario.sut.comment(on: FileID(rawValue: "file-0"), from: anAddition, to: anAddition, saying: "Second.")
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        // then — nothing more has left while the first is held, and releasing it sends the second.
+        #expect(scenario.store.pushed.count == 1)
+        scenario.store.releasePushes()
+        await scenario.store.waitUntilPushed(count: 2)
+        #expect(scenario.store.pushed.map { $0.map(\.text) } == [[], ["Second."]])
+    }
+
     // MARK: - The gesture, and what it opens
 
     @Test
@@ -828,7 +937,7 @@ private struct Scenario {
 
     /// Eight files, so the batch of five leaves the eighth still awaiting — which is the file a
     /// comment cannot be attached to and is therefore worth having.
-    init(holding comments: [ReviewComment] = []) {
+    init(holding comments: [ReviewComment] = [], settings: ReviewSettings = .unset) {
         let files = aChangeSet(of: 8)
         let changes = WorktreeChanges(
             revision: "9d41e0c7",
@@ -848,7 +957,8 @@ private struct Scenario {
                 viewedFailure: nil,
                 linesAnswer: .failure(.fileGone),
                 refusesTheFirstRead: nil,
-                alsoAnswering: nil
+                alsoAnswering: nil,
+                holdingSettings: settings
             ),
             commentStore: store,
             pasteboard: pasteboard,

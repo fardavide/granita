@@ -7,6 +7,16 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.20.2 — 2026-09-29
+- **The copied review begins with your opening line.** What you saved in Settings under *Opening
+  line* was kept, and ignored: every copy began *Review of uncommitted changes*. It now uses yours,
+  and *Comment labels* is honoured the same way — choose *1. 2. 3.* and the copy is numbered.
+- **Your review reaches the Mac.** It is kept on the Mac beside the worktree, as 0.15.0 promised and
+  never actually did, and a review opened on a second device brings in what the first one wrote.
+- **Clear stays cleared.** The Mac hears about every comment you write, edit or delete, and about
+  *Clear*, as you make them. If the Mac cannot be reached when you clear, it still holds the review,
+  and it comes back the next time you open it.
+
 ### 0.20.1 — 2026-09-28
 - **Settings is called Settings.** The worktree list's menu said *Review settings…* for a sheet that
   also chooses the app's icon; it now says *Settings…*.

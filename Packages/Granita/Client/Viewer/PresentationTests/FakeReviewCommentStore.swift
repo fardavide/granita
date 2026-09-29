@@ -21,8 +21,28 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// What a push answers with, so the caption's states can be driven without a network.
     var pushAnswers: ReviewSync = .settled
 
+    /// Whether a push waits to be let go, so a test can make a second change while the first is
+    /// still on its way to the Mac — which is the only moment their order can go wrong.
+    var holdsPushes = false
+
     init(holding comments: [ReviewComment] = []) {
         saved = comments
+    }
+
+    /// Lets every held push answer.
+    func releasePushes() {
+        holdsPushes = false
+    }
+
+    /// Returns once `count` pushes have been made, because a change offers the review to the Mac
+    /// without the reader waiting on it.
+    ///
+    /// **Bounded, so a push that never happens is a failed expectation rather than a hung suite.**
+    /// Everything here runs on one actor, so a push that is coming arrives within a handful of turns.
+    func waitUntilPushed(count: Int) async {
+        for _ in 0..<1_000 where pushed.count < count {
+            await Task.yield()
+        }
     }
 
     func comments(in worktree: WorktreeID) -> [ReviewComment] {
@@ -35,6 +55,9 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     func push(_ comments: [ReviewComment], in worktree: WorktreeID) async -> ReviewSync {
         pushed.append(comments)
+        while holdsPushes {
+            await Task.yield()
+        }
         return pushAnswers
     }
 

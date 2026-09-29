@@ -517,6 +517,15 @@ public struct WorktreeDiffScreen: View {
             onClear: { model.clearComments() },
             onDelete: { anchor in model.removeComment(anchor) }
         )
+        // **Asked every time the review opens rather than once with the diff**, because the settings
+        // sheet is presented over this screen on the iPad and dismissing it re-runs nothing here, and
+        // a second device's comments are looked for at the moment the reader goes looking. For as
+        // long as nothing called either, the copy began with the built-in line whatever the reader
+        // had saved, and no review ever left the phone.
+        .task {
+            await model.loadReviewSettings()
+            await model.syncReview()
+        }
     }
 
     /// The way to the drawer, and the count design §3's frame puts on it — *12 files* rather than a
