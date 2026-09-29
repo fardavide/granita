@@ -26,7 +26,7 @@ public struct WorktreeSplitScreen<Opened: View, Settings: View>: View {
     /// What a chosen row opens. Handed in because the diff screen is another feature's
     /// `Presentation` and this target may not see one — see `WorktreeSidebarScreen`, which carries
     /// the whole argument.
-    private let opening: (WorktreeID, String, String) -> Opened
+    private let opening: (WorktreeID, String, String, ClientWorktreesModel) -> Opened
     private let onPairAgain: () -> Void
 
     /// The review's settings, handed in for exactly the reason the diff is: they are another
@@ -49,7 +49,7 @@ public struct WorktreeSplitScreen<Opened: View, Settings: View>: View {
         model: ClientWorktreesModel,
         onPairAgain: @escaping () -> Void,
         @ViewBuilder settings: @escaping () -> Settings,
-        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String, ClientWorktreesModel) -> Opened
     ) {
         // **Pinned in `@State`, and here that is a fix rather than a precaution.** The composition
         // root presents this screen from inside a `navigationDestination` closure, so every
@@ -150,13 +150,13 @@ private extension View {
     /// managed before, with none.
     func openingTheChosenWorktree(
         of model: ClientWorktreesModel,
-        with opening: @escaping (WorktreeID, String, String) -> some View
+        with opening: @escaping (WorktreeID, String, String, ClientWorktreesModel) -> some View
     ) -> some View {
         // Resolved against **this** model rather than by the builder, which the composition root
         // writes and which would otherwise reach a freshly-built instance that has loaded nothing.
         // See `WorktreeSidebarScreen`, which carries the whole argument.
         navigationDestination(for: WorktreeID.self) { worktree in
-            opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
+            opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree), model)
                 .onAppear { model.cancelLoading() }
         }
     }

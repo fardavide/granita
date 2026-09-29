@@ -357,6 +357,7 @@ struct ClientViewerImagesTests {
                 highlighter: FakeSyntaxHighlighter(),
                 copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
                 announcing: FakeDiffReadAnnouncing(),
+                onViewedCountChanged: { _, _ in },
                 longWait: .seconds(10)
             )
         }

@@ -585,6 +585,10 @@ public struct WorktreeSidebarView: View {
                     }
                     Text(row.displayName)
                         .font(.headline)
+                        .foregroundStyle(
+                            row.viewedFileCount == row.totalFileCount && row.totalFileCount > 0
+                                ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary)
+                        )
                         // Two lines is the ceiling: three makes a 90pt row, and five of those
                         // is a wall of prose rather than a list.
                         .lineLimit(2)
@@ -602,8 +606,12 @@ public struct WorktreeSidebarView: View {
                     } else {
                         // The file count is what goes when the line will not fit — it is fourth in
                         // the drop order and the only field here that another column already implies.
-                        ViewThatFits(in: .horizontal) {
-                            secondLine(row, includingFileCount: true)
+                        if row.viewedDescription == nil {
+                            ViewThatFits(in: .horizontal) {
+                                secondLine(row, includingFileCount: true)
+                                secondLine(row, includingFileCount: false)
+                            }
+                        } else {
                             secondLine(row, includingFileCount: false)
                         }
                     }
@@ -619,10 +627,37 @@ public struct WorktreeSidebarView: View {
                 ProgressView()
                     .controlSize(.small)
             } else {
-                Text(row.age.label)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(row.age.label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    if let viewed = row.viewedFileCount,
+                       let description = row.viewedDescription {
+                        HStack(spacing: 4) {
+                            if viewed == row.totalFileCount {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            } else {
+                                ZStack {
+                                    Circle().stroke(.secondary.opacity(0.4), lineWidth: 1)
+                                    Circle()
+                                        .trim(from: 0, to: CGFloat(viewed) / CGFloat(row.totalFileCount))
+                                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 4))
+                                        .rotationEffect(.degrees(-90))
+                                }
+                                .frame(width: 12, height: 12)
+                            }
+                            Text("\(viewed, format: .number) of \(row.totalFileCount, format: .number)")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        .font(.subheadline)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(description)
+                        .help(description)
+                    }
+                }
             }
         }
     }

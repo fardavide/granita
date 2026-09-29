@@ -36,7 +36,9 @@ public enum FileSelector {
                 ? rows(of: tree, joining: state, collapsed: collapsed, depth: 0)
                 : flatRows(of: tree, joining: state),
             offersModeToggle: worthATree,
-            footer: footer(of: files, isTruncated: isTruncated)
+            viewedFileCount: files.count(where: \.isViewed),
+            fileCount: files.count,
+            footer: isTruncated ? .notAllServed(shown: files.count) : nil
         )
     }
 
@@ -168,16 +170,4 @@ private func files(under directory: FileTreeDirectory, joining state: [FileID: F
         case .directory(let nested): files(under: nested, joining: state)
         }
     }
-}
-
-/// One slot, and truncation wins it.
-///
-/// Both can be true at once, and a reader told they have read everything when the Mac declined to
-/// serve part of the change set has been told something that is not true of the worktree.
-private func footer(of files: [FileChange], isTruncated: Bool) -> FileSelectorFooter? {
-    if isTruncated {
-        return .notAllServed(shown: files.count)
-    }
-    guard files.isEmpty == false, files.allSatisfy(\.isViewed) else { return nil }
-    return .everythingViewed(count: files.count)
 }

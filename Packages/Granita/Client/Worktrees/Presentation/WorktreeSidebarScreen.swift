@@ -44,7 +44,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
-    private let opening: (WorktreeID, String, String) -> Opened
+    private let opening: (WorktreeID, String, String, ClientWorktreesModel) -> Opened
     private let onPairAgain: () -> Void
 
     /// Opens the review's settings, which belong to this Mac and so are reached from this screen.
@@ -66,7 +66,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         claimsRowTaps: Bool = true,
         onPairAgain: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
-        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String) -> Opened
+        @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String, ClientWorktreesModel) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
         // does it: the composition root rebuilds this on every parent re-evaluation, and a plain
@@ -170,7 +170,7 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             // and its destination drifting apart in two modules — the exact way this app came to ship
             // a row that did nothing at all. See `CLAUDE.md` and `.ai/docs/decisions.md`.
             sidebar.navigationDestination(for: WorktreeID.self) { worktree in
-                opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree))
+                opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree), model)
                     .onAppear { model.cancelLoading() }
             }
         } else {

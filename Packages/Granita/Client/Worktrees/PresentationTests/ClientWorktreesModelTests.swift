@@ -1494,6 +1494,49 @@ struct ClientWorktreesModelTests {
         #expect(project == "this project")
     }
 
+    @Test
+    func `given a loaded worktree when the viewer marks a file then its row updates immediately`() async {
+        // given
+        let worktree = aWorktree(named: "diff scroll", project: "granita").withViewedFileCount(0)
+        let scenario = Scenario(worktrees: [worktree])
+        await scenario.sut.load()
+
+        // when
+        scenario.sut.recordViewedCount(1, on: worktree.id)
+
+        // then
+        #expect(scenario.rows.first?.viewedFileCount == 1)
+    }
+
+    @Test
+    func `given an older Mac when the viewer marks a file then its row keeps the count absent`() async {
+        // given
+        let worktree = aWorktree(named: "diff scroll", project: "granita")
+        let scenario = Scenario(worktrees: [worktree])
+        await scenario.sut.load()
+
+        // when
+        scenario.sut.recordViewedCount(1, on: worktree.id)
+
+        // then
+        #expect(scenario.rows.first?.viewedFileCount == nil)
+    }
+
+    @Test
+    func `given a worktree is no longer listed when its viewer reports progress then the list stays put`() async {
+        // given
+        let worktree = aWorktree(named: "diff scroll", project: "granita")
+            .withViewedFileCount(0)
+        let scenario = Scenario(worktrees: [worktree])
+        await scenario.sut.load()
+
+        // when
+        scenario.sut.recordViewedCount(1, on: WorktreeID(rawValue: "another-worktree"))
+
+        // then
+        #expect(scenario.rows.first?.viewedFileCount == 0)
+    }
+
     // MARK: -
 
     private struct Scenario {

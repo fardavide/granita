@@ -1,5 +1,9 @@
 # Design
 
+## Read progress *(returned 29 September 2026)*
+
+The reviewed-file counter is specified in [design-read-progress.md](design-read-progress.md).
+
 ## §9 — A file in flight, and one that never arrives *(returned 13 September 2026)*
 
 The return for [issue #67](https://github.com/fardavide/granita/issues/67). It is about one region:
@@ -2036,8 +2040,8 @@ performs still re-measures from there.
 **Call 2, answered.** 44pt, bottom trailing, `.thinMaterial`, above the home indicator. It appears
 when the first comment is saved and is absent at zero. **It does not hide on scroll**, because reading
 is exactly when the count changes and a review button that vanishes while you review is a bug with a
-nice animation. `primaryAction` keeps *12 files* untouched — the only place the phone says how big the
-read is.
+nice animation. `primaryAction` opens Files and shows the viewed fraction, as amended in
+[`design-read-progress.md`](design-read-progress.md) — the phone's visible measure of the read.
 
 It **shares its position with §7.1's bar** and the two can never both be true, which is what lets both
 live in the bottom of the screen with nothing arbitrating between them.

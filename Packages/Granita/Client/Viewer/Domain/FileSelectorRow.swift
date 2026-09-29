@@ -171,8 +171,6 @@ public enum FileSelectorFooter: Hashable, Sendable {
     /// beats a sentence that matches a drawing.
     case notAllServed(shown: Int)
 
-    /// Every file this worktree served has been read.
-    case everythingViewed(count: Int)
 }
 
 /// What the selector draws, in the arrangement it decided on.
@@ -188,17 +186,25 @@ public struct FileSelectorListing: Hashable, Sendable {
     /// **absent** rather than disabled — there is no second arrangement to offer.
     public let offersModeToggle: Bool
 
+    /// Counts only files in this served change set, including children of shut directories.
+    public let viewedFileCount: Int
+    public let fileCount: Int
+
     public let footer: FileSelectorFooter?
 
     public init(
         mode: FileSelectorMode,
         rows: [FileSelectorRow],
         offersModeToggle: Bool,
+        viewedFileCount: Int,
+        fileCount: Int,
         footer: FileSelectorFooter?
     ) {
         self.mode = mode
         self.rows = rows
         self.offersModeToggle = offersModeToggle
+        self.viewedFileCount = viewedFileCount
+        self.fileCount = fileCount
         self.footer = footer
     }
 }

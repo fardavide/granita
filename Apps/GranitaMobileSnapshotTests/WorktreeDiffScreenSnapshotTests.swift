@@ -29,9 +29,23 @@ struct WorktreeDiffScreenSnapshotTests {
         // screen's own `.task` and the shutter.
         let model = await aLoadedViewerModel(of: aChangeSetToSelectFrom, in: layout)
 
-        // when - then — the phone gets the toolbar's *7 files*; the iPad gets the column instead,
-        // which is why that button is absent there rather than duplicated.
+        // when - then — the phone gets the toolbar's viewed counter; the iPad gets the column
+        // instead, which is why that button is absent there rather than duplicated.
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-change-set")
+    }
+
+    @Test(arguments: SnapshotLayout.all)
+    func `given every file viewed when the screen renders then the toolbar shows completion`(
+        layout: SnapshotLayout
+    ) async {
+        // given
+        let model = await aLoadedViewerModel(
+            of: aChangeSetToSelectFrom.map { $0.viewed(true) },
+            in: layout
+        )
+
+        // when - then
+        assertScreenSnapshot(screen(of: model), layout: layout, named: "every-file-viewed")
     }
 
     /// **Design §4.1 on the real screen rather than on a hunk in isolation.**
@@ -138,8 +152,8 @@ struct WorktreeDiffScreenSnapshotTests {
         assertScreenSnapshot(screen(of: model), layout: layout, named: "a-language-we-cannot-colour")
     }
 
-    /// **The count has two spellings and only one of them is the plural.** Left unphotographed it
-    /// ships as *1 files* and is seen first by whoever changed one file.
+    /// **The counter also fits the narrowest change set.** This one file is already viewed, so the
+    /// toolbar shows *1 of 1 viewed* rather than reverting to a file count.
     @Test(arguments: SnapshotLayout.all)
     func `given one changed file when the screen is rendered then the toolbar says so in the singular`(
         layout: SnapshotLayout
@@ -276,8 +290,8 @@ struct WorktreeDiffScreenSnapshotTests {
 
     /// **The capsule, and the fact that it is not in the toolbar.** Design §7.4's call 2: a toolbar
     /// hides on scroll and reading is exactly when the count changes, so the way into the review
-    /// floats over the bottom trailing corner instead — and `primaryAction` keeps *12 files*, which
-    /// is the only place the phone says how big the read is.
+    /// floats over the bottom trailing corner instead — and `primaryAction` keeps the Files counter,
+    /// which is where the phone now says how much of the read is done.
     ///
     /// **On the iPad this baseline is the other half of the same call**: no capsule there, a
     /// bubble-and-count in the toolbar instead, because a column already on screen needs no button to

@@ -528,9 +528,7 @@ public struct WorktreeDiffScreen: View {
         }
     }
 
-    /// The way to the drawer, and the count design §3's frame puts on it — *12 files* rather than a
-    /// glyph, because it is also the only place the phone says how big the read is before the reader
-    /// starts scrolling.
+    /// The way to the drawer and the diff screen's visible read-progress counter, including zero.
     ///
     /// **Absent while there is nothing to select**, which is every state but one: a button opening a
     /// drawer over a worktree that failed to load, or has nothing changed in it, would open an empty
@@ -540,11 +538,12 @@ public struct WorktreeDiffScreen: View {
     /// currently is not is the phone's situation exactly, and leaving the reader with no way to the
     /// list would make the fold control a one-way door.
     @ToolbarContentBuilder private var filesButton: some ToolbarContent {
-        if case .reading(let entries) = model.state, layout.showsFilesButton {
+        if case .reading = model.state, layout.showsFilesButton {
             ToolbarItem(placement: .primaryAction) {
                 Button { model.showSelector(true) } label: {
-                    Text(entries.count == 1 ? "1 file" : "\(entries.count, format: .number) files")
+                    Text(model.filesButtonTitle)
                 }
+                .accessibilityLabel("Files, \(model.filesButtonTitle)")
             }
         }
     }
@@ -574,7 +573,7 @@ public struct WorktreeDiffScreen: View {
     ///
     /// **The glyph does not change, and that is a departure from the return.** §4.5 asks for it
     /// filled when on; built that way it was the heaviest thing in a toolbar whose screen is the
-    /// code — two solid slabs sharing a capsule with *7 files*, so the two read as one control.
+    /// code — two solid slabs sharing a capsule with the Files counter, so the two read as one control.
     /// Davide's call on 22 September 2026: *"the fill state is too heavy."* What says the mode is on
     /// instead is the platform's own selected background, which is what `.toggleStyle(.button)`
     /// draws — one vocabulary the reader already knows from every other toolbar, rather than a glyph
@@ -627,14 +626,14 @@ public struct WorktreeDiffScreen: View {
     /// own `.task`, so returning to a worktree fetches the whole change set again while the files
     /// already drawn deliberately stay drawn — and until now that read was invisible.
     ///
-    /// **Leading, beside the worktree's name rather than beside *12 files*.** The trailing slot
+    /// **Leading, beside the worktree's name rather than beside the Files counter.** The trailing slot
     /// carries the count and the review's chip, which are two things the reader aims a thumb at; a
     /// spinner arriving and leaving there would shift both of them sideways every time this screen
     /// came back. Anything inserted into the scroll instead is `SPEC.md` §10's reflow.
     /// The worktree's name, with the file list being read again turning just after it.
     ///
     /// **`.principal`, for the reason `WorktreeSidebarView` carries in full**: the leading slot is
-    /// the back button's and the trailing slot holds *12 files* and the review's chip, so the title
+    /// the back button's and the trailing slot holds the Files counter and the review's chip, so the title
     /// slot is the only place *beside the name* actually is. The item is always present and only the
     /// spinner inside it comes and goes, which is what keeps the bar from being rebuilt.
     ///

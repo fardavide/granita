@@ -20,18 +20,18 @@ nonisolated struct TornEdge: Shape {
 
     /// How deep the tear is. Half a bite, so a scallop meets the strip's far edge exactly and the
     /// pattern reads as a torn line rather than as a row of holes.
-    static let depth: CGFloat = 5
+    nonisolated static let depth: CGFloat = 5
 
     /// Along the row, from one bite to the next.
-    static let period: CGFloat = 9
+    nonisolated static let period: CGFloat = 9
 
-    static let radius: CGFloat = 3.5
+    nonisolated static let radius: CGFloat = 3.5
 
     /// The edge the bites are taken *from*, which is the inner one — the tear faces the code it is
     /// standing between, so a row torn at the top has its bites along its top edge's underside.
     let bitesFrom: VerticalAlignment
 
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         var path = Path(rect)
         // Centred on the strip's inner edge so each bite is a half circle, and started half a period
         // in so the row does not open with a clipped one.
@@ -72,11 +72,11 @@ nonisolated struct HiddenLines: Shape {
         case downward
     }
 
-    static let size = CGSize(width: 13, height: 15)
+    nonisolated static let size = CGSize(width: 13, height: 15)
 
     let direction: Direction
 
-    func path(in rect: CGRect) -> Path {
+    nonisolated func path(in rect: CGRect) -> Path {
         var path = Path()
         let scale = min(rect.width / Self.size.width, rect.height / Self.size.height)
         let point = { (x: CGFloat, y: CGFloat) in
@@ -101,7 +101,7 @@ nonisolated struct HiddenLines: Shape {
         return path
     }
 
-    private func addDashes(to path: inout Path, atRows rows: [CGFloat], point: (CGFloat, CGFloat) -> CGPoint) {
+    nonisolated private func addDashes(to path: inout Path, atRows rows: [CGFloat], point: (CGFloat, CGFloat) -> CGPoint) {
         for row in rows {
             for start in [1.7, 5.8, 9.8] as [CGFloat] {
                 path.move(to: point(start, row))

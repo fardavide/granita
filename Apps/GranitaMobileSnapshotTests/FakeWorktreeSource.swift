@@ -121,7 +121,7 @@ nonisolated let aBusyMac: [Worktree] = [
         stats: ChangeStats(filesChanged: 12, insertions: 248, deletions: 31),
         lastModified: aFixedMoment.addingTimeInterval(-4 * 60),
         revision: "r1"
-    ),
+    ).withViewedFileCount(4),
 
     // A session summary long enough to need both of the two lines the row allows.
     Worktree(
@@ -141,7 +141,7 @@ nonisolated let aBusyMac: [Worktree] = [
         stats: ChangeStats(filesChanged: 34, insertions: 1_204, deletions: 318),
         lastModified: aFixedMoment.addingTimeInterval(-22 * 60),
         revision: "r2"
-    ),
+    ).withViewedFileCount(21),
 
     Worktree(
         id: WorktreeID(rawValue: "w-session"),
@@ -160,7 +160,7 @@ nonisolated let aBusyMac: [Worktree] = [
         stats: ChangeStats(filesChanged: 3, insertions: 47, deletions: 6),
         lastModified: aFixedMoment.addingTimeInterval(-2 * 3_600),
         revision: "r3"
-    ),
+    ).withViewedFileCount(3),
 
     // No alias, no session, no branch: the one string that can never say what the agent did, and
     // the only row where detachment earns a word.
@@ -181,7 +181,7 @@ nonisolated let aBusyMac: [Worktree] = [
         stats: ChangeStats(filesChanged: 8, insertions: 96, deletions: 204),
         lastModified: aFixedMoment.addingTimeInterval(-5 * 3_600),
         revision: "r4"
-    ),
+    ).withViewedFileCount(0),
 
     // One file, which is a different sentence from twelve.
     Worktree(
@@ -201,7 +201,7 @@ nonisolated let aBusyMac: [Worktree] = [
         stats: ChangeStats(filesChanged: 1, insertions: 2, deletions: 2),
         lastModified: aFixedMoment.addingTimeInterval(-86_400),
         revision: "r5"
-    ),
+    ).withViewedFileCount(0),
 
     // The checkout the agent did not work in, hidden by default and the reason the word exists.
     Worktree(

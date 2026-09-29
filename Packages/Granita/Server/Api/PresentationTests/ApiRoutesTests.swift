@@ -519,6 +519,101 @@ struct ApiRoutesTests {
     }
 
     @Test
+    func `given a file marked viewed when listing worktrees then its current mark is counted`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self,
+            "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first)
+
+        // when
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/viewed",
+                method: .post,
+                body: json(#"{"viewed":true,"contentHash":"\#(file.contentHash)"}"#)
+            ) { response in
+                #expect(response.status == .noContent)
+            }
+        }
+
+        // then
+        let updated = try #require(try await scenario.get([Worktree].self, "/v1/worktrees")
+            .first(where: { $0.id == worktree.id }))
+        #expect(updated.viewedFileCount == 1)
+    }
+
+    @Test
+    func `given a viewed file changes when listing worktrees then its old mark is not counted`() async throws {
+        // given
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        try repository.write("read-progress.txt", bytes: Data("first\n".utf8))
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let id = WorktreeID(canonicalPath: repository.location.path)
+        let changes = try await scenario.get(ChangesBody.self, "/v1/worktrees/\(id.rawValue)/changes")
+        let file = try #require(changes.files.first { $0.path == "read-progress.txt" })
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(id.rawValue)/files/\(file.id.rawValue)/viewed",
+                method: .post,
+                body: json(#"{"viewed":true,"contentHash":"\#(file.contentHash)"}"#)
+            ) { response in
+                #expect(response.status == .noContent)
+            }
+        }
+
+        // when
+        try repository.write("read-progress.txt", bytes: Data("second\n".utf8))
+
+        // then
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees")
+            .first(where: { $0.id == id }))
+        #expect(worktree.viewedFileCount == 0)
+    }
+
+    @Test
+    func `given a viewed file when renaming its worktree then the returned count survives`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .renames)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let worktree = try #require(try await scenario.get([Worktree].self, "/v1/worktrees").first)
+        let changes = try await scenario.get(
+            ChangesBody.self, "/v1/worktrees/\(worktree.id.rawValue)/changes"
+        )
+        let file = try #require(changes.files.first)
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)/files/\(file.id.rawValue)/viewed",
+                method: .post,
+                body: json(#"{"viewed":true,"contentHash":"\#(file.contentHash)"}"#)
+            ) { response in
+                #expect(response.status == .noContent)
+            }
+        }
+
+        // when - then
+        try await scenario.application.test(.router) { client in
+            try await client.execute(
+                uri: "/v1/worktrees/\(worktree.id.rawValue)",
+                method: .patch,
+                body: json(#"{"alias":"Reviewing"}"#)
+            ) { response in
+                let renamed = try decoded(Worktree.self, from: response)
+                #expect(renamed.viewedFileCount == 1)
+            }
+        }
+    }
+
+    @Test
     func `given a file marked viewed at content it no longer has when marked then it is refused`(
     ) async throws {
         // given

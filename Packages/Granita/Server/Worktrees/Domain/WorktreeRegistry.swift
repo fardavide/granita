@@ -153,7 +153,8 @@ public struct WorktreeRegistry: Sendable {
                 // itself; everything after it is a linked worktree.
                 isPrimary: index == 0 || record.location.path == project.path,
                 suggestedAlias: suggestions[record.location.path],
-                stored: state.worktrees[WorktreeID(canonicalPath: record.location.path)]
+                stored: state.worktrees[WorktreeID(canonicalPath: record.location.path)],
+                viewed: state.viewed[WorktreeID(canonicalPath: record.location.path)]?.mapValues(\.contentHash) ?? [:]
             ))
         }
         return worktrees
@@ -179,7 +180,8 @@ public struct WorktreeRegistry: Sendable {
             of: resolved.project,
             isPrimary: resolved.isPrimary,
             suggestedAlias: suggestions[resolved.record.location.path],
-            stored: state.worktrees[WorktreeID(canonicalPath: resolved.record.location.path)]
+            stored: state.worktrees[WorktreeID(canonicalPath: resolved.record.location.path)],
+            viewed: state.viewed[WorktreeID(canonicalPath: resolved.record.location.path)]?.mapValues(\.contentHash) ?? [:]
         )
     }
 
@@ -196,11 +198,12 @@ public struct WorktreeRegistry: Sendable {
         of project: StoredProject,
         isPrimary: Bool,
         suggestedAlias suggested: String?,
-        stored: StoredWorktree?
+        stored: StoredWorktree?,
+        viewed: [FileID: String]
     ) async -> Worktree {
         let branch = record.branch.map(Self.shortBranch)
         let directoryName = (record.location.path as NSString).lastPathComponent
-        let changes = try? await service.changeSet(in: record.location, viewed: [:])
+        let changes = try? await service.changeSet(in: record.location, viewed: viewed)
 
         return Worktree(
             id: WorktreeID(canonicalPath: record.location.path),
@@ -219,7 +222,7 @@ public struct WorktreeRegistry: Sendable {
             stats: changes?.stats ?? .zero,
             lastModified: directory.lastModified(at: record.location),
             revision: changes?.revision ?? ""
-        )
+        ).withViewedFileCount(changes?.files.count(where: \.isViewed))
     }
 
     /// Where a worktree is, or why it cannot be served.
