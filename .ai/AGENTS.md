@@ -16,10 +16,12 @@ description plus Claude's `when_to_use` and `user-invocable: true` metadata.
 
 ## Read first
 
-- **Before any non-trivial change**, read `.ai/docs/architecture.md` and
-  `.ai/docs/decisions.md` so you do not break a layer boundary or re-open something settled
-  (`.ai/docs/README.md` indexes them). **Keep them current**: decisions in `decisions.md`, where
-  we are in `status.md`. Docs are the *why*; skills are actionable rules.
+- **Before any non-trivial change**, read `.ai/docs/architecture.md` and the index
+  `.ai/docs/decisions.md` — one line per decision — then open the entries it points you to, so you
+  do not break a layer boundary or re-open something settled (`.ai/docs/README.md` indexes them).
+  **Keep them current**: a decision is a new file under `.ai/docs/decisions/` plus one line in the
+  index, never reasoning appended to the index; where we are goes in `status.md`. Docs are the
+  *why*; skills are actionable rules.
 - **`SPEC.md` is the specification.** Its paragraphs marked TRAP describe defects found by running
   things, not by reading documentation — do not simplify them away. `decisions.md` records every
   place this repository knowingly departs from it.
