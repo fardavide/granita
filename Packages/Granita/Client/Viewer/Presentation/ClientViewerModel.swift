@@ -969,6 +969,9 @@ public final class ClientViewerModel {
     /// How much of this review the Mac has, which is drawn in one place and only above the copy.
     public private(set) var reviewSync: ReviewSync = .settled
 
+    /// The push most recently started, which the next one waits behind. See `offer()`.
+    private var offering: Task<Void, Never>?
+
     /// Reads what the Mac holds, merges it with what this phone wrote, and offers the result back.
     ///
     /// Called when the review opens rather than continuously: a review is read at the moment the
@@ -977,7 +980,7 @@ public final class ClientViewerModel {
     public func syncReview() async {
         reviewSync = .reconciling
         comments = await commentStore.reconcile(in: worktree)
-        reviewSync = await commentStore.push(comments, in: worktree)
+        await offer().value
     }
 
     public func loadReviewSettings() async {
@@ -1221,9 +1224,32 @@ public final class ClientViewerModel {
 
     /// Puts the review back in the scroll's order and writes it down, in that order, so the list on
     /// screen and the document that gets copied cannot disagree about what comes first.
+    /// Keeps the review on this phone, then offers it to the Mac.
+    ///
+    /// **Every change is offered, not only the review opening**, because a reconcile is a union and
+    /// cannot tell a comment deleted here from one this phone never had: a *Clear* the Mac never
+    /// heard about came back whole the next time the review opened. Offered without the reader
+    /// waiting, since the local save is the promise and the push is allowed to fail.
     private func remember() {
         comments = ReviewedComment.ordered(comments, against: entries)
         commentStore.save(comments, in: worktree)
+        offer()
+    }
+
+    /// Sends the review as it stands now, behind whatever push is already on its way.
+    ///
+    /// **One at a time, in the order the reader made them.** Two pushes in flight can answer in
+    /// either order, and the Mac keeps whichever arrives last — so a comment written straight after a
+    /// *Clear* could leave the Mac holding the cleared review, or the reverse.
+    @discardableResult
+    private func offer() -> Task<Void, Never> {
+        let offered = Task { [weak self, commentStore, worktree, previous = offering, review = comments] in
+            await previous?.value
+            let sync = await commentStore.push(review, in: worktree)
+            self?.reviewSync = sync
+        }
+        offering = offered
+        return offered
     }
 
     private func rearrange() {

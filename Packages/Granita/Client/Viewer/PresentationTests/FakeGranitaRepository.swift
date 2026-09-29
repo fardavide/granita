@@ -76,6 +76,9 @@ final class FakeGranitaRepository: GranitaRepository {
     /// did not — which is the state the per-frame control exists for.
     private let imagesAnsweringBeforeRefusing: Int
 
+    /// What this Mac holds for the shape of every exported review.
+    private let settings: ReviewSettings
+
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
     private let windows = Mutex<[LineWindow]>([])
@@ -92,8 +95,10 @@ final class FakeGranitaRepository: GranitaRepository {
         refusesTheFirstRead: ApiFailure? = nil,
         holdingDiffs holds: Bool = false,
         suspendingReadsAfter readsAnsweringImmediately: Int = .max,
-        alsoAnswering stranger: FileChange? = nil
+        alsoAnswering stranger: FileChange? = nil,
+        holdingSettings settings: ReviewSettings = .unset
     ) {
+        self.settings = settings
         self.readsAnsweringImmediately = readsAnsweringImmediately
         self.changeSet = changeSet
         self.hunks = hunks
@@ -218,11 +223,12 @@ final class FakeGranitaRepository: GranitaRepository {
         if let viewedFailure { throw viewedFailure }
     }
 
-    // The review goes through `ReviewCommentStore` rather than through the model's repository, so
-    // these exist for conformance and answer with a Mac that holds nothing.
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { settings }
+
+    // The review goes through `ReviewCommentStore` rather than through the model's repository, and
+    // the settings are only ever written from the settings screen, so these exist for conformance.
     func review(in worktree: WorktreeID) async throws(ApiFailure) -> [ReviewComment] { [] }
     func putReview(_ comments: [ReviewComment], in worktree: WorktreeID) async throws(ApiFailure) {}
-    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { .unset }
     func updateReviewSettings(
         _ patch: ReviewSettingsPatch
     ) async throws(ApiFailure) -> ReviewSettings { .unset }
