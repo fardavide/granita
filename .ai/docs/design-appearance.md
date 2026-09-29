@@ -66,8 +66,9 @@ per half is not a summary of the stylesheet — it **is** the stylesheet.
 > calls are in [`design-code-size.md`](design-code-size.md) and the footer below now reads *"None of
 > them changes what a review says"* rather than *"Neither"*. Everything else in this document stands.
 >
-> **And four since 0.20.0.** *App icon* is the last row; its calls are at the end of this document,
-> under [The app icon](#the-app-icon).
+> **And four since 0.20.0, and three again since 0.20.1.** *App icon* was the last row for one release
+> and now heads a group of its own; its calls are at the end of this document, under
+> [The app icon](#the-app-icon).
 
 ## One section, two rows, seven pairs, and a push
 
@@ -359,10 +360,24 @@ reads *‹ Settings*. It held one subject when it shipped and holds two now.
 result does not satisfy him. Every call below copies one this document already made for *Code
 colours*, and says which.
 
-**A fourth row, last in the section**, so the three above keep their positions and their meaning.
-*App icon*, the icon's name in secondary, **the icon itself at 29pt**, and a chevron. The drawing is on
-the row for the section's own rule: the reader is choosing a drawing, so no surface shows a name on
-its own.
+**The sheet is two groups since 0.20.1, *App* above *Review*, and the icon is all of *App*.** Davide,
+28 September 2026: the icon sat *"inside Appearance, but together with the review appearance"*, so the
+sheet splits into app settings — only the icon — and review settings, which are everything that was
+already there, *Appearance* included. Each group is a header at `.headerProminence(.increased)`; a
+form cannot nest sections, so *Review* is a section with no rows and the review's own headers stay
+small underneath it. **Where the icon cannot change, the whole *App* group is absent** and the sheet
+opens on *Review*. The sidebar's menu item follows: *Settings…*, not *Review settings…*.
+
+> Rejected, by Davide: two rows that each push a page. Cleaner as a hierarchy, and it puts every
+> review setting one tap deeper for the sake of a setting changed about once a year.
+>
+> Replaced: a fourth row, last in *Appearance*, which is what 0.20.0 shipped. It put the Home Screen's
+> icon under a footer about what other devices reading the Mac see, beside three rows about how code
+> is drawn.
+
+The row is *App icon*, the icon's name in secondary, **the icon itself at 29pt**, and a chevron. The
+drawing is on the row for the section's own rule: the reader is choosing a drawing, so no surface
+shows a name on its own.
 
 > Rejected: two tappable icons inline in the section, the way some apps draw it. Two 60pt drawings
 > side by side make the section as tall as the three rows above it put together, for a setting a
@@ -383,8 +398,7 @@ state, as in *Code colours*; asking the system for the icon it already shows wou
 to announce that nothing changed.
 
 **Absent on a Mac, not disabled.** macOS has no alternate app icons, so there is nothing a reader
-could do about the row; its absence is the state the never-ship-a-dead-control rule permits, and the
-footer's *"None of them"* stays true either way.
+could do about the row; its absence is the state the never-ship-a-dead-control rule permits.
 
 **The previews follow the reader's appearance**: each has a dark variant, drawn from the dark icon,
 so a phone in dark mode shows the drawing its Home Screen shows.

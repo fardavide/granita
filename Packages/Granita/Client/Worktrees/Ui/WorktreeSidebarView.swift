@@ -226,9 +226,10 @@ public struct WorktreeSidebarView: View {
                 }
 
                 // Above the toggle, because it is the thing a reader wants more often — and in this
-                // menu rather than the diff's toolbar, because settings are that Mac's and the diff
-                // is one worktree's.
-                Button("Review settings…", action: onOpenSettings)
+                // menu rather than the diff's toolbar, because the review's settings are that Mac's
+                // and the diff is one worktree's. *Settings*, not *Review settings*: the sheet holds
+                // the app's own settings too.
+                Button("Settings…", action: onOpenSettings)
 
                 if state.isArrangeable {
                     Toggle(

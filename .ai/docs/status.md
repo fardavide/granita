@@ -2,6 +2,10 @@
 
 Where the project is. Update this when a slice lands.
 
+**Settings is two groups, App above Review — that is 0.20.1.** The icon left *Appearance* for a group
+of its own, and the sidebar's menu item reads *Settings…*. The call is in
+[`design-appearance.md`](design-appearance.md#the-app-icon).
+
 **Granita builds on Xcode 27, and so does CI.** The development Mac moved to 27.0 on 28 September 2026.
 Two `Shape` conformances became `nonisolated`, `Package.resolved` now names `swift-issue-reporting`,
 and every CI job runs on the `xcode-27` image. The phone's baselines are re-recorded on iOS 27 and the

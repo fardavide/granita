@@ -34,9 +34,13 @@ public struct CodeThemeChooserView: View {
                 ForEach(CodeTheme.allCases, id: \.self) { theme in
                     Button { onChoose(theme) } label: {
                         row(for: theme)
+                            // **Without this, the gap between the name and the checkmark answers no
+                            // tap.** A `.plain` button is hit only where its label draws, and a spacer
+                            // draws nothing. The icon chooser, built the same way, is where it was found.
+                            .contentShape(Rectangle())
                     }
-                    // The row is a button so the whole cell is the hit area, and `.plain` is what stops
-                    // every word in it turning blue — the name and the samples are content, not a link.
+                    // `.plain` is what stops every word in the row turning blue: the name and the
+                    // samples are content, not a link.
                     .buttonStyle(.plain)
                 }
             } header: {
