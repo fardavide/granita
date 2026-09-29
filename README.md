@@ -66,9 +66,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.21.0** — see reviewed-file progress in worktrees, the file list, and the diff as you read.
 - **0.20.2** — the copied review begins with the opening line you saved, rather than the built-in one.
 - **0.20.1** — Settings is in two groups, the app's icon above the review's settings.
-- **0.20.0** — a new icon, and a second one to choose in Settings: the diff frozen in an ice cube.
 
 [Every release](CHANGELOG.md).
 
