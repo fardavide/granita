@@ -72,8 +72,12 @@ make run               # run the backend in a terminal
   raw `xcodebuild` or `swift` invocation.
 - Never hand-edit `project.pbxproj`. Edit `project.yml`, run `make project`, and commit the
   regenerated project.
-- Never hand-edit `Packages/Granita/Package.resolved`. Different resolvers write different graphs
-  into it; check its diff before committing and drop churn that is not part of the change.
+- Treat `Packages/Granita/Package.resolved` as resolver-owned. Never patch it by hand, including
+  `originHash`, and never stage it for an unrelated code, version, or documentation change.
+- Check whether `Package.resolved` was already modified before sanctioned `make` checks. If it was
+  clean and their only change is unrelated resolver output, finish all checks, then restore the whole
+  file from `HEAD` once with `git restore -- Packages/Granita/Package.resolved`. Leave any
+  pre-existing change alone.
 - Leave `make build` unsigned.
 - Show the output before claiming a command passed. If tests fail, say so and quote them.
 - Run the apps before opening the pull request, not after a bug report.
