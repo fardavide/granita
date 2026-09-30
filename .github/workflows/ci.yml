@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      cold:
+        description: Skip build and dependency caches for the verification run
+        type: boolean
+        default: false
+      compare_legacy:
+        description: Run the retained measurement on the same revision and toolchain
+        type: boolean
+        default: false
 
 # A newer push to the same ref cancels an in-flight run. macOS runner minutes are billed at 10x,
 # so this is the difference between a rebased branch costing one run and costing four.
@@ -34,18 +43,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
       - name: Cache SwiftPM source packages
+        if: ${{ !inputs.cold }}
         uses: actions/cache@v4
         with:
-          path: Packages/Granita/.build
-          key: spm-xcode27-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
-          restore-keys: spm-xcode27-${{ runner.os }}-
+          path: build/derived/package
+          key: spm-coverage-xcode27-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: spm-coverage-xcode27-${{ runner.os }}-
       # The git layer's tests drive the real binary against real repositories, which are gitignored
       # and therefore absent from a checkout. Regenerating them here also means every run asserts
       # the git behaviours the generator checks, against whatever git this image ships.
       - name: Build the git fixture repositories
         run: make fixtures
       - name: Run package tests
-        run: make test
+        run: make coverage-unit
+      - name: Upload unit coverage and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-input-unit
+          path: build/coverage-inputs/unit
+          retention-days: 7
+          if-no-files-found: error
+      - name: Remove counters before saving compiled outputs
+        if: always()
+        run: find build/derived/package -type d -name codecov -prune -exec rm -rf {} +
 
   # Compile-check each app on its own platform. Separate jobs rather than a matrix step, so a
   # macOS-only regression cannot hide behind an iOS failure and the ruleset gets one check per
@@ -59,11 +80,11 @@ jobs:
       matrix:
         app:
           - { name: macOS, scheme: GranitaMac,    destination: 'generic/platform=macOS' }
-          - { name: iOS,   scheme: GranitaMobile, destination: 'generic/platform=iOS Simulator' }
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
       - name: Cache SwiftPM source packages
+        if: ${{ !inputs.cold }}
         uses: actions/cache@v4
         with:
           path: SourcePackages
@@ -72,6 +93,7 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme ${{ matrix.app.scheme }} -clonedSourcePackagesDirPath SourcePackages
       - name: Build
+        if: matrix.app.name == 'macOS'
         run: |
           xcodebuild build \
             -project Granita.xcodeproj \
@@ -80,6 +102,30 @@ jobs:
             -clonedSourcePackagesDirPath SourcePackages \
             -quiet \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+  build-ios:
+    name: Build app (iOS)
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Cache SwiftPM source packages
+        if: ${{ !inputs.cold }}
+        uses: actions/cache@v4
+        with:
+          path: SourcePackages
+          key: xcode-spm-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
+          restore-keys: xcode-spm-${{ runner.os }}-
+      - name: Build instrumented iOS test products
+        run: make coverage-ios-build coverage-ios-pack
+      - name: Upload reusable iOS test products
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-products
+          path: build/ios-test-products.tar.gz
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
 
   # Three things in this repository are generated and committed: Granita.xcodeproj (from
   # project.yml), the golden diff fixtures (from the real git binary), and the app icon sets. Each
@@ -126,23 +172,50 @@ jobs:
           fi
           echo "Package.resolved covers the Xcode graph."
 
+  coverage-legacy-comparison:
+    name: Legacy coverage comparison (manual)
+    if: github.event_name == 'workflow_dispatch' && inputs.compare_legacy
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Prepare real git fixtures
+        run: make fixtures
+      - name: Measure the retained path
+        run: make coverage-legacy
+      - name: Upload the legacy report for count and file comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-legacy-exports
+          path: build/coverage
+          retention-days: 7
+          if-no-files-found: error
+
   # Reports *and* gates. The rule is Oltre's: a plain ratchet with no floor and no slack — every
   # percentage in the per-kind table must hold at or above the last green `main` run. A fixed
   # threshold either sits so low it never fires or so high it blocks unrelated work; a ratchet asks
   # the only question worth asking of a pull request, which is whether it made things worse.
   #
-  # It runs the suite once per kind of test, which means it boots a simulator and runs the snapshot
-  # tests a second time — the Snapshot job below already ran them. That duplication is bought
-  # deliberately: this pass wants the coverage profile and ignores the verdict, so a stale baseline
-  # reddens one job rather than two.
+  # Required suites produce counters and matching mappings once. This job verifies their verdicts
+  # and provenance, merges the raw profiles, then applies the unchanged category and total ratchets.
   coverage:
     name: Coverage
+    needs: [unit-tests, snapshot-tests, snapshot-tests-mac]
+    if: always()
     runs-on: xcode-27
-    timeout-minutes: 60
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
     steps:
+      - name: Require every suite verdict
+        env:
+          UNIT: ${{ needs.unit-tests.result }}
+          IOS: ${{ needs.snapshot-tests.result }}
+          MAC: ${{ needs.snapshot-tests-mac.result }}
+        run: test "$UNIT" = success && test "$IOS" = success && test "$MAC" = success
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
 
@@ -161,49 +234,35 @@ jobs:
           key: granita-coverage-v2-${{ github.sha }}
           restore-keys: granita-coverage-v2-
 
-      # The snapshot pass builds the iOS app, and snapshot-testing is the only remote dependency the
-      # project resolves. Same cache as the Snapshot job, keyed the same way and for the same reason.
-      - name: Cache SwiftPM source packages
-        uses: actions/cache@v4
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
         with:
-          path: SourcePackages
-          key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
-          restore-keys: snapshot-spm-${{ runner.os }}-
-      - name: Resolve packages
-        run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
-
-      # The unit pass builds the package a second time and, uncached, that was 5m02s of a 20m30s job
-      # to run 25s of tests — measured on the 1 September 2026 `main` run.
-      #
-      # Its own key rather than the one `Unit tests (Granita)` uses, and its own directory rather
-      # than `Packages/Granita/.build`: these objects carry coverage instrumentation, so the two
-      # builds invalidate each other whenever they meet. That is the same reason measure-coverage.sh
-      # gives the pass a scratch path of its own, and it is also why the script deletes `codecov/`
-      # before building — a warm directory must not carry an older run's raw counters into this
-      # run's number.
-      - name: Cache the instrumented package build
-        uses: actions/cache@v4
+          name: coverage-input-unit
+          path: build/coverage-inputs/unit
+      - name: Download iOS shard 0 coverage
+        uses: actions/download-artifact@v4
         with:
-          path: build/derived/package
-          key: spm-coverage-xcode27-${{ runner.os }}-${{ hashFiles('Packages/Granita/Package.resolved') }}
-          restore-keys: spm-coverage-xcode27-${{ runner.os }}-
+          name: coverage-input-ios-0
+          path: build/coverage-inputs/ios-0
+      - name: Download iOS shard 1 coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-input-ios-1
+          path: build/coverage-inputs/ios-1
+      - name: Download macOS coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-input-mac
+          path: build/coverage-inputs/mac
 
       # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
       # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
       # image is externally managed and refuses a plain `pip install`.
       - name: Test the coverage script
-        run: |
-          python3 -m venv .venv-coverage
-          .venv-coverage/bin/pip install --quiet pytest
-          .venv-coverage/bin/python -m pytest .github/scripts -q
-
-      # The unit pass runs the package suite, and the git layer's part of it needs the real
-      # repositories that are gitignored out of a checkout.
-      - name: Build the git fixture repositories
-        run: make fixtures
+        run: make coverage-tests
 
       - name: Measure coverage
-        run: .github/scripts/measure-coverage.sh
+        run: bash .github/scripts/measure-coverage.sh
 
       # The per-file exports, so a row that falls can be diagnosed by reading which files moved
       # rather than by estimating. Uploaded whatever the gate decides, because the interesting case
@@ -218,6 +277,7 @@ jobs:
             build/coverage/snapshot.json
             build/coverage/all.json
             build/coverage/summary.json
+            build/coverage/*-diagnostics.log
           retention-days: 7
           if-no-files-found: warn
 
@@ -296,14 +356,38 @@ jobs:
   # unit or build failure. This job GATES the pull request.
   snapshot-tests:
     name: Snapshot tests (iOS)
+    needs: snapshot-tests-shards
+    if: always()
+    runs-on: xcode-27
+    timeout-minutes: 5
+    steps:
+      - name: Require every isolated shard and the TLS verdict
+        env:
+          RESULT: ${{ needs.snapshot-tests-shards.result }}
+        run: test "$RESULT" = success
+
+  snapshot-tests-shards:
+    name: iOS snapshot shard (${{ matrix.shard }})
+    needs: build-ios
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
     runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
+      - name: Download reusable iOS test products
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-test-products
+          path: build
+      - name: Restore compatible products without counters
+        run: make coverage-ios-restore
 
-      # snapshot-testing is the only remote dependency the Xcode project resolves, and it pulls
-      # swift-syntax, so cache the clones.
+      # Snapshot execution uses the transferred products. Only shard 0 needs package clones for
+      # the separate required TLS integration pass; its counters stay outside measurement scope.
       #
       # Keyed on project.yml rather than on the project's Package.resolved, which is what Aura keys
       # on. Aura hand-maintains its .xcodeproj so that file is committed there; here the project is
@@ -315,12 +399,14 @@ jobs:
       # snapshot-testing reuses a stale cache entry until this file changes. That only slows a run
       # down; it cannot make one wrong.
       - name: Cache SwiftPM source packages
+        if: ${{ !inputs.cold && matrix.shard == 0 }}
         uses: actions/cache@v4
         with:
           path: SourcePackages
           key: snapshot-spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
           restore-keys: snapshot-spm-${{ runner.os }}-
       - name: Resolve packages
+        if: matrix.shard == 0
         run: xcodebuild -resolvePackageDependencies -project Granita.xcodeproj -scheme GranitaMobile -clonedSourcePackagesDirPath SourcePackages
 
       # Fail early and readably if the image has no simulator to render on, rather than surfacing it
@@ -364,16 +450,31 @@ jobs:
       # assertions are main-actor isolated — without that, UIKit traps on a background thread, the
       # host restarts, and the retry reports "0 tests passed" having rendered nothing.
       - name: Run snapshot tests
-        run: |
-          xcodebuild test \
-            -project Granita.xcodeproj \
-            -scheme GranitaMobile \
-            -destination 'platform=iOS Simulator,name=${{ steps.simulator.outputs.name }},OS=latest' \
-            -clonedSourcePackagesDirPath SourcePackages \
-            CODE_SIGNING_ALLOWED=NO
+        run: make coverage-ios-enumerate coverage-ios-plan coverage-ios-shard SHARD=${{ matrix.shard }}
+      - name: Upload iOS coverage and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-input-ios-${{ matrix.shard }}
+          path: |
+            build/coverage-inputs/ios-${{ matrix.shard }}/manifest.json
+            build/coverage-inputs/ios-${{ matrix.shard }}/profile.profdata
+            build/coverage-inputs/ios-${{ matrix.shard }}/objects
+            build/coverage-inputs/ios-${{ matrix.shard }}/*.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Upload the iOS test result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results-${{ matrix.shard }}
+          path: build/coverage-inputs/ios-${{ matrix.shard }}/tests.xcresult
+          retention-days: 7
+          if-no-files-found: warn
 
       # Native TLS must be judged inside the app host, not by host-only certificate unit tests.
       - name: Run pinned TLS connection tests
+        if: matrix.shard == 0
         run: make tls-tests-ios TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
 
       # On a mismatch the freshly-rendered image is written beside the baseline it failed against
@@ -391,7 +492,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: snapshot-diffs
+          name: snapshot-diffs-${{ matrix.shard }}
           path: snapshot-report
           retention-days: 7
           if-no-files-found: warn
@@ -416,6 +517,7 @@ jobs:
 
       # Same cache and same key as the iOS job: one package graph, one set of clones.
       - name: Cache SwiftPM source packages
+        if: ${{ !inputs.cold }}
         uses: actions/cache@v4
         with:
           path: SourcePackages
@@ -433,14 +535,27 @@ jobs:
       # able to explain it. The UI bundle is still *built* here, which is the only thing keeping it
       # compiling until a job of its own runs it.
       - name: Run snapshot tests
-        run: |
-          xcodebuild test \
-            -project Granita.xcodeproj \
-            -scheme GranitaMac \
-            -destination 'platform=macOS' \
-            -only-testing:GranitaMacSnapshotTests \
-            -clonedSourcePackagesDirPath SourcePackages \
-            CODE_SIGNING_ALLOWED=NO
+        run: make coverage-mac
+      - name: Upload macOS coverage and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-input-mac
+          path: |
+            build/coverage-inputs/mac/manifest.json
+            build/coverage-inputs/mac/profile.profdata
+            build/coverage-inputs/mac/objects
+            build/coverage-inputs/mac/*.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Upload the macOS test result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-test-results
+          path: build/coverage-inputs/mac/tests.xcresult
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Build the snapshot diff report
         if: failure()
