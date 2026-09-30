@@ -100,8 +100,33 @@ public struct FileSelectorView: View {
     /// is a title that can differ.
     private var title: some View {
         HStack {
-            Text("Files")
-                .font(.headline)
+            HStack(spacing: 6) {
+                Text("Files")
+                    .font(.headline)
+                if listing.viewedFileCount > 0 {
+                    HStack(spacing: 5) {
+                        if listing.viewedFileCount == listing.fileCount {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        } else {
+                            ZStack {
+                                Circle().stroke(.secondary.opacity(0.4), lineWidth: 1)
+                                Circle()
+                                    .trim(from: 0, to: CGFloat(listing.viewedFileCount) / CGFloat(listing.fileCount))
+                                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 4))
+                                    .rotationEffect(.degrees(-90))
+                            }
+                        }
+                    }
+                    .frame(width: 14, height: 14)
+                    .accessibilityHidden(true)
+                    Text("\(listing.viewedFileCount, format: .number) of \(listing.fileCount, format: .number) viewed")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .accessibilityElement(children: .combine)
             Spacer()
             // **Absent rather than disabled** when a tree would say nothing the flat list does not:
             // over three files, or over a change set that is all one directory, there is no second
@@ -258,14 +283,6 @@ public struct FileSelectorView: View {
                     Showing the first \(shown, format: .number) changed files. \
                     Your Mac does not serve more than that at once.
                     """
-                )
-            case .everythingViewed(let count):
-                // Not an unavailable-content view: the files are still there and still openable, and
-                // the reader's next move is to leave rather than to be congratulated.
-                Text(
-                    count == 1
-                        ? "The 1 file here is viewed."
-                        : "All \(count, format: .number) files viewed."
                 )
             }
         }

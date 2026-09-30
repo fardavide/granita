@@ -2,6 +2,17 @@
 
 Where the project is. Update this when a slice lands.
 
+**Read progress is implemented locally, pending review.** The Mac counts current viewed hashes in
+each served change set and sends an optional count. The phone shows the fraction beside *Files* and
+in the diff toolbar, and under each worktree's age, updates them on a mark, and restores them if the write is refused. Older
+Macs retain the original row. The screen calls are in [`design-read-progress.md`](design-read-progress.md)
+and the data decision is [0237](decisions/0237-read-progress-follows-current-content-and-travels-with-the-worktree.md).
+
+`make test`, `make build`, `make verify-generated`, and the six-value `make coverage` gate pass on the
+updated Xcode 27 base. The phone's baselines passed two consecutive local renders; unrelated local
+image drift was removed from this slice, leaving the counter states for review. A live mark tap on a
+phone and CI's snapshot comparison remain to be verified before publication.
+
 **Settings is two groups, App above Review — that is 0.20.1.** The icon left *Appearance* for a group
 of its own, and the sidebar's menu item reads *Settings…*. The call is in
 [`design-appearance.md`](design-appearance.md#the-app-icon).

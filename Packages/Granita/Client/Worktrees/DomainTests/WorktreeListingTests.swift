@@ -526,6 +526,95 @@ struct WorktreeListingTests {
     // MARK: - What the row will let a reader destroy
 
     @Test
+    func `given a partly viewed worktree when listing then its row states the fraction`() {
+        // given
+        let worktree = aWorktree(named: "tls-pinning", project: "granita", pinned: false, minutesAgo: 4)
+            .withViewedFileCount(21)
+
+        // when
+        let row = WorktreeListRow(of: worktree, mode: .mostRecentFirst, now: aMoment)
+
+        // then
+        #expect(row.viewedFileCount == 21)
+        #expect(row.totalFileCount == 34)
+        #expect(row.viewedDescription == "21 of 34 files viewed")
+    }
+
+    @Test
+    func `given an untouched worktree when listing then the row says nothing is viewed yet`() {
+        // given - when
+        let row = WorktreeListRow(
+            of: aWorktree(named: "tls-pinning", project: "granita", pinned: false, minutesAgo: 4)
+                .withViewedFileCount(0),
+            mode: .mostRecentFirst,
+            now: aMoment
+        )
+
+        // then
+        #expect(row.viewedDescription == "nothing viewed yet")
+    }
+
+    @Test
+    func `given a finished worktree when listing then the row says all files are viewed`() {
+        // given - when
+        let row = WorktreeListRow(
+            of: aWorktree(named: "tls-pinning", project: "granita", pinned: false, minutesAgo: 4)
+                .withViewedFileCount(34),
+            mode: .mostRecentFirst,
+            now: aMoment
+        )
+
+        // then
+        #expect(row.viewedDescription == "all 34 files viewed")
+    }
+
+    @Test
+    func `given a Mac without a count when listing then the old row stays quiet`() {
+        // given - when
+        let row = WorktreeListRow(
+            of: aWorktree(named: "tls-pinning", project: "granita", pinned: false, minutesAgo: 4),
+            mode: .mostRecentFirst,
+            now: aMoment
+        )
+
+        // then
+        #expect(row.viewedFileCount == nil)
+        #expect(row.viewedDescription == nil)
+    }
+
+    @Test
+    func `given no changed files when listing then the row has no read progress`() {
+        // given - when
+        let row = WorktreeListRow(
+            of: aWorktree(
+                named: "quiet", project: "granita", pinned: false, minutesAgo: 4,
+                stats: .zero
+            ).withViewedFileCount(0),
+            mode: .mostRecentFirst,
+            now: aMoment
+        )
+
+        // then
+        #expect(row.viewedDescription == nil)
+    }
+
+    @Test
+    func `given the only changed file is viewed when listing then the row uses singular copy`() {
+        // given - when
+        let row = WorktreeListRow(
+            of: aWorktree(
+                named: "small", project: "granita", pinned: false, minutesAgo: 4,
+                stats: ChangeStats(filesChanged: 1, insertions: 1, deletions: 0)
+            ).withViewedFileCount(1),
+            mode: .mostRecentFirst,
+            now: aMoment
+        )
+
+        // then
+        #expect(row.viewedDescription == "all 1 file viewed")
+    }
+
+    @Test
     func `given an ordinary worktree when its row is built then it offers what the confirmation needs`() {
         // given — the confirmation has to say what is being lost, and the row is where the display
         // name is finally resolved. Resolving it again in the sheet is how the two come to disagree.
@@ -746,7 +835,8 @@ private func aWorktree(
     named name: String,
     project: String,
     pinned: Bool,
-    minutesAgo: Int
+    minutesAgo: Int,
+    stats: ChangeStats = ChangeStats(filesChanged: 34, insertions: 1_204, deletions: 318)
 ) -> Worktree {
     Worktree(
         id: WorktreeID(rawValue: "w-\(name)"),
@@ -762,7 +852,7 @@ private func aWorktree(
         displayName: name,
         directoryName: "d-\(name)",
         isPinned: pinned,
-        stats: ChangeStats(filesChanged: 34, insertions: 1_204, deletions: 318),
+        stats: stats,
         lastModified: aMoment.addingTimeInterval(TimeInterval(-minutesAgo * 60)),
         revision: "r1"
     )

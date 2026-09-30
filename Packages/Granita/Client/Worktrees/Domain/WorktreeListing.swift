@@ -224,6 +224,18 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
     public let stats: WorktreeRowStats
     public let age: WorktreeAge
 
+    /// Absent for older Macs, whose rows keep the old second line.
+    public let viewedFileCount: Int?
+    public let totalFileCount: Int
+
+    public var viewedDescription: String? {
+        guard let viewedFileCount, totalFileCount > 0 else { return nil }
+        if viewedFileCount == 0 { return "nothing viewed yet" }
+        let files = totalFileCount == 1 ? "file" : "files"
+        if viewedFileCount == totalFileCount { return "all \(totalFileCount) \(files) viewed" }
+        return "\(viewedFileCount) of \(totalFileCount) \(files) viewed"
+    }
+
     /// Flat mode has no section header to carry the pin, so the row draws it there and only there.
     /// One or the other, never both.
     public let showsPinIndicator: Bool
@@ -265,6 +277,8 @@ public struct WorktreeListRow: Identifiable, Hashable, Sendable {
             )
         }
         age = WorktreeAge(of: worktree.lastModified, at: now)
+        viewedFileCount = worktree.viewedFileCount
+        totalFileCount = worktree.stats.filesChanged
         showsPinIndicator = worktree.isPinned && mode == .mostRecentFirst
         isPinned = worktree.isPinned
         let derived: (name: String, source: WorktreeDerivedNameSource) = if let suggested = worktree.suggestedAlias {

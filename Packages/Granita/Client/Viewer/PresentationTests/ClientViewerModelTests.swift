@@ -627,6 +627,30 @@ struct ClientViewerModelTests {
     // MARK: - The selector beside it
 
     @Test
+    func `given a viewed file when the change set loads then the files button shows progress`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 4, viewedAt: 1))
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.filesButtonTitle == "1 of 4 viewed")
+    }
+
+    @Test
+    func `given no viewed files when the change set loads then the files button shows zero progress`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 4))
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.filesButtonTitle == "0 of 4 viewed")
+    }
+
+    @Test
     func `given a change set when it loads then the selector holds the same files arranged`() async {
         // given — one model, two views onto it: the selector is not a second list but the change set
         // the scroll is drawing, put in design §3's order.
@@ -847,6 +871,32 @@ struct ClientViewerModelTests {
     }
 
     @Test
+    func `given a file marked viewed when the write starts then the worktree count follows it`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 4))
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+
+        // then
+        #expect(scenario.counts.values == [1])
+    }
+
+    @Test
+    func `given a refused mark when it rolls back then the worktree count rolls back too`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 4), viewedFailure: .fileGone)
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+
+        // then
+        #expect(scenario.counts.values == [1, 0])
+    }
+
+    @Test
     func `given every file marked read when the last one lands then the selector says the read is done`() async {
         // given
         let scenario = Scenario(files: aChangeSet(of: 4))
@@ -858,7 +908,9 @@ struct ClientViewerModelTests {
         }
 
         // then
-        #expect(scenario.sut.selector.footer == .everythingViewed(count: 4))
+        #expect(scenario.sut.selector.viewedFileCount == 4)
+        #expect(scenario.sut.selector.fileCount == 4)
+        #expect(scenario.sut.selector.footer == nil)
     }
 
     @Test
@@ -1215,6 +1267,7 @@ private struct Scenario {
     let fileIds: [FileID]
     let copyingLogs: FakeDiagnosticLogsCopying
     let announcing: FakeDiffReadAnnouncing
+    let counts: ViewedCounts
 
     init(
         files: [FileChange] = [],
@@ -1253,6 +1306,7 @@ private struct Scenario {
         )
         copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
         announcing = FakeDiffReadAnnouncing()
+        counts = ViewedCounts()
         // The review is beside the point in every test here and is asserted in
         // `ClientViewerCommentsTests`, so the store is built inline and never inspected.
         sut = ClientViewerModel(
@@ -1266,10 +1320,15 @@ private struct Scenario {
             highlighter: FakeSyntaxHighlighter(),
             copyingLogs: copyingLogs,
             announcing: announcing,
+            onViewedCountChanged: { [counts] _, count in counts.values.append(count) },
             longWait: longWait,
             refreshAnnouncementDelay: refreshAnnouncementDelay
         )
     }
+}
+
+private final class ViewedCounts {
+    var values: [Int] = []
 }
 
 private extension ContinuousDiffEntry {

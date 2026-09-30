@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import SwiftUI
 
@@ -27,8 +28,15 @@ public final class ClientViewerModel {
         mode: .tree,
         rows: [],
         offersModeToggle: false,
+        viewedFileCount: 0,
+        fileCount: 0,
         footer: nil
     )
+
+    /// The file-list control is also the diff screen's visible read-progress counter.
+    public var filesButtonTitle: String {
+        "\(selector.viewedFileCount.formatted()) of \(selector.fileCount.formatted()) viewed"
+    }
 
     /// Which file the scroll has been asked to jump to, and nothing about how far it got.
     ///
@@ -297,6 +305,7 @@ public final class ClientViewerModel {
     private let highlighter: any SyntaxHighlighter
     private let copyingLogs: any DiagnosticLogsCopying
     private let announcing: any DiffReadAnnouncing
+    private let onViewedCountChanged: (WorktreeID, Int) -> Void
 
     /// How long a batch is in flight before the rows add their second word.
     ///
@@ -318,6 +327,7 @@ public final class ClientViewerModel {
         highlighter: any SyntaxHighlighter,
         copyingLogs: any DiagnosticLogsCopying,
         announcing: any DiffReadAnnouncing,
+        onViewedCountChanged: @escaping (WorktreeID, Int) -> Void,
         longWait: Duration,
         refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay
     ) {
@@ -330,6 +340,7 @@ public final class ClientViewerModel {
         self.highlighter = highlighter
         self.copyingLogs = copyingLogs
         self.announcing = announcing
+        self.onViewedCountChanged = onViewedCountChanged
         self.longWait = longWait
         comments = commentStore.comments(in: worktree)
     }
@@ -601,6 +612,7 @@ public final class ClientViewerModel {
         entries[position] = before.viewed(isViewed)
         state = .reading(entries)
         rearrange()
+        onViewedCountChanged(worktree, selector.viewedFileCount)
 
         do {
             try await repository.markViewed(
@@ -622,6 +634,7 @@ public final class ClientViewerModel {
                 entries[now] = entries[now].viewed(before.file.isViewed)
                 state = .reading(entries)
                 rearrange()
+                onViewedCountChanged(worktree, selector.viewedFileCount)
             }
             viewedFailure = error
         }

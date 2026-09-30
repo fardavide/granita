@@ -7,6 +7,15 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app is built by hand.
 
+### 0.21.0 — 2026-09-29
+- **See how much of a worktree you have read.** Each worktree shows the fraction of its changed files
+  that you have marked viewed, from an empty ring to a check when the read is complete.
+- **Keep progress in sight while reading.** The diff's Files button shows the viewed fraction from
+  zero onward, and the file list shows it beside its title after the first mark. Both update as you
+  mark files, and return to the previous count if the Mac refuses a mark.
+- **Progress follows the current code.** If a file changes after you viewed it, its mark stops
+  counting until you read and mark the new version.
+
 ### 0.20.2 — 2026-09-29
 - **The copied review begins with your opening line.** What you saved in Settings under *Opening
   line* was kept, and ignored: every copy began *Review of uncommitted changes*. It now uses yours,

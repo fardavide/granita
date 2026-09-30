@@ -377,6 +377,9 @@ public struct Worktree: Hashable, Codable, Sendable {
     public let stats: ChangeStats
     public let lastModified: Date
 
+    /// Absent when a paired Mac predates the read-progress field.
+    public private(set) var viewedFileCount: Int?
+
     /// Moves whenever anything in the worktree moves.
     public let revision: String
 
@@ -413,7 +416,15 @@ public struct Worktree: Hashable, Codable, Sendable {
         self.isPinned = isPinned
         self.stats = stats
         self.lastModified = lastModified
+        self.viewedFileCount = nil
         self.revision = revision
+    }
+
+    /// Preserves every other field while the Mac reports a count or the reader updates one locally.
+    public func withViewedFileCount(_ count: Int?) -> Worktree {
+        var copy = self
+        copy.viewedFileCount = count
+        return copy
     }
 }
 
@@ -452,6 +463,6 @@ extension Worktree {
             stats: stats,
             lastModified: lastModified,
             revision: revision
-        )
+        ).withViewedFileCount(viewedFileCount)
     }
 }

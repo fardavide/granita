@@ -337,6 +337,7 @@ private struct Scenario {
             highlighter: highlighter,
             copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
             announcing: FakeDiffReadAnnouncing(),
+            onViewedCountChanged: { _, _ in },
             longWait: DiffFileWait.longWait
         )
     }

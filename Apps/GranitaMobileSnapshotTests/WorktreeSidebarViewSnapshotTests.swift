@@ -460,6 +460,20 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             showsQuietWorktrees: false
         ),
 
+        // A Mac from before read progress omits the wire field. Its rows keep the original file
+        // count on line two and must not look as though nothing has been reviewed yet.
+        SidebarCase(
+            name: "legacy-mac",
+            state: .listing(WorktreeListing(
+                of: aBusyMac.map { $0.withViewedFileCount(nil) },
+                mode: .groupedByProject,
+                showingQuiet: false,
+                now: aFixedMoment
+            )),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false
+        ),
+
         // The same worktrees, flat: every row promotes its project name and the pin becomes a glyph,
         // because there is no header left to carry it.
         SidebarCase(

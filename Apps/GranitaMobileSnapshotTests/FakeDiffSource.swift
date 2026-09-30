@@ -971,6 +971,7 @@ func aLoadedViewerModel(
         // Nothing rendered here listens, and a baseline cannot hear anyway — what the sentence says
         // is asserted in `DiffBatchFailureTests` and how often it is said in the model's own suite.
         announcing: SilentDiffReadAnnouncements(),
+        onViewedCountChanged: { _, _ in },
         // Nothing here waits, so the threshold is never reached and the rows keep their first word.
         // The second one has a subject of its own in the scroll's suite, set directly.
         longWait: DiffFileWait.longWait,

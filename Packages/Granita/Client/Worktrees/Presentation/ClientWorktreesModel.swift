@@ -275,6 +275,13 @@ public final class ClientWorktreesModel {
         await write(WorktreePatch(alias: .unchanged, isPinned: pinned), to: worktree)
     }
 
+    /// Keeps the list beside an open diff in step with a mark, including an optimistic rollback.
+    public func recordViewedCount(_ count: Int, on worktree: WorktreeID) {
+        guard let row = worktrees.first(where: { $0.id == worktree }),
+              row.viewedFileCount != nil else { return }
+        replace(worktree, with: row.withViewedFileCount(count))
+    }
+
     public func beginDeleting(_ subject: WorktreeDeletionSubject) {
         deleting = subject
     }

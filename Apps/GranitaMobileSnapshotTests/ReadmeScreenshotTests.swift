@@ -152,7 +152,7 @@ private func theWorktreeSplit(in layout: SnapshotLayout) async -> some View {
     let diff = await aLoadedViewerModel(in: layout)
 
     return NavigationStack {
-        WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _ in
+        WorktreeSplitScreen(model: model, onPairAgain: {}, settings: { EmptyView() }) { _, displayName, _, _ in
             WorktreeDiffScreen(worktreeName: displayName, model: diff, onPairAgain: {})
         }
     }

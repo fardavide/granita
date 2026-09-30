@@ -325,6 +325,7 @@ struct Worktree {
     let directoryName: String
     let isPinned: Bool
     let stats: ChangeStats
+    let viewedFileCount: Int?     // matching marks; nil from an older Mac
     let lastModified: Date
     let revision: String           // SHA-256 of the raw porcelain v2 bytes
 }

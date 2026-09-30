@@ -311,7 +311,9 @@ struct FileSelectorTests {
         let listing = FileSelector.listing(of: files, mode: .tree, collapsed: [], isTruncated: false)
 
         // then
-        #expect(listing.footer == .everythingViewed(count: 4))
+        #expect(listing.viewedFileCount == 4)
+        #expect(listing.fileCount == 4)
+        #expect(listing.footer == nil)
         #expect(listing.rows.compactMap(\.file).count == 4)
     }
 

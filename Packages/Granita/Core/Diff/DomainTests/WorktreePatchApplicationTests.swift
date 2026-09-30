@@ -97,6 +97,7 @@ struct WorktreePatchApplicationTests {
         // and the revision are what a *read* is for, and a phone that moved either would be telling
         // itself the worktree changed while it was renaming it.
         let worktree = aWorktree(alias: nil, suggestedAlias: nil, branch: "tls-pinning")
+            .withViewedFileCount(4)
 
         // when
         let updated = worktree.applying(WorktreePatch(alias: .set("Scroll"), isPinned: true))
@@ -115,6 +116,38 @@ struct WorktreePatchApplicationTests {
         #expect(updated.suggestedAlias == worktree.suggestedAlias)
         #expect(updated.directoryName == worktree.directoryName)
         #expect(updated.branch == worktree.branch)
+        #expect(updated.viewedFileCount == 4)
+    }
+
+    @Test
+    func `given an older Mac when its worktree is decoded then absent progress stays absent`() throws {
+        // given
+        let worktree = aWorktree(alias: nil, suggestedAlias: nil, branch: "tls-pinning")
+        let data = try JSONEncoder().encode(worktree)
+
+        // when
+        let decoded = try JSONDecoder().decode(Worktree.self, from: data)
+
+        // then
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["viewedFileCount"] == nil)
+        #expect(decoded.viewedFileCount == nil)
+    }
+
+    @Test
+    func `given a Mac with progress when its worktree is encoded then the count travels`() throws {
+        // given
+        let worktree = aWorktree(alias: nil, suggestedAlias: nil, branch: "tls-pinning")
+            .withViewedFileCount(4)
+
+        // when
+        let data = try JSONEncoder().encode(worktree)
+        let decoded = try JSONDecoder().decode(Worktree.self, from: data)
+
+        // then
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["viewedFileCount"] as? Int == 4)
+        #expect(decoded.viewedFileCount == 4)
     }
 }
 

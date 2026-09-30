@@ -293,7 +293,7 @@ public struct GranitaMobileScene: Scene {
         // reader — the exported review's heading — and 0.14.2 dropped that heading on Davide's own
         // argument that a session pasted into already knows which checkout it is in. The sidebar
         // still resolves and offers it; nothing on this side has a use for it now.
-        ) { worktree, displayName, _ in
+        ) { worktree, displayName, _, listModel in
             // **The second link in this app whose destination is a module away**, and it is here for
             // the same reason the first is: `ClientWorktreesPresentation` may see any `Domain` and
             // its own `Ui`, never a sibling `Presentation`. The sidebar declares the destination — it
@@ -329,6 +329,9 @@ public struct GranitaMobileScene: Scene {
                     highlighter: highlighter,
                     copyingLogs: copyingLogs,
                     announcing: VoiceOverDiffReadAnnouncements(),
+                    onViewedCountChanged: { worktree, count in
+                        listModel.recordViewedCount(count, on: worktree)
+                    },
                     longWait: DiffFileWait.longWait
                 ),
                 // **The same closure the worktree list is given**, because a revoked pairing refuses
