@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientConnectionDomain
+import CoreComponentsUi
 
 /// The viewfinder, and the five things it can be doing.
 ///
@@ -116,9 +117,8 @@ public struct PairingScannerView<CameraPreview: View>: View {
     /// rather than where it goes, and it is demoted because leaving the app to fix a state with an
     /// in-app remedy is the wrong first suggestion.
     private func cameraOff(offeringSettings: Bool) -> some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("Camera access is off", systemImage: "video.slash")
-                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -126,7 +126,6 @@ public struct PairingScannerView<CameraPreview: View>: View {
                 and typing them pairs this iPhone just as well.
                 """
             )
-            .emptyStateDescription()
         } actions: {
             Button("Enter the Six Words", action: onEnterWords)
                 .buttonStyle(.borderedProminent)

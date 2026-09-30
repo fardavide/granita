@@ -1,5 +1,7 @@
 import SwiftUI
 
+import CoreComponentsUi
+
 /// What the iPad's detail column says while no worktree has been chosen.
 ///
 /// An unavailable-content view, which is design §2's own instruction rather than a convenience:
@@ -14,17 +16,15 @@ public struct NoWorktreeChosenView: View {
     public init() {}
 
     public var body: some View {
-        ContentUnavailableView {
+        EmptyState {
             // The leading spelling rather than `sidebar.left`, so the glyph points at the list in a
             // right-to-left layout too — where the list is on the other side.
             Label("Choose a worktree", systemImage: "sidebar.leading")
-                .emptyStateTitle()
         } description: {
             // No action, and no promise about what opens. A button here would either duplicate a row
             // or choose for the reader, and a sentence describing the diff would describe a screen
             // design §3 has not built yet.
             Text("Pick one from the list to open it.")
-                .emptyStateDescription()
         }
     }
 }

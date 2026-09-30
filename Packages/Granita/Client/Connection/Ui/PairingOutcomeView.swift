@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientConnectionDomain
+import CoreComponentsUi
 
 /// What a spent credential came to: one destination, and a button only where the phone can act.
 ///
@@ -108,38 +109,32 @@ public struct PairingOutcomeView: View {
         switch compatibility {
         case .macIsBehind:
             // No recovery: the update belongs on the other machine.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("Your Mac needs a newer Granita", systemImage: "laptopcomputer.and.arrow.down")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Update Granita on \(macName), then pair again. The code was not used.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 copyLogs
             }
 
         case .phoneIsBehind:
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("This iPhone needs a newer Granita", systemImage: "arrow.down.app")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Install the latest Granita from TestFlight, then pair again. The code was not used.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 // It leaves the app, so it appears only where there is an app to leave for.
                 // Absent is a legitimate state, and the sentence above already says what to do.
                 if canOpenTestFlight {
                     Button("Open TestFlight", action: onOpenTestFlight)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                 }
                 copyLogs
             }
@@ -156,17 +151,15 @@ public struct PairingOutcomeView: View {
         case .rateLimited:
             // No recovery or countdown: waiting is the whole remedy, and the
             // limiter counts per source address, so the kinder sentence is the true one.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("Too many attempts", systemImage: "clock.badge.exclamationmark")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     Wait a minute, then ask your Mac for a new code.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 copyLogs
             }
 
@@ -174,13 +167,11 @@ public struct PairingOutcomeView: View {
             // One sentence covers expired and never-existed and names neither, because the Mac
             // refuses to say which and this must not invent the distinction back. No recovery: the
             // remedy is a new code, and that is minted on the other machine.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("That code is no longer valid", systemImage: "clock.badge.xmark")
-                    .emptyStateTitle()
             } description: {
                 Text("On your Mac, choose “Pair a device” for a new one.")
-                    .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 copyLogs
             }
 
@@ -203,31 +194,23 @@ public struct PairingOutcomeView: View {
 
     /// The Mac was there a moment ago. Trying again re-runs the health probe and the spend.
     private var unreachable: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Could not reach \(macName)", systemImage: "wifi.exclamationmark")
-                .emptyStateTitle()
         } description: {
             Text("Check that Granita is running on your Mac, then try again.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Try Again", action: onTryAgain)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
 
     private var couldNotPair: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Could not pair with \(macName)", systemImage: "exclamationmark.triangle")
-                .emptyStateTitle()
         } description: {
             Text("Try again. If it still fails, ask your Mac for a new code.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Try Again", action: onTryAgain)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
@@ -241,9 +224,8 @@ public struct PairingOutcomeView: View {
     /// credential that no longer exists, and `errSecInteractionNotAllowed` is transient far more
     /// often than not. No *Pair Again*, which would leave a second device record beside the orphan.
     private var keyNotSaved: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Paired, but the key was not saved", systemImage: "key.slash")
-                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -253,11 +235,8 @@ public struct PairingOutcomeView: View {
                 then pair again.
                 """
             )
-            .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Try Saving Again", action: onSaveTokenAgain)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
@@ -275,29 +254,24 @@ public struct PairingOutcomeView: View {
         case .readingTheContract:
             // Nothing was spent, so this is the one of the three that may offer a retry — the same
             // sentence and the same button an unreachable Mac gets, because it is the same remedy.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("\(macName) stopped answering", systemImage: "clock.badge.exclamationmark")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
                     The code was not used. Try checking your Mac again.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 Button("Try Again", action: onTryAgain)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                 copyLogs
             }
 
         case .spendingTheCode:
             // No retry, and the absence is the point: the phone cannot learn whether the Mac took
             // the code, so *Try Again* would offer to spend a credential that may already be gone.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("The code was sent and nothing came back", systemImage: "clock.badge.questionmark")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -307,17 +281,15 @@ public struct PairingOutcomeView: View {
                     Then ask for a new code and pair again.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 copyLogs
             }
 
         case .writingTheKey:
             // It gets the write on its own for the same reason a refused write does: the token
             // survives in the outcome, and the code that bought it is spent either way.
-            ContentUnavailableView {
+            ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("Paired, and the key is still not saved", systemImage: "key.slash")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -327,27 +299,20 @@ public struct PairingOutcomeView: View {
                     then pair again.
                     """
                 )
-                .emptyStateDescription()
-            } actions: {
+            } actions: { copyLogs in
                 Button("Try Saving Again", action: onSaveTokenAgain)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                 copyLogs
             }
         }
     }
 
     private var localNetworkDenied: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
-                .emptyStateTitle()
         } description: {
             Text("Allow Local Network access in Settings so Granita can find your Mac.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Open Settings", action: onOpenSettings)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
@@ -370,33 +335,12 @@ public struct PairingOutcomeView: View {
         .padding()
     }
 
-    private var copyLogs: some View {
-        VStack(spacing: 8) {
-            Button(action: onCopyLogs) {
-                switch logCopyState {
-                case .ready: Text("Copy Logs")
-                case .copying: Text("Copying Logs…")
-                case .copied: Text("Copy Logs Again")
-                case .failed: Text("Try Copying Again")
-                }
-            }
-            .buttonStyle(.borderless)
-            .controlSize(.large)
-            .disabled(logCopyState == .copying)
-
-            switch logCopyState {
-            case .ready, .copying:
-                EmptyView()
-            case .copied:
-                Text("Logs copied. Paste them into your message.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            case .failed:
-                Text("Couldn’t copy logs. Please try again.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+    private var reportState: ErrorReportAction.State {
+        switch logCopyState {
+        case .ready: .ready
+        case .copying: .copying
+        case .copied: .copied
+        case .failed: .failed
         }
-        .multilineTextAlignment(.center)
     }
 }
