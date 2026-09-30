@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import CoreComponentsUi
 import CoreDiffDomain
 
 /// The screen this product exists for: which checkouts an agent has been working in, and how big a
@@ -172,7 +173,7 @@ public struct WorktreeSidebarView: View {
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
-                        copyLogs
+                        ErrorReportAction(state: reportState, onCopyLogs: onCopyLogs)
                     }
                 }
                 .multilineTextAlignment(.center)
@@ -296,9 +297,8 @@ public struct WorktreeSidebarView: View {
     /// disabled button, or one opening a "do this on your Mac" modal, would be a control that cannot
     /// act.
     private var noProjects: some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("No projects yet", systemImage: "tray")
-                .emptyStateTitle()
         } description: {
             Text(
                 """
@@ -306,7 +306,6 @@ public struct WorktreeSidebarView: View {
                 It will appear here straight away.
                 """
             )
-            .emptyStateDescription()
         }
     }
 
@@ -314,13 +313,11 @@ public struct WorktreeSidebarView: View {
     /// trustworthy rather than alarming: it says the Mac is serving and there is simply nothing to
     /// read.
     private func allQuiet(worktreeCount: Int, projectNames: [String]) -> some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("Nothing to review", systemImage: "checkmark.circle")
-                .emptyStateTitle()
         } description: {
             if worktreeCount == 1 {
                 Text("The one worktree in \(projectNames, format: .list(type: .and)) is clean.")
-                    .emptyStateDescription()
             } else {
                 Text(
                     """
@@ -328,7 +325,6 @@ public struct WorktreeSidebarView: View {
                     \(projectNames, format: .list(type: .and)) are clean.
                     """
                 )
-                .emptyStateDescription()
             }
         } actions: {
             Button("Show them anyway") { onShowQuietWorktrees(true) }
@@ -344,31 +340,22 @@ public struct WorktreeSidebarView: View {
         }
         return GeometryReader { geometry in
             ScrollView {
-                ContentUnavailableView {
+                ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                     Label(unauthorized ? "Pairing was revoked" : connecting ? "Could not reach \(macName)" : "Could not read your Mac", systemImage: "exclamationmark.triangle")
-                        .emptyStateTitle()
                 } description: {
                     if unauthorized {
                         Text("Pair this device with your Mac again to read its worktrees.")
-                            .emptyStateDescription()
                     } else if connecting {
                         Text("Check that Granita is running on your Mac and that both devices are on the same network or connected over Tailscale.")
-                            .emptyStateDescription()
                     } else {
                         Text("Try again. If it still fails, check that Granita is running on your Mac.")
-                            .emptyStateDescription()
                     }
-                } actions: {
+                } actions: { copyLogs in
                     VStack(spacing: 16) {
                         Button(unauthorized ? "Pair Again" : "Try Again", action: unauthorized ? onPairAgain : onRetry)
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
                         if !unauthorized {
                             if case .failed(let failure) = state, let diagnostic = failure.diagnostic {
-                                Text(diagnostic)
-                                    .font(.caption2.monospaced())
-                                    .foregroundStyle(.tertiary)
-                                    .textSelection(.enabled)
+                                ErrorStateDiagnostic(diagnostic)
                             }
                             elapsed
                             copyLogs
@@ -380,34 +367,13 @@ public struct WorktreeSidebarView: View {
         }
     }
 
-    private var copyLogs: some View {
-        VStack(spacing: 8) {
-            Button(action: onCopyLogs) {
-                switch logCopyState {
-                case .ready: Text("Copy Logs")
-                case .copying: Text("Copying Logs…")
-                case .copied: Text("Copy Logs Again")
-                case .failed: Text("Try Copying Again")
-                }
-            }
-            .buttonStyle(.borderless)
-            .controlSize(.large)
-            .disabled(logCopyState == .copying)
-
-            switch logCopyState {
-            case .ready, .copying:
-                EmptyView()
-            case .copied:
-                Text("Logs copied. Paste them into your message.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            case .failed:
-                Text("Couldn’t copy logs. Please try again.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+    private var reportState: ErrorReportAction.State {
+        switch logCopyState {
+        case .ready: .ready
+        case .copying: .copying
+        case .copied: .copied
+        case .failed: .failed
         }
-        .multilineTextAlignment(.center)
     }
 
     private func list(_ listing: WorktreeListing) -> some View {
