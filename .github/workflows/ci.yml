@@ -450,7 +450,7 @@ jobs:
       # assertions are main-actor isolated — without that, UIKit traps on a background thread, the
       # host restarts, and the retry reports "0 tests passed" having rendered nothing.
       - name: Run snapshot tests
-        run: make coverage-ios-enumerate coverage-ios-plan coverage-ios-shard SHARD=${{ matrix.shard }}
+        run: make coverage-ios-enumerate coverage-ios-plan coverage-ios-shard SHARD=${{ matrix.shard }} IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
       - name: Upload iOS coverage and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
