@@ -42,8 +42,8 @@ case "$SUITE" in
             SCHEME=GranitaMac
             TARGET=GranitaMacSnapshotTests
             DESTINATION=platform=macOS
-            PRODUCTS="$DERIVED/Build/Products/Debug/Granita Server.app/Contents"
-            CANDIDATES=("$PRODUCTS/MacOS/Granita Server.debug.dylib" "$PRODUCTS/MacOS/Granita Server" "$PRODUCTS/PlugIns/$TARGET.xctest/Contents/MacOS/$TARGET")
+            PRODUCTS="$DERIVED/Build/Products/Debug/Granita.app/Contents"
+            CANDIDATES=("$PRODUCTS/MacOS/Granita.debug.dylib" "$PRODUCTS/MacOS/Granita" "$PRODUCTS/PlugIns/$TARGET.xctest/Contents/MacOS/$TARGET")
         fi
         ACTION=test
         ARGUMENTS=(-project Granita.xcodeproj -scheme "$SCHEME" -only-testing:"$TARGET" -clonedSourcePackagesDirPath SourcePackages)

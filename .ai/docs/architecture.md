@@ -56,7 +56,7 @@ Inside the package, a feature is a **directory** containing one module per layer
 
 A module's name is its path with the slashes removed, so the tree on disk and the import list at the
 top of a file say the same thing. `Unit` is `Core`, `Client` or `Server`; `Core` compiles for both
-platforms, `Client` is exercised on iOS and iPadOS, `Server` is macOS-only and free to use
+platforms, `Client` serves iOS, iPadOS and the Mac reader, `Server` is macOS-only and free to use
 macOS-only APIs.
 
 The layer rules are declared once, in the package manifest, and enforced by the compiler:
@@ -89,7 +89,7 @@ compiles on both platforms, and owns the empty-state hierarchy and error-report 
 views still choose their sentences, safe recovery and diagnostic placement. Domain copy states are
 mapped to rendering states at that boundary; neither Domain nor the components import one another.
 
-The three composition roots — the phone's, the menu bar app's, and the executable's — may mix
+The three composition roots — the phone's, the unified Mac app's, and the executable's — may mix
 layers, because wiring implementations into protocols is their entire job. They are the only modules
 that import a `Data` target, and nothing depends on **them**, which is what makes that safe rather
 than a hole.

@@ -8,6 +8,27 @@ import ClientConnectionDomain
 struct WorktreeLoadingDescriptionTests {
 
     @Test(arguments: [
+        (3.0, "Reading worktrees", false),
+        (47.0, "Still reading worktrees", true)
+    ])
+    func `given a read on this Mac when describing an early or long wait then git is named without changing the timing`(
+        _ elapsed: Double,
+        _ headline: String,
+        _ isLongWait: Bool
+    ) {
+        // given
+        let scenario = Scenario(stage: .reading(.thisMac), elapsed: elapsed)
+
+        // when
+        let description = scenario.sut
+
+        // then
+        #expect(description.sentence == "Running git on this Mac.")
+        #expect(description.headline == headline)
+        #expect(description.isLongWait == isLongWait)
+    }
+
+    @Test(arguments: [
         (WorktreeReadStage.finding(.local), 9.9, "Finding Studio Mac", false),
         (.finding(.local), 10.0, "Still finding Studio Mac", true),
         (.verifying, 10.0, "Still verifying Studio Mac", true),

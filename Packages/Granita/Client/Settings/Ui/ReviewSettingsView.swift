@@ -111,9 +111,11 @@ public struct ReviewSettingsView: View {
             // were. The app's group comes first and is absent where the icon cannot change, because the
             // icon is the only thing in it.
             Form {
+                #if !os(macOS)
                 if case .available(let choice) = appIcon {
                     appSection(choice)
                 }
+                #endif
                 reviewHeading
                 openingLineSection
                 labelSection
@@ -124,7 +126,9 @@ public struct ReviewSettingsView: View {
                 // exists to show: the two controls above are switched off with a sentence saying why,
                 // and this one is entirely live underneath them, because nothing about how a reader's
                 // code looks was ever the Mac's to answer.
+                #if !os(macOS)
                 appearanceSection
+                #endif
                 if standing == .noMac {
                     pairingSection
                 }

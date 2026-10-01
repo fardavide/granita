@@ -2,6 +2,26 @@
 
 Where the project is. Update this when a slice lands.
 
+**One Mac app is implemented locally for [#97](https://github.com/fardavide/granita/issues/97)
+and [#91](https://github.com/fardavide/granita/issues/91); acceptance and publication are pending.**
+The reader uses the local repository and the server's review document for This Mac, retains pinned
+remote connections, and has native words pairing, a persistent sidebar, a trailing inspector and
+View commands. The product keeps the server's bundle identifier and restores the phone target to
+iOS/iPadOS. Package tests and the unsigned package/app build pass. The latest full phone/iPad
+comparison has one failing dark-phone gone-worktree render; its isolated sixteen-case suite passes
+without a baseline change, and CI must settle the complete comparison.
+Seventeen Mac snapshot subjects are declared; their runner baselines still have to be adopted. Native
+startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
+closing, code-size changes and code-colour changes pass. The live reader's content minimum also
+passes at 640×480 after SwiftUI settles its scene constraints. Native captures show a legible
+selected sidebar row; the local offscreen snapshot path renders its semantic colours incorrectly.
+The latest full native run passed twelve of sixteen tests. Refresh exposed a defect now fixed and
+covered by seventy viewer tests; Copy Review exports the entered comment, with a typing discrepancy
+now checked before Save; Copy Logs passes. Final native acceptance is paused because Davide reclaimed
+the desktop. Headless checks and CI can continue, and a PR is authorized when ready. No issue has
+been closed and no installed bundle has been replaced. Current evidence and outstanding gates are in
+[`unified-mac-app.md`](../plan/unified-mac-app.md).
+
 **Shared empty and error components are implemented locally for
 [#114](https://github.com/fardavide/granita/issues/114), pending review.** All 25 unavailable-content
 call sites use the shared SwiftUI-only module; the four typography extensions and four report-action

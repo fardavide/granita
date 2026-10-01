@@ -4,9 +4,8 @@ import SwiftUI
 /// The menu behind the status item. Stateless: it renders what it is handed and reports what was
 /// chosen, so the composition root above it owns the server and this owns none of it.
 ///
-/// Design §1. Under `LSUIElement` this menu is the entire app when Settings is shut, which is what
-/// earns each of the rows below its place — a person holding a phone and looking for the QR has
-/// nowhere else to look, and a person whose Mac is not serving has nowhere else to be told.
+/// The status line copies the address, pairing opens Devices, and Show Worktrees opens the reader
+/// independently of the server. The status item also provides Quit when no window is open.
 public struct MenuBarContent: View {
 
     private let state: ServerRunState
@@ -15,6 +14,7 @@ public struct MenuBarContent: View {
     private let onOpenLocalNetworkSettings: () -> Void
     private let onOpenSettings: () -> Void
     private let onQuit: () -> Void
+    private let onShowWorktrees: () -> Void
 
     public init(
         state: ServerRunState,
@@ -22,7 +22,8 @@ public struct MenuBarContent: View {
         onPairDevice: @escaping () -> Void,
         onOpenLocalNetworkSettings: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
-        onQuit: @escaping () -> Void
+        onQuit: @escaping () -> Void,
+        onShowWorktrees: @escaping () -> Void
     ) {
         self.state = state
         self.onCopyAddress = onCopyAddress
@@ -30,12 +31,15 @@ public struct MenuBarContent: View {
         self.onOpenLocalNetworkSettings = onOpenLocalNetworkSettings
         self.onOpenSettings = onOpenSettings
         self.onQuit = onQuit
+        self.onShowWorktrees = onShowWorktrees
     }
 
     public var body: some View {
         status
 
         Divider()
+
+        Button("Show Worktrees", action: onShowWorktrees)
 
         // A second door to the one QR in the app, not a second implementation of it. Disabled
         // rather than absent when there is nothing to encode: a row that vanishes leaves a reader

@@ -117,6 +117,26 @@ public final class AppearanceModel {
         preferences.remember(size)
     }
 
+    public func adjustCodeSize(by points: CGFloat) {
+        let readout = codeSizeReadout
+        let chosen = CodeSizeChoice.custom(
+            min(CodeSize.largest, max(CodeSize.smallest,
+                (isSideBySide ? readout.split.pointSize : readout.unified.pointSize) + points
+            ))
+        )
+        choose(CodeSize(
+            unified: isSideBySide ? codeSize.unified : chosen,
+            split: isSideBySide ? chosen : codeSize.split
+        ))
+    }
+
+    public func restoreCodeSize() {
+        choose(CodeSize(
+            unified: isSideBySide ? codeSize.unified : .followSystem,
+            split: isSideBySide ? .followSystem : codeSize.split
+        ))
+    }
+
     /// What the window is, told by the one view that is the window.
     ///
     /// **The tree's width comes off it wherever a tree could be, open or not** — which is

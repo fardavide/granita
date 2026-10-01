@@ -86,7 +86,11 @@ public struct WorktreeRenameSheet: View {
         // Medium, because renaming is a four-second job: a full-screen push would spend a
         // navigation event on it, and an alert with a text field cannot hold a two-line suggestion,
         // cannot show a live footer, and gets clipped by the keyboard.
+        #if !os(macOS)
         .presentationDetents([.medium])
+        #else
+        .frame(minWidth: 360, minHeight: 280)
+        #endif
     }
 
     @ViewBuilder private var footer: some View {

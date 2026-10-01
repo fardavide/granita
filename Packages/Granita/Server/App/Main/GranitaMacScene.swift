@@ -1,13 +1,15 @@
 import AppKit
+import SwiftUI
+
+import ClientSettingsPresentation
 import ServerMacDomain
 import ServerMacPresentation
 import ServerMacUi
-import SwiftUI
 
-/// Composition root for the menu bar app: the only Server target that may see a `Data` target.
+/// Composition root for the unified Mac app.
 ///
-/// The Xcode target is a thin `@main` shell over this scene. Granita has no Dock icon and no main
-/// window — `LSUIElement` is true — so the menu bar extra is the whole of its presence.
+/// The Xcode target is a thin `@main` shell. The status item serves phones, while the reader opens
+/// independently and closing its window leaves the server running.
 public struct GranitaMacScene: Scene {
 
     // `CommandLine.arguments` rather than anything injected, because this is the outermost
@@ -19,16 +21,6 @@ public struct GranitaMacScene: Scene {
     public init() {}
 
     public var body: some Scene {
-        // Declared BEFORE the Settings scene, and that order is load-bearing. See `SettingsOpener`.
-        Window(Text(verbatim: ""), id: Self.openerWindowId) {
-            SettingsOpener(
-                requests: composition.settingsRequests,
-                opensAtLaunch: composition.opensSettingsAtLaunch
-            )
-        }
-        .windowResizability(.contentSize)
-        .restorationBehavior(.disabled)
-
         MenuBarExtra {
             MenuBarContent(
                 state: composition.model.serverState,
@@ -42,16 +34,34 @@ public struct GranitaMacScene: Scene {
                 },
                 // No pane, so the window opens on whichever one it was last left on.
                 onOpenSettings: { composition.requestSettings(showing: nil) },
-                onQuit: { NSApplication.shared.terminate(nil) }
+                onQuit: { NSApplication.shared.terminate(nil) },
+                onShowWorktrees: composition.requestReader
             )
         } label: {
             MenuBarLabel(state: composition.model.serverState)
+                .background {
+                    SettingsOpener(
+                        requests: composition.settingsRequests,
+                        readerRequests: composition.readerRequests,
+                        opensAtLaunch: composition.opensSettingsAtLaunch
+                    )
+                }
         }
 
         Settings {
             GranitaSettingsScreen(model: composition.model)
         }
+
+        Window("Granita", id: Self.readerWindowId) {
+            MacReaderRoot(composition: composition)
+                .frame(minWidth: 640, minHeight: 480)
+        }
+        .defaultSize(width: 1260, height: 800)
+        .windowResizability(.contentMinSize)
+        .defaultLaunchBehavior(.suppressed)
+        .restorationBehavior(.disabled)
+        .commands { MacReaderCommands(model: composition.appearance) }
     }
 
-    static let openerWindowId = "granita.settings.opener"
+    static let readerWindowId = "granita.reader"
 }

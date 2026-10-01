@@ -120,6 +120,81 @@ struct AppearanceModelTests {
 
     // MARK: - The code's size
 
+    @Test(arguments: [false, true])
+    func `given a custom active code size when restoring then only that preference follows the system and is stored`(
+        _ isSideBySide: Bool
+    ) {
+        // given
+        let scenario = Scenario(isSideBySide: isSideBySide)
+        scenario.sut.choose(isSideBySide
+            ? CodeSize(unified: .custom(14), split: .custom(15))
+            : CodeSize(unified: .custom(15), split: .custom(14)))
+        let expected = isSideBySide
+            ? CodeSize(unified: .custom(14), split: .followSystem)
+            : CodeSize(unified: .followSystem, split: .custom(14))
+
+        // when
+        scenario.sut.restoreCodeSize()
+
+        // then
+        #expect(scenario.sut.codeSize == expected)
+        #expect(scenario.preferences.codeSize() == expected)
+    }
+
+    @Test(arguments: [
+        (false, CGFloat(12), CGFloat(-1), CGFloat(11)),
+        (true, CGFloat(12), CGFloat(-1), CGFloat(11)),
+        (false, CGFloat(17), CGFloat(1), CGFloat(17)),
+        (true, CGFloat(17), CGFloat(1), CGFloat(17)),
+        (false, CGFloat(8), CGFloat(-1), CGFloat(8)),
+        (true, CGFloat(8), CGFloat(-1), CGFloat(8))
+    ])
+    func `given a custom active code size when adjusting then only that preference changes within the allowed range and is stored`(
+        _ isSideBySide: Bool,
+        _ pointSize: CGFloat,
+        _ adjustment: CGFloat,
+        _ expectedPointSize: CGFloat
+    ) {
+        // given
+        let scenario = Scenario(isSideBySide: isSideBySide)
+        scenario.sut.note(windowWidth: 1_194, fitsSelectorColumn: true, textSize: .default)
+        scenario.sut.choose(isSideBySide
+            ? CodeSize(unified: .custom(14), split: .custom(pointSize))
+            : CodeSize(unified: .custom(pointSize), split: .custom(14)))
+        let expected = isSideBySide
+            ? CodeSize(unified: .custom(14), split: .custom(expectedPointSize))
+            : CodeSize(unified: .custom(expectedPointSize), split: .custom(14))
+
+        // when
+        scenario.sut.adjustCodeSize(by: adjustment)
+
+        // then
+        #expect(scenario.sut.codeSize == expected)
+        #expect(scenario.preferences.codeSize() == expected)
+    }
+
+    @Test(arguments: [false, true])
+    func `given the active mode follows the system when increasing code size then only its preference changes and is stored`(
+        _ isSideBySide: Bool
+    ) {
+        // given
+        let scenario = Scenario(isSideBySide: isSideBySide)
+        scenario.sut.note(windowWidth: 1_194, fitsSelectorColumn: true, textSize: .default)
+        scenario.sut.choose(isSideBySide
+            ? CodeSize(unified: .custom(10), split: .followSystem)
+            : CodeSize(unified: .followSystem, split: .custom(10)))
+        let expected = isSideBySide
+            ? CodeSize(unified: .custom(10), split: .custom(13))
+            : CodeSize(unified: .custom(13), split: .custom(10))
+
+        // when
+        scenario.sut.adjustCodeSize(by: 1)
+
+        // then
+        #expect(scenario.sut.codeSize == expected)
+        #expect(scenario.preferences.codeSize() == expected)
+    }
+
     @Test
     func `given a code size chosen when it is read back then the device remembered it`() {
         // given

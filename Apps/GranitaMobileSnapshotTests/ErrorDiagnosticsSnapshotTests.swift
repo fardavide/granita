@@ -89,6 +89,7 @@ struct ErrorDiagnosticsSnapshotTests {
                     pointSize: layout.codePointSize,
                     jumpTarget: nil,
                     onReading: { _ in },
+                    onRereading: { _ in },
                     onJumped: {},
                     onSetViewed: { _, _ in },
                     onSetOpen: { _, _ in },

@@ -36,7 +36,7 @@ becomes.
 | §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The six words grew a Copy button in 0.3.1, which the frames do not draw — below. The Allow-from-the-Mac path is still out: no frames and no protocol |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**; the `Pair…` affordance landed in 0.0.15 with the tab it opens. Frames deleted |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
-| §8 | One Mac app — the reader window, the source pop-up, the inspector, the View menu | **returned 23 September 2026, nothing built.** Twelve calls, all drawn; the frames are in [`design/`](design/granita-one-mac-app-design-review.html) until they ship. Issues [#97](https://github.com/fardavide/granita/issues/97) and [#91](https://github.com/fardavide/granita/issues/91) |
+| §8 | One Mac app — the reader window, the source pop-up, the inspector, the View menu | **implemented locally, acceptance and runner baselines pending.** Twelve calls, all drawn; the frames are in [`design/`](design/granita-one-mac-app-design-review.html) until they ship. Issues [#97](https://github.com/fardavide/granita/issues/97) and [#91](https://github.com/fardavide/granita/issues/91) |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
 and the answers are below rather than in the review because neither came from a drawing.
@@ -604,8 +604,9 @@ Air's 1470pt screen**.
 with `.defaultLaunchBehavior(.suppressed)` and restoration off, which is the "no window at launch"
 call in two modifiers. Clicking the Dock icon with no window open opens it; with one minimised,
 restores it. What it reopens *on* is remembered in defaults rather than by window restoration, so a
-login launch still opens nothing. **Reopen has to be handled explicitly**, because the first `Window`
-in the scene body is the invisible `SettingsOpener`, declared first on purpose.
+login launch still opens nothing. **Reopen is handled explicitly.** The unified app holds its opening
+actions in the status label's persistent render tree; its old invisible opener window is gone. The
+native startup test found that anchor necessary when the app became regular; [0239](decisions/0239-the-unified-reader-shares-local-storage-and-a-persistent-window-anchor.md) records the implementation.
 *Rejected, for now:* a window per worktree. Two agents on one task is a real reason to want two diffs
 side by side, but the Client has one list model per screen and one review store per worktree, and two
 windows editing the same marks is a synchronisation problem nobody has designed. The cheap later form
@@ -824,10 +825,11 @@ panel.
 ## What the Mac still has no way to check
 
 The seven settings surfaces are built and baselined, and the macOS snapshot kind that landed with the
-first of them is what pins them. **The reader's views are where that sentence is still true**: every
-Client `Ui` and `Presentation` target has only iOS destinations, so every macOS-specific line in one
-is code nothing renders. §8's frames are drawn at 1:1 precisely so they can become those baselines —
-fourteen states, light and dark, no device axis.
+first of them is what pins them. **The reader now renders in that same Mac test bundle:** seventeen
+states, light and dark, with no device axis. Local inspection renders exist; runner baselines
+still have to be adopted before publication. Native UI tests separately press the source, pairing,
+selection, Settings recovery and code-size controls and check that closing the reader leaves it
+serving.
 
 Two things no baseline reaches, in either half. **The window's real minimum has to be asserted from
 inside the app**, because window geometry is not measurable from outside while Stage Manager is on.

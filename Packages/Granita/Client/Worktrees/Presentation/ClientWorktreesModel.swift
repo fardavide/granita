@@ -87,7 +87,7 @@ public final class ClientWorktreesModel {
     /// there is a threshold at all.
     public private(set) var isAutomaticallyRefreshing = false
 
-    private var worktrees: [Worktree] = []
+    public private(set) var worktrees: [Worktree] = []
     private var reading: ReadTask = .idle
     private var announcingRefresh: Task<Void, Never>?
     private let announcementDelay: Duration

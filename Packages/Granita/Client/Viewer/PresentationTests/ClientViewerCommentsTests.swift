@@ -328,6 +328,66 @@ struct ClientViewerCommentsTests {
     // MARK: - The Mac's copy
 
     @Test
+    func `given the local Mac holds durable comments when its initial diff loads then those comments appear without opening Review`() async {
+        // given
+        let comment = aStoredComment(on: "file-0", at: 2, saying: "Already saved on this Mac.")
+        let scenario = Scenario(loadReviewsAtStart: true)
+        scenario.store.onTheMac = [comment]
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.comments == [comment])
+        #expect(scenario.sut.sheet == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a review read is suspended when a comment is removed then its older result cannot restore the comment`() async throws {
+        // given
+        let comment = aStoredComment(on: "file-0", at: 2, saying: "Remove this while the Mac is answering.")
+        let scenario = Scenario(holding: [comment])
+        await scenario.load()
+        scenario.store.holdsReconciliation = true
+
+        // when
+        let reading = Task { await scenario.sut.syncReview() }
+        defer {
+            scenario.store.releaseReconciliation()
+            reading.cancel()
+        }
+        try #require(await scenario.store.waitUntilReconciliationStarts())
+        scenario.sut.removeComment(comment.anchor)
+        scenario.store.releaseReconciliation()
+        await reading.value
+        await scenario.store.waitUntilPushed(count: 1)
+
+        // then
+        #expect(scenario.sut.comments.isEmpty)
+        #expect(scenario.store.saved.isEmpty)
+        #expect(scenario.store.pushed.last == [])
+    }
+
+    @Test
+    func `given a newly saved comment when the review opens immediately then its push completes before reconciliation`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.load()
+
+        // when
+        scenario.sut.comment(
+            on: FileID(rawValue: "file-0"),
+            from: anAddition,
+            to: anAddition,
+            saying: "Keep this freshly saved comment."
+        )
+        await scenario.sut.syncReview()
+
+        // then
+        #expect(scenario.store.invocations.prefix(2) == [.push, .reconcile])
+    }
+
+    @Test
     func `given the Mac holds a comment this phone lacks when the review syncs then both are in the review`() async {
         // given
         let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "Mine.")])
@@ -937,7 +997,11 @@ private struct Scenario {
 
     /// Eight files, so the batch of five leaves the eighth still awaiting — which is the file a
     /// comment cannot be attached to and is therefore worth having.
-    init(holding comments: [ReviewComment] = [], settings: ReviewSettings = .unset) {
+    init(
+        holding comments: [ReviewComment] = [],
+        settings: ReviewSettings = .unset,
+        loadReviewsAtStart: Bool = false
+    ) {
         let files = aChangeSet(of: 8)
         let changes = WorktreeChanges(
             revision: "9d41e0c7",
@@ -968,7 +1032,8 @@ private struct Scenario {
             copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
             announcing: FakeDiffReadAnnouncing(),
             onViewedCountChanged: { _, _ in },
-            longWait: DiffFileWait.longWait
+            longWait: DiffFileWait.longWait,
+            loadReviewsAtStart: loadReviewsAtStart
         )
     }
 

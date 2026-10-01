@@ -34,7 +34,7 @@ final class FakeGranitaRepository: GranitaRepository {
     /// gesture produced one at all.
     var changeSetReads: Int { reads.withLock { $0 } }
 
-    private let changeSet: Result<WorktreeChanges, ApiFailure>
+    private let changeSet: Mutex<Result<WorktreeChanges, ApiFailure>>
 
     /// What the first read answers with, when the point of the test is what the second one does.
     private let refusesTheFirstRead: ApiFailure?
@@ -100,7 +100,7 @@ final class FakeGranitaRepository: GranitaRepository {
     ) {
         self.settings = settings
         self.readsAnsweringImmediately = readsAnsweringImmediately
-        self.changeSet = changeSet
+        self.changeSet = Mutex(changeSet)
         self.hunks = hunks
         self.diffFailure = diffFailure
         self.viewedFailure = viewedFailure
@@ -115,6 +115,10 @@ final class FakeGranitaRepository: GranitaRepository {
     /// Lets a held batch answer.
     func releaseDiffs() {
         released.withLock { $0 = true }
+    }
+
+    func replaceChanges(_ changes: WorktreeChanges) {
+        changeSet.withLock { $0 = .success(changes) }
     }
 
     /// Lets a suspended change-set read answer.
@@ -144,7 +148,7 @@ final class FakeGranitaRepository: GranitaRepository {
         while ordinal > readsAnsweringImmediately, suspendedReadReleased.withLock({ $0 }) == false {
             await Task.yield()
         }
-        return try changeSet.get()
+        return try changeSet.withLock { $0 }.get()
     }
 
     func diffs(
@@ -157,7 +161,7 @@ final class FakeGranitaRepository: GranitaRepository {
             await Task.yield()
         }
         if let diffFailure { throw diffFailure }
-        guard case .success(let changes) = changeSet else { return [] }
+        guard case .success(let changes) = changeSet.withLock({ $0 }) else { return [] }
         let asked = files.compactMap { file in
             changes.files.first { $0.id == file }
         }

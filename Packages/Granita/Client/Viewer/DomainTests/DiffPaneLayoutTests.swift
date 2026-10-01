@@ -14,6 +14,37 @@ import Testing
 @Suite("Diff pane layout")
 struct DiffPaneLayoutTests {
 
+    @Test(arguments: [
+        (true, true, true, false, false, true),
+        (true, false, true, false, false, false),
+        (false, true, true, false, false, false),
+        (true, true, false, false, false, false),
+        (true, true, false, true, false, true),
+        (true, false, false, true, false, true),
+        (false, true, false, true, true, false),
+        (true, true, true, true, true, true)
+    ])
+    func `given file and review visibility when resolving the Mac inspector then only selectable files or an open review show it`(
+        _ fitsSelectorColumn: Bool,
+        _ isSelectorColumnOpen: Bool,
+        _ hasFilesToSelect: Bool,
+        _ isReviewOpen: Bool,
+        _ hasComments: Bool,
+        _ expected: Bool
+    ) {
+        // given - when
+        let scenario = Scenario(
+            fitsSelectorColumn: fitsSelectorColumn,
+            isSelectorColumnOpen: isSelectorColumnOpen,
+            hasFilesToSelect: hasFilesToSelect,
+            isReviewOpen: isReviewOpen,
+            hasComments: hasComments
+        )
+
+        // then
+        #expect(scenario.sut.showsMacInspector == expected)
+    }
+
     @Test
     func `given a width that fits the column when it is open then the column shows`() {
         // given - when
@@ -288,5 +319,24 @@ struct DiffPaneLayoutTests {
 
         // then
         #expect(layout.showsReviewToggle == false)
+    }
+    private struct Scenario {
+        let sut: DiffPaneLayout
+
+        init(
+            fitsSelectorColumn: Bool,
+            isSelectorColumnOpen: Bool,
+            hasFilesToSelect: Bool,
+            isReviewOpen: Bool,
+            hasComments: Bool
+        ) {
+            sut = DiffPaneLayout(
+                fitsSelectorColumn: fitsSelectorColumn,
+                isSelectorColumnOpen: isSelectorColumnOpen,
+                hasFilesToSelect: hasFilesToSelect,
+                isReviewOpen: isReviewOpen,
+                hasComments: hasComments
+            )
+        }
     }
 }

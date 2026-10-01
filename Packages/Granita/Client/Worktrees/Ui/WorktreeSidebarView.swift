@@ -51,6 +51,8 @@ public struct WorktreeSidebarView: View {
     private let onPairAgain: () -> Void
     private let onCopyLogs: () -> Void
     private let onOpenSettings: () -> Void
+    private let onOpenProjects: (() -> Void)?
+    @Binding private var selection: WorktreeID?
 
     /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
     /// the answer arrives.
@@ -79,7 +81,9 @@ public struct WorktreeSidebarView: View {
         onRefresh: @escaping () async -> Void,
         onPairAgain: @escaping () -> Void,
         onCopyLogs: @escaping () -> Void,
-        onOpenSettings: @escaping () -> Void
+        onOpenSettings: @escaping () -> Void,
+        onOpenProjects: (() -> Void)? = nil,
+        selection: Binding<WorktreeID?> = .constant(nil)
     ) {
         self.macName = macName
         self.state = state
@@ -104,6 +108,8 @@ public struct WorktreeSidebarView: View {
         self.onPairAgain = onPairAgain
         self.onCopyLogs = onCopyLogs
         self.onOpenSettings = onOpenSettings
+        self.onOpenProjects = onOpenProjects
+        _selection = selection
     }
 
     public var body: some View {
@@ -127,7 +133,6 @@ public struct WorktreeSidebarView: View {
         // for a release while the pairing that opened it knew perfectly well whose Mac it was.
         // Nothing else on the screen says which machine is being read, and a phone that can reach
         // two of them has no other way to tell.
-        .navigationTitle(macName)
         // **Inline, and that is what the name cost.** A large title is 34pt bold, which fits about
         // sixteen characters at 390pt and fewer in the iPad's 320pt sidebar — and it truncates at
         // the tail, so *Davide's 16-inch MacBook Pro* arrived as *Davide's 16-inch Mac…*. Design §1
@@ -136,6 +141,7 @@ public struct WorktreeSidebarView: View {
         // semibold, so the whole name fits and the list gets back 52pt of every scroll. Measured,
         // and recorded in `design.md` §2 with the alternative it replaces.
         #if !os(macOS)
+        .navigationTitle(macName)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         // **One modifier holding both, and never one each.** Several modifiers of the same kind on
@@ -230,7 +236,11 @@ public struct WorktreeSidebarView: View {
                 // menu rather than the diff's toolbar, because the review's settings are that Mac's
                 // and the diff is one worktree's. *Settings*, not *Review settings*: the sheet holds
                 // the app's own settings too.
+                #if os(macOS)
+                Button("Review settings…", action: onOpenSettings)
+                #else
                 Button("Settings…", action: onOpenSettings)
+                #endif
 
                 if state.isArrangeable {
                     Toggle(
@@ -276,7 +286,8 @@ public struct WorktreeSidebarView: View {
     /// Middle truncation, which is design §1's rule for a Bonjour device name and not a default: two
     /// Macs in one house differ at the end of their names, so tail truncation drops precisely the
     /// half that says which one this is.
-    private var titleWithActivity: some ToolbarContent {
+    @ToolbarContentBuilder private var titleWithActivity: some ToolbarContent {
+        #if !os(macOS)
         ToolbarItem(placement: .principal) {
             HStack(spacing: 6) {
                 Text(macName)
@@ -290,6 +301,23 @@ public struct WorktreeSidebarView: View {
                 }
             }
         }
+        #endif
+        #if os(macOS)
+        ToolbarItem(placement: .automatic) {
+            HStack(spacing: 6) {
+                Button {
+                    Task { await onRefresh() }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                if isAutomaticallyRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("Refreshing worktrees")
+                }
+            }
+        }
+        #endif
     }
 
     /// No action, and that is the design rather than an omission: there is nothing on this phone to
@@ -300,12 +328,24 @@ public struct WorktreeSidebarView: View {
         EmptyState {
             Label("No projects yet", systemImage: "tray")
         } description: {
-            Text(
+            if onOpenProjects != nil {
+                Text("Add a repository in Projects Settings to read its worktrees here.")
+            } else {
+                #if os(macOS)
+                Text("Add a repository in Granita's menu bar item on \(macName), under Projects. It will appear here straight away.")
+                #else
+                Text(
                 """
                 Add a repository in Granita's menu bar item on your Mac, under Projects. \
                 It will appear here straight away.
                 """
-            )
+                )
+                #endif
+            }
+        } actions: {
+            if let onOpenProjects {
+                Button("Open Projects Settings…", action: onOpenProjects)
+            }
         }
     }
 
@@ -377,7 +417,7 @@ public struct WorktreeSidebarView: View {
     }
 
     private func list(_ listing: WorktreeListing) -> some View {
-        List {
+        let rows = Group {
             if isRetryingRefresh {
                 Section {
                 } header: {
@@ -431,7 +471,13 @@ public struct WorktreeSidebarView: View {
                 }
             }
         }
-        .refreshable { await onRefresh() }
+        #if os(macOS)
+        return List(selection: $selection) { rows }
+            .refreshable { await onRefresh() }
+        #else
+        return List { rows }
+            .refreshable { await onRefresh() }
+        #endif
     }
 
     private var refreshNotice: some View {
@@ -471,6 +517,14 @@ public struct WorktreeSidebarView: View {
     /// applying the modifiers conditionally: while a directory is going away the row must not also
     /// be deletable a second time, renameable, pinnable or openable.
     @ViewBuilder private func row(_ row: WorktreeListRow) -> some View {
+        #if os(macOS)
+        rowContent(row, isRemoving: removing.contains(row.id))
+            .tag(row.id)
+            .disabled(removing.contains(row.id))
+            .contextMenu {
+                if removing.contains(row.id) == false { actions(for: row) }
+            }
+        #else
         if removing.contains(row.id) {
             NavigationLink(value: row.id) { rowContent(row, isRemoving: true) }
                 .disabled(true)
@@ -479,6 +533,7 @@ public struct WorktreeSidebarView: View {
                 .contextMenu { actions(for: row) }
                 .swipeActions(edge: .trailing) { pinAndRename(row) }
         }
+        #endif
     }
 
     /// The two reversible verbs, written once and offered by both gestures.

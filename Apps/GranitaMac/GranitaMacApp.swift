@@ -5,6 +5,7 @@ import SwiftUI
 /// thing that cannot: the entry point itself.
 @main
 struct GranitaMacApp: App {
+    @NSApplicationDelegateAdaptor(GranitaApplicationDelegate.self) private var delegate
 
     var body: some Scene {
         GranitaMacScene()

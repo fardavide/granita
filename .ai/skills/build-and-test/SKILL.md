@@ -35,11 +35,10 @@ If the change touches a screen:
 make snapshots-ios  # phone baselines; run twice when adding a state — the first run writes, the second verifies
 ```
 
-Then run both apps, whichever half the change touched:
+Then run the unified Mac app:
 
 ```bash
-make run-mac           # the menu bar server, signed for this machine
-make run-client-mac    # the Client on macOS — the one that can press things
+make run-mac           # the server and reader, signed for this machine
 ```
 
 Press the control the change adds. See the `design` skill's dead-control rule.

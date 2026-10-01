@@ -1,0 +1,3 @@
+import ServerMacData
+
+public typealias GranitaApplicationDelegate = ReaderApplicationDelegate

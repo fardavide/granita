@@ -301,6 +301,7 @@ public final class ClientViewerModel {
 
     private let repository: any GranitaRepository
     private let commentStore: any ReviewCommentStore
+    private let loadReviewsAtStart: Bool
     private let pasteboard: any ReviewPasteboard
     private let highlighter: any SyntaxHighlighter
     private let copyingLogs: any DiagnosticLogsCopying
@@ -329,6 +330,7 @@ public final class ClientViewerModel {
         announcing: any DiffReadAnnouncing,
         onViewedCountChanged: @escaping (WorktreeID, Int) -> Void,
         longWait: Duration,
+        loadReviewsAtStart: Bool = false,
         refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay
     ) {
         self.refreshAnnouncementDelay = refreshAnnouncementDelay
@@ -336,6 +338,7 @@ public final class ClientViewerModel {
         self.macName = macName
         self.repository = repository
         self.commentStore = commentStore
+        self.loadReviewsAtStart = loadReviewsAtStart
         self.pasteboard = pasteboard
         self.highlighter = highlighter
         self.copyingLogs = copyingLogs
@@ -406,6 +409,9 @@ public final class ClientViewerModel {
         }
         do {
             let changes = try await repository.changes(in: worktree)
+            if loadReviewsAtStart && hasReadOnce == false {
+                await syncReview()
+            }
             entries = changes.files.map(ContinuousDiffEntry.awaiting)
             // A new change set is a new set of files, so nothing lexed against the last one addresses
             // anything here. Held rather than dropped, they would be entries under identifiers this
@@ -437,6 +443,9 @@ public final class ClientViewerModel {
             // The comments were read before any file was named, so until now they have been in the
             // order they were written in. This is the first moment the scroll's order exists.
             comments = ReviewedComment.ordered(comments, against: entries)
+            if case .pullToRefresh = trigger, hasReadOnce {
+                await reading(readingPosition)
+            }
         } catch .cancelled {
             state = entries.isEmpty ? .loading : .reading(entries)
         } catch {
@@ -466,6 +475,12 @@ public final class ClientViewerModel {
             refused: Set(entries.filter(\.isFailed).map(\.id))
         )
         await fetch(wanted)
+    }
+
+    /// Resumes a visible placeholder after a refresh without treating ready arrivals as new reads.
+    public func rereading(_ position: Int) async {
+        guard entries.indices.contains(position), case .awaiting = entries[position].content else { return }
+        await reading(position)
     }
 
     /// What the bar at the bottom of the diff says, or nothing at all when no card is blank.
@@ -992,7 +1007,18 @@ public final class ClientViewerModel {
     /// a screen whose subject is code.
     public func syncReview() async {
         reviewSync = .reconciling
-        comments = await commentStore.reconcile(in: worktree)
+        // This Mac reads the authoritative document rather than unioning a second durable copy.
+        // A comment just saved must reach that document before it is read back.
+        await offering?.value
+        let beforeRead = comments
+        let reconciled = await commentStore.reconcile(in: worktree)
+        if comments == beforeRead {
+            comments = reconciled
+        } else {
+            // A reader can edit while a read is suspended. Keep that newer review in the cache
+            // as well as on screen; the queued offer below writes it after any preceding edit.
+            commentStore.save(comments, in: worktree)
+        }
         await offer().value
     }
 

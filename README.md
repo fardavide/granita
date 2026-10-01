@@ -66,9 +66,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.22.0** — one Mac app reads its own worktrees directly and keeps serving when you close the window.
 - **0.21.0** — see reviewed-file progress in worktrees, the file list, and the diff as you read.
 - **0.20.2** — the copied review begins with the opening line you saved, rather than the built-in one.
-- **0.20.1** — Settings is in two groups, the app's icon above the review's settings.
 
 [Every release](CHANGELOG.md).
 

@@ -90,6 +90,33 @@ func assertSettingsSnapshot(
     )
 }
 
+/// The reader's content, including the window backdrop that transparent code surfaces reveal.
+@MainActor
+func assertReaderSnapshot(
+    _ view: some View,
+    appearance: MacAppearance,
+    named name: String,
+    size: CGSize = CGSize(width: 1260, height: 800),
+    fileID: StaticString = #fileID,
+    file: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column
+) {
+    _ = redirectFailureArtifacts
+    let hosted = hosted(
+        view.background(Color(nsColor: .windowBackgroundColor)),
+        appearance: appearance, size: size
+    )
+    defer { hosted.window?.orderOut(nil) }
+    assertSnapshot(
+        of: hosted,
+        as: .fixedScaleImage(precision: 0.999, perceptualPrecision: 0.87),
+        named: "\(name)-\(appearance.name)",
+        fileID: fileID, file: file, testName: testName, line: line, column: column
+    )
+}
+
 /// The status item, at its real 22pt height.
 ///
 /// Its own entry point rather than a parameter on the one above, because a `MenuBarExtra` label is
