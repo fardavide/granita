@@ -51,7 +51,14 @@ suite, alongside the existing temporary document and listener. Selection, appear
 and diagnostic settings use that same suite; teardown removes it without clearing the installed
 app's defaults. Ordinary launches use the installed app's existing domain.
 
-The first reader fixtures add seventeen light/dark subjects to the existing Mac snapshot bundle.
-Local missing-reference renders are inspection artifacts; the committed baselines must still come
-from the CI runner. Native acceptance, coverage and publication status belong in `status.md` and
-the active plan, not in the design calls above.
+**Reader snapshots include the window's native composition.** AppKit's bitmap cache loses vibrant
+sidebar and inspector foregrounds even with a compatible bitmap, pinned appearances and controller
+hosting. A runner comparison shows those colours in WindowServer's composition. The capture therefore
+uses the exact fixture window identifier and owning process through ScreenCaptureKit's current-process
+content API, which requires no Screen Recording consent. It crops to the hosted content, keeps a
+fixed two-pixels-per-point raster and excludes the cursor, shadows and child windows. It never captures
+a display or another process's window, changes machine settings, or substitutes production colours.
+
+Reader, source, menu and pairing subjects share the existing Mac snapshot bundle. Their committed
+baselines come from the CI runner. Native acceptance, coverage and publication status belong in
+`status.md` and the active plan, not in the design calls above.

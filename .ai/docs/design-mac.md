@@ -36,7 +36,7 @@ becomes.
 | §5 | Devices | **its drawn half built in 0.0.15**, with fourteen baselines. Frames deleted. The six words grew a Copy button in 0.3.1, which the frames do not draw — below. The Allow-from-the-Mac path is still out: no frames and no protocol |
 | §6 | Connections | **its own tab and relaid out in 0.0.11**; the `Pair…` affordance landed in 0.0.15 with the tab it opens. Frames deleted |
 | §7 | Advanced | **built in 0.0.11**, with baselines, minus its Diagnostics half — the verbose switch and Open in Console describe logging this product does not have, and land with it. The lock-file row waits on the lock file |
-| §8 | One Mac app — the reader window, the source pop-up, the inspector, the View menu | **implemented locally, acceptance and runner baselines pending.** Twelve calls, all drawn; the frames are in [`design/`](design/granita-one-mac-app-design-review.html) until they ship. Issues [#97](https://github.com/fardavide/granita/issues/97) and [#91](https://github.com/fardavide/granita/issues/91) |
+| §8 | One Mac app — the reader window, the source pop-up, the inspector, the View menu | **implemented in 0.22.0**, with reviewed runner baselines. Frames removed. Final native acceptance remains in issues [#97](https://github.com/fardavide/granita/issues/97) and [#91](https://github.com/fardavide/granita/issues/91) |
 
 Two things the review could not decide from drawings. **Both are now answered**, on 22 August 2026,
 and the answers are below rather than in the review because neither came from a drawing.

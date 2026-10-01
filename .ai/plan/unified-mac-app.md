@@ -129,3 +129,10 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   the raster dimensions. Its temporary probe and references are removed. A sidebar-load transaction
   is drained before setting the chosen inspector state. The sixth comparison must review all renders
   and prove stable fixture state before any reader baseline is adopted.
+- The sixth runner capture preserves the complete reader in both appearances: selected rows and
+  Files remain legible, Review shows both comments and Copy review, the 47-second read remains
+  pending, and blocked/empty/gone states keep the designed column geometry. All 78 changed renders
+  are reviewed and adopted; the two unchanged light pairing outcomes already match. The implemented
+  design frames are removed. Package tests, both app builds and generated files pass on this revision.
+  The ready PR's CI will judge the final baseline comparison and all six coverage ratchets. Native
+  reruns remain paused at Davide's request; the issues stay open for those acceptance checks.
