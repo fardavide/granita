@@ -134,6 +134,9 @@ struct MacReaderScreenSnapshotTests {
                 return loading
             }
             await sidebar.load()
+            // Loading the sidebar inserts the chosen detail and starts its own appearance task.
+            // Drain that transaction before restoring the fixture's inspector and file state.
+            try await Task.sleep(for: .milliseconds(100))
             await viewer.load()
             await viewer.reading(0)
             await viewer.drawing(

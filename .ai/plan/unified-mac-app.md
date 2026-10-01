@@ -122,3 +122,10 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   recovery names this Mac and the remote Devices pane, and pending spend/write stay distinct.
   Compatible AppKit bitmaps and controller hosting still lose the reader's semantic foregrounds;
   neither experiment is adopted. The fifth run checks only the fixture window's native composition.
+- The fifth runner experiment preserves the selected sidebar row, dark inspector text and native
+  control colours through the fixture window's WindowServer composition. The bitmap variants still
+  lose those foregrounds. The reader capture now uses that exact owned window, scales the output to
+  the existing two-pixels-per-point size, excludes the cursor, child windows and shadows, and asserts
+  the raster dimensions. Its temporary probe and references are removed. A sidebar-load transaction
+  is drained before setting the chosen inspector state. The sixth comparison must review all renders
+  and prove stable fixture state before any reader baseline is adopted.

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ScreenCaptureKit
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -117,20 +118,49 @@ func assertReaderSnapshot(
     defer { hosted.window?.orderOut(nil) }
     // Let appearance tasks start before restoring a fixture's chosen state. Otherwise the
     // sidebar's first read can replace a prepared long-read subject while it is photographed.
-    try await Task.sleep(for: .milliseconds(100))
+    try await Task.sleep(for: .seconds(1))
     try await beforeCapture()
     // Updating a model schedules a SwiftUI transaction; layout alone does not drain it.
-    try await Task.sleep(for: .milliseconds(100))
-    hosted.effectiveAppearance.performAsCurrentDrawingAppearance {
-        hosted.layoutSubtreeIfNeeded()
-        hosted.displayIfNeeded()
-        assertSnapshot(
-            of: hosted,
-            as: .fixedScaleImage(precision: 0.999, perceptualPrecision: 0.87),
-            named: "\(name)-\(appearance.name)",
-            fileID: fileID, file: file, testName: testName, line: line, column: column
-        )
-    }
+    try await Task.sleep(for: .seconds(1))
+    hosted.layoutSubtreeIfNeeded()
+    hosted.displayIfNeeded()
+    let window = try #require(hosted.window)
+    // Vibrant controls are composed by WindowServer, so cacheDisplay loses their foregrounds.
+    // Enumerate only this process's content, without requesting screen-recording permission.
+    let content = try await SCShareableContent.currentProcess
+    let capturedWindow = try #require(content.windows.first {
+        $0.windowID == CGWindowID(window.windowNumber)
+            && $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier
+    })
+    let configuration = SCStreamConfiguration()
+    configuration.width = Int(size.width * 2)
+    configuration.height = Int(size.height * 2)
+    configuration.scalesToFit = true
+    configuration.captureResolution = .best
+    configuration.showsCursor = false
+    configuration.capturesAudio = false
+    configuration.includeChildWindows = false
+    configuration.ignoreShadowsSingleWindow = true
+    configuration.colorSpaceName = CGColorSpace.sRGB
+    let contentRect = hosted.convert(hosted.bounds, to: nil)
+    configuration.sourceRect = CGRect(
+        x: contentRect.minX,
+        y: window.frame.height - contentRect.maxY,
+        width: contentRect.width,
+        height: contentRect.height
+    )
+    let raster = try await SCScreenshotManager.captureImage(
+        contentFilter: SCContentFilter(desktopIndependentWindow: capturedWindow),
+        configuration: configuration
+    )
+    #expect(raster.width == configuration.width)
+    #expect(raster.height == configuration.height)
+    assertSnapshot(
+        of: NSImage(cgImage: raster, size: size),
+        as: .image(precision: 0.999, perceptualPrecision: 0.87),
+        named: "\(name)-\(appearance.name)",
+        fileID: fileID, file: file, testName: testName, line: line, column: column
+    )
 }
 
 /// The status item, at its real 22pt height.
