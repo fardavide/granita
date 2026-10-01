@@ -136,3 +136,11 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   design frames are removed. Package tests, both app builds and generated files pass on this revision.
   The ready PR's CI will judge the final baseline comparison and all six coverage ratchets. Native
   reruns remain paused at Davide's request; the issues stay open for those acceptance checks.
+- Ready [PR #121](https://github.com/fardavide/granita/pull/121) is open with the 0.22.0 minor bump.
+  `make run-mac` builds and launches the signed app. Its installed copy at `/Applications/Granita.app`
+  validates with `codesign --verify --deep --strict`, owns the only normal Granita process and listens
+  on port 8737; `/v1/health` reports serverVersion 0.22.0. The build-directory process ignored TERM
+  and was stopped by its verified PID before the installed copy restarted. The old 0.20.0 Server
+  bundle is removed after the new signature validates. JSON, Keychain and user preferences remain;
+  only the ownership-verified code-control-fixture selection identifier and name are cleared.
+  No UI tests or desktop-control access resume. Final PR comparisons and coverage remain pending.

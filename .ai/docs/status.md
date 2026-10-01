@@ -24,8 +24,10 @@ covered by seventy viewer tests; Copy Review exports the entered comment, with a
 now checked before Save; Copy Logs passes. Final native acceptance is paused because Davide reclaimed
 the desktop. Headless checks and CI can continue, and a PR is authorized when ready. Davide has
 subsequently authorized the final installation and launch once verified, without resuming UI tests.
-No issue has been closed and no installed bundle has been replaced. The existing installed bundle is
-Granita Server 0.20.0. Current evidence and outstanding gates are in
+No issue has been closed. The signed 0.22.0 app is installed at `/Applications/Granita.app` and
+running normally; its health route reports 0.22.0. The verified old Granita Server 0.20.0 bundle is
+removed. App data, pairing identity and preferences are retained; only the earlier owned UI fixture's
+worktree identifier and name are cleared. Current evidence and outstanding gates are in
 [`unified-mac-app.md`](../plan/unified-mac-app.md).
 
 **Shared empty and error components are implemented locally for
