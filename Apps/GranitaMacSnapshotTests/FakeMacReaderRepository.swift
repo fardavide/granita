@@ -9,12 +9,22 @@ final class FakeMacReaderRepository: GranitaRepository {
     let worktrees: [Worktree]
     let fileDiffs: [FileDiff]
     let holdsWorktreeRead: Bool
+    let changesFailure: ApiFailure?
+    let diffFailure: ApiFailure?
     private let clock = Mutex(Date(timeIntervalSince1970: 1_800_000_000))
 
-    init(worktrees: [Worktree], fileDiffs: [FileDiff], holdsWorktreeRead: Bool) {
+    init(
+        worktrees: [Worktree],
+        fileDiffs: [FileDiff],
+        holdsWorktreeRead: Bool,
+        changesFailure: ApiFailure? = nil,
+        diffFailure: ApiFailure? = nil
+    ) {
         self.worktrees = worktrees
         self.fileDiffs = fileDiffs
         self.holdsWorktreeRead = holdsWorktreeRead
+        self.changesFailure = changesFailure
+        self.diffFailure = diffFailure
     }
 
     var now: Date { clock.withLock { $0 } }
@@ -44,7 +54,8 @@ final class FakeMacReaderRepository: GranitaRepository {
     }
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
-        WorktreeChanges(
+        if let changesFailure { throw changesFailure }
+        return WorktreeChanges(
             revision: "reader-snapshot",
             stats: ChangeStats(filesChanged: fileDiffs.count, insertions: fileDiffs.count, deletions: fileDiffs.count),
             files: fileDiffs.map(\.file),
@@ -53,7 +64,8 @@ final class FakeMacReaderRepository: GranitaRepository {
     }
 
     func diffs(of files: [FileID], in worktree: WorktreeID, contextLines: Int) async throws(ApiFailure) -> [FileDiff] {
-        fileDiffs.filter { files.contains($0.file.id) }
+        if let diffFailure { throw diffFailure }
+        return fileDiffs.filter { files.contains($0.file.id) }
     }
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {

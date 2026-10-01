@@ -21,7 +21,7 @@ struct MacSourceMenuContentViewSnapshotTests {
                         excluding: BonjourInstanceName(rawValue: "granita-this-mac")
                     ),
                     remembered: subject.remembered,
-                    logCopyState: .ready,
+                    logCopyState: subject.logCopyState,
                     onChoose: { _ in },
                     onSearchAgain: {},
                     onOpenSettings: {},
@@ -45,6 +45,7 @@ struct MacSourceMenuContentViewSnapshotTests {
         let name: String
         let discovery: DiscoveryState
         let remembered: Set<BonjourInstanceName>
+        let logCopyState: DiagnosticCopyState
 
         var testDescription: String { name }
 
@@ -63,28 +64,31 @@ struct MacSourceMenuContentViewSnapshotTests {
             )
 
             return [
-                Subject(name: "this-mac-alone", discovery: .found([]), remembered: []),
+                Subject(name: "this-mac-alone", discovery: .found([]), remembered: [], logCopyState: .ready),
                 Subject(
                     name: "one-unpaired-mac",
                     discovery: .found([studio]),
-                    remembered: []
+                    remembered: [], logCopyState: .ready
                 ),
                 Subject(
                     name: "several-macs-one-paired",
                     discovery: .found([macBook, studio, workMac]),
-                    remembered: [macBook.id]
+                    remembered: [macBook.id], logCopyState: .ready
                 ),
-                Subject(name: "searching", discovery: .searching, remembered: []),
+                Subject(name: "searching", discovery: .searching, remembered: [], logCopyState: .ready),
                 Subject(
                     name: "local-network-denied",
                     discovery: .localNetworkDenied,
-                    remembered: []
+                    remembered: [], logCopyState: .ready
                 ),
                 Subject(
                     name: "search-failed",
                     discovery: .failed(diagnostic: "NWError: -65555 PolicyDenied"),
-                    remembered: []
-                )
+                    remembered: [], logCopyState: .ready
+                ),
+                Subject(name: "search-failed-copying-logs", discovery: .failed(diagnostic: "NWError: -65555 PolicyDenied"), remembered: [], logCopyState: .copying),
+                Subject(name: "search-failed-logs-copied", discovery: .failed(diagnostic: "NWError: -65555 PolicyDenied"), remembered: [], logCopyState: .copied),
+                Subject(name: "search-failed-could-not-copy-logs", discovery: .failed(diagnostic: "NWError: -65555 PolicyDenied"), remembered: [], logCopyState: .failed)
             ]
         }()
     }

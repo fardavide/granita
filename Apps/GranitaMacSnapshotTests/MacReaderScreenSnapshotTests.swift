@@ -28,7 +28,12 @@ struct MacReaderScreenSnapshotTests {
             scenario.sidebar.cancelLoading()
         }
 
-        try await assertReaderSnapshot(scenario.view, appearance: appearance, named: subject.rawValue) {
+        try await assertReaderSnapshot(
+            scenario.view,
+            appearance: appearance,
+            named: subject.rawValue,
+            capturesPresentedSheet: subject == .composer || subject == .editingComment
+        ) {
             loading = try await scenario.prepare(appearance: appearance)
         }
     }
@@ -44,6 +49,14 @@ struct MacReaderScreenSnapshotTests {
         case tree = "inspector-tree-with-a-closed-folder"
         case flat = "inspector-flat-three-files"
         case review = "inspector-review-two-comments"
+        case emptyReview = "inspector-review-after-deleting-the-last-comment"
+        case cleanWorktreeReview = "inspector-review-after-the-worktree-was-committed"
+        case diffReadFailed = "local-diff-read-failed"
+        case diffGone = "local-worktree-removed-after-the-sidebar-read"
+        case batchReadFailed = "local-diff-batch-refused"
+        case composer = "comment-composer-for-a-new-comment"
+        case editingComment = "comment-composer-for-an-existing-comment"
+        case remoteWhileLocalBlocked = "remote-mac-readable-while-this-mac-is-blocked"
         case nothingChanged = "inspector-nothing-changed"
 
         var testDescription: String { rawValue }
@@ -71,27 +84,38 @@ struct MacReaderScreenSnapshotTests {
             case .gone:
                 worktrees = Array(aBusyMac.prefix(3))
                 selection = .chosen(WorktreeID(rawValue: "w-no-longer-listed"), name: "Remembered source-menu review")
-            case .hostFailed, .tree, .flat, .review, .nothingChanged:
+            case .hostFailed, .tree, .flat, .review, .emptyReview, .cleanWorktreeReview,
+                 .diffReadFailed, .diffGone, .batchReadFailed, .composer, .editingComment,
+                 .remoteWhileLocalBlocked, .nothingChanged:
                 worktrees = Array(aBusyMac.prefix(3))
                 selection = .chosen(WorktreeID(rawValue: "w-tls"), name: "TLS pinning")
             }
             let fileDiffs: [FileDiff] = switch subject {
-                case .nothingChanged: []
+                case .nothingChanged, .cleanWorktreeReview: []
                 case .flat: Array(Self.diffs.prefix(3))
                 case .noProjects, .noWorktreeChosen, .gone, .hostFailed, .blocked, .blockedMissingHolder,
-                     .slowRead, .tree, .review: Self.diffs
+                     .slowRead, .tree, .review, .emptyReview, .diffReadFailed, .diffGone,
+                     .batchReadFailed, .composer, .editingComment, .remoteWhileLocalBlocked: Self.diffs
             }
             let repository = FakeMacReaderRepository(
                 worktrees: worktrees,
                 fileDiffs: fileDiffs,
-                holdsWorktreeRead: subject == .slowRead
+                holdsWorktreeRead: subject == .slowRead,
+                changesFailure: subject == .diffReadFailed
+                    ? .gitFailure(message: "fatal: could not read the working tree")
+                    : subject == .diffGone ? .worktreeGone : nil,
+                diffFailure: subject == .batchReadFailed
+                    ? .gitFailure(message: "fatal: could not read a changed file") : nil
             )
             self.repository = repository
+            let source: ReaderSource = subject == .remoteWhileLocalBlocked
+                ? .remote(DiscoveredServer(id: BonjourInstanceName(rawValue: "granita-mac-studio"), name: "Mac Studio"))
+                : .thisMac
             reader = ClientMacModel(memory: FakeMacReaderSelectionMemory(
-                selection: ReaderSelection(source: .thisMac, worktree: selection)
+                selection: ReaderSelection(source: source, worktree: selection)
             ))
             sidebar = ClientWorktreesModel(
-                macName: "This Mac",
+                macName: subject == .remoteWhileLocalBlocked ? "Mac Studio" : "This Mac",
                 repository: repository,
                 preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: true),
                 copyingLogs: FakeDiagnosticLogsCopying(),
@@ -100,9 +124,12 @@ struct MacReaderScreenSnapshotTests {
             )
             viewer = ClientViewerModel(
                 worktree: WorktreeID(rawValue: "w-tls"),
-                macName: "This Mac",
+                macName: subject == .remoteWhileLocalBlocked ? "Mac Studio" : "This Mac",
                 repository: repository,
-                commentStore: FakeReviewCommentStore(holding: subject == .review ? Self.comments : []),
+                commentStore: FakeReviewCommentStore(holding:
+                    [.review, .emptyReview, .cleanWorktreeReview, .editingComment].contains(subject)
+                        ? Self.comments : []
+                ),
                 pasteboard: FakeReviewPasteboard(),
                 highlighter: HighlightrSyntaxHighlighter(),
                 copyingLogs: FakeDiagnosticLogsCopying(),
@@ -154,6 +181,41 @@ struct MacReaderScreenSnapshotTests {
             case .review:
                 viewer.showReview()
                 #expect(viewer.comments.count == 2)
+            case .emptyReview:
+                viewer.showReview()
+                for comment in viewer.comments {
+                    viewer.removeComment(comment.anchor)
+                }
+                #expect(viewer.sheet == .review)
+                #expect(viewer.comments.isEmpty)
+            case .cleanWorktreeReview:
+                viewer.showReview()
+                #expect(viewer.state == .nothingChanged)
+                #expect(viewer.comments.count == 2)
+            case .composer, .editingComment:
+                let file = try #require(repository.fileDiffs.first)
+                viewer.tappedGutter(DiffLinePosition(oldNumber: 1, newNumber: 1), in: file.file.id)
+                if subject == .composer {
+                    viewer.composerText = "Keep the source selection in the reader model."
+                    #expect(viewer.editingComment == nil)
+                } else {
+                    #expect(viewer.editingComment?.text == "Keep this view focused on the reader.")
+                }
+                #expect(viewer.sheet == .composer)
+                #expect(viewer.composerExcerpt.isEmpty == false)
+            case .diffReadFailed:
+                #expect(viewer.state == .failed(.gitFailure(message: "fatal: could not read the working tree")))
+            case .diffGone:
+                #expect(viewer.state == .failed(.worktreeGone))
+            case .batchReadFailed:
+                #expect(viewer.batchFailure != nil)
+            case .remoteWhileLocalBlocked:
+                #expect(reader.selection.source == .remote(DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "granita-mac-studio"), name: "Mac Studio"
+                )))
+                #expect(sidebar.macName == "Mac Studio")
+                #expect(viewer.macName == "Mac Studio")
+                #expect(viewer.state.firstFile == FileID(repositoryRelativePath: "Sources/Reader/ReaderWindow.swift"))
             case .noWorktreeChosen:
                 #expect(MacReaderDetail(selection: reader.selection.worktree, sidebar: sidebar.state, worktrees: sidebar.worktrees) == .noWorktreeChosen)
             case .gone:
@@ -168,31 +230,11 @@ struct MacReaderScreenSnapshotTests {
             MacReaderScreen(
                 model: reader,
                 serverState: serverState,
-                holder: subject == .blocked ? StoreLockHolder(processIdentifier: 4213, processName: "granita-server") : nil,
+                holder: subject == .blocked || subject == .remoteWhileLocalBlocked
+                    ? StoreLockHolder(processIdentifier: 4213, processName: "granita-server") : nil,
                 source: { sourceMenu },
-                local: {
-                    MacWorktreeScreen(
-                        model: sidebar,
-                        selection: Binding(
-                            get: { reader.selection.worktree },
-                            set: { reader.choose(worktree: $0) }
-                        ),
-                        onPairAgain: {},
-                        onOpenSettings: {},
-                        onOpenProjects: {},
-                        source: { sourceMenu },
-                        settings: { EmptyView() }
-                    ) { _, name, projectName, _ in
-                        WorktreeDiffScreen(
-                            worktreeName: name,
-                            model: viewer,
-                            onPairAgain: {},
-                            onBackToWorktrees: { reader.choose(worktree: .none) }
-                        )
-                        .navigationSubtitle("\(projectName) · This Mac")
-                    }
-                },
-                remote: { _ in EmptyView() }
+                local: { worktreesScreen },
+                remote: { _ in worktreesScreen }
             )
             .environment(\.codeTheme, .default)
             .environment(\.codeSize, .default)
@@ -200,9 +242,32 @@ struct MacReaderScreenSnapshotTests {
             .environment(\.sideBySide, SideBySideSetting(isOn: false, choose: { _ in }))
         }
 
+        private var worktreesScreen: some View {
+            MacWorktreeScreen(
+                model: sidebar,
+                selection: Binding(
+                    get: { reader.selection.worktree },
+                    set: { reader.choose(worktree: $0) }
+                ),
+                onPairAgain: {},
+                onOpenSettings: {},
+                onOpenProjects: {},
+                source: { sourceMenu },
+                settings: { EmptyView() }
+            ) { _, name, projectName, _ in
+                WorktreeDiffScreen(
+                    worktreeName: name,
+                    model: viewer,
+                    onPairAgain: {},
+                    onBackToWorktrees: { reader.choose(worktree: .none) }
+                )
+                .navigationSubtitle("\(projectName) · \(sidebar.macName)")
+            }
+        }
+
         private var sourceMenu: some View {
             MacSourceMenuView(
-                source: .thisMac,
+                source: reader.selection.source,
                 menu: MacSourceMenu(
                     discovery: .found([]),
                     remembered: [],
@@ -220,9 +285,12 @@ struct MacReaderScreenSnapshotTests {
         private var serverState: ServerRunState {
             switch subject {
             case .hostFailed: .failed(reason: "The host could not bind its listening socket.")
-            case .blocked: .blockedByAnotherProcess(StoreLockHolder(processIdentifier: 4213, processName: "granita-server"))
+            case .blocked, .remoteWhileLocalBlocked:
+                .blockedByAnotherProcess(StoreLockHolder(processIdentifier: 4213, processName: "granita-server"))
             case .blockedMissingHolder: .blockedByAnotherProcess(nil)
-            case .noProjects, .noWorktreeChosen, .gone, .slowRead, .tree, .flat, .review, .nothingChanged:
+            case .noProjects, .noWorktreeChosen, .gone, .slowRead, .tree, .flat, .review,
+                 .emptyReview, .cleanWorktreeReview, .diffReadFailed, .diffGone, .batchReadFailed,
+                 .composer, .editingComment, .nothingChanged:
                 .running(ServerEndpoint(host: "this-mac.local", port: 59_144))
             }
         }

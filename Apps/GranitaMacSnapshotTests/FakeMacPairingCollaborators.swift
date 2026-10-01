@@ -4,8 +4,10 @@ import ClientConnectionDomain
 import CorePairingDomain
 
 struct FakeMacPairingDiscovery: ServerDiscovering {
+    var answering: DiscoveryState = .found([])
+
     func discover() -> AsyncStream<DiscoveryState> {
-        AsyncStream { $0.yield(.found([])); $0.finish() }
+        AsyncStream { $0.yield(answering); $0.finish() }
     }
 }
 
@@ -13,6 +15,7 @@ struct FakeMacPairingJoining: MacJoining {
     let answering: PairingOutcome
     var pairingDelay: Duration = .zero
     var savingDelay: Duration = .zero
+    var remembered: Set<BonjourInstanceName> = []
 
     func pair(with attempt: PairingAttempt, on mac: DiscoveredServer, as device: PairingDevice) async -> PairingOutcome {
         do { try await Task.sleep(for: pairingDelay) } catch { return .neverAnswered(.spendingTheCode) }
@@ -22,7 +25,7 @@ struct FakeMacPairingJoining: MacJoining {
         do { try await Task.sleep(for: savingDelay) } catch { return .neverAnswered(.writingTheKey(pairing)) }
         return answering
     }
-    func rememberedMacs() async -> Set<BonjourInstanceName> { [] }
+    func rememberedMacs() async -> Set<BonjourInstanceName> { remembered }
 }
 
 struct FakeMacPairingCamera: CameraAuthorizing {

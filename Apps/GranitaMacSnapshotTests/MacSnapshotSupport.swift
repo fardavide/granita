@@ -98,6 +98,7 @@ func assertReaderSnapshot(
     appearance: MacAppearance,
     named name: String,
     size: CGSize = CGSize(width: 1260, height: 800),
+    capturesPresentedSheet: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -115,7 +116,13 @@ func assertReaderSnapshot(
             .background(Color(nsColor: .windowBackgroundColor)),
         appearance: appearance, size: size
     )
-    defer { hosted.window?.orderOut(nil) }
+    defer {
+        if let sheet = hosted.window?.attachedSheet {
+            hosted.window?.endSheet(sheet)
+            sheet.orderOut(nil)
+        }
+        hosted.window?.orderOut(nil)
+    }
     // Let appearance tasks start before restoring a fixture's chosen state. Otherwise the
     // sidebar's first read can replace a prepared long-read subject while it is photographed.
     try await Task.sleep(for: .seconds(1))
@@ -124,7 +131,20 @@ func assertReaderSnapshot(
     try await Task.sleep(for: .seconds(1))
     hosted.layoutSubtreeIfNeeded()
     hosted.displayIfNeeded()
-    let window = try #require(hosted.window)
+    let parentWindow = try #require(hosted.window)
+    let window: NSWindow
+    let capturedView: NSView
+    let capturedSize: CGSize
+    if capturesPresentedSheet {
+        // Photograph the sheet opened through the real screen, within this test process.
+        window = try #require(parentWindow.attachedSheet)
+        capturedView = try #require(window.contentView)
+        capturedSize = capturedView.bounds.size
+    } else {
+        window = parentWindow
+        capturedView = hosted
+        capturedSize = size
+    }
     // Vibrant controls are composed by WindowServer, so cacheDisplay loses their foregrounds.
     // Enumerate only this process's content, without requesting screen-recording permission.
     let content = try await SCShareableContent.currentProcess
@@ -133,8 +153,8 @@ func assertReaderSnapshot(
             && $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier
     })
     let configuration = SCStreamConfiguration()
-    configuration.width = Int(size.width * 2)
-    configuration.height = Int(size.height * 2)
+    configuration.width = Int(capturedSize.width * 2)
+    configuration.height = Int(capturedSize.height * 2)
     configuration.scalesToFit = true
     configuration.captureResolution = .best
     configuration.showsCursor = false
@@ -142,7 +162,7 @@ func assertReaderSnapshot(
     configuration.includeChildWindows = false
     configuration.ignoreShadowsSingleWindow = true
     configuration.colorSpaceName = CGColorSpace.sRGB
-    let contentRect = hosted.convert(hosted.bounds, to: nil)
+    let contentRect = capturedView.convert(capturedView.bounds, to: nil)
     configuration.sourceRect = CGRect(
         x: contentRect.minX,
         y: window.frame.height - contentRect.maxY,
@@ -156,7 +176,7 @@ func assertReaderSnapshot(
     #expect(raster.width == configuration.width)
     #expect(raster.height == configuration.height)
     assertSnapshot(
-        of: NSImage(cgImage: raster, size: size),
+        of: NSImage(cgImage: raster, size: capturedSize),
         as: .image(precision: 0.999, perceptualPrecision: 0.87),
         named: "\(name)-\(appearance.name)",
         fileID: fileID, file: file, testName: testName, line: line, column: column

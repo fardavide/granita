@@ -200,6 +200,9 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
+      - Packages/Granita/Client/Settings/PresentationTests/FakeAppearancePreferences.swift
+      - Packages/Granita/Client/Settings/PresentationTests/FakeAppIconSwitcher.swift
+      - Packages/Granita/Client/Settings/PresentationTests/FakeSettingsRepository.swift
       - Apps/GranitaMobileSnapshotTests/FakeWorktreeSource.swift
       - Apps/GranitaMobileSnapshotTests/FakeReviewCommentStore.swift
       - Apps/GranitaMobileSnapshotTests/FakeReviewPasteboard.swift

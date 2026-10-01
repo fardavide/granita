@@ -145,3 +145,19 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   only the ownership-verified code-control-fixture selection identifier and name are cleared.
   No UI tests or desktop-control access resume. Final PR comparisons and coverage are reported on
   the PR. The first committed-baseline comparison passes all 29 Mac tests in 17 suites.
+- The complete [PR run](https://github.com/fardavide/granita/actions/runs/36919405056) passes
+  every package/build/generated/snapshot check, including both iOS shards and pinned TLS. Unit
+  coverage is 11930/12232 lines and 4580/4814 regions; All is 12004/12238 and 4610/4818. Snapshot
+  is 13104/13251 lines and 2189/2249 regions, below main's unchanged ratchets. The per-file export
+  locates unrendered remote Review settings, Mac viewer and source-composition states. Added
+  fixtures cover empty and clean-worktree Review, failed/removed change sets, refused batches,
+  new/editing comment sheets, remote reading while the local host is blocked, six remote Review
+  settings states, remembered source selection, the actual pairing sheet, and three log-copy
+  feedback states. The capture helper requires the fixture's attached sheet and its exact owning
+  process/window identity when a subject presents one. Thirty-eight copied baseline placeholders
+  will be replaced only by visually reviewed CI renders; the existing source fixtures are renamed
+  for their now-parameterised test signature. Production code and coverage predicates are unchanged.
+- Davide reports a phone-side timeout followed by cancelled reads, then confirms the iPhone works.
+  Localhost health still reports 0.22.0; the Mac's self-tailnet health request times out, so that
+  test does not establish why the phone's earlier request failed. No network, identity or machine
+  setting is changed, no UI test resumes, and the installed app stays running.

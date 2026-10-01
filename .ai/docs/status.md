@@ -11,7 +11,12 @@ iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone
 shards and the pinned TLS connection tests pass without changing their baselines.
 Mac snapshots cover source choice, local reader states, View commands and nineteen pairing states.
 All new Mac baseline renders have been reviewed and adopted from the runner; the final comparison
-passes all 29 tests in 17 suites. Complete CI and coverage verdicts are recorded on
+passes all 29 tests in 17 suites. The complete PR run passes all tests and both Unit and All
+coverage rows, but the Snapshot ratchets fail at 98.9% lines and 97.3% regions. Added Mac render
+subjects cover remote Review settings, viewer refusals and comment composition, remote reading
+while the local host is blocked, the real pairing sheet and log-copy feedback. Their 38 new
+references are copied placeholders for CI capture and visual review; no local Mac rendering runs.
+Complete CI and coverage verdicts are recorded on
 [PR #121](https://github.com/fardavide/granita/pull/121). Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
 closing, code-size changes and code-colour changes pass. CI initially measured a 640×532 content
@@ -28,7 +33,8 @@ subsequently authorized the final installation and launch once verified, without
 No issue has been closed. The signed 0.22.0 app is installed at `/Applications/Granita.app` and
 running normally; its health route reports 0.22.0. The verified old Granita Server 0.20.0 bundle is
 removed. App data, pairing identity and preferences are retained; only the earlier owned UI fixture's
-worktree identifier and name are cleared. Current evidence and outstanding gates are in
+worktree identifier and name are cleared. Davide confirms the iPhone connects after an initially
+timed-out attempt; no network or identity settings are changed. Current evidence and outstanding gates are in
 [`unified-mac-app.md`](../plan/unified-mac-app.md).
 
 **Shared empty and error components are implemented locally for
