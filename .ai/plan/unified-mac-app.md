@@ -117,3 +117,8 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   content available to this process without TCC consent. The runner experiment also requires the
   exact fixture window identifier and owning PID before capturing its composed content. It never
   requests screen-recording permission or falls back to the display or another process's window.
+- The fourth runner comparison passes package tests, generated files and both app builds. Its
+  28 remaining pairing renders have been reviewed and adopted: the settled misspelling is visible,
+  recovery names this Mac and the remote Devices pane, and pending spend/write stay distinct.
+  Compatible AppKit bitmaps and controller hosting still lose the reader's semantic foregrounds;
+  neither experiment is adopted. The fifth run checks only the fixture window's native composition.
