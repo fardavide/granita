@@ -54,7 +54,8 @@ public struct GranitaMacScene: Scene {
 
         Window("Granita", id: Self.readerWindowId) {
             MacReaderRoot(composition: composition)
-                .frame(minWidth: 640, minHeight: 480)
+                // The split view contributes its 52pt toolbar to the window's content minimum.
+                .frame(minWidth: 640, minHeight: 480 - 52)
         }
         .defaultSize(width: 1260, height: 800)
         .windowResizability(.contentMinSize)

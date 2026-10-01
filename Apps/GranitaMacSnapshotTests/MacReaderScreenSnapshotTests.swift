@@ -22,13 +22,15 @@ struct MacReaderScreenSnapshotTests {
     @Test(arguments: Subject.allCases, MacAppearance.all)
     func reader(subject: Subject, appearance: MacAppearance) async throws {
         let scenario = Scenario(subject: subject)
-        let loading = try await scenario.prepare(appearance: appearance)
+        var loading: Task<Void, Never>?
         defer {
             loading?.cancel()
             scenario.sidebar.cancelLoading()
         }
 
-        assertReaderSnapshot(scenario.view, appearance: appearance, named: subject.rawValue)
+        try await assertReaderSnapshot(scenario.view, appearance: appearance, named: subject.rawValue) {
+            loading = try await scenario.prepare(appearance: appearance)
+        }
     }
 
     enum Subject: String, CaseIterable, Sendable, CustomTestStringConvertible {

@@ -45,6 +45,7 @@ public struct MacReaderScreen<Source: View, Local: View, Remote: View>: View {
                         Divider()
                         MacReaderBlockedView(holder: holder)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             case .remote(let server):
                 remote(server)

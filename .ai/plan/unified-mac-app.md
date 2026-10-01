@@ -75,3 +75,16 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   round trip in decision 0078. Twenty-eight are earlier local inspection renders; six reuse the
   no-projects render for states added after desktop testing stopped. None is a final baseline, and
   all must be replaced or verified byte-for-byte against the runner before the PR opens.
+- The first branch CI run passes package tests, both app builds and generated files. Its Mac
+  comparison produces 66 mismatches: the 34 new references, twenty General renders carrying the
+  changed Startup footnote, and twelve status-menu renders carrying Show Worktrees. The existing
+  Settings and menu changes and the source-menu renders have been reviewed; the reader references
+  remain temporary until its rendering defects are corrected and reviewed again.
+- The runner's live window test observes a 640×532 content minimum. The split view adds its 52pt
+  toolbar to the root's minimum, so the root now reserves 428pt below that toolbar for the designed
+  640×480 window. The corrected geometry remains subject to the next CI run.
+- Reader captures expose semantic-colour mismatches, an intrinsically sized blocked state, a
+  vertically centred source above the empty sidebar, and an appearance task replacing the prepared
+  47-second read. The snapshot host now pins the app appearance and full root proposal, then prepares
+  fixtures after their appearance tasks start. The blocked detail and empty sidebar fill their
+  column. These fixes build; the next runner capture must verify them before baselines are final.

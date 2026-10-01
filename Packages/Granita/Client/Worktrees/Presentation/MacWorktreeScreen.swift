@@ -70,6 +70,7 @@ public struct MacWorktreeScreen<Source: View, Opened: View, Settings: View>: Vie
                     ),
                     opening: opening
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationSplitViewColumnWidth(min: 240, ideal: 260, max: 320)
         } detail: {

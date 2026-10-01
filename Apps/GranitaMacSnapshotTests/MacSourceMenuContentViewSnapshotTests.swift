@@ -10,8 +10,8 @@ import ClientMacDomain
 struct MacSourceMenuContentViewSnapshotTests {
 
     @Test(arguments: Subject.all, MacAppearance.all)
-    func sourceMenu(subject: Subject, appearance: MacAppearance) {
-        assertReaderSnapshot(
+    func sourceMenu(subject: Subject, appearance: MacAppearance) async throws {
+        try await assertReaderSnapshot(
             VStack(alignment: .leading, spacing: 6) {
                 MacSourceMenuContentView(
                     source: .thisMac,

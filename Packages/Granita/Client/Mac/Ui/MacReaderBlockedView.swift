@@ -16,5 +16,6 @@ public struct MacReaderBlockedView: View {
         } description: {
             Text("\(holder?.sentence ?? "Another process") has the settings. Quit that process to read this Mac here.")
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
