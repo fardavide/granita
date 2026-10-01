@@ -35,6 +35,10 @@ app-hosted Mac snapshots or launch the app until desktop interaction is authoriz
 headless checks and use CI for Mac snapshot rendering. Opening a PR is authorized when the
 implementation is complete; remaining native acceptance must be stated precisely in its body.
 
+Davide subsequently authorized installing and running the completed app. That permits the final
+launch after verification; it does not resume Mac UI tests or desktop control. Replace only verified
+Granita bundles, keep their data and identity, and use the minor release 0.22.0 already committed.
+
 ## Implementation checkpoint — 1 October 2026
 
 The foundation and unified product are implemented on `codex/unified-mac-app`; final acceptance and release remain open.
@@ -88,3 +92,9 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   47-second read. The snapshot host now pins the app appearance and full root proposal, then prepares
   fixtures after their appearance tasks start. The blocked detail and empty sidebar fill their
   column. These fixes build; the next runner capture must verify them before baselines are final.
+- The second CI run passes the exact 640×480 window assertion and all existing Mac snapshots,
+  including the twelve source-menu captures. Its twenty-two reader captures now have the correct
+  blocked and empty-column geometry and the 47-second reading state, but some semantic foregrounds
+  remain wrong. They are not adopted. The reader-only host now pins SwiftUI's colour scheme, drains
+  the fixture transaction and captures under the view's effective drawing appearance. CI must
+  verify that correction. Local UI tests remain stopped.

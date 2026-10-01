@@ -7,18 +7,20 @@ and [#91](https://github.com/fardavide/granita/issues/91); acceptance and public
 The reader uses the local repository and the server's review document for This Mac, retains pinned
 remote connections, and has native words pairing, a persistent sidebar, a trailing inspector and
 View commands. The product keeps the server's bundle identifier and restores the phone target to
-iOS/iPadOS. Package tests and the unsigned package/app build pass. The latest full phone/iPad
-comparison has one failing dark-phone gone-worktree render; its isolated sixteen-case suite passes
-without a baseline change, and CI must settle the complete comparison.
+iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone/iPad snapshot
+shards pass without changing their baselines; the required pinned TLS pass remains pending.
 Seventeen Mac snapshot subjects are declared; their runner baselines still have to be adopted. Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
-closing, code-size changes and code-colour changes pass. The live reader's content minimum also
-passes at 640×480 after SwiftUI settles its scene constraints. Native captures show a legible
-selected sidebar row; the local offscreen snapshot path renders its semantic colours incorrectly.
+closing, code-size changes and code-colour changes pass. CI initially measured a 640×532 content
+minimum: the split view adds its 52pt toolbar to the root minimum. Reserving 428pt below that
+toolbar now passes the exact 640×480 assertion. Native captures show a legible selected sidebar
+row; offscreen reader snapshots still render some semantic colours incorrectly on both machines.
 The latest full native run passed twelve of sixteen tests. Refresh exposed a defect now fixed and
 covered by seventy viewer tests; Copy Review exports the entered comment, with a typing discrepancy
 now checked before Save; Copy Logs passes. Final native acceptance is paused because Davide reclaimed
-the desktop. Headless checks and CI can continue, and a PR is authorized when ready. No issue has
+the desktop. Headless checks and CI can continue, and a PR is authorized when ready. Davide has
+subsequently authorized the final installation and launch once verified, without resuming UI tests.
+No issue has
 been closed and no installed bundle has been replaced. Current evidence and outstanding gates are in
 [`unified-mac-app.md`](../plan/unified-mac-app.md).
 
