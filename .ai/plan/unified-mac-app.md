@@ -105,3 +105,11 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   Screen convention. Neither coverage predicate is changed. CI-only captures cover menu size
   bounds, inspector availability, pairing entry/refusal states and source composition; their
   twenty-two references are explicit placeholders until runner renders are reviewed and adopted.
+- The third CI capture confirms legible menu, source composition and words-entry/refusal surfaces.
+  Eighteen renders are reviewed and adopted; the unknown-word fixture now settles the misspelling
+  before checking it. The spent-code refusal exposed phone-specific recovery copy on the Mac;
+  Mac outcomes now name this Mac's device record and the remote Mac's Devices pane. Further
+  captures cover every remote words outcome, including an unresolved address, failed token storage
+  and pending spend/write. Reader sidebar/inspector colours remain unreadable in the bitmap path.
+  A temporary CI-only experiment compares AppKit's compatible bitmap and controller hosting.
+  No desktop access or machine setting is changed.

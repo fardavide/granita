@@ -626,6 +626,11 @@ decision rather than a verified one.
 *Rejected:* keeping the camera for parity with the phone; and dropping remote Macs, which deletes
 working code to save one sheet.
 
+The shared outcome screen names **this Mac** when it describes the reader's device record and
+uses the remote Mac's name for the Devices pane to open. A reader version mismatch asks for the
+latest Granita on this Mac; it does not send a Mac reader to the phone's TestFlight distribution.
+The phone keeps its existing wording.
+
 **6 — Say it once, in the source menu. Never in the window's chrome.** *This Mac* carries a menu-item
 subtitle — *"Read on this Mac, without the network"* — because the menu is the one place sources are
 compared, so it is the one place the difference is a choice. In the window the source appears only as

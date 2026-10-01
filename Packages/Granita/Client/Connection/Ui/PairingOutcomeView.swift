@@ -123,13 +123,21 @@ public struct PairingOutcomeView: View {
 
         case .phoneIsBehind:
             ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
+                #if os(macOS)
+                Label("This Mac needs a newer Granita", systemImage: "arrow.down.app")
+                #else
                 Label("This iPhone needs a newer Granita", systemImage: "arrow.down.app")
+                #endif
             } description: {
+                #if os(macOS)
+                Text("Install the latest Granita on this Mac, then pair again. The code was not used.")
+                #else
                 Text(
                     """
                     Install the latest Granita from TestFlight, then pair again. The code was not used.
                     """
                 )
+                #endif
             } actions: { copyLogs in
                 // It leaves the app, so it appears only where there is an app to leave for.
                 // Absent is a legitimate state, and the sentence above already says what to do.
@@ -227,6 +235,16 @@ public struct PairingOutcomeView: View {
         ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Paired, but the key was not saved", systemImage: "key.slash")
         } description: {
+            #if os(macOS)
+            Text(
+                """
+                \(macName) now lists this Mac. Try saving the key again first.
+
+                If it still fails, remove this Mac in Granita ▸ Settings ▸ Devices on \(macName), \
+                then pair again.
+                """
+            )
+            #else
             Text(
                 """
                 \(macName) now lists this iPhone. Try saving the key again first.
@@ -235,6 +253,7 @@ public struct PairingOutcomeView: View {
                 then pair again.
                 """
             )
+            #endif
         } actions: { copyLogs in
             Button("Try Saving Again", action: onSaveTokenAgain)
             copyLogs
@@ -273,6 +292,16 @@ public struct PairingOutcomeView: View {
             ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("The code was sent and nothing came back", systemImage: "clock.badge.questionmark")
             } description: {
+                #if os(macOS)
+                Text(
+                    """
+                    The code may have been used, but \(macName) did not answer.
+
+                    In Granita ▸ Settings ▸ Devices on \(macName), remove this Mac if listed. \
+                    Then ask for a new code and pair again.
+                    """
+                )
+                #else
                 Text(
                     """
                     The code may have been used, but \(macName) did not answer.
@@ -281,6 +310,7 @@ public struct PairingOutcomeView: View {
                     Then ask for a new code and pair again.
                     """
                 )
+                #endif
             } actions: { copyLogs in
                 copyLogs
             }
@@ -291,6 +321,16 @@ public struct PairingOutcomeView: View {
             ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
                 Label("Paired, and the key is still not saved", systemImage: "key.slash")
             } description: {
+                #if os(macOS)
+                Text(
+                    """
+                    \(macName) now lists this Mac. Saving the key did not finish; try saving it again.
+
+                    If it still fails, remove this Mac in Granita ▸ Settings ▸ Devices on \(macName), \
+                    then pair again.
+                    """
+                )
+                #else
                 Text(
                     """
                     \(macName) now lists this iPhone. Saving the key did not finish; try saving it again.
@@ -299,6 +339,7 @@ public struct PairingOutcomeView: View {
                     then pair again.
                     """
                 )
+                #endif
             } actions: { copyLogs in
                 Button("Try Saving Again", action: onSaveTokenAgain)
                 copyLogs
