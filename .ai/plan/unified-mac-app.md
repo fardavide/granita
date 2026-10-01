@@ -161,3 +161,10 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   Localhost health still reports 0.22.0; the Mac's self-tailnet health request times out, so that
   test does not establish why the phone's earlier request failed. No network, identity or machine
   setting is changed, no UI test resumes, and the installed app stays running.
+- The next [CI capture](https://github.com/fardavide/granita/actions/runs/36932680094) supplies
+  31 reviewed references for the new subjects. The six actual sheet captures expose an incorrect
+  crop in the test helper; they are rejected and remain placeholders while the helper captures
+  the entire owned sheet window. One light log-copy reference matched its temporary baseline
+  within tolerance and is reseeded for a visible capture. The remembered-source assertion also
+  identifies a fixture name mismatch: Bonjour's instance and display name must agree. Both fixture
+  corrections await CI; production code and comparison tolerances stay unchanged.

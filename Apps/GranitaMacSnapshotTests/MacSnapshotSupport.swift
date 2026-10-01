@@ -162,13 +162,15 @@ func assertReaderSnapshot(
     configuration.includeChildWindows = false
     configuration.ignoreShadowsSingleWindow = true
     configuration.colorSpaceName = CGColorSpace.sRGB
-    let contentRect = capturedView.convert(capturedView.bounds, to: nil)
-    configuration.sourceRect = CGRect(
-        x: contentRect.minX,
-        y: window.frame.height - contentRect.maxY,
-        width: contentRect.width,
-        height: contentRect.height
-    )
+    if !capturesPresentedSheet {
+        let contentRect = capturedView.convert(capturedView.bounds, to: nil)
+        configuration.sourceRect = CGRect(
+            x: contentRect.minX,
+            y: window.frame.height - contentRect.maxY,
+            width: contentRect.width,
+            height: contentRect.height
+        )
+    }
     let raster = try await SCScreenshotManager.captureImage(
         contentFilter: SCContentFilter(desktopIndependentWindow: capturedWindow),
         configuration: configuration

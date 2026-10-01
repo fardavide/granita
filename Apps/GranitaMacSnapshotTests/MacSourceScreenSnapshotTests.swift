@@ -40,7 +40,7 @@ struct MacSourceScreenSnapshotTests {
 
         init(subject: Subject) {
             self.subject = subject
-            let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "granita-mac-studio"), name: "Mac Studio")
+            let server = DiscoveredServer(id: BonjourInstanceName(rawValue: "Mac Studio"), name: "Mac Studio")
             self.server = server
             model = ClientConnectionModel(
                 browsing: FakeMacPairingDiscovery(answering: .found(subject == .thisMac ? [] : [server])),
