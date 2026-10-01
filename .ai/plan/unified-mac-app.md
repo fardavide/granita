@@ -143,4 +143,5 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   and was stopped by its verified PID before the installed copy restarted. The old 0.20.0 Server
   bundle is removed after the new signature validates. JSON, Keychain and user preferences remain;
   only the ownership-verified code-control-fixture selection identifier and name are cleared.
-  No UI tests or desktop-control access resume. Final PR comparisons and coverage remain pending.
+  No UI tests or desktop-control access resume. Final PR comparisons and coverage are reported on
+  the PR. The first committed-baseline comparison passes all 29 Mac tests in 17 suites.

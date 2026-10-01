@@ -10,8 +10,9 @@ View commands. The product keeps the server's bundle identifier and restores the
 iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone/iPad snapshot
 shards and the pinned TLS connection tests pass without changing their baselines.
 Mac snapshots cover source choice, local reader states, View commands and nineteen pairing states.
-All new Mac baseline renders have been reviewed and adopted from the runner; their final comparison
-and complete coverage verdict are pending in CI. Native
+All new Mac baseline renders have been reviewed and adopted from the runner; the final comparison
+passes all 29 tests in 17 suites. Complete CI and coverage verdicts are recorded on
+[PR #121](https://github.com/fardavide/granita/pull/121). Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
 closing, code-size changes and code-colour changes pass. CI initially measured a 640×532 content
 minimum: the split view adds its 52pt toolbar to the root minimum. Reserving 428pt below that
@@ -22,7 +23,7 @@ window and does not request desktop or Screen Recording access.
 The latest full native run passed twelve of sixteen tests. Refresh exposed a defect now fixed and
 covered by seventy viewer tests; Copy Review exports the entered comment, with a typing discrepancy
 now checked before Save; Copy Logs passes. Final native acceptance is paused because Davide reclaimed
-the desktop. Headless checks and CI can continue, and a PR is authorized when ready. Davide has
+the desktop. Headless checks and CI can continue. Davide has
 subsequently authorized the final installation and launch once verified, without resuming UI tests.
 No issue has been closed. The signed 0.22.0 app is installed at `/Applications/Granita.app` and
 running normally; its health route reports 0.22.0. The verified old Granita Server 0.20.0 bundle is
