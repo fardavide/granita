@@ -113,3 +113,7 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   and pending spend/write. Reader sidebar/inspector colours remain unreadable in the bitmap path.
   A temporary CI-only experiment compares AppKit's compatible bitmap and controller hosting.
   No desktop access or machine setting is changed.
+- Apple's `SCShareableContent.currentProcess` is documented in the installed SDK to enumerate
+  content available to this process without TCC consent. The runner experiment also requires the
+  exact fixture window identifier and owning PID before capturing its composed content. It never
+  requests screen-recording permission or falls back to the display or another process's window.

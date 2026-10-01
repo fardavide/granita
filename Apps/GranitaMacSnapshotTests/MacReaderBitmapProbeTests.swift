@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -29,7 +30,7 @@ struct MacReaderBitmapProbeTests {
         window.appearance = NSAppearance(named: appearance.appearance)
         let view: NSView
         switch capture {
-        case .nativeBitmap:
+        case .nativeBitmap, .windowComposite:
             view = NSHostingView(rootView: root)
             window.contentView = view
         case .hostingController:
@@ -44,20 +45,55 @@ struct MacReaderBitmapProbeTests {
         try await Task.sleep(for: .seconds(1))
         _ = try await scenario.prepare(appearance: appearance)
         try await Task.sleep(for: .seconds(1))
-        view.effectiveAppearance.performAsCurrentDrawingAppearance {
-            view.layoutSubtreeIfNeeded()
-            view.displayIfNeeded()
+        if capture == .windowComposite {
+            // This API enumerates only content this process may capture without TCC consent.
+            // The exact fixture window is required; there is no display or other-app fallback.
+            let content = try await SCShareableContent.currentProcess
+            let capturedWindow = try #require(content.windows.first {
+                $0.windowID == CGWindowID(window.windowNumber)
+                    && $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier
+            })
+            let configuration = SCStreamConfiguration()
+            configuration.width = 2520
+            configuration.height = 1600
+            configuration.showsCursor = false
+            configuration.capturesAudio = false
+            configuration.includeChildWindows = false
+            configuration.ignoreShadowsSingleWindow = true
+            configuration.colorSpaceName = CGColorSpace.sRGB
+            let contentRect = view.convert(view.bounds, to: nil)
+            configuration.sourceRect = CGRect(
+                x: contentRect.minX,
+                y: window.frame.height - contentRect.maxY,
+                width: contentRect.width,
+                height: contentRect.height
+            )
+            let raster = try await SCScreenshotManager.captureImage(
+                contentFilter: SCContentFilter(desktopIndependentWindow: capturedWindow),
+                configuration: configuration
+            )
             assertSnapshot(
-                of: view,
+                of: NSImage(cgImage: raster, size: view.bounds.size),
                 as: .image(precision: 0.999, perceptualPrecision: 0.87),
                 named: "\(capture.rawValue)-\(appearance.name)"
             )
+        } else {
+            view.effectiveAppearance.performAsCurrentDrawingAppearance {
+                view.layoutSubtreeIfNeeded()
+                view.displayIfNeeded()
+                assertSnapshot(
+                    of: view,
+                    as: .image(precision: 0.999, perceptualPrecision: 0.87),
+                    named: "\(capture.rawValue)-\(appearance.name)"
+                )
+            }
         }
     }
 
     enum Capture: String, CaseIterable, Sendable, CustomTestStringConvertible {
         case nativeBitmap = "compatible-bitmap"
         case hostingController = "hosting-controller"
+        case windowComposite = "own-window-composite"
 
         var testDescription: String { rawValue }
     }
