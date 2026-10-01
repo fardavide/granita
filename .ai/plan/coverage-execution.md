@@ -150,6 +150,12 @@ all suite verdicts. Its aggregate summary equals the initial cold summary; the r
 measurement took 36m54s and its job 37m58s. Including that deliberate comparison gives 40m48s
 full-run elapsed and 94m49s total runner time. The final cold run's 21m01s queue sum reflects
 concurrent validation jobs competing for runners, not test execution.
+The retained legacy pass on this final revision also exercised the cancellation-handler closure
+once: its unit row is 11650/11949 lines and 4448/4681 regions, versus 11647/11949 and 4447/4681
+in the new cold pass. Per-file comparison isolates this to the same line-188 closure described
+above. This reproduces the variation in the original measurement path on the same source and
+toolchain. Snapshot/total counts and every denominator remain exactly equal; all six verdicts
+remain unchanged. No baseline was reset to make the comparison pass.
 
 Warm unit logs confirm an exact cache-key hit and 176.17s compilation, versus 348.53s in the
 initial cold unit pass. Cached build outputs still need substantial compiler work on fresh runners;
