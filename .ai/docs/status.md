@@ -15,10 +15,11 @@ passes all 29 tests in 17 suites. The complete PR run passes all tests and both 
 coverage rows, but the Snapshot ratchets fail at 98.9% lines and 97.3% regions. Added Mac render
 subjects cover remote Review settings, viewer refusals and comment composition, remote reading
 while the local host is blocked, the real pairing sheet and log-copy feedback. Their 38 new
-references now include 31 visually reviewed runner renders; six sheet captures and one light
-log-copy capture remain pending. CI exposed a crop error when photographing an attached sheet;
-the helper now requests that window's complete frame. The remembered-source fixture now uses
-Bonjour's actual name contract. No local Mac rendering runs.
+references are all visually reviewed runner renders. CI exposed a crop error when photographing
+an attached sheet; requesting that window's complete frame fixes it. The remembered-source
+fixture uses Bonjour's actual name contract. Its assertions and the first 31 comparisons pass;
+the seven final references now await comparison and the complete coverage verdict. No local Mac
+rendering runs.
 Complete CI and coverage verdicts are recorded on
 [PR #121](https://github.com/fardavide/granita/pull/121). Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after

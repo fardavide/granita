@@ -168,3 +168,8 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   within tolerance and is reseeded for a visible capture. The remembered-source assertion also
   identifies a fixture name mismatch: Bonjour's instance and display name must agree. Both fixture
   corrections await CI; production code and comparison tolerances stay unchanged.
+- The [corrected capture](https://github.com/fardavide/granita/actions/runs/36935457096) passes
+  the fixture assertions and the 31 previously reviewed comparisons. Only the seven remaining
+  temporary references differ. Their full comment, editing, pairing and log-copy surfaces are
+  visually reviewed and adopted byte-for-byte from the runner. All 38 new references are now
+  reviewed; the final comparison and all coverage ratchets await the next complete PR run.
