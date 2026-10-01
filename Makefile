@@ -18,8 +18,8 @@ PROJECT      := Granita.xcodeproj
 # older one. On 28 September 2026 that meant `iPhone 17 Pro`, a name iOS 27 does not ship, so every
 # render would have been iOS 26.5 while CI renders on 27. The runtimes are listed oldest first, so
 # each iOS header resets the pick, and the last one standing is the newest runtime's first iPhone.
-IOS_SIM_NAME := $(shell xcrun simctl list devices available | awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($$0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($$0, RSTART, RLENGTH)} END{sub(/ +$$/, "", name); print name}')
-IOS_SIM      := platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
+IOS_SIM_NAME = $(shell xcrun simctl list devices available | awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($$0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($$0, RSTART, RLENGTH)} END{sub(/ +$$/, "", name); print name}')
+IOS_SIM      = platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
 UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
@@ -65,14 +65,13 @@ build: ## Compile-check the package and both apps, on all three destinations
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(MAC_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
 
 .PHONY: coverage
-coverage: ## Run the coverage gate locally — CI's verdict on five of the six values
+coverage: ## Run required suites once, merge raw coverage and enforce the CI ratchets
 	@# **This exists so a falling row is found here rather than twenty minutes later.** The gate is a
 	@# plain ratchet with no slack against the last `main` run, so any change that adds code can push
 	@# a row under it — and every time that has been discovered from a red pull request instead of
 	@# from here, the cost was a full CI round trip to learn a number that was already computable.
 	@#
-	@# It runs the same script CI runs and hands the result to the same predicates. **Five of the six
-	@# values are therefore the verdict; `All tests` lines is not.** Measured on 25 August 2026 on a
+	@# It runs the same collectors, aggregator and predicates as CI. Measured on 25 August 2026 on a
 	@# clean tree: it reads 12 lines below what the runner published for the same commit, because
 	@# `all` merges the profiles of two app-hosted suites whose hosts start a real server and a real
 	@# browser, and how far those get differs per machine. Read a fall in that one row against a
@@ -80,16 +79,36 @@ coverage: ## Run the coverage gate locally — CI's verdict on five of the six v
 	@# stable across the difference. The `swift-testing` skill's coverage reference has the per-file
 	@# measurement.
 	@#
-	@# **It is not fast** — three passes, one of which builds the iOS app and boots a simulator, and
-	@# one of which renders the Mac's panes. Several minutes. That is the price of the answer, and it
-	@# is a fraction of the round trip it replaces.
+	@# iOS shards execute in separate processes, sequentially on the local simulator. CI assigns each
+	@# its own runner. The Mac verdict stays mandatory; this machine's documented rendering mismatch
+	@# blocks the local command instead of silently accepting a failed snapshot pass.
 	@#
 	@# A red run prints which rows fell and by how much. **Which FILES moved is the next question and
 	@# this does not answer it** — for that, read build/coverage/{unit,snapshot,all}.json, which this
 	@# leaves behind. A row that falls is read, never estimated: this repository has three recorded
 	@# instances of algebra reaching the wrong conclusion about which file moved a number.
 	Scripts/fetch-coverage-baseline.sh
-	.github/scripts/measure-coverage.sh
+	$(MAKE) coverage-unit coverage-ios-build coverage-ios-enumerate coverage-ios-plan
+	$(MAKE) coverage-ios-shard SHARD=0
+	$(MAKE) coverage-ios-shard SHARD=1
+	$(MAKE) coverage-mac
+	$(MAKE) coverage-report
+
+.PHONY: coverage-unit coverage-ios coverage-mac coverage-report coverage-legacy
+coverage-unit: ## Run required package tests with fresh coverage counters
+	bash .github/scripts/collect-coverage.sh unit
+
+coverage-ios: ## Run required iOS snapshots with fresh coverage counters
+	bash .github/scripts/collect-coverage.sh ios
+
+coverage-mac: ## Run required macOS snapshots with fresh coverage counters
+	bash .github/scripts/collect-coverage.sh mac
+
+coverage-legacy: ## Measure the retained path for equivalence comparisons
+	bash .github/scripts/measure-coverage-legacy.sh
+
+coverage-report: ## Merge suite profiles and enforce the existing ratchets
+	bash .github/scripts/measure-coverage.sh
 	python3 .github/scripts/coverage.py render \
 		--current build/coverage/summary.json \
 		--baseline .coverage-baseline/summary.json \
@@ -101,6 +120,51 @@ coverage: ## Run the coverage gate locally — CI's verdict on five of the six v
 .PHONY: coverage-baseline
 coverage-baseline: ## Re-fetch main's coverage numbers, discarding the cached copy
 	Scripts/fetch-coverage-baseline.sh --force
+
+.PHONY: coverage-tests
+coverage-tests: ## Verify coverage collection and gate arithmetic
+	python3 -m venv .venv-coverage
+	.venv-coverage/bin/pip install --quiet pytest
+	.venv-coverage/bin/python -m pytest .github/scripts -q
+
+.PHONY: coverage-inventory
+coverage-inventory: ## Extract case identities and durations from RESULT_BUNDLE
+	xcrun xcresulttool get test-results tests --path '$(RESULT_BUNDLE)' > build/coverage-test-inventory.json
+
+.PHONY: coverage-ios-enumerate
+coverage-ios-enumerate: ## Enumerate compiled iOS snapshot tests without running them
+	rm -f build/ios-test-plan.json
+	xcodebuild test-without-building -xctestrun '$(or $(TEST_RUN),$(firstword $(wildcard build/derived/ios/Build/Products/*.xctestrun)))' -destination '$(IOS_SIM)' \
+		-only-testing:GranitaMobileSnapshotTests -enumerate-tests \
+		-test-enumeration-style flat -test-enumeration-format json \
+		-test-enumeration-output-path build/ios-test-plan.json
+
+.PHONY: coverage-ios-plan coverage-ios-shard
+coverage-ios-plan: ## Balance the enumerated iOS suites across two isolated processes
+	python3 .github/scripts/snapshot_shards.py plan build/ios-test-plan.json \
+		.github/ios-snapshot-durations.json build/ios-shards 2
+
+coverage-ios-shard: ## Execute the selected SHARD of the iOS suite without rebuilding
+	bash .github/scripts/collect-coverage.sh ios-$(SHARD)
+
+.PHONY: coverage-ios-build
+coverage-ios-build: ## Build instrumented iOS test products once for isolated executions
+	bash .github/scripts/ios-test-products.sh begin
+	xcodebuild build-for-testing -project $(PROJECT) -scheme GranitaMobile \
+		-destination '$(IOS_GENERIC)' -derivedDataPath build/derived/ios \
+		-clonedSourcePackagesDirPath SourcePackages -enableCodeCoverage YES \
+		ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO
+
+.PHONY: coverage-ios-pack coverage-ios-restore
+coverage-ios-pack: ## Archive instrumented iOS products without stale counters
+	bash .github/scripts/ios-test-products.sh pack
+
+coverage-ios-restore: ## Restore products from this revision, run attempt and toolchain
+	bash .github/scripts/ios-test-products.sh restore
+
+.PHONY: coverage-duplicate-check
+coverage-duplicate-check: ## Prove duplicate shard mappings do not alter the merged export
+	bash .github/scripts/compare-ios-mappings.sh
 
 .PHONY: run
 run: ## Run the backend in a terminal, no Xcode in the loop — `make run ARGS="--pair"`
