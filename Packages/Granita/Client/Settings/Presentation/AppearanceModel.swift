@@ -110,6 +110,11 @@ public final class AppearanceModel {
         )
     }
 
+    public var activeCodeSize: CodeSizeReadout.Half {
+        let readout = codeSizeReadout
+        return isSideBySide ? readout.split : readout.unified
+    }
+
     /// Both halves at once, because the screen that sets them holds both and a write per half would
     /// let a crash between the two leave a reader with one setting from each of two decisions.
     public func choose(_ size: CodeSize) {

@@ -8,7 +8,7 @@ The reader uses the local repository and the server's review document for This M
 remote connections, and has native words pairing, a persistent sidebar, a trailing inspector and
 View commands. The product keeps the server's bundle identifier and restores the phone target to
 iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone/iPad snapshot
-shards pass without changing their baselines; the required pinned TLS pass remains pending.
+shards and the pinned TLS connection tests pass without changing their baselines.
 Seventeen Mac snapshot subjects are declared; their runner baselines still have to be adopted. Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
 closing, code-size changes and code-colour changes pass. CI initially measured a 640×532 content

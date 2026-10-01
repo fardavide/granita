@@ -3,14 +3,26 @@ import SwiftUI
 import ClientConnectionDomain
 import ClientConnectionUi
 
-struct MacWordsPairingSheet: View {
-    @Bindable var model: ClientConnectionModel
-    let server: DiscoveredServer
-    let device: PairingDevice
-    let onPaired: (PairedMac) -> Void
+public struct MacWordsPairingScreen: View {
+    @Bindable private var model: ClientConnectionModel
+    private let server: DiscoveredServer
+    private let device: PairingDevice
+    private let onPaired: (PairedMac) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    public init(
+        model: ClientConnectionModel,
+        server: DiscoveredServer,
+        device: PairingDevice,
+        onPaired: @escaping (PairedMac) -> Void
+    ) {
+        self.model = model
+        self.server = server
+        self.device = device
+        self.onPaired = onPaired
+    }
+
+    public var body: some View {
         VStack {
             HStack {
                 Text("Pair with \(server.name)").font(.headline)

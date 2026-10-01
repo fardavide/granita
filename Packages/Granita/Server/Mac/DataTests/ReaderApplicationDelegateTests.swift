@@ -50,14 +50,45 @@ struct ReaderApplicationDelegateTests {
         #expect(shouldHandle == false)
     }
 
+    @Test
+    func `given the default delegate when reopening then a reader request is published on the default center`() {
+        // given
+        let scenario = Scenario(usingDefaultNotifications: true)
+        let requests = Mutex(0)
+        let observation = scenario.notifications.addObserver(
+            forName: ReaderApplicationDelegate.readerRequested,
+            object: nil,
+            queue: nil
+        ) { _ in
+            requests.withLock { $0 += 1 }
+        }
+        defer { scenario.notifications.removeObserver(observation) }
+
+        // when
+        let shouldHandle = scenario.sut.applicationShouldHandleReopen(
+            NSApplication.shared,
+            hasVisibleWindows: false
+        )
+
+        // then
+        #expect(requests.withLock { $0 } == 1)
+        #expect(shouldHandle == false)
+    }
+
     @MainActor
     private struct Scenario {
 
         let sut: ReaderApplicationDelegate
-        let notifications = NotificationCenter()
+        let notifications: NotificationCenter
 
-        init() {
-            sut = ReaderApplicationDelegate(notificationCenter: notifications)
+        init(usingDefaultNotifications: Bool = false) {
+            if usingDefaultNotifications {
+                notifications = .default
+                sut = ReaderApplicationDelegate()
+            } else {
+                notifications = NotificationCenter()
+                sut = ReaderApplicationDelegate(notificationCenter: notifications)
+            }
         }
     }
 }

@@ -98,3 +98,10 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   remain wrong. They are not adopted. The reader-only host now pins SwiftUI's colour scheme, drains
   the fixture transaction and captures under the view's effective drawing appearance. CI must
   verify that correction. Local UI tests remain stopped.
+- Both iOS shards and the pinned TLS connection tests pass in the second CI run. Coverage refuses
+  aggregation while the Mac snapshot suite is red, as required. Per-file unit exports identify
+  rendered menu controls and the pairing composition in the host-only row: commands now wire a
+  stateless Ui menu from the application root, and the pairing composition uses the existing
+  Screen convention. Neither coverage predicate is changed. CI-only captures cover menu size
+  bounds, inspector availability, pairing entry/refusal states and source composition; their
+  twenty-two references are explicit placeholders until runner renders are reviewed and adopted.

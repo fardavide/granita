@@ -47,7 +47,7 @@ public struct MacSourceScreen<Content: View>: View {
             beginPairing
         )
         .sheet(item: $pairingServer) { server in
-            MacWordsPairingSheet(model: model, server: server, device: device) { mac in
+            MacWordsPairingScreen(model: model, server: server, device: device) { mac in
                 source = .remote(DiscoveredServer(id: mac.instance, name: mac.name))
                 pairingServer = nil
             }

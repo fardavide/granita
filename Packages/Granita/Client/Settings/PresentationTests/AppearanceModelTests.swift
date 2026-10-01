@@ -121,6 +121,23 @@ struct AppearanceModelTests {
     // MARK: - The code's size
 
     @Test(arguments: [false, true])
+    func `given different code sizes when the active readout is requested then it follows the selected layout`(
+        _ isSideBySide: Bool
+    ) {
+        // given
+        let scenario = Scenario(isSideBySide: isSideBySide)
+        scenario.sut.note(windowWidth: 1_194, fitsSelectorColumn: true, textSize: .default)
+        scenario.sut.choose(CodeSize(unified: .custom(15), split: .custom(10)))
+
+        // when
+        let active = scenario.sut.activeCodeSize
+
+        // then
+        #expect(active.choice == .custom(isSideBySide ? 10 : 15))
+        #expect(active.pointSize == (isSideBySide ? 10 : 15))
+    }
+
+    @Test(arguments: [false, true])
     func `given a custom active code size when restoring then only that preference follows the system and is stored`(
         _ isSideBySide: Bool
     ) {

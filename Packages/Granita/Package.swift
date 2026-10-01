@@ -481,7 +481,7 @@ let package = Package(
         ),
         .target(
             name: "ClientSettingsUi",
-            dependencies: ["ClientSettingsDomain", "ClientViewerDomain", "CoreReviewDomain"],
+            dependencies: ["ClientSettingsDomain", "ClientViewerDomain", "CoreReviewDomain", "CoreComponentsUi"],
             path: "Client/Settings/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -965,6 +965,7 @@ let package = Package(
                 "ClientConnectionUi",
                 "ClientSettingsData",
                 "ClientSettingsPresentation",
+                "ClientSettingsUi",
                 "ClientWorktreesData",
                 "ClientWorktreesPresentation",
                 "ClientViewerData",
