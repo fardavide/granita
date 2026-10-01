@@ -11,14 +11,17 @@ iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone
 shards and the pinned TLS connection tests pass without changing their baselines.
 Mac snapshots cover source choice, local reader states, View commands and nineteen pairing states.
 All new Mac baseline renders have been reviewed and adopted from the runner; the final comparison
-passes all 29 tests in 17 suites. The complete PR run passes all tests and both Unit and All
-coverage rows, but the Snapshot ratchets fail at 98.9% lines and 97.3% regions. Added Mac render
+passes all 30 tests in 18 suites. The complete PR run passes all tests and both Unit and All
+coverage rows, plus Snapshot lines at 99.4%; Snapshot regions remain below main at 2201/2249.
+Added Mac render
 subjects cover remote Review settings, viewer refusals and comment composition, remote reading
 while the local host is blocked, the real pairing sheet and log-copy feedback. Their 38 new
 references are all visually reviewed runner renders. CI exposed a crop error when photographing
 an attached sheet; requesting that window's complete frame fixes it. The remembered-source
-fixture uses Bonjour's actual name contract. Its assertions and the first 31 comparisons pass;
-the seven final references now await comparison and the complete coverage verdict. No local Mac
+fixture uses Bonjour's actual name contract. All 38 comparisons pass. The export locates the
+unrendered Mac refresh indicator; one additional subject parks a real automatic refresh, requires
+the five readable entries to remain in place, and captures the complete owned window including
+its native toolbar. Its two temporary references await CI capture and review. No local Mac
 rendering runs.
 Complete CI and coverage verdicts are recorded on
 [PR #121](https://github.com/fardavide/granita/pull/121). Native

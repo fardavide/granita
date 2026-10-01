@@ -173,3 +173,12 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   temporary references differ. Their full comment, editing, pairing and log-copy surfaces are
   visually reviewed and adopted byte-for-byte from the runner. All 38 new references are now
   reviewed; the final comparison and all coverage ratchets await the next complete PR run.
+- The [complete comparison](https://github.com/fardavide/granita/actions/runs/36937505758)
+  passes all builds, generated files, package tests, both iOS shards, pinned TLS, and all 30 Mac
+  tests in 18 suites. Unit and All coverage and Snapshot lines pass. Snapshot regions are
+  2201/2249 (97.865718%), below main's 2073/2117 (97.921587%) under the unchanged gate. The fresh
+  export identifies the unrendered Mac refresh indicator. One new light/dark subject retains
+  five ready entries while an automatic change-set read is parked, requires the spinner state,
+  and cancels/awaits that read after capture. The owned window is captured in full so its native
+  toolbar can be reviewed. Two opposite-appearance temporary references ensure CI supplies actual
+  renders; all 38 preceding references remain unchanged. Production code and gates are unchanged.

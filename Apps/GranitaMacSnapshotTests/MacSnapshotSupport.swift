@@ -99,6 +99,7 @@ func assertReaderSnapshot(
     named name: String,
     size: CGSize = CGSize(width: 1260, height: 800),
     capturesPresentedSheet: Bool = false,
+    capturesWholeWindow: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -143,7 +144,7 @@ func assertReaderSnapshot(
     } else {
         window = parentWindow
         capturedView = hosted
-        capturedSize = size
+        capturedSize = capturesWholeWindow ? window.frame.size : size
     }
     // Vibrant controls are composed by WindowServer, so cacheDisplay loses their foregrounds.
     // Enumerate only this process's content, without requesting screen-recording permission.
@@ -162,7 +163,7 @@ func assertReaderSnapshot(
     configuration.includeChildWindows = false
     configuration.ignoreShadowsSingleWindow = true
     configuration.colorSpaceName = CGColorSpace.sRGB
-    if !capturesPresentedSheet {
+    if !capturesPresentedSheet && !capturesWholeWindow {
         let contentRect = capturedView.convert(capturedView.bounds, to: nil)
         configuration.sourceRect = CGRect(
             x: contentRect.minX,

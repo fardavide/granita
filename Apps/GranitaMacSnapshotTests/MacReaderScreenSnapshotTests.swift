@@ -32,9 +32,15 @@ struct MacReaderScreenSnapshotTests {
             scenario.view,
             appearance: appearance,
             named: subject.rawValue,
-            capturesPresentedSheet: subject == .composer || subject == .editingComment
+            capturesPresentedSheet: subject == .composer || subject == .editingComment,
+            capturesWholeWindow: subject == .refreshing
         ) {
             loading = try await scenario.prepare(appearance: appearance)
+        }
+        if subject == .refreshing {
+            loading?.cancel()
+            await loading?.value
+            #expect(scenario.viewer.isRefreshing == false)
         }
     }
 
@@ -46,6 +52,7 @@ struct MacReaderScreenSnapshotTests {
         case blocked = "local-blocked-by-another-process"
         case blockedMissingHolder = "local-blocked-with-no-process-name"
         case slowRead = "local-reading-for-47-seconds"
+        case refreshing = "local-file-list-refreshing-with-the-diff-still-readable"
         case tree = "inspector-tree-with-a-closed-folder"
         case flat = "inspector-flat-three-files"
         case review = "inspector-review-two-comments"
@@ -86,7 +93,7 @@ struct MacReaderScreenSnapshotTests {
                 selection = .chosen(WorktreeID(rawValue: "w-no-longer-listed"), name: "Remembered source-menu review")
             case .hostFailed, .tree, .flat, .review, .emptyReview, .cleanWorktreeReview,
                  .diffReadFailed, .diffGone, .batchReadFailed, .composer, .editingComment,
-                 .remoteWhileLocalBlocked, .nothingChanged:
+                 .remoteWhileLocalBlocked, .refreshing, .nothingChanged:
                 worktrees = Array(aBusyMac.prefix(3))
                 selection = .chosen(WorktreeID(rawValue: "w-tls"), name: "TLS pinning")
             }
@@ -95,7 +102,8 @@ struct MacReaderScreenSnapshotTests {
                 case .flat: Array(Self.diffs.prefix(3))
                 case .noProjects, .noWorktreeChosen, .gone, .hostFailed, .blocked, .blockedMissingHolder,
                      .slowRead, .tree, .review, .emptyReview, .diffReadFailed, .diffGone,
-                     .batchReadFailed, .composer, .editingComment, .remoteWhileLocalBlocked: Self.diffs
+                     .batchReadFailed, .composer, .editingComment, .remoteWhileLocalBlocked,
+                     .refreshing: Self.diffs
             }
             let repository = FakeMacReaderRepository(
                 worktrees: worktrees,
@@ -136,7 +144,8 @@ struct MacReaderScreenSnapshotTests {
                 announcing: FakeMacDiffReadAnnouncing(),
                 onViewedCountChanged: { _, _ in },
                 longWait: DiffFileWait.longWait,
-                loadReviewsAtStart: true
+                loadReviewsAtStart: true,
+                refreshAnnouncementDelay: subject == .refreshing ? .zero : UnaskedForRefresh.announcementDelay
             )
         }
 
@@ -172,6 +181,29 @@ struct MacReaderScreenSnapshotTests {
                 at: 12
             )
             switch subject {
+            case .refreshing:
+                let retainedState = viewer.state
+                let readableEntries = switch retainedState {
+                case .reading(let entries): entries
+                case .loading, .nothingChanged, .failed: []
+                }
+                try #require(readableEntries.count == 5)
+                #expect(readableEntries.allSatisfy(\.isReady))
+                repository.suspendChangesReads()
+                let refresh = Task { await viewer.load() }
+                do {
+                    for _ in 0..<100 {
+                        if viewer.isRefreshing { break }
+                        try await Task.sleep(for: .milliseconds(2))
+                    }
+                    try #require(viewer.isRefreshing)
+                    #expect(viewer.state == retainedState)
+                    return refresh
+                } catch {
+                    refresh.cancel()
+                    await refresh.value
+                    throw error
+                }
             case .tree:
                 viewer.toggle("Core/Runtime")
                 #expect(viewer.selector.mode == .tree)
@@ -290,7 +322,7 @@ struct MacReaderScreenSnapshotTests {
             case .blockedMissingHolder: .blockedByAnotherProcess(nil)
             case .noProjects, .noWorktreeChosen, .gone, .slowRead, .tree, .flat, .review,
                  .emptyReview, .cleanWorktreeReview, .diffReadFailed, .diffGone, .batchReadFailed,
-                 .composer, .editingComment, .nothingChanged:
+                 .composer, .editingComment, .refreshing, .nothingChanged:
                 .running(ServerEndpoint(host: "this-mac.local", port: 59_144))
             }
         }

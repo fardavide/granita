@@ -12,6 +12,7 @@ final class FakeMacReaderRepository: GranitaRepository {
     let changesFailure: ApiFailure?
     let diffFailure: ApiFailure?
     private let clock = Mutex(Date(timeIntervalSince1970: 1_800_000_000))
+    private let changesReadsSuspended = Mutex(false)
 
     init(
         worktrees: [Worktree],
@@ -28,6 +29,10 @@ final class FakeMacReaderRepository: GranitaRepository {
     }
 
     var now: Date { clock.withLock { $0 } }
+
+    func suspendChangesReads() {
+        changesReadsSuspended.withLock { $0 = true }
+    }
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
 
@@ -55,6 +60,14 @@ final class FakeMacReaderRepository: GranitaRepository {
 
     func changes(in worktree: WorktreeID) async throws(ApiFailure) -> WorktreeChanges {
         if let changesFailure { throw changesFailure }
+        if changesReadsSuspended.withLock({ $0 }) {
+            // Suspend without keeping the cooperative pool runnable; cancellation ends the fixture.
+            do {
+                try await Task.sleep(for: .seconds(3_600))
+            } catch {
+                throw .cancelled
+            }
+        }
         return WorktreeChanges(
             revision: "reader-snapshot",
             stats: ChangeStats(filesChanged: fileDiffs.count, insertions: fileDiffs.count, deletions: fileDiffs.count),
