@@ -78,7 +78,7 @@ struct MacSourceScreenSnapshotTests {
                 device: PairingDevice(name: "Davide's MacBook Pro", platform: "macOS"),
                 source: .constant(subject == .remembered ? .remote(server) : .thisMac)
             ) { menu, pair in
-                content(menu, onPair: pair)
+                self.content(menu, onPair: pair)
             }
         }
 
