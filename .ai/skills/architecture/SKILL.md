@@ -42,7 +42,7 @@ break the name-equals-path property that makes the tree readable.
 |---|---|---|
 | `Domain` | other `Domain` targets, Foundation | any framework, any I/O |
 | `Data` | `Domain` targets, plus at most **one** external infra dependency | another feature's `Data` |
-| `Ui` | `Domain` for the model types it renders, SwiftUI | any `Presentation`, any `Data` |
+| `Ui` | `Domain` for the model types it renders, SwiftUI, `CoreComponentsUi` | any `Presentation`, any `Data`, any other `Ui` |
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
 | `Main` | anything — a composition root mixes layers on purpose | being depended on by anything |
 
@@ -50,6 +50,10 @@ break the name-equals-path property that makes the tree readable.
 stateless views, each taking what it renders and reporting what happened. A `Presentation` module
 owns the unit's `@Observable` model and composes screens out of those views — it is the outer of the
 two.
+
+`CoreComponentsUi` is the sole shared view dependency. It compiles on both platforms and depends
+only on SwiftUI. Keep feature state and I/O out of it; map domain state at the consuming view's
+boundary. This exception permits no other `Ui`-to-`Ui` dependency.
 
 ## No I/O in a view or a screen — not even one line of it
 

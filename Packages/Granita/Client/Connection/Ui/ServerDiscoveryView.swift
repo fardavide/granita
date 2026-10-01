@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientConnectionDomain
+import CoreComponentsUi
 
 /// The screen the app opens on before it is paired: what Granita can see on this network.
 ///
@@ -58,93 +59,58 @@ public struct ServerDiscoveryView: View {
     /// the progress indicator, and arriving at a *static* symbol is what says searching stopped —
     /// which is the only thing distinguishing this screen from the one below it at a glance.
     private var searching: some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("Looking for your Mac", systemImage: "antenna.radiowaves.left.and.right")
                 .symbolEffect(.variableColor.iterative)
-                .emptyStateTitle()
         } description: {
             // Permission leads, because on a cold first launch the system's local-network alert
             // appears over this screen and this is the sentence that has to earn the tap on Allow.
             Text("Granita needs permission to look on this network, and has to be running on a Mac that is on it.")
-                .emptyStateDescription()
         }
     }
 
     private var nothingFound: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("No Mac found", systemImage: "laptopcomputer.slash")
-                .emptyStateTitle()
         } description: {
             Text("Check that Granita is running on your Mac, and that both are on the same network.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             // A reader who plugged the Mac in after the browse went quiet otherwise has one
             // recourse, which is to kill the app.
             Button("Search Again", action: onSearchAgain)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
 
     private var permissionRefused: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Local network access is off", systemImage: "wifi.exclamationmark")
-                .emptyStateTitle()
         } description: {
             Text("Allow Local Network access in Settings so Granita can find your Mac.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Open Settings", action: onOpenSettings)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
 
     private var failed: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Could not search", systemImage: "exclamationmark.triangle")
-                .emptyStateTitle()
         } description: {
             Text("Try searching again. If it still fails, check Local Network access in Settings.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Try Again", action: onSearchAgain)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
     }
 
-    private var copyLogs: some View {
-        VStack(spacing: 8) {
-            Button(action: onCopyLogs) {
-                switch logCopyState {
-                case .ready: Text("Copy Logs")
-                case .copying: Text("Copying Logs…")
-                case .copied: Text("Copy Logs Again")
-                case .failed: Text("Try Copying Again")
-                }
-            }
-            .buttonStyle(.borderless)
-            .controlSize(.large)
-            .disabled(logCopyState == .copying)
-
-            switch logCopyState {
-            case .ready, .copying:
-                EmptyView()
-            case .copied:
-                Text("Logs copied. Paste them into your message.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            case .failed:
-                Text("Couldn’t copy logs. Please try again.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+    private var reportState: ErrorReportAction.State {
+        switch logCopyState {
+        case .ready: .ready
+        case .copying: .copying
+        case .copied: .copied
+        case .failed: .failed
         }
-        .multilineTextAlignment(.center)
     }
 
     private func list(of servers: [DiscoveredServer]) -> some View {

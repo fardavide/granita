@@ -1,5 +1,6 @@
 import CoreBrandingDomain
 import ServerApiDomain
+import CoreComponentsUi
 import SwiftUI
 
 /// The last fifty attempts to reach this Mac, newest first.
@@ -30,12 +31,10 @@ public struct ConnectionLogView: View {
         if attempts.isEmpty {
             // Kept verbatim, and the design review is explicit about why: it tells you the panel is
             // working while it is showing you nothing.
-            ContentUnavailableView {
+            EmptyState {
                 Label("Nothing has tried to connect", systemImage: "point.3.connected.trianglepath.dotted")
-                    .emptyStateTitle()
             } description: {
                 Text("Every device that reaches this Mac appears here, whether or not it gets in.")
-                    .emptyStateDescription()
             }
         } else {
             VStack(spacing: 0) {

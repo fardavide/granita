@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientConnectionDomain
 import ClientViewerDomain
+import CoreComponentsUi
 import CoreDiffDomain
 import CoreReviewDomain
 
@@ -424,61 +425,34 @@ public struct ContinuousDiffView: View {
     }
 
     private var failed: some View {
-        ContentUnavailableView {
+        ErrorState(logCopyState: reportState, onCopyLogs: onCopyLogs) {
             Label("Could not read this worktree", systemImage: "exclamationmark.triangle")
-                .emptyStateTitle()
         } description: {
             Text("Try again. If it still fails, check that Granita is running on your Mac.")
-                .emptyStateDescription()
-        } actions: {
+        } actions: { copyLogs in
             Button("Try Again", action: onRetry)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
             copyLogs
         }
         .animation(reduceMotion ? nil : .default, value: logCopyState)
     }
 
-    private var copyLogs: some View {
-        VStack(spacing: 8) {
-            Button(action: onCopyLogs) {
-                switch logCopyState {
-                case .ready: Text("Copy Logs")
-                case .copying: Text("Copying Logs…")
-                case .copied: Text("Copy Logs Again")
-                case .failed: Text("Try Copying Again")
-                }
-            }
-            .buttonStyle(.borderless)
-            .controlSize(.large)
-            .disabled(logCopyState == .copying)
-
-            switch logCopyState {
-            case .ready, .copying:
-                EmptyView()
-            case .copied:
-                Text("Logs copied. Paste them into your message.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            case .failed:
-                Text("Couldn’t copy logs. Please try again.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+    private var reportState: ErrorReportAction.State {
+        switch logCopyState {
+        case .ready: .ready
+        case .copying: .copying
+        case .copied: .copied
+        case .failed: .failed
         }
-        .multilineTextAlignment(.center)
     }
 
     /// **No action, and that is the design rather than an omission.** A reader reaches this by
     /// choosing *Show them anyway* in the sidebar and then opening a worktree they were told was
     /// clean, so the screen owes them a confirmation rather than something to press.
     private var nothingChanged: some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("Nothing to review", systemImage: "checkmark.circle")
-                .emptyStateTitle()
         } description: {
             Text("This worktree has no uncommitted changes.")
-                .emptyStateDescription()
         }
     }
 }

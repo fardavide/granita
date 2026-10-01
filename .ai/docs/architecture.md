@@ -65,7 +65,7 @@ The layer rules are declared once, in the package manifest, and enforced by the 
 |---|---|---|
 | `Domain` | other `Domain` targets, Foundation | frameworks, I/O |
 | `Data` | `Domain` targets, plus at most **one** external infra dependency | another `Data`'s internals |
-| `Ui` | `Domain` for the model types it renders, SwiftUI | any `Presentation`, any `Data` |
+| `Ui` | `Domain` for the model types it renders, SwiftUI, `CoreComponentsUi` | any `Presentation`, any `Data`, any other `Ui` |
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
 | `Main` | anything — it is a composition root | being depended on by anything |
 
@@ -83,6 +83,11 @@ test target because there is nothing in one a test would want to reach.
 This is the whole boundary system. A domain module cannot reach a network client because it does not
 declare it, so a violation is a compile error rather than a review comment. When a rule feels
 obstructive, that is the rule working: the fix is to move the logic, not to add the edge.
+
+The shared component module is the one permitted `Ui`-to-`Ui` edge. It depends only on SwiftUI,
+compiles on both platforms, and owns the empty-state hierarchy and error-report action. Feature
+views still choose their sentences, safe recovery and diagnostic placement. Domain copy states are
+mapped to rendering states at that boundary; neither Domain nor the components import one another.
 
 The three composition roots — the phone's, the menu bar app's, and the executable's — may mix
 layers, because wiring implementations into protocols is their entire job. They are the only modules

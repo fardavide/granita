@@ -1,6 +1,7 @@
 import SwiftUI
 
 import ClientConnectionDomain
+import CoreComponentsUi
 
 /// Where a Mac's row leads, and the only screen in this flow that is about the other machine.
 ///
@@ -53,9 +54,8 @@ public struct PairingEntryView: View {
             // The unavailable-content view takes the flexible space, which puts the instruction in
             // the middle of the screen and leaves the two credentials sitting on the bottom edge —
             // the shape the frame draws, in the same idiom as every other empty state in the app.
-            ContentUnavailableView {
+            EmptyState {
                 Label("Pair with this Mac", systemImage: "macbook.and.iphone")
-                    .emptyStateTitle()
             } description: {
                 Text(
                     """
@@ -63,7 +63,6 @@ public struct PairingEntryView: View {
                     It shows a QR code and six words. Either one pairs this iPhone.
                     """
                 )
-                .emptyStateDescription()
             }
 
             Button(action: onScanCode) {

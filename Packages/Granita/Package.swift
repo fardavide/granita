@@ -13,6 +13,7 @@ import PackageDescription
 //   Data          Domain targets, plus at most one external infra dependency.
 //   Ui            SwiftUI views only, over Domain for the model types they render. The INNER of
 //                 the two view layers: it owns no view models and depends on no Presentation.
+//                 CoreComponentsUi is the only shared Ui dependency; it depends on SwiftUI alone.
 //   Presentation  view models, mappers and screen composition, over its feature's Ui and Domain.
 //                 Never a Data target.
 //   Main          a composition root: anything, because wiring implementations into protocols is
@@ -82,7 +83,13 @@ let package = Package(
     ],
     targets: [
 
-        // MARK: - Core — pure logic, compiles for iOS and macOS alike
+        // MARK: - Core — shared across iOS and macOS
+
+        .target(
+            name: "CoreComponentsUi",
+            path: "Core/Components/Ui",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
 
         // Not in the spec's §3 tree. The spec asks for the product name, bundle-identifier prefix,
         // Bonjour service type, URL scheme and Application Support directory to live in "a single
@@ -251,7 +258,7 @@ let package = Package(
             name: "ClientConnectionUi",
             // The word list is contract and lives in `Core`, and the six-word screen needs the one
             // number in it that a screen can be wrong about: how many words a code is made of.
-            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain", "CorePairingDomain"],
+            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain", "CoreComponentsUi", "CorePairingDomain"],
             path: "Client/Connection/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -311,7 +318,7 @@ let package = Package(
         ),
         .target(
             name: "ClientWorktreesUi",
-            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreDiffDomain"],
+            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreComponentsUi", "CoreDiffDomain"],
             path: "Client/Worktrees/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
@@ -370,6 +377,7 @@ let package = Package(
         .target(
             name: "ClientViewerUi",
             dependencies: [
+                "CoreComponentsUi",
                 "ClientViewerDomain",
                 "ClientConnectionDomain",
                 "CoreDiffDomain",
@@ -840,6 +848,7 @@ let package = Package(
         .target(
             name: "ServerMacUi",
             dependencies: [
+                "CoreComponentsUi",
                 "CoreBrandingDomain",
                 // The Devices tab draws a pairing link as a QR, so it names the link.
                 "CorePairingDomain",

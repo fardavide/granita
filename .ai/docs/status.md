@@ -2,6 +2,18 @@
 
 Where the project is. Update this when a slice lands.
 
+**Shared empty and error components are implemented locally for
+[#114](https://github.com/fardavide/granita/issues/114), pending review.** All 25 unavailable-content
+call sites use the shared SwiftUI-only module; the four typography extensions and four report-action
+implementations are removed. Sentences, callbacks, recovery conditions and baselines are unchanged.
+The layer exception is recorded in [0238](decisions/0238-shared-empty-and-error-components.md).
+
+`make test` and `make build` pass. `make coverage` passes all six values against `main` at `10f42a2`:
+Unit 97.5%/95.0%, Snapshot 99.2%/97.9%, All tests 98.1%/95.7%, with 227 uncovered lines.
+Snapshot fidelity is delegated to CI at Davide's request. Local standalone runs were interrupted
+by simulator host termination; the separate Pro Max run produced image differences and was stopped.
+No baselines were changed. The simulator created for this task was removed and its Pro Max shut down.
+
 **Read progress is implemented locally, pending review.** The Mac counts current viewed hashes in
 each served change set and sends an optional count. The phone shows the fraction beside *Files* and
 in the diff toolbar, and under each worktree's age, updates them on a mark, and restores them if the write is refused. Older

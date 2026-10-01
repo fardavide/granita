@@ -85,7 +85,7 @@ There is no single chain. Each layer depends on `Domain` and on nothing else in 
 |---|---|---|
 | `Domain` | other `Domain` only | everything else |
 | `Data` | `Domain` | `Ui`, `Presentation` |
-| `Ui` | `Domain`, SwiftUI | `Presentation`, `Data` |
+| `Ui` | `Domain`, SwiftUI, `CoreComponentsUi` | `Presentation`, `Data`, other `Ui` |
 | `Presentation` | `Ui`, `Domain` | `Data` |
 | `Main` | anything — it is a composition root | — nothing may depend on **it** |
 

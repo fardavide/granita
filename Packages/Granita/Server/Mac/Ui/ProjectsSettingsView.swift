@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+import CoreComponentsUi
 import CoreDiffDomain
 import ServerMacDomain
 
@@ -71,12 +72,10 @@ public struct ProjectsSettingsView: View {
     /// Both verbs, offered once each. This is the state the app spends its first run in, and until
     /// something is switched on the whole product does nothing at all.
     @ViewBuilder private var empty: some View {
-        ContentUnavailableView {
+        EmptyState {
             Label("No projects yet", systemImage: "folder.badge.plus")
-                .emptyStateTitle()
         } description: {
             Text("Nothing on this Mac is visible to your phone until you add a repository here and switch it on.")
-                .emptyStateDescription()
         } actions: {
             HStack(spacing: 10) {
                 Button("Add Repository…", action: onAddRepository)
