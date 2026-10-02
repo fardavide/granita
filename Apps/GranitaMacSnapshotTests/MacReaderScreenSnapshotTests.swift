@@ -188,7 +188,7 @@ struct MacReaderScreenSnapshotTests {
                 case .loading, .nothingChanged, .failed: []
                 }
                 try #require(readableEntries.count == 5)
-                #expect(readableEntries.allSatisfy(\.isReady))
+                #expect(readableEntries.allSatisfy { $0.isReady })
                 repository.suspendChangesReads()
                 let refresh = Task { await viewer.load() }
                 do {
