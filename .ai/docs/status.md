@@ -21,8 +21,9 @@ an attached sheet; requesting that window's complete frame fixes it. The remembe
 fixture uses Bonjour's actual name contract. All 38 comparisons pass. The export locates the
 unrendered Mac refresh indicator; one additional subject parks a real automatic refresh, requires
 the five readable entries to remain in place, and captures the complete owned window including
-its native toolbar. Its two temporary references await CI capture and review. No local Mac
-rendering runs.
+its native toolbar. Both full-window renders are reviewed and adopted: the indicator is visible
+and all five files remain readable. Its assertions and the preceding comparisons pass; the final
+coverage verdict awaits comparison with the committed references. No local Mac rendering runs.
 Complete CI and coverage verdicts are recorded on
 [PR #121](https://github.com/fardavide/granita/pull/121). Native
 startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after

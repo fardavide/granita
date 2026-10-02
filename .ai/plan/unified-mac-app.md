@@ -182,3 +182,9 @@ The foundation and unified product are implemented on `codex/unified-mac-app`; f
   and cancels/awaits that read after capture. The owned window is captured in full so its native
   toolbar can be reviewed. Two opposite-appearance temporary references ensure CI supplies actual
   renders; all 38 preceding references remain unchanged. Production code and gates are unchanged.
+- The [refresh capture](https://github.com/fardavide/granita/actions/runs/36968810568) passes
+  every fixture assertion and every preceding comparison. The full owned-window images show the
+  native activity indicator, the correct title/subtitle and all five readable files. Both new
+  renders are visually reviewed and adopted; no temporary references remain. Final comparison
+  and the complete coverage gate await the next PR run. Fixture compile corrections add an
+  explicit entry-array type and use the established closure predicate inside Swift Testing.
