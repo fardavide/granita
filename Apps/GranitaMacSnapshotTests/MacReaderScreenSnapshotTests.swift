@@ -183,7 +183,7 @@ struct MacReaderScreenSnapshotTests {
             switch subject {
             case .refreshing:
                 let retainedState = viewer.state
-                let readableEntries = switch retainedState {
+                let readableEntries: [ContinuousDiffEntry] = switch retainedState {
                 case .reading(let entries): entries
                 case .loading, .nothingChanged, .failed: []
                 }
