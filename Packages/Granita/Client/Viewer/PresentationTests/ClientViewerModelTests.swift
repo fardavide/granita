@@ -269,6 +269,61 @@ struct ClientViewerModelTests {
 
     // MARK: - Pulling the change set again
 
+    @Test
+    func `given a changed file with the same identity when refreshing then the current reading batch is ready without another appearance callback`() async {
+        // given
+        let files = aChangeSet(of: 12)
+        let scenario = Scenario(files: files, hunksFor: 3)
+        await scenario.sut.load()
+        await scenario.sut.reading(3)
+        let refreshedFile = FileChange(
+            id: files[3].id,
+            path: files[3].path,
+            oldPath: nil,
+            status: .modified,
+            isBinary: false,
+            isSubmodule: false,
+            stats: ChangeStats(filesChanged: 1, insertions: 21, deletions: 4),
+            contentHash: String(repeating: "f", count: 64),
+            estimatedLineCount: 29,
+            isViewed: false,
+            isTruncated: false,
+            language: "swift"
+        )
+        var refreshedFiles = files
+        refreshedFiles[3] = refreshedFile
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "revision-after-the-file-changed",
+            stats: ChangeStats(filesChanged: 12, insertions: 83, deletions: 18),
+            files: refreshedFiles,
+            isTruncated: false
+        ))
+        let expectedDiff = FileDiff(
+            file: refreshedFile,
+            hunks: [aHunk],
+            oldLineCount: 29,
+            newLineCount: 29,
+            isTruncated: false,
+            truncationReason: nil
+        )
+
+        // when
+        await scenario.sut.load(trigger: .pullToRefresh)
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("A successful refresh must keep the changed files on screen.")
+            return
+        }
+        #expect(entries[3].content == .ready(expectedDiff))
+        #expect(await scenario.repository.batchesAskedFor == [
+            Array(scenario.fileIds[3..<8]),
+            Array(scenario.fileIds[3..<8])
+        ])
+        #expect(entries[..<3].allSatisfy { $0.isAwaitingForTests })
+        #expect(entries[8...].allSatisfy { $0.isAwaitingForTests })
+    }
+
     /// **The read the reader performs, and the one thing this screen could not do until now.** A
     /// change set on a phone goes stale the moment the agent lands its next commit, and the only way
     /// to settle that was to leave the worktree and come back.
@@ -318,6 +373,77 @@ struct ClientViewerModelTests {
     }
 
     // MARK: - Which files get fetched, which is SPEC §10's rule being spent
+
+    @Test
+    func `given an awaiting visible file above the last reading position when its content changes then it is fetched without another appearance callback`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 10), hunksFor: 3)
+        await scenario.sut.load()
+        await scenario.sut.reading(6)
+
+        // when
+        await scenario.sut.rereading(3)
+
+        // then
+        #expect(scenario.repository.batchesAskedFor == [
+            Array(scenario.fileIds[6..<10]),
+            Array(scenario.fileIds[3..<6])
+        ])
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let diff) = entries[3].content else {
+            Issue.record("An awaiting visible file must receive its diff when its content changes.")
+            return
+        }
+        #expect(diff.file.id == scenario.fileIds[3])
+        #expect(diff.hunks == [aHunk])
+        #expect(entries[..<3].allSatisfy { $0.isAwaitingForTests })
+    }
+
+    @Test(arguments: [ApiFailure?.none, .some(.gitFailure(message: "index.lock"))])
+    func `given a settled visible file when its content changes then rereading does not fetch another batch`(
+        failure: ApiFailure?
+    ) async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 12), diffFailure: failure)
+        await scenario.sut.load()
+        await scenario.sut.reading(3)
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("The loaded file list must remain on screen after a diff request.")
+            return
+        }
+        if failure != nil {
+            #expect(entries[3].content == .failed(entries[3].file))
+        } else {
+            guard case .ready = entries[3].content else {
+                Issue.record("An answered diff request must make its file ready.")
+                return
+            }
+        }
+
+        // when
+        await scenario.sut.rereading(3)
+
+        // then
+        #expect(scenario.repository.batchesAskedFor == [Array(scenario.fileIds[3..<8])])
+        #expect(scenario.sut.state == .reading(entries))
+    }
+
+    @Test(arguments: [-1, 12])
+    func `given a position outside the file list when rereading is reported then no diff is fetched`(
+        position: Int
+    ) async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 12))
+        await scenario.sut.load()
+        let before = scenario.sut.state
+
+        // when
+        await scenario.sut.rereading(position)
+
+        // then
+        #expect(scenario.repository.batchesAskedFor.isEmpty)
+        #expect(scenario.sut.state == before)
+    }
 
     @Test
     func `given the top of a change set when the reader arrives then five files are asked for at once`() async {

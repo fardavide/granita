@@ -71,6 +71,7 @@ public struct DiffPaneLayout: Hashable, Sendable {
 
     /// The toolbar's bubble-and-count, which is what replaces the capsule at regular width.
     public let showsReviewToggle: Bool
+    public let showsMacInspector: Bool
 
     public init(
         fitsSelectorColumn: Bool,
@@ -97,6 +98,7 @@ public struct DiffPaneLayout: Hashable, Sendable {
         showsReviewToggle = fitsSelectorColumn && (hasComments || isReviewOpen)
         let showsColumn = fitsSelectorColumn && isSelectorColumnOpen && showsReview == false
         showsSelectorColumn = showsColumn
+        showsMacInspector = showsReview || (showsColumn && hasFilesToSelect)
         // **Never both, and never neither while there are files.** The button opens what the column
         // already shows, so offering both is two controls for one job; and withholding both while a
         // width could show the tree would make the fold a one-way door.

@@ -76,7 +76,7 @@ public struct GeneralSettingsView: View {
             } header: {
                 Text("Startup")
             } footer: {
-                Text("Granita has no window and no Dock icon. If it is not running, your phone finds nothing.")
+                Text("Closing Granita's window leaves it serving. If Granita is not running, your phone finds nothing.")
             }
         }
         .formStyle(.grouped)

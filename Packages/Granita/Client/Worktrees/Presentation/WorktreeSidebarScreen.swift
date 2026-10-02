@@ -49,6 +49,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
 
     /// Opens the review's settings, which belong to this Mac and so are reached from this screen.
     private let onOpenSettings: () -> Void
+    private let onOpenProjects: (() -> Void)?
+    @Binding private var selection: WorktreeID?
 
     /// Whether this screen should claim its rows' taps itself.
     ///
@@ -66,6 +68,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         claimsRowTaps: Bool = true,
         onPairAgain: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
+        onOpenProjects: (() -> Void)? = nil,
+        selection: Binding<WorktreeID?> = .constant(nil),
         @ViewBuilder opening: @escaping (WorktreeID, _ displayName: String, _ projectName: String, ClientWorktreesModel) -> Opened
     ) {
         // Pinned in @State rather than held as a plain `let`, for the same reason discovery's screen
@@ -77,6 +81,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         self.opening = opening
         self.onPairAgain = onPairAgain
         self.onOpenSettings = onOpenSettings
+        self.onOpenProjects = onOpenProjects
+        _selection = selection
     }
 
     public var body: some View {
@@ -109,7 +115,9 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 onRefresh: { await model.load(trigger: .pullToRefresh) },
                 onPairAgain: onPairAgain,
                 onCopyLogs: { Task { await model.copyLogs() } },
-                onOpenSettings: onOpenSettings
+                onOpenSettings: onOpenSettings,
+                onOpenProjects: onOpenProjects,
+                selection: $selection
             )
         }
         .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in

@@ -36,6 +36,7 @@ struct ContinuousDiffViewSnapshotTests {
                 jumpTarget: subject.jumpTarget,
                 isWaitingLong: subject.isWaitingLong,
                 onReading: { _ in },
+                onRereading: { _ in },
                 onJumped: {},
                 onSetViewed: { _, _ in },
                 onSetOpen: { _, _ in },

@@ -5,7 +5,17 @@ diffs on their phone, not what changed in the code.
 
 The version lives in one place — `MARKETING_VERSION` in `project.yml` — and every bump carries its
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
-app is built by hand.
+app also runs locally with `make run-mac`.
+
+### 0.22.0 — 2026-10-01
+- **Read on your Mac in one Granita app.** Show Worktrees opens a native reader beside the menu bar
+  app that serves your phone. This Mac reads its own worktrees directly, without discovery or pairing.
+- **Keep the worktree list beside the code.** Files and review share a trailing inspector, and the
+  View menu controls side-by-side reading, code size, colours and refresh.
+- **Close the window and keep serving.** The Dock icon reopens your last source and worktree; closing
+  the reader leaves your phone connected.
+- **Read another Mac with six words.** Choose a remote source and type or paste its pairing words in
+  a native sheet. Local reviews share the same document your phone reads.
 
 ### 0.21.0 — 2026-09-29
 - **See how much of a worktree you have read.** Each worktree shows the fraction of its changed files

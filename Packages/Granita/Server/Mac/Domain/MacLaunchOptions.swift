@@ -1,11 +1,12 @@
 import Foundation
 
+import CoreBrandingDomain
+
 /// What the menu bar app was told on the command line.
 ///
-/// **Both flags exist so that a behavioural test can drive this app without driving the reader's
-/// own document**, and that is the whole justification. Granita has no window until its menu is
-/// opened and no store but the one in Application Support, so a UI test with neither flag would
-/// switch a real repository on, on a real Mac, and leave it that way.
+/// The launch options let behavioural tests use an isolated document, listener and preferences,
+/// and open Settings without relying on a status-item click. Ordinary launches keep the installed
+/// app's document and preferences and leave the reader closed until asked.
 ///
 /// `--store` is spelled exactly as `granita-server` already spells it, and is not gated behind a
 /// debug build. Two reasons: the shipped executable has taken this flag since M2, so a released
@@ -25,6 +26,8 @@ public struct MacLaunchOptions: Hashable, Sendable {
     /// The menu is otherwise the only route in, and a test that has to click a status item is a test
     /// that fails for a reason having nothing to do with what it is asserting.
     public let opensSettingsAtLaunch: Bool
+    public let port: UInt16
+    public let preferencesSuite: String?
 
     public init(_ arguments: some Sequence<String>) {
         let arguments = Array(arguments)
@@ -37,5 +40,7 @@ public struct MacLaunchOptions: Hashable, Sendable {
         }
         storeUrl = value(after: "--store").map { URL(filePath: $0) }
         opensSettingsAtLaunch = arguments.contains("--open-settings")
+        port = value(after: "--port").flatMap(UInt16.init) ?? UInt16(Branding.defaultPort)
+        preferencesSuite = value(after: "--preferences-suite")
     }
 }

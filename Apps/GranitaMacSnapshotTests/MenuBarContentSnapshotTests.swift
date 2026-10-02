@@ -31,7 +31,8 @@ struct MenuBarContentSnapshotTests {
                 onPairDevice: {},
                 onOpenLocalNetworkSettings: {},
                 onOpenSettings: {},
-                onQuit: {}
+                onQuit: {},
+                onShowWorktrees: {}
             ),
             appearance: appearance,
             named: subject.name

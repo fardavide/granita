@@ -258,13 +258,14 @@ let package = Package(
             name: "ClientConnectionUi",
             // The word list is contract and lives in `Core`, and the six-word screen needs the one
             // number in it that a screen can be wrong about: how many words a code is made of.
-            dependencies: ["ClientConnectionDomain", "CoreBrandingDomain", "CoreComponentsUi", "CorePairingDomain"],
+            dependencies: ["ClientConnectionDomain", "ClientMacDomain", "CoreBrandingDomain", "CoreComponentsUi", "CorePairingDomain"],
             path: "Client/Connection/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .target(
             name: "ClientConnectionPresentation",
             dependencies: [
+                "ClientMacDomain",
                 "ClientConnectionUi",
                 "ClientConnectionDomain",
                 "CoreApiDomain",
@@ -279,6 +280,7 @@ let package = Package(
             dependencies: [
                 "ClientConnectionPresentation",
                 "ClientConnectionDomain",
+                "ClientMacDomain",
                 "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CorePairingDomain"
@@ -325,6 +327,8 @@ let package = Package(
         .target(
             name: "ClientWorktreesPresentation",
             dependencies: [
+                "CoreComponentsUi",
+                "ClientMacDomain",
                 "ClientWorktreesUi",
                 "ClientWorktreesDomain",
                 // The repository and its refusals are the connection unit's Domain, and a sibling
@@ -395,6 +399,7 @@ let package = Package(
         .target(
             name: "ClientViewerPresentation",
             dependencies: [
+                "CoreComponentsUi",
                 "ClientViewerUi",
                 "ClientViewerDomain",
                 // The repository and its refusals are the connection unit's Domain, and a sibling
@@ -476,13 +481,14 @@ let package = Package(
         ),
         .target(
             name: "ClientSettingsUi",
-            dependencies: ["ClientSettingsDomain", "ClientViewerDomain", "CoreReviewDomain"],
+            dependencies: ["ClientSettingsDomain", "ClientViewerDomain", "CoreReviewDomain", "CoreComponentsUi"],
             path: "Client/Settings/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),
         .target(
             name: "ClientSettingsPresentation",
             dependencies: [
+                "CoreComponentsUi",
                 "ClientSettingsUi",
                 "ClientSettingsDomain",
                 "ClientViewerDomain",
@@ -802,7 +808,7 @@ let package = Package(
         // and putting it beside the server's run state would make that module mean two things.
         .target(
             name: "ServerMacDomain",
-            dependencies: ["CoreDiffDomain"],
+            dependencies: ["CoreDiffDomain", "CoreBrandingDomain"],
             path: "Server/Mac/Domain",
             swiftSettings: [swift6]
         ),
@@ -898,6 +904,49 @@ let package = Package(
             swiftSettings: [swift6, mainActorByDefault]
         ),
 
+        .target(
+            name: "ClientMacDomain",
+            dependencies: ["ClientConnectionDomain", "CoreDiffDomain", "ClientWorktreesDomain"],
+            path: "Client/Mac/Domain",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ClientMacDomainTests",
+            dependencies: ["ClientMacDomain", "ClientWorktreesDomain", "CoreDiffDomain"],
+            path: "Client/Mac/DomainTests",
+            swiftSettings: [swift6]
+        ),
+        .target(
+            name: "ClientMacPresentation",
+            dependencies: ["ClientMacDomain", "ClientMacUi", "ClientConnectionDomain", "CoreDiffDomain", "ServerApiDomain", "ServerStoreDomain"],
+            path: "Client/Mac/Presentation",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .target(
+            name: "ClientMacUi",
+            dependencies: ["CoreComponentsUi", "ServerStoreDomain"],
+            path: "Client/Mac/Ui",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+        .target(
+            name: "ClientMacData",
+            dependencies: ["ClientMacDomain", "ClientConnectionDomain", "CoreDiffDomain"],
+            path: "Client/Mac/Data",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ClientMacDataTests",
+            dependencies: ["ClientMacData", "ClientMacDomain", "ClientConnectionDomain", "CoreDiffDomain"],
+            path: "Client/Mac/DataTests",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ClientMacPresentationTests",
+            dependencies: ["ClientMacPresentation", "ClientMacDomain", "ClientConnectionDomain", "CoreDiffDomain", "ServerApiDomain"],
+            path: "Client/Mac/PresentationTests",
+            swiftSettings: [swift6, mainActorByDefault]
+        ),
+
         // Composition root for the menu bar app: the only Server library that may see a Data
         // target. It is a `Main` module rather than a `Presentation` one because wiring is not a
         // feature — nothing depends on it and no test constructs it, so a module whose contents are
@@ -907,6 +956,23 @@ let package = Package(
         .target(
             name: "ServerAppMain",
             dependencies: [
+                "ClientMacDomain",
+                "ClientMacData",
+                "ClientMacPresentation",
+                "ClientConnectionDomain",
+                "ClientConnectionData",
+                "ClientConnectionPresentation",
+                "ClientConnectionUi",
+                "ClientSettingsData",
+                "ClientSettingsPresentation",
+                "ClientSettingsUi",
+                "ClientWorktreesData",
+                "ClientWorktreesPresentation",
+                "ClientViewerData",
+                "ClientViewerDomain",
+                "ClientViewerUi",
+                "ClientViewerPresentation",
+                "ServerReaderData",
                 "CoreApiDomain",
                 "CoreBrandingDomain",
                 "CoreDiagnosticsData",

@@ -15,6 +15,8 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// Every push the model made, so a test can assert that saving and offering are separate acts.
     private(set) var pushed: [[ReviewComment]] = []
 
+    private(set) var invocations: [Invocation] = []
+
     /// What the Mac is pretending to hold, which `reconcile` unions into what this phone wrote.
     var onTheMac: [ReviewComment] = []
 
@@ -25,6 +27,8 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// still on its way to the Mac — which is the only moment their order can go wrong.
     var holdsPushes = false
 
+    var holdsReconciliation = false
+
     init(holding comments: [ReviewComment] = []) {
         saved = comments
     }
@@ -32,6 +36,17 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// Lets every held push answer.
     func releasePushes() {
         holdsPushes = false
+    }
+
+    func releaseReconciliation() {
+        holdsReconciliation = false
+    }
+
+    func waitUntilReconciliationStarts() async -> Bool {
+        for _ in 0..<1_000 where invocations.contains(.reconcile) == false {
+            await Task.yield()
+        }
+        return invocations.contains(.reconcile)
     }
 
     /// Returns once `count` pushes have been made, because a change offers the review to the Mac
@@ -58,12 +73,24 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
         while holdsPushes {
             await Task.yield()
         }
+        // Record completion, because starting a push does not make the remote copy authoritative.
+        invocations.append(.push)
         return pushAnswers
     }
 
     func reconcile(in worktree: WorktreeID) async -> [ReviewComment] {
+        invocations.append(.reconcile)
         let anchors = Set(saved.map(\.anchor))
-        saved += onTheMac.filter { anchors.contains($0.anchor) == false }
-        return saved
+        let read = saved + onTheMac.filter { anchors.contains($0.anchor) == false }
+        while holdsReconciliation {
+            await Task.yield()
+        }
+        saved = read
+        return read
+    }
+
+    enum Invocation: Equatable {
+        case push
+        case reconcile
     }
 }

@@ -1,6 +1,14 @@
 import Foundation
 import Observation
 
+import ClientConnectionData
+import ClientConnectionDomain
+import ClientMacData
+import ClientMacPresentation
+import ClientSettingsData
+import ClientSettingsPresentation
+import ClientViewerData
+import ClientViewerUi
 import CoreApiDomain
 import CoreBrandingDomain
 import CoreDiagnosticsData
@@ -15,6 +23,7 @@ import ServerIdentityDomain
 import ServerMacData
 import ServerMacDomain
 import ServerMacPresentation
+import ServerReaderData
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
@@ -32,6 +41,16 @@ import ServerWorktreesDomain
 final class MacComposition {
 
     let model: ServerMacModel
+    let localRepository: LocalGranitaRepository
+    let localReviews: LocalReviewCommentStore
+    let defaults: UserDefaults
+    let readerModel: ClientMacModel
+    let highlighter = HighlightrSyntaxHighlighter()
+    let copyingLogs: CopyDiagnosticLogs
+    let remote: MacRemoteComposition
+    let appearance: AppearanceModel
+    let appIcon = AppIconModel(switcher: SystemAppIconSwitcher())
+    private(set) var readerRequests = 0
 
     /// Bumped when the menu asks for Settings. The window that can actually open it watches this;
     /// see `SettingsOpener` for why it cannot simply be a call.
@@ -41,6 +60,11 @@ final class MacComposition {
     let opensSettingsAtLaunch: Bool
 
     init(launch: MacLaunchOptions) {
+        let defaults = launch.preferencesSuite.flatMap(UserDefaults.init(suiteName:)) ?? .standard
+        self.defaults = defaults
+        readerModel = ClientMacModel(memory: UserDefaultsReaderSelectionMemory(defaults: defaults))
+        appearance = AppearanceModel(preferences: UserDefaultsAppearancePreferences(defaults: defaults))
+        appearance.note(windowWidth: 0, fitsSelectorColumn: true, textSize: .default)
         opensSettingsAtLaunch = launch.opensSettingsAtLaunch
         // The one thing about this app a launch argument may move, and it moves for one reason: a
         // behavioural test drives the real app, and the real app with no seam here would switch a
@@ -55,7 +79,7 @@ final class MacComposition {
         // One instance rather than two, because Advanced's switch and the server that obeys it are
         // the two ends of the same setting. Read per line rather than captured, so moving the
         // switch takes effect on a server that has been running since launch.
-        let verboseLogging = UserDefaultsVerboseLogging(defaults: .standard)
+        let verboseLogging = UserDefaultsVerboseLogging(defaults: defaults)
         let diagnostics = VerbosityFilteringDiagnostics(
             wrapped: OsLogDiagnostics(),
             verbosity: verboseLogging
@@ -96,6 +120,23 @@ final class MacComposition {
             service: service,
             store: store
         )
+        localRepository = LocalGranitaRepository(reader: reader)
+        localReviews = LocalReviewCommentStore(repository: localRepository)
+        let readerLogs = ConnectionLogs(
+            context: ConnectionLogContext(
+                appVersion: Branding.serverVersion,
+                build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown",
+                systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
+                deviceModel: "Mac"
+            ),
+            capacity: 200,
+            now: Date.init
+        )
+        copyingLogs = CopyDiagnosticLogs(
+            report: readerLogs,
+            pasteboard: SystemDiagnosticPasteboard()
+        )
+        remote = MacRemoteComposition(logs: readerLogs, copyingLogs: copyingLogs)
         let dependencies = ApiDependencies(
             reader: reader,
             store: store,
@@ -137,7 +178,7 @@ final class MacComposition {
                         dependencies: dependencies,
                         binding: .hostnameAndBonjour(
                             host: "0.0.0.0",
-                            port: Branding.defaultPort,
+                            port: Int(launch.port),
                             name: MachineName.computer
                         ),
                         // Asked per run, not once here. A rebind after waking has to be able to
@@ -161,7 +202,7 @@ final class MacComposition {
             gestures: AppKitSystemGestures(),
             store: store,
             invitations: PairingInvitations(pairing: pairing, identities: identities),
-            tabMemory: UserDefaultsSettingsTabMemory(defaults: .standard),
+            tabMemory: UserDefaultsSettingsTabMemory(defaults: defaults),
             verboseLogging: verboseLogging,
             dataFolderUrl: storeUrl.deletingLastPathComponent(),
             now: { Date() }
@@ -197,13 +238,17 @@ final class MacComposition {
         settingsRequests += 1
     }
 
+    func requestReader() {
+        readerRequests += 1
+    }
+
     /// The same document the executable reads, so the two cannot disagree about what is enabled.
     ///
     /// Where it lives when nothing said otherwise. `--store` moves it, and Advanced's data-folder
     /// row reads whichever one is actually in use rather than this one.
     ///
-    /// SPEC §9 also wants a lock file beside it, so a standalone `granita-server` and this app
-    /// cannot both hold it. That is not here yet.
+    /// The host holds the adjacent store lock for its lifetime; a refused lock also blocks local
+    /// reader writes, so a standalone executable and this app cannot become two document owners.
     private static var defaultStoreUrl: URL {
         URL(filePath: NSHomeDirectory())
             .appending(path: "Library/Application Support", directoryHint: .isDirectory)

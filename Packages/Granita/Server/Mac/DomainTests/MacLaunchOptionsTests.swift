@@ -5,12 +5,44 @@ import ServerMacDomain
 
 /// What the menu bar app can be told on the command line.
 ///
-/// Two flags, and both exist for the same reason: a behavioural test has to be able to drive this
-/// app without driving the reader's own document. Parsed here rather than in the composition root so
+/// Fixture options let a behavioural test drive this app without changing the reader's document
+/// or preferences. Parsed here rather than in the composition root so
 /// that the parsing is a thing a test can reach — the root is, by construction, the one module no
 /// test constructs.
 @Suite("Mac launch options")
 struct MacLaunchOptionsTests {
+
+    @Test(arguments: [
+        (["--preferences-suite", "granita.tests.reader-selection"], Optional("granita.tests.reader-selection")),
+        (["--preferences-suite", "granita.tests.appearance"], Optional("granita.tests.appearance")),
+        ([], nil),
+        (["--preferences-suite"], nil)
+    ])
+    func `given optional fixture preferences when parsed then only the supplied suite is named`(
+        _ arguments: [String],
+        _ expected: String?
+    ) {
+        // given - when
+        let options = MacLaunchOptions(arguments)
+
+        // then
+        #expect(options.preferencesSuite == expected)
+    }
+
+    @Test(arguments: [
+        (["--port", "0"], UInt16(0)),
+        ([], UInt16(8737))
+    ])
+    func `given an optional listener port when parsed then explicit zero or the ordinary port is preserved`(
+        _ arguments: [String],
+        _ expected: UInt16
+    ) {
+        // given - when
+        let options = MacLaunchOptions(arguments)
+
+        // then
+        #expect(options.port == expected)
+    }
 
     @Test
     func `given no arguments when parsed then nothing is asked for`() {

@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientViewerDomain
 import ClientViewerUi
+import CoreComponentsUi
 import CoreDiffDomain
 
 /// Binds the viewer model to design §4's one continuous scroll and design §3's selector beside it,
@@ -37,6 +38,7 @@ public struct WorktreeDiffScreen: View {
     /// feature's `Presentation` and this target may not see one. Required rather than optional, so
     /// the one failure whose remedy is not a retry cannot ship as a control that does nothing.
     private let onPairAgain: () -> Void
+    private let onBackToWorktrees: (() -> Void)?
 
     /// What *Back to Worktrees* does. The system's own pop rather than a closure, because this
     /// screen is pushed on a stack in both layouts — the phone's spine and, on the iPad, the detail
@@ -84,9 +86,15 @@ public struct WorktreeDiffScreen: View {
     /// press.
     @State private var paneWidth: CGFloat = 0
 
-    public init(worktreeName: String, model: ClientViewerModel, onPairAgain: @escaping () -> Void) {
+    public init(
+        worktreeName: String,
+        model: ClientViewerModel,
+        onPairAgain: @escaping () -> Void,
+        onBackToWorktrees: (() -> Void)? = nil
+    ) {
         self.worktreeName = worktreeName
         self.onPairAgain = onPairAgain
+        self.onBackToWorktrees = onBackToWorktrees
         // Pinned in `@State` rather than held as a plain `let`, the same way every other screen in
         // this app does it and for the reason the iPad's split view proved: a destination closure is
         // re-evaluated, and a plain property would swap the displayed model while the running
@@ -96,6 +104,22 @@ public struct WorktreeDiffScreen: View {
 
     public var body: some View {
         content
+            #if os(macOS)
+            .focusedSceneValue(\.readerDiffRefresh) {
+                Task { await model.load(trigger: .pullToRefresh) }
+            }
+            .focusedSceneValue(\.readerInspector, layout.showsSelectorColumnToggle || layout.showsReviewColumn ? ReaderInspectorAction(
+                isPresented: layout.showsMacInspector,
+                toggle: {
+                    if layout.showsReviewColumn {
+                        model.dismissSheet()
+                        isSelectorColumnOpen = false
+                    } else {
+                        isSelectorColumnOpen.toggle()
+                    }
+                }
+            ) : nil)
+            #endif
             .navigationTitle(worktreeName)
             #if !os(macOS)
             // Inline for the same reason the worktree list's own title is: 34pt bold holds about
@@ -269,6 +293,7 @@ public struct WorktreeDiffScreen: View {
             // is what makes tapping a file *while the list is open* a different tool from a modal
             // that has to be dismissed between every file.
             selector
+                #if !os(macOS)
                 // **The detent is a value the model holds rather than one the sheet keeps to
                 // itself**, because choosing a file has to be able to move it: at `.large` the diff
                 // behind the sheet is not on screen and background interaction is off, so the jump
@@ -280,19 +305,47 @@ public struct WorktreeDiffScreen: View {
                 // means what" inside two closures that no baseline renders and no host test reaches.
                 .presentationDetents([.medium, .large], selection: $model.drawerDetent)
                 .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                #else
+                .frame(minWidth: 300, minHeight: 400)
+                #endif
         case .composer:
             composer
+                #if !os(macOS)
                 // One height, because the keyboard has already decided it. A reader dragging a
                 // composer taller is a reader hiding the code it is about.
                 .presentationDetents([.height(CommentComposerView.detentHeight)])
                 .presentationBackgroundInteraction(.enabled(upThrough: .height(CommentComposerView.detentHeight)))
+                #else
+                .frame(minWidth: 400, minHeight: 360)
+                #endif
         case .review:
             review(.sheet)
+                #if !os(macOS)
                 .presentationDetents([.large])
+                #else
+                .frame(minWidth: 360, minHeight: 400)
+                #endif
         }
     }
 
     @ViewBuilder private var content: some View {
+        #if os(macOS)
+        diff
+            .inspector(isPresented: Binding(
+                get: { layout.showsMacInspector },
+                set: { shown in
+                    isSelectorColumnOpen = shown
+                    if shown == false { model.dismissSheet() }
+                }
+            )) {
+                if layout.showsReviewColumn {
+                    review(.column)
+                } else {
+                    selector
+                }
+            }
+            .inspectorColumnWidth(min: 220, ideal: 240, max: 400)
+        #else
         HStack(spacing: 0) {
             if layout.showsSelectorColumn {
                 selector
@@ -327,6 +380,7 @@ public struct WorktreeDiffScreen: View {
         // it, and the diff's position belongs to this stack.
         .animation(.disclosure, value: layout.showsSelectorColumn)
         .animation(.disclosure, value: layout.showsReviewColumn)
+        #endif
     }
 
     private var diff: some View {
@@ -350,6 +404,7 @@ public struct WorktreeDiffScreen: View {
             acceptsTargeting: model.sheet == nil,
             isWaitingLong: model.isWaitingLong,
             onReading: { position in Task { await model.reading(position) } },
+            onRereading: { position in Task { await model.rereading(position) } },
             onJumped: model.didJump,
             onSetViewed: { isViewed, file in Task { await model.setViewed(isViewed, on: file) } },
             onSetOpen: { isOpen, file in Task { await model.setOpen(isOpen, on: file) } },
@@ -458,7 +513,8 @@ public struct WorktreeDiffScreen: View {
             DiffFailureBar(failure: failure) { remedy in
                 switch remedy {
                 case .tryAgain: Task { await model.retryDiffs() }
-                case .backToWorktrees: dismiss()
+                case .backToWorktrees:
+                    if let onBackToWorktrees { onBackToWorktrees() } else { dismiss() }
                 case .pairAgain: onPairAgain()
                 }
             }
@@ -540,7 +596,13 @@ public struct WorktreeDiffScreen: View {
     @ToolbarContentBuilder private var filesButton: some ToolbarContent {
         if case .reading = model.state, layout.showsFilesButton {
             ToolbarItem(placement: .primaryAction) {
-                Button { model.showSelector(true) } label: {
+                Button {
+                    #if os(macOS)
+                    isSelectorColumnOpen = true
+                    #else
+                    model.showSelector(true)
+                    #endif
+                } label: {
                     Text(model.filesButtonTitle)
                 }
                 .accessibilityLabel("Files, \(model.filesButtonTitle)")
@@ -556,6 +618,16 @@ public struct WorktreeDiffScreen: View {
     /// layout that does not exist is the dead control this project refuses to ship.
     @ToolbarContentBuilder private var selectorColumnToggle: some ToolbarContent {
         if layout.showsSelectorColumnToggle {
+            #if os(macOS)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isSelectorColumnOpen.toggle()
+                } label: {
+                    Image(systemName: "sidebar.trailing")
+                }
+                .accessibilityLabel(isSelectorColumnOpen ? "Hide the file list" : "Show the file list")
+            }
+            #else
             ToolbarItem(placement: .navigation) {
                 Button {
                     isSelectorColumnOpen.toggle()
@@ -564,6 +636,7 @@ public struct WorktreeDiffScreen: View {
                 }
                 .accessibilityLabel(isSelectorColumnOpen ? "Hide the file list" : "Show the file list")
             }
+            #endif
         }
     }
 
@@ -640,7 +713,16 @@ public struct WorktreeDiffScreen: View {
     /// Tail truncation rather than the sidebar's middle, which is design §2's split and not an
     /// inconsistency: a Mac is named at its end and a generated worktree directory is a mnemonic
     /// prefix in front of a ULID, so here the front is the half worth keeping.
-    private var titleWithActivity: some ToolbarContent {
+    @ToolbarContentBuilder private var titleWithActivity: some ToolbarContent {
+        #if os(macOS)
+        if model.isRefreshing {
+            ToolbarItem(placement: .status) {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Reading the file list again")
+            }
+        }
+        #else
         ToolbarItem(placement: .principal) {
             HStack(spacing: 6) {
                 Text(worktreeName)
@@ -654,6 +736,7 @@ public struct WorktreeDiffScreen: View {
                 }
             }
         }
+        #endif
     }
 
     /// The review, at the width where it is a column rather than a sheet.

@@ -110,11 +110,36 @@ public final class AppearanceModel {
         )
     }
 
+    public var activeCodeSize: CodeSizeReadout.Half {
+        let readout = codeSizeReadout
+        return isSideBySide ? readout.split : readout.unified
+    }
+
     /// Both halves at once, because the screen that sets them holds both and a write per half would
     /// let a crash between the two leave a reader with one setting from each of two decisions.
     public func choose(_ size: CodeSize) {
         codeSize = size
         preferences.remember(size)
+    }
+
+    public func adjustCodeSize(by points: CGFloat) {
+        let readout = codeSizeReadout
+        let chosen = CodeSizeChoice.custom(
+            min(CodeSize.largest, max(CodeSize.smallest,
+                (isSideBySide ? readout.split.pointSize : readout.unified.pointSize) + points
+            ))
+        )
+        choose(CodeSize(
+            unified: isSideBySide ? codeSize.unified : chosen,
+            split: isSideBySide ? chosen : codeSize.split
+        ))
+    }
+
+    public func restoreCodeSize() {
+        choose(CodeSize(
+            unified: isSideBySide ? codeSize.unified : .followSystem,
+            split: isSideBySide ? .followSystem : codeSize.split
+        ))
     }
 
     /// What the window is, told by the one view that is the window.

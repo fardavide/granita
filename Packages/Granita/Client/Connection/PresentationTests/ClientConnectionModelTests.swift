@@ -1,6 +1,7 @@
 import Testing
 
 import ClientConnectionDomain
+import ClientMacDomain
 import CorePairingDomain
 
 @testable import ClientConnectionPresentation
@@ -119,6 +120,62 @@ struct ClientConnectionModelTests {
     }
 
     // MARK: - Where a row goes
+
+    @Test(arguments: SourceChoice.allCases)
+    func `given a chosen source when routing it then local and remembered sources read while an unpaired Mac offers pairing`(
+        choice: SourceChoice
+    ) async {
+        // given
+        let scenario = Scenario(discovering: [], remembering: [aMacTheBrowseFound.id])
+        await scenario.sut.start()
+        let source: ReaderSource
+        let expectedReads: [ReaderSource]
+        let expectedPairings: [DiscoveredServer]
+        switch choice {
+        case .thisMac:
+            source = .thisMac
+            expectedReads = [.thisMac]
+            expectedPairings = []
+        case .rememberedRemote:
+            source = .remote(aMacTheBrowseFound)
+            expectedReads = [.remote(aMacTheBrowseFound)]
+            expectedPairings = []
+        case .unpairedRemote:
+            source = .remote(theOtherMacTheBrowseFound)
+            expectedReads = []
+            expectedPairings = [theOtherMacTheBrowseFound]
+        }
+        var reads: [ReaderSource] = []
+        var pairings: [DiscoveredServer] = []
+
+        // when
+        scenario.sut.chooseSource(
+            source,
+            onRead: { reads.append($0) },
+            onPair: { pairings.append($0) }
+        )
+
+        // then
+        #expect(reads == expectedReads)
+        #expect(pairings == expectedPairings)
+    }
+
+    @Test
+    func `given remembered Macs outside discovery when the browse begins then their sorted sources remain available`() async {
+        // given
+        let studio = BonjourInstanceName(rawValue: "Zulu Studio")
+        let mini = BonjourInstanceName(rawValue: "Alpha Mini")
+        let scenario = Scenario(discovering: [], remembering: [studio, mini])
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(scenario.sut.rememberedServers == [
+            DiscoveredServer(id: mini, name: "Alpha Mini"),
+            DiscoveredServer(id: studio, name: "Zulu Studio")
+        ])
+    }
 
     @Test
     func `given a Mac paired with before when the browse finds it then its row opens the worktrees`() async {
@@ -992,6 +1049,12 @@ struct ClientConnectionModelTests {
 }
 
 // MARK: -
+
+nonisolated enum SourceChoice: CaseIterable, Sendable {
+    case thisMac
+    case rememberedRemote
+    case unpairedRemote
+}
 
 private struct Scenario {
 

@@ -52,17 +52,13 @@ project: ## Regenerate Granita.xcodeproj from project.yml
 
 .PHONY: test
 test: ## Run the package test suite — no simulator, no Xcode
-	cd $(PACKAGE) && swift test
+	cd $(PACKAGE) && swift test $(if $(TEST_FILTER),--filter '$(TEST_FILTER)')
 
 .PHONY: build
-build: ## Compile-check the package and both apps, on all three destinations
+build: ## Compile-check the package, unified Mac app and mobile app
 	cd $(PACKAGE) && swift build
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac    -destination '$(MAC_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
 	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
-	@# The Client's third destination. `swift build` above already compiles every Client target for
-	@# macOS — it is the host — so what this adds is the app shell, its assets and its plist, which
-	@# is exactly the half that was riding "Designed for iPad" before issue #73.
-	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -destination '$(MAC_GENERIC)' $(XCODE_QUIET) $(UNSIGNED)
 
 .PHONY: coverage
 coverage: ## Run required suites once, merge raw coverage and enforce the CI ratchets
@@ -180,7 +176,7 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 
 .PHONY: snapshots-ios
 snapshots-ios: ## Render the phone's screens on a simulator
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: tls-tests-ios
 tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy
@@ -212,7 +208,7 @@ ui-tests-mac: ## Drive the Mac app and assert what pressing things changed
 	@# is killed before it can connect, and the only thing xcodebuild says is `Test crashed with
 	@# signal kill before establishing connection`, which names nothing. So no
 	@# CODE_SIGNING_ALLOWED=NO here.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacUiTests -derivedDataPath .build/mac-ui $(XCODE_QUIET)
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:$(if $(MAC_UI_TEST),GranitaMacUiTests/ProjectsTabUiTests/$(MAC_UI_TEST),GranitaMacUiTests) -derivedDataPath .build/mac-ui $(XCODE_QUIET)
 
 .PHONY: record-snapshots
 record-snapshots: ## Re-record every snapshot baseline after a deliberate design change
@@ -235,34 +231,14 @@ record-snapshots: ## Re-record every snapshot baseline after a deliberate design
 	@echo "Phone baselines re-recorded and verified stable. Review every changed PNG before committing."
 
 .PHONY: run-mac
-run-mac: ## Build and launch the menu bar app, signed for this machine
+run-mac: ## Build and launch the unified Mac app, signed for this machine
 	@# Signed and Debug, unlike `make build`. macOS 15+ tracks program identity by code signature
 	@# for local network privacy, so an unsigned build cannot register a Bonjour service at all —
 	@# which is most of what there is to see here.
 	xcodebuild build -project $(PROJECT) -scheme GranitaMac -configuration Debug \
 		-destination 'platform=macOS' -derivedDataPath .build/mac -quiet
-	open ".build/mac/Build/Products/Debug/Granita Server.app"
+	open ".build/mac/Build/Products/Debug/Granita.app"
 
-.PHONY: run-client-mac
-run-client-mac: ## Build and launch the Mac Client, signed for this machine
-	@# **The one check that catches a dead control**, and the Client's Mac destination has had none:
-	@# every gate this repository runs photographs a screen or asserts a model, and neither presses
-	@# anything. Four seams were rewritten for this platform in the slice that added it and not one of
-	@# them has been pressed on a Mac.
-	@#
-	@# Signed and Debug for the same reason `run-mac` is: macOS 15+ tracks program identity by code
-	@# signature for local network privacy, and an ad-hoc "Sign to Run Locally" identity makes the
-	@# system lose the app across rebuilds — which shows up as the browse finding nothing, with
-	@# nothing saying why. This app browses, so it is the same trap.
-	@#
-	@# **This does exercise the Hardened Runtime**, which is worth knowing because it is the reason
-	@# the camera entitlement exists: the setting is scoped by SDK rather than by configuration, so
-	@# both Debug and Release carry it on a Mac, and a signed build here is denied AVCapture in
-	@# exactly the way a notarised one would be. A viewfinder that draws nothing when launched this
-	@# way is the entitlement, not the code. What this still cannot answer is notarisation itself.
-	xcodebuild build -project $(PROJECT) -scheme GranitaMobile -configuration Debug \
-		-destination 'platform=macOS' -derivedDataPath .build/mac-client -quiet
-	open ".build/mac-client/Build/Products/Debug/Granita Client.app"
 
 .PHONY: fixtures
 fixtures: ## Rebuild the git fixture repositories and the golden diff fixtures

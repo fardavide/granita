@@ -1,6 +1,7 @@
 import Observation
 
 import ClientConnectionDomain
+import ClientMacDomain
 import CorePairingDomain
 
 /// What the phone knows about Macs nearby and about joining one.
@@ -35,6 +36,12 @@ public final class ClientConnectionModel {
     /// asking for a code again is the defect this exists to end. Names rather than credentials —
     /// nothing that routes a tap should be holding a token.
     private var remembered: Set<BonjourInstanceName> = []
+
+    /// Bonjour's instance is also its display name; no token is read to build the source menu.
+    public var rememberedServers: [DiscoveredServer] {
+        remembered.map { DiscoveredServer(id: $0, name: $0.rawValue) }
+            .sorted { $0.name < $1.name }
+    }
 
     /// What is in the six-word field, exactly as it was typed.
     ///
@@ -168,6 +175,23 @@ public final class ClientConnectionModel {
     /// of the defect.
     public func isRemembered(_ server: DiscoveredServer) -> Bool {
         remembered.contains(server.id)
+    }
+
+    public func chooseSource(
+        _ source: ReaderSource,
+        onRead: (ReaderSource) -> Void,
+        onPair: (DiscoveredServer) -> Void
+    ) {
+        switch source {
+        case .thisMac:
+            onRead(source)
+        case .remote(let server):
+            if isRemembered(server) {
+                onRead(source)
+            } else {
+                onPair(server)
+            }
+        }
     }
 
     /// Consumes discovery updates until the stream ends or the surrounding task is cancelled.

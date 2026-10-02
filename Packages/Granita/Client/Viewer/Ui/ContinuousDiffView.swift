@@ -85,6 +85,7 @@ public struct ContinuousDiffView: View {
     private let isWaitingLong: Bool
 
     private let onReading: (Int) -> Void
+    private let onRereading: (Int) -> Void
     private let onJumped: () -> Void
     private let onSetViewed: (Bool, FileID) -> Void
     private let onSetOpen: (Bool, FileID) -> Void
@@ -114,6 +115,7 @@ public struct ContinuousDiffView: View {
         acceptsTargeting: Bool = true,
         isWaitingLong: Bool = false,
         onReading: @escaping (Int) -> Void,
+        onRereading: @escaping (Int) -> Void,
         onJumped: @escaping () -> Void,
         onSetViewed: @escaping (Bool, FileID) -> Void,
         onSetOpen: @escaping (Bool, FileID) -> Void,
@@ -153,6 +155,7 @@ public struct ContinuousDiffView: View {
         // and the settled one was right.
         _scrolledTo = State(initialValue: jumpTarget)
         self.onReading = onReading
+        self.onRereading = onRereading
         self.onJumped = onJumped
         self.onSetViewed = onSetViewed
         self.onSetOpen = onSetOpen
@@ -195,6 +198,7 @@ public struct ContinuousDiffView: View {
                             // turns on: an offset is a number about a layout that is allowed to be
                             // wrong below the fold, and a file appearing is a fact.
                             .onAppear { onReading(position) }
+                            .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
                     }

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ScreenCaptureKit
 import SnapshotTesting
 import SwiftUI
 import Testing
@@ -87,6 +88,101 @@ func assertSettingsSnapshot(
         testName: testName,
         line: line,
         column: column
+    )
+}
+
+/// The reader's content, including the window backdrop that transparent code surfaces reveal.
+@MainActor
+func assertReaderSnapshot(
+    _ view: some View,
+    appearance: MacAppearance,
+    named name: String,
+    size: CGSize = CGSize(width: 1260, height: 800),
+    capturesPresentedSheet: Bool = false,
+    capturesWholeWindow: Bool = false,
+    fileID: StaticString = #fileID,
+    file: StaticString = #filePath,
+    testName: String = #function,
+    line: UInt = #line,
+    column: UInt = #column,
+    beforeCapture: () async throws -> Void = {}
+) async throws {
+    _ = redirectFailureArtifacts
+    let previousAppearance = NSApp.appearance
+    NSApp.appearance = NSAppearance(named: appearance.appearance)
+    defer { NSApp.appearance = previousAppearance }
+    let hosted = hosted(
+        view.frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, appearance.name == "dark" ? .dark : .light)
+            .background(Color(nsColor: .windowBackgroundColor)),
+        appearance: appearance, size: size
+    )
+    defer {
+        if let sheet = hosted.window?.attachedSheet {
+            hosted.window?.endSheet(sheet)
+            sheet.orderOut(nil)
+        }
+        hosted.window?.orderOut(nil)
+    }
+    // Let appearance tasks start before restoring a fixture's chosen state. Otherwise the
+    // sidebar's first read can replace a prepared long-read subject while it is photographed.
+    try await Task.sleep(for: .seconds(1))
+    try await beforeCapture()
+    // Updating a model schedules a SwiftUI transaction; layout alone does not drain it.
+    try await Task.sleep(for: .seconds(1))
+    hosted.layoutSubtreeIfNeeded()
+    hosted.displayIfNeeded()
+    let parentWindow = try #require(hosted.window)
+    let window: NSWindow
+    let capturedView: NSView
+    let capturedSize: CGSize
+    if capturesPresentedSheet {
+        // Photograph the sheet opened through the real screen, within this test process.
+        window = try #require(parentWindow.attachedSheet)
+        capturedView = try #require(window.contentView)
+        capturedSize = capturedView.bounds.size
+    } else {
+        window = parentWindow
+        capturedView = hosted
+        capturedSize = capturesWholeWindow ? window.frame.size : size
+    }
+    // Vibrant controls are composed by WindowServer, so cacheDisplay loses their foregrounds.
+    // Enumerate only this process's content, without requesting screen-recording permission.
+    let content = try await SCShareableContent.currentProcess
+    let capturedWindow = try #require(content.windows.first {
+        $0.windowID == CGWindowID(window.windowNumber)
+            && $0.owningApplication?.processID == ProcessInfo.processInfo.processIdentifier
+    })
+    let configuration = SCStreamConfiguration()
+    configuration.width = Int(capturedSize.width * 2)
+    configuration.height = Int(capturedSize.height * 2)
+    configuration.scalesToFit = true
+    configuration.captureResolution = .best
+    configuration.showsCursor = false
+    configuration.capturesAudio = false
+    configuration.includeChildWindows = false
+    configuration.ignoreShadowsSingleWindow = true
+    configuration.colorSpaceName = CGColorSpace.sRGB
+    if !capturesPresentedSheet && !capturesWholeWindow {
+        let contentRect = capturedView.convert(capturedView.bounds, to: nil)
+        configuration.sourceRect = CGRect(
+            x: contentRect.minX,
+            y: window.frame.height - contentRect.maxY,
+            width: contentRect.width,
+            height: contentRect.height
+        )
+    }
+    let raster = try await SCScreenshotManager.captureImage(
+        contentFilter: SCContentFilter(desktopIndependentWindow: capturedWindow),
+        configuration: configuration
+    )
+    #expect(raster.width == configuration.width)
+    #expect(raster.height == configuration.height)
+    assertSnapshot(
+        of: NSImage(cgImage: raster, size: capturedSize),
+        as: .image(precision: 0.999, perceptualPrecision: 0.87),
+        named: "\(name)-\(appearance.name)",
+        fileID: fileID, file: file, testName: testName, line: line, column: column
     )
 }
 

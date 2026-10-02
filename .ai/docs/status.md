@@ -2,6 +2,49 @@
 
 Where the project is. Update this when a slice lands.
 
+**One Mac app is implemented locally for [#97](https://github.com/fardavide/granita/issues/97)
+and [#91](https://github.com/fardavide/granita/issues/91); acceptance and publication are pending.**
+The reader uses the local repository and the server's review document for This Mac, retains pinned
+remote connections, and has native words pairing, a persistent sidebar, a trailing inspector and
+View commands. The product keeps the server's bundle identifier and restores the phone target to
+iOS/iPadOS. Package tests and the unsigned package/app build pass. Both CI phone/iPad snapshot
+shards and the pinned TLS connection tests pass without changing their baselines.
+Mac snapshots cover source choice, local reader states, View commands and nineteen pairing states.
+All new Mac baseline renders have been reviewed and adopted from the runner; the final comparison
+passes all 30 tests in 18 suites. The complete PR run passes all tests and both Unit and All
+coverage rows, plus Snapshot lines at 99.4%; Snapshot regions remain below main at 2201/2249.
+Added Mac render
+subjects cover remote Review settings, viewer refusals and comment composition, remote reading
+while the local host is blocked, the real pairing sheet and log-copy feedback. Their 38 new
+references are all visually reviewed runner renders. CI exposed a crop error when photographing
+an attached sheet; requesting that window's complete frame fixes it. The remembered-source
+fixture uses Bonjour's actual name contract. All 38 comparisons pass. The export locates the
+unrendered Mac refresh indicator; one additional subject parks a real automatic refresh, requires
+the five readable entries to remain in place, and captures the complete owned window including
+its native toolbar. Both full-window renders are reviewed and adopted: the indicator is visible
+and all five files remain readable. Its assertions and the preceding comparisons pass; the final
+coverage verdict awaits comparison with the committed references. No local Mac rendering runs.
+Complete CI and coverage verdicts are recorded on
+[PR #121](https://github.com/fardavide/granita/pull/121). Native
+startup, remote words pairing, persistent selection, menu and Dock reopen, server survival after
+closing, code-size changes and code-colour changes pass. CI initially measured a 640×532 content
+minimum: the split view adds its 52pt toolbar to the root minimum. Reserving 428pt below that
+toolbar now passes the exact 640×480 assertion. Native captures show a legible selected sidebar
+row. Offscreen AppKit bitmaps lose vibrant foregrounds; a CI experiment confirms that capturing the
+exact fixture window's composition preserves them. The corrected capture uses only this process's
+window and does not request desktop or Screen Recording access.
+The latest full native run passed twelve of sixteen tests. Refresh exposed a defect now fixed and
+covered by seventy viewer tests; Copy Review exports the entered comment, with a typing discrepancy
+now checked before Save; Copy Logs passes. Final native acceptance is paused because Davide reclaimed
+the desktop. Headless checks and CI can continue. Davide has
+subsequently authorized the final installation and launch once verified, without resuming UI tests.
+No issue has been closed. The signed 0.22.0 app is installed at `/Applications/Granita.app` and
+running normally; its health route reports 0.22.0. The verified old Granita Server 0.20.0 bundle is
+removed. App data, pairing identity and preferences are retained; only the earlier owned UI fixture's
+worktree identifier and name are cleared. Davide confirms the iPhone connects after an initially
+timed-out attempt; no network or identity settings are changed. Current evidence and outstanding gates are in
+[`unified-mac-app.md`](../plan/unified-mac-app.md).
+
 **Shared empty and error components are implemented locally for
 [#114](https://github.com/fardavide/granita/issues/114), pending review.** All 25 unavailable-content
 call sites use the shared SwiftUI-only module; the four typography extensions and four report-action
