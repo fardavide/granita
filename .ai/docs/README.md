@@ -17,6 +17,7 @@ choice was made belongs here.
 | [`design-read-progress.md`](design-read-progress.md) | The viewed-file count in the selector, diff toolbar, and worktree rows, including zero, completion, and older Macs |
 | [`status.md`](status.md) | Milestones, what exists, what Davide still owns |
 | [`verification.md`](verification.md) | What the spec's verify-first pass found against the real environment, with numbers |
+| [`mac-releases.md`](mac-releases.md) | Xcode Cloud signing, notarized DMG downloads, GitHub releases, one-time activation and retry |
 | [`design/`](design/) | Frames as Claude Design returned them; the calls they carry live in prose alongside |
 
 [`../../SPEC.md`](../../SPEC.md) is the specification itself, and it is the authority on *what* to
