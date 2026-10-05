@@ -2,6 +2,17 @@
 
 Where the project is. Update this when a slice lands.
 
+**Mac DMG and GitHub release automation is prepared locally and account configuration is verified.**
+The workflow uses the unified Mac app's stapled notarized Xcode Cloud export after successful main
+CI, notarizes a compressed DMG and publishes it with a checksum and changelog notes. The GitHub
+release secret reuses Davide's existing general credential. The existing Cloud workflow archives
+the unified Mac scheme and notarizes its export; build 172 succeeded. One generic Developer team
+API key was created after verifying none existed, and both artifact retrieval and notarization
+authentication passed. All release secrets and the workflow ID variable are configured. The local
+workflow still needs to land; no release has been published by this change. A DMG made from the
+production build passed Apple's notarization, stapling and image verification.
+[`mac-releases.md`](mac-releases.md) records activation and retry.
+
 **One Mac app is implemented locally for [#97](https://github.com/fardavide/granita/issues/97)
 and [#91](https://github.com/fardavide/granita/issues/91); acceptance and publication are pending.**
 The reader uses the local repository and the server's review document for This Mac, retains pinned

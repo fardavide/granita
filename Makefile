@@ -120,8 +120,26 @@ coverage-baseline: ## Re-fetch main's coverage numbers, discarding the cached co
 .PHONY: coverage-tests
 coverage-tests: ## Verify coverage collection and gate arithmetic
 	python3 -m venv .venv-coverage
-	.venv-coverage/bin/pip install --quiet pytest
+	.venv-coverage/bin/pip install --quiet -r .github/scripts/release-requirements.txt
 	.venv-coverage/bin/python -m pytest .github/scripts -q
+
+.PHONY: release-setup release-tests
+release-setup: ## Install the isolated Mac release tooling
+	python3 -m venv .venv-release
+	.venv-release/bin/pip install --quiet -r .github/scripts/release-requirements.txt
+
+release-tests: release-setup ## Verify Mac release selection, packaging and publication guards
+	.venv-release/bin/python -m pytest .github/scripts/test_mac_release*.py -q
+
+.PHONY: release-plan release-mac
+release-plan: release-setup ## Preview the release version and changelog without publishing
+	.venv-release/bin/python .github/scripts/mac_release.py plan
+
+release-mac: release-setup ## Package the notarized Xcode Cloud export and publish its GitHub release
+	.venv-release/bin/python .github/scripts/mac_release.py release \
+		--issuer-id "$$ASC_ISSUER_ID" --key-id "$$ASC_KEY_ID" --key-file "$$RELEASE_KEY_FILE" \
+		--repository "$$GITHUB_REPOSITORY" --revision "$$RELEASE_REVISION" \
+		--workflow-id "$$XCODE_CLOUD_MAC_WORKFLOW_ID" --output build/release
 
 .PHONY: coverage-inventory
 coverage-inventory: ## Extract case identities and durations from RESULT_BUNDLE

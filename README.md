@@ -119,8 +119,9 @@ make run         # the backend in a terminal
 make project     # regenerate Granita.xcodeproj from project.yml
 ```
 
-`main` is PR-gated: four required checks, squash only, no bypass. Merging archives the phone app to
-TestFlight; the Mac app is built by hand (`make run-mac`).
+`main` is PR-gated: squash only, no bypass. Merging archives the phone app to TestFlight. Once the
+[Mac release setup](.ai/docs/mac-releases.md) is configured, successful main builds also publish a
+notarized DMG and checksum on [GitHub Releases](https://github.com/fardavide/granita/releases).
 
 Every screenshot above is a snapshot baseline rendered by
 [`ReadmeScreenshotTests`](Apps/GranitaMobileSnapshotTests/ReadmeScreenshotTests.swift) — there is no

@@ -1,0 +1,100 @@
+name: Mac release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Full main-branch commit SHA to retry (empty uses current main)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-release-${{ github.event.workflow_run.head_sha || inputs.revision || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Setting the workflow ID is the final activation step, after credentials and Cloud signing
+    # are ready. Manual runs still explain missing configuration instead of silently skipping.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       vars.XCODE_CLOUD_MAC_WORKFLOW_ID != '')
+    runs-on: xcode-27
+    timeout-minutes: 110
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      XCODE_CLOUD_MAC_WORKFLOW_ID: ${{ vars.XCODE_CLOUD_MAC_WORKFLOW_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.revision || 'main' }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require a main-branch revision with successful CI
+        run: |
+          revision="$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$revision" origin/main
+          successes="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$revision&event=push&status=completed&per_page=100" \
+            --jq '[.workflow_runs[] | select(.head_branch == "main" and .conclusion == "success")] | length')"
+          if [ "$successes" -lt 1 ]; then
+            echo "::error::The requested main-branch revision has no successful CI run."
+            exit 1
+          fi
+          echo "RELEASE_REVISION=$revision" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/select-xcode
+
+      - name: Prepare release credentials
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          MAC_RELEASE_GITHUB_TOKEN: ${{ secrets.MAC_RELEASE_GITHUB_TOKEN }}
+        run: |
+          for name in ASC_ISSUER_ID ASC_KEY_ID ASC_PRIVATE_KEY MAC_RELEASE_GITHUB_TOKEN XCODE_CLOUD_MAC_WORKFLOW_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing $name. Follow .ai/docs/mac-releases.md before enabling releases."
+              exit 1
+            fi
+          done
+          umask 077
+          key_file="$RUNNER_TEMP/granita-release-key.p8"
+          printf '%s' "$ASC_PRIVATE_KEY" > "$key_file"
+          echo "RELEASE_KEY_FILE=$key_file" >> "$GITHUB_ENV"
+
+      - name: Fetch, package, notarize and publish
+        env:
+          GH_TOKEN: ${{ secrets.MAC_RELEASE_GITHUB_TOKEN }}
+        run: make release-mac
+
+      - name: Retain release output and notarization diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-release-${{ env.RELEASE_REVISION || github.sha }}
+          path: |
+            build/release/*.dmg
+            build/release/SHA256SUMS
+            build/release/release-notes.md
+            build/release/notarization*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Remove the temporary API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/granita-release-key.p8"
