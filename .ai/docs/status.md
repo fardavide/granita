@@ -2,14 +2,20 @@
 
 Where the project is. Update this when a slice lands.
 
-**Mac DMG and GitHub release automation is prepared locally and account configuration is verified.**
+**Mac DMG and GitHub release automation is merged and configured; the first publication is blocked.**
 The workflow uses the unified Mac app's stapled notarized Xcode Cloud export after successful main
 CI, notarizes a compressed DMG and publishes it with a checksum and changelog notes. The GitHub
 release secret reuses Davide's existing general credential. The existing Cloud workflow archives
 the unified Mac scheme and notarizes its export; build 172 succeeded. One generic Developer team
 API key was created after verifying none existed, and both artifact retrieval and notarization
-authentication passed. All release secrets and the workflow ID variable are configured. The local
-workflow still needs to land; no release has been published by this change. A DMG made from the
+authentication passed. All release secrets and the workflow ID variable are configured. Main CI
+passed after [PR #122](https://github.com/fardavide/granita/pull/122) merged, but the first
+[release run](https://github.com/fardavide/granita/actions/runs/37334365098) stopped at the missing
+version tag: GitHub's commit endpoint returns HTTP 422 for that lookup, while the guard expected
+HTTP 404. A regression reproduces the failure; the narrow local fix passes all 18 release tests
+and all 120 CI-tooling tests. Its read-only lookup against the live repository now returns the
+expected missing-release state. The fix still needs to land before publication can complete.
+No release has been published. A DMG made from the
 production build passed Apple's notarization, stapling and image verification.
 [`mac-releases.md`](mac-releases.md) records activation and retry.
 
