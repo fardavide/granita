@@ -11,6 +11,38 @@ import json
 
 
 class TestMacRelease:
+    def test_given_accepted_notarization_and_absent_version_tag_when_publishing_then_publishes_release_with_both_assets(
+        self: "TestMacRelease",
+        tmp_path: Path,
+    ) -> None:
+        # given
+        scenario = self.Scenario(tmp_path)
+        scenario.environment["MAC_RELEASE_NOTARY_STATUS"] = "Accepted"
+        scenario.environment["MAC_RELEASE_TAG_LOOKUP_ERROR"] = (
+            "gh: No commit found for SHA: v0.22.0 (HTTP 422)"
+        )
+
+        # when
+        result = subprocess.run(
+            scenario.command,
+            capture_output=True,
+            check=False,
+            env=scenario.environment,
+            text=True,
+        )
+
+        # then
+        assert result.returncode == 0, result.stderr
+        calls = [shlex.split(line) for line in scenario.calls_file.read_text().splitlines()]
+        create = next(index for index, call in enumerate(calls) if call[:3] == ["gh", "release", "create"])
+        upload = next(index for index, call in enumerate(calls) if call[:3] == ["gh", "release", "upload"])
+        publish = next(index for index, call in enumerate(calls) if call[:3] == ["gh", "release", "edit"])
+        assert create < upload < publish
+        assert "--draft" in calls[create]
+        assert str(tmp_path / "dist/Granita-0.22.0.dmg") in calls[upload]
+        assert str(tmp_path / "dist/SHA256SUMS") in calls[upload]
+        assert "--draft=false" in calls[publish]
+
     def test_given_other_signing_team_when_publishing_then_rejects_before_packaging(
         self: "TestMacRelease",
         tmp_path: Path,
@@ -200,7 +232,7 @@ elif command == "gh":
         if revision:
             print(revision)
             sys.exit(0)
-        print("gh: Not Found (HTTP 404)", file=sys.stderr)
+        print(os.environ.get("MAC_RELEASE_TAG_LOOKUP_ERROR", "gh: Not Found (HTTP 404)"), file=sys.stderr)
         sys.exit(1)
     if arguments[0] == "api" and "/releases/tags/" in arguments[1]:
         print("gh: Not Found (HTTP 404)", file=sys.stderr)

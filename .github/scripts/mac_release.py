@@ -246,7 +246,10 @@ def publication_state(
     if existing_tag.returncode == 0:
         if existing_tag.stdout.strip() != revision:
             raise ValueError(f"Tag {tag} already belongs to a different commit")
-    elif "HTTP 404" not in existing_tag.stderr:
+    elif (
+        "HTTP 404" not in existing_tag.stderr
+        and existing_tag.stderr.strip() != f"gh: No commit found for SHA: {tag} (HTTP 422)"
+    ):
         raise ValueError("Could not check the release tag on GitHub")
     if release is None:
         return PublicationState.Missing
@@ -268,7 +271,10 @@ def ensure_tag(repository: str, revision: str, version: str) -> None:
         if existing.stdout.strip() != revision:
             raise ValueError(f"Tag {tag} already belongs to a different commit")
         return
-    if "HTTP 404" not in existing.stderr:
+    if (
+        "HTTP 404" not in existing.stderr
+        and existing.stderr.strip() != f"gh: No commit found for SHA: {tag} (HTTP 422)"
+    ):
         raise ValueError("Could not check the release tag on GitHub")
     # Fix the exact target before draft creation. The release token has both Contents and
     # Workflows write permission, which GitHub can require when tagging historical commits.

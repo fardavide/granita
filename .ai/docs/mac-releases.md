@@ -84,6 +84,11 @@ an always-run cleanup step; it is excluded from retained release artifacts.
 Xcode Cloud build number. A missing changelog entry, failed Cloud build, absent notarized export,
 wrong app identifier, wrong signing team, or rejected notarization blocks publication.
 
+GitHub's commit lookup returns HTTP 422 with `No commit found for SHA: <tag>` when a version tag
+does not exist yet. This specific response is a normal first-release condition, like HTTP 404;
+other lookup failures must still block publication. The regression suite models that live API
+response rather than assuming every missing reference returns 404.
+
 One marketing version maps to one `v<version>` release. Automatic runs skip an already published
 version, including docs-only main changes. They never move its tag or replace published downloads.
 A new downloadable build requires the usual version and changelog bump. This workflow change does
