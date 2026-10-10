@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 import ClientConnectionDomain
 
@@ -31,6 +32,8 @@ extension ServerAddress {
         // without parsing one.
         if host.contains(":") {
             components.percentEncodedHost = "[\(host.replacingOccurrences(of: "%", with: "%25"))]"
+        } else if let address = IPv4Address(host) {
+            components.host = address.rawValue.map { String($0) }.joined(separator: ".")
         } else {
             components.host = host
         }
