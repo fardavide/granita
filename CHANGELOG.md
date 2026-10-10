@@ -7,6 +7,11 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.22.1 — 2026-10-10
+- **Connect to your Mac on home Wi-Fi again.** Granita now uses the local IPv4 address returned by
+  discovery even when it includes a network interface, so an unavailable Tailscale connection does
+  not leave a reachable local Mac disconnected.
+
 ### 0.22.0 — 2026-10-01
 - **Read on your Mac in one Granita app.** Show Worktrees opens a native reader beside the menu bar
   app that serves your phone. This Mac reads its own worktrees directly, without discovery or pairing.
