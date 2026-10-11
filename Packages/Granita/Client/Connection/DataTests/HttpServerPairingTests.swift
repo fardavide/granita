@@ -63,6 +63,30 @@ struct HttpServerPairingTests {
     }
 
     @Test
+    func `given a resolved IPv4 address with an interface when health is read then the request reaches that address over https`() async throws {
+        // given
+        let scenario = Scenario(
+            macReachableAt: ServerAddress(host: "192.168.50.185%en0", port: 8737),
+            status: 200,
+            json: #"{"name":"Granita","apiVersion":1,"serverVersion":"0.6.0"}"#
+        )
+
+        // when
+        let health = try await scenario.sut.health()
+
+        // then
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.absoluteString == "https://192.168.50.185:8737/v1/health")
+        #expect(health == HealthResponse(
+            name: "Granita",
+            apiVersion: 1,
+            serverVersion: "0.6.0",
+            tailnetEndpoint: nil,
+            wakeAddresses: nil
+        ))
+    }
+
+    @Test
     func `given health when it is read then no token is offered`() async throws {
         // given — this route answers before there is one, so sending an empty bearer would be a
         // failed authentication attempt counted against a phone that has done nothing wrong.

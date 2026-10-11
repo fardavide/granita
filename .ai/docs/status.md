@@ -2,6 +2,20 @@
 
 Where the project is. Update this when a slice lands.
 
+**Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
+The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe
+rejected before starting HTTP because URL construction fell back to a file URL. The URL builder
+now serializes validated IPv4 bytes without the interface suffix; IPv6 retains its zone. The
+public health regression was red with `file:///v1/health`, then passed with the local HTTPS URL.
+The full package suite and unsigned package, Mac and iPhone builds pass. The fresh worktree's
+missing git fixtures were generated through `make fixtures` before the successful full suite run.
+The fix is prepared as a 0.22.1 release PR on `fix/local-scoped-ipv4`; publication is pending.
+The coverage command completed the instrumented package suite and iOS test-product build, then
+stopped at iOS enumeration: no simulator runtimes are installed, so the destination name is empty.
+The full coverage verdict must run in CI before the release can land.
+The installed phone build 173 still needs the correction. The evidence and boundary contract are
+in [decision 0240](decisions/0240-scoped-ipv4-addresses-become-unscoped-https-hosts.md).
+
 **Mac DMG and GitHub release automation is merged and configured; the first publication is blocked.**
 The workflow uses the unified Mac app's stapled notarized Xcode Cloud export after successful main
 CI, notarizes a compressed DMG and publishes it with a checksum and changelog notes. The GitHub
