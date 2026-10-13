@@ -36,7 +36,9 @@ public struct ContinuousDiffView: View {
     /// Seeded from the target so the **first** layout is already in the right place. A view built
     /// holding a jump has nothing to animate towards, and in the app that seed is always absent
     /// because a screen is opened before a file is chosen in it.
-    @State private var scrolledTo: FileID?
+    @State private var scrolledTo: ScrollDestination?
+
+    @State private var pinnedFiles: Set<FileID> = []
 
     private let state: ContinuousDiffState
     private let logCopyState: DiagnosticCopyState
@@ -153,7 +155,7 @@ public struct ContinuousDiffView: View {
         // area — so the file the reader opens on sat 92pt down a page of empty grey, on every phone
         // and every iPad. Nothing asked for that position: it was stated in order not to be settled,
         // and the settled one was right.
-        _scrolledTo = State(initialValue: jumpTarget)
+        _scrolledTo = State(initialValue: jumpTarget.map(ScrollDestination.file))
         self.onReading = onReading
         self.onRereading = onRereading
         self.onJumped = onJumped
@@ -191,17 +193,32 @@ public struct ContinuousDiffView: View {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
                     Section {
-                        content(of: entry)
+                        VStack(alignment: .leading, spacing: 0) {
+                            content(of: entry)
+                        }
+                            // Measure the body: a pinned header's rendered position hides where
+                            // its original slot is. Only the file crossing the top qualifies.
+                            .onGeometryChange(for: Bool.self) { proxy in
+                                let frame = proxy.frame(in: .scrollView(axis: .vertical))
+                                return frame.minY < DiffFileHeader.height
+                                    && frame.maxY > DiffFileHeader.height
+                            } action: { isPinned in
+                                recordPinnedFile(entry, isPinned: isPinned)
+                            }
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
                             // with `contentOffset`, and the reason is the same one the whole screen
                             // turns on: an offset is a number about a layout that is allowed to be
                             // wrong below the fold, and a file appearing is a fact.
                             .onAppear { onReading(position) }
+                            .onDisappear { pinnedFiles.remove(entry.id) }
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
+                            // Collapse targets the header itself; a section also contains a body.
+                            .id(ScrollDestination.header(entry.id))
                     }
+                    .id(ScrollDestination.file(entry.id))
                 }
             }
             .scrollTargetLayout()
@@ -242,6 +259,9 @@ public struct ContinuousDiffView: View {
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
         .scrollPosition(id: $scrolledTo, anchor: .top)
+        .onChange(of: entries) { previous, current in
+            advanceAfterCollapse(from: previous, to: current)
+        }
         // **The one gesture that re-reads this screen, and the only place a reader can make it is the
         // top of the scroll.** That is what settles it against `SPEC.md` §10: a read replaces every
         // entry, drops what has been lexed and re-fetches every batch, and the rule forbids that
@@ -263,9 +283,9 @@ public struct ContinuousDiffView: View {
             // layout and is also a reader tapping the file they are looking at. Animating it anyway
             // re-ran the transition from where it had already landed, and the baseline caught the
             // scroll mid-flight at a different offset on each run.
-            if scrolledTo != target {
+            if scrolledTo != .file(target) {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    scrolledTo = target
+                    scrolledTo = .file(target)
                 }
             }
             // Reported back so the same row can be tapped twice: held as the value alone, a second
@@ -279,6 +299,36 @@ public struct ContinuousDiffView: View {
         // bars, between a bar and a header, and under the last file — where a rule per boundary
         // would be four.
         .background(Color.diffPage)
+    }
+
+    private func recordPinnedFile(_ entry: ContinuousDiffEntry, isPinned: Bool) {
+        // Keep the pre-collapse reading until the state transition has used it.
+        guard entry.collapse.isCollapsed == false else { return }
+        if isPinned {
+            pinnedFiles.insert(entry.id)
+        } else {
+            pinnedFiles.remove(entry.id)
+        }
+    }
+
+    private func advanceAfterCollapse(
+        from previous: [ContinuousDiffEntry],
+        to current: [ContinuousDiffEntry]
+    ) {
+        guard let position = current.firstIndex(where: { entry in
+            pinnedFiles.contains(entry.id) && entry.collapse.isCollapsed
+                && previous.contains { $0.id == entry.id && $0.collapse.isCollapsed == false }
+        }) else { return }
+        pinnedFiles.remove(current[position].id)
+        guard current.indices.contains(position + 1) else { return }
+        withAnimation(.disclosure) {
+            scrolledTo = .header(current[position + 1].id)
+        }
+    }
+
+    private enum ScrollDestination: Hashable {
+        case file(FileID)
+        case header(FileID)
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header

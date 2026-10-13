@@ -7,6 +7,11 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.22.2 — 2026-10-13
+- **Keep reading from the next file after closing a pinned one.** Marking a file viewed or closing
+  it with the chevron now brings the next file's header to the top when the current header has
+  scrolled out of view. Closing a file whose header is still visible keeps your place.
+
 ### 0.22.1 — 2026-10-10
 - **Connect to your Mac on home Wi-Fi again.** Granita now uses the local IPv4 address returned by
   discovery even when it includes a network interface, so an unavailable Tailscale connection does
