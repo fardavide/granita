@@ -36,7 +36,7 @@ public struct ContinuousDiffView: View {
     /// Seeded from the target so the **first** layout is already in the right place. A view built
     /// holding a jump has nothing to animate towards, and in the app that seed is always absent
     /// because a screen is opened before a file is chosen in it.
-    @State private var scrolledTo: FileID?
+    @State private var scrolledTo: ScrollDestination?
 
     @State private var pinnedFiles: Set<FileID> = []
 
@@ -155,7 +155,7 @@ public struct ContinuousDiffView: View {
         // area — so the file the reader opens on sat 92pt down a page of empty grey, on every phone
         // and every iPad. Nothing asked for that position: it was stated in order not to be settled,
         // and the settled one was right.
-        _scrolledTo = State(initialValue: jumpTarget)
+        _scrolledTo = State(initialValue: jumpTarget.map(ScrollDestination.file))
         self.onReading = onReading
         self.onRereading = onRereading
         self.onJumped = onJumped
@@ -215,7 +215,10 @@ public struct ContinuousDiffView: View {
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
+                            // Collapse targets the header itself; a section also contains a body.
+                            .id(ScrollDestination.header(entry.id))
                     }
+                    .id(ScrollDestination.file(entry.id))
                 }
             }
             .scrollTargetLayout()
@@ -280,9 +283,9 @@ public struct ContinuousDiffView: View {
             // layout and is also a reader tapping the file they are looking at. Animating it anyway
             // re-ran the transition from where it had already landed, and the baseline caught the
             // scroll mid-flight at a different offset on each run.
-            if scrolledTo != target {
+            if scrolledTo != .file(target) {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    scrolledTo = target
+                    scrolledTo = .file(target)
                 }
             }
             // Reported back so the same row can be tapped twice: held as the value alone, a second
@@ -319,8 +322,13 @@ public struct ContinuousDiffView: View {
         pinnedFiles.remove(current[position].id)
         guard current.indices.contains(position + 1) else { return }
         withAnimation(.disclosure) {
-            scrolledTo = current[position + 1].id
+            scrolledTo = .header(current[position + 1].id)
         }
+    }
+
+    private enum ScrollDestination: Hashable {
+        case file(FileID)
+        case header(FileID)
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header

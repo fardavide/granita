@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Pinned-file collapse is prepared as 0.22.2 on `fix/collapse-scroll-position`; CI diagnosis is in progress.**
+**Pinned-file collapse is prepared as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
 An open file whose natural header is above the viewport advances to its successor when marked
 viewed or closed manually. A visible header preserves the viewport; the last file uses normal
 end clamping. The app-hosted regression reproduced a 450pt offset remaining after collapse where
@@ -14,13 +14,15 @@ pass all 1,109 cases without failures or skips. Local `make coverage` reported M
 mismatches, then stalled at the reader captures; the owned test runner was interrupted. No complete
 local coverage verdict was produced, so the required Mac snapshot and coverage checks must pass
 in CI. Both unsigned apps also build at 0.22.2. No snapshot baselines or coverage rules changed.
-[PR #125](https://github.com/fardavide/granita/pull/125)'s first run passes package tests, both
-builds, generated files, Mac snapshots and the first iOS shard. The second shard fails only the
-two new manual-collapse cases, each 46pt from the expected offset; viewed cases and existing
-snapshots pass. Coverage cannot compare until that shard passes. Focused local runs, including
-coverage instrumentation and the preceding comment snapshots, remain green. Failure diagnostics
-now record signed offsets, insets and elapsed layout settling; the expected position and 2pt
-tolerance are unchanged. The cause of the CI-only difference is not yet established.
+The first two CI runs pass package tests, both builds, generated files, Mac snapshots and the
+first iOS shard. The second shard fails only the two new manual-collapse cases. Diagnostics locate
+the viewport at document position 8pt instead of the next header's natural 54pt start: exactly one
+46pt header early, with unchanged navigation insets and over a second of layout settling. Viewed
+cases and existing snapshots pass. Local reproduction probes, including the exact instrumented
+shard, remain green. Collapse now targets a distinct header identity rather than the section's
+identity; file-selector jumps retain a separate file target. All seven collapse cases and all 56
+existing continuous-diff snapshots pass with that correction. The expectation and 2pt tolerance
+are unchanged. Current CI results and the numerical coverage verdict are tracked on the PR.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe
