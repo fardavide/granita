@@ -1129,7 +1129,14 @@ When the open file's natural header position is above the viewport, marking it v
 it with the chevron places the next file's header at the viewport top. The collapsed bar remains
 immediately above it, reachable by scrolling back. When the natural header is still in view,
 collapsing preserves the viewport instead. The last file has no successor, so the scroll keeps
-its normal end-of-content constraint. The movement uses the existing disclosure animation.
+its normal end-of-content constraint.
+
+**The file and viewport move together** *(13 October 2026, Davide's correction)*. The first
+implementation used the default disclosure spring for the collapsing layout and the scroll.
+Davide saw a jump: the viewport arrived while the next header was still moving into place. File
+collapse now uses one 0.4-second ease-in-out curve around the scroll container and for advancing
+its position. The next header travels into its final slot as part of the same movement. Loading
+content and other disclosures keep their existing curves.
 
 ### The word segment is a background, and the ratio is what is stated
 

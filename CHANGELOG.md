@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.22.3 — 2026-10-13
+- **Follow the next file as it moves into place.** Closing a pinned file or marking it viewed now
+  moves the shrinking file and viewport together, so the next header arrives in one smooth motion.
+
 ### 0.22.2 — 2026-10-13
 - **Keep reading from the next file after closing a pinned one.** Marking a file viewed or closing
   it with the chevron now brings the next file's header to the top when the current header has

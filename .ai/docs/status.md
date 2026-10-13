@@ -2,27 +2,31 @@
 
 Where the project is. Update this when a slice lands.
 
-**Pinned-file collapse is prepared as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
+**Pinned-file collapse merged as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
 An open file whose natural header is above the viewport advances to its successor when marked
 viewed or closed manually. A visible header preserves the viewport; the last file uses normal
 end clamping. The app-hosted regression reproduced a 450pt offset remaining after collapse where
 54pt was expected, then passed seven cases including navigation-bar, non-first and last-file
-boundaries. `make test`, `make build` and all 56 existing continuous-diff snapshots pass without
-baseline changes. The tests drive bound state, so a real control tap and visual motion check remain
-before release. The instrumented package suite passes all 1,905 tests, and both iOS coverage shards
-pass all 1,109 cases without failures or skips. Local `make coverage` reported Mac snapshot
-mismatches, then stalled at the reader captures; the owned test runner was interrupted. No complete
-local coverage verdict was produced, so the required Mac snapshot and coverage checks must pass
-in CI. Both unsigned apps also build at 0.22.2. No snapshot baselines or coverage rules changed.
-The first two CI runs pass package tests, both builds, generated files, Mac snapshots and the
-first iOS shard. The second shard fails only the two new manual-collapse cases. Diagnostics locate
-the viewport at document position 8pt instead of the next header's natural 54pt start: exactly one
-46pt header early, with unchanged navigation insets and over a second of layout settling. Viewed
-cases and existing snapshots pass. Local reproduction probes, including the exact instrumented
-shard, remain green. Collapse now targets a distinct header identity rather than the section's
-identity; file-selector jumps retain a separate file target. All seven collapse cases and all 56
-existing continuous-diff snapshots pass with that correction. The expectation and 2pt tolerance
-are unchanged. Current CI results and the numerical coverage verdict are tracked on the PR.
+boundaries. Collapse targets a distinct header identity rather than the section's identity;
+file-selector jumps retain a separate file target. All seven required CI checks, including both
+iOS shards, Mac snapshots and all six coverage ratchets, passed before the merge. No snapshot
+baselines or coverage rules changed.
+The later [main CI run](https://github.com/fardavide/granita/actions/runs/38381724558) failed the
+non-first pinned-file collapse position case; its expectation remains unchanged in the follow-up.
+
+**Smooth collapse is prepared as 0.22.3 from the merged default branch.**
+Davide reported a visible jump after 0.22.2. Native presentation-layer measurements reproduced
+the viewport arriving while the successor header remained over 230pt from its final slot.
+Moving collapse animation around the scroll container alone did not fix it. A shared 0.4-second
+ease-in-out curve passes both viewed and manual motion cases, preserving the 2pt final-position
+tolerance. The fixture now waits for five stable native display frames and completed scrolling,
+with a three-second timeout, instead of counting run-loop turns. All nine collapse cases pass,
+including the non-first case above, and the full phone suite passes 71 tests in 31 suites without
+baseline changes. Package tests and both unsigned app builds pass at 0.22.3. Both instrumented
+phone shards pass all 71 tests with no failures or skips. Local `make coverage` is blocked by Mac
+baseline mismatches and `SCStreamError -3811` capture failures, so no complete local coverage
+verdict is available. The owned Mac runner was interrupted after those failures stalled the run.
+The required CI Mac snapshot and coverage checks remain the landing gate.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

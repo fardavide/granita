@@ -44,6 +44,9 @@ public struct ContinuousDiffView: View {
     private let logCopyState: DiagnosticCopyState
     private let pointSize: CGFloat
 
+    // A fixed duration keeps the viewport and the much taller collapsing layout in step.
+    private let collapseAnimation: Animation = .easeInOut(duration: 0.4)
+
     /// Whether a paired run opens into two columns, which the reader sets from the toolbar and this
     /// screen only carries. Design §4.5's call 6 keeps it global and device-local, so it arrives the
     /// same way the code theme does and no file holds one of its own.
@@ -222,14 +225,6 @@ public struct ContinuousDiffView: View {
                 }
             }
             .scrollTargetLayout()
-            // **Shutting and opening a file is animated here, on the stack, and not on the two
-            // halves inside it.** What has to travel when a file shuts is every *other* file below
-            // it, and their positions belong to this stack — an animation attached inside a section
-            // scopes to that section, so 0.5.2 cross-faded the bar into the header while the rest of
-            // the scroll snapped to its new place, which is the jump wearing a fade. One scope over
-            // the whole stack is also what makes the two halves of the swap one gesture rather than
-            // two. The curve is stated once, in `Animation.disclosure`.
-            //
             // **A diff arriving is keyed here too now, and it used to be deliberately excluded.** The
             // old comment read "so a diff arriving still lands without dragging the scroll around",
             // which was right while a file reserved its own height and the swap moved nothing. It
@@ -239,7 +234,6 @@ public struct ContinuousDiffView: View {
             //
             // Under `.scrollTargetLayout()` rather than over it: the marker wants the stack itself,
             // and a jump landing on a file is a different gesture from a file opening under a thumb.
-            .animation(.disclosure, value: entries.map(\.collapse.isCollapsed))
             .animation(.disclosure, value: entries.map(\.isReady))
         }
         // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
@@ -262,6 +256,9 @@ public struct ContinuousDiffView: View {
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)
         }
+        // The scroll position and all files share one scope and duration. A default spring lets
+        // the shorter viewport movement finish while the much taller collapsing layout catches up.
+        .animation(collapseAnimation, value: entries.map(\.collapse.isCollapsed))
         // **The one gesture that re-reads this screen, and the only place a reader can make it is the
         // top of the scroll.** That is what settles it against `SPEC.md` §10: a read replaces every
         // entry, drops what has been lexed and re-fetches every batch, and the rule forbids that
@@ -321,7 +318,7 @@ public struct ContinuousDiffView: View {
         }) else { return }
         pinnedFiles.remove(current[position].id)
         guard current.indices.contains(position + 1) else { return }
-        withAnimation(.disclosure) {
+        withAnimation(collapseAnimation) {
             scrolledTo = .header(current[position + 1].id)
         }
     }
