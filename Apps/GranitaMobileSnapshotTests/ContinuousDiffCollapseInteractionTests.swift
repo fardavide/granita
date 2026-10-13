@@ -185,7 +185,6 @@ struct ContinuousDiffCollapseInteractionTests {
         // model offset, which can already hold the destination while the screen is still moving.
         let deadline = CACurrentMediaTime() + 1.2
         while CACurrentMediaTime() < deadline {
-            scenario.controller.viewIfLoaded?.layoutIfNeeded()
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
         probe.stop()
@@ -219,7 +218,7 @@ struct ContinuousDiffCollapseInteractionTests {
         })
         let successorLag = abs(successorAtArrival.frame.minY - successor.frame.minY)
         let trace = probe.samples.map {
-            "time=\($0.elapsed), model=\($0.modelOffset), presentation=\($0.presentationOffset), headers=\($0.headerFrames)"
+            "time=\($0.elapsed), callbackTime=\($0.callbackElapsed), captureDuration=\($0.captureDuration), model=\($0.modelOffset), presentation=\($0.presentationOffset), headers=\($0.headerFrames)"
         }.joined(separator: "\n")
         let diagnostic = Comment(rawValue: """
         collapse=\(collapse), startPresentation=\(first.presentationOffset), endPresentation=\(last.presentationOffset)
@@ -366,6 +365,8 @@ private final class RenderSettlementProbe: NSObject {
 
 private struct ViewportMotionSample {
     let elapsed: CFTimeInterval
+    let callbackElapsed: CFTimeInterval
+    let captureDuration: CFTimeInterval
     let modelOffset: CGFloat
     let presentationOffset: CGFloat
     let headerFrames: [HeaderPresentation]
@@ -414,6 +415,7 @@ private final class ViewportMotionProbe: NSObject {
     }
 
     private func capture(at timestamp: CFTimeInterval) {
+        let callbackStarted = CACurrentMediaTime()
         guard let presentation = scroll.layer.presentation() else {
             missingPresentationFrames += 1
             return
@@ -441,6 +443,8 @@ private final class ViewportMotionProbe: NSObject {
         }
         samples.append(ViewportMotionSample(
             elapsed: timestamp - startedAt,
+            callbackElapsed: callbackStarted - startedAt,
+            captureDuration: CACurrentMediaTime() - callbackStarted,
             modelOffset: scroll.contentOffset.y,
             presentationOffset: presentation.bounds.origin.y,
             headerFrames: headerFrames
