@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**Pinned-file collapse is prepared as 0.22.2 on `fix/collapse-scroll-position`; PR checks are pending.**
+**Pinned-file collapse is prepared as 0.22.2 on `fix/collapse-scroll-position`; CI diagnosis is in progress.**
 An open file whose natural header is above the viewport advances to its successor when marked
 viewed or closed manually. A visible header preserves the viewport; the last file uses normal
 end clamping. The app-hosted regression reproduced a 450pt offset remaining after collapse where
@@ -14,6 +14,13 @@ pass all 1,109 cases without failures or skips. Local `make coverage` reported M
 mismatches, then stalled at the reader captures; the owned test runner was interrupted. No complete
 local coverage verdict was produced, so the required Mac snapshot and coverage checks must pass
 in CI. Both unsigned apps also build at 0.22.2. No snapshot baselines or coverage rules changed.
+[PR #125](https://github.com/fardavide/granita/pull/125)'s first run passes package tests, both
+builds, generated files, Mac snapshots and the first iOS shard. The second shard fails only the
+two new manual-collapse cases, each 46pt from the expected offset; viewed cases and existing
+snapshots pass. Coverage cannot compare until that shard passes. Focused local runs, including
+coverage instrumentation and the preceding comment snapshots, remain green. Failure diagnostics
+now record signed offsets, insets and elapsed layout settling; the expected position and 2pt
+tolerance are unchanged. The cause of the CI-only difference is not yet established.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

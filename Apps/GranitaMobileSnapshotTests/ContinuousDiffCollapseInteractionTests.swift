@@ -24,11 +24,15 @@ struct ContinuousDiffCollapseInteractionTests {
         scenario.settleLayout()
         let scroll = try #require(scenario.verticalScroll)
         let initialOffset = scroll.contentOffset.y
+        let initialInset = scroll.adjustedContentInset
         scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + scrollOffset), animated: false)
         scenario.settleLayout()
         // Both positions are inside the first file and beyond its natural header.
         try #require(abs(scroll.contentOffset.y - initialOffset - scrollOffset) < 2)
         try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        let offsetBeforeCollapse = scroll.contentOffset.y
+        let contentHeightBeforeCollapse = scroll.contentSize.height
+        let collapseStarted = Date()
 
         // when
         // Public UIKit accessibility traversal does not expose SwiftUI's virtual button tree in
@@ -45,7 +49,19 @@ struct ContinuousDiffCollapseInteractionTests {
         try #require(scenario.model.entries[0].collapse.isCollapsed)
         // A pinned next header alone would also pass after skipping hundreds of its code rows.
         // Its natural start must land at the top, with the first file's 44pt bar and 10pt gap above.
-        #expect(abs(scroll.contentOffset.y - initialOffset - DiffCollapsedFileBar.height - 10) < 2)
+        #expect(
+            abs(scroll.contentOffset.y - initialOffset - DiffCollapsedFileBar.height - 10) < 2,
+            """
+            collapse=\(collapse), requestedScroll=\(scrollOffset), initialOffset=\(initialOffset)
+            offsetBeforeCollapse=\(offsetBeforeCollapse), endOffset=\(scroll.contentOffset.y)
+            initialAdjustedInset=\(initialInset), endAdjustedInset=\(scroll.adjustedContentInset)
+            contentInset=\(scroll.contentInset), safeArea=\(scroll.safeAreaInsets)
+            nextNaturalStart=\(initialOffset + DiffCollapsedFileBar.height + 10)
+            contentHeightBefore=\(contentHeightBeforeCollapse), contentHeightAfter=\(scroll.contentSize.height)
+            bounds=\(scroll.bounds), settleElapsed=\(Date().timeIntervalSince(collapseStarted))
+            windowIsKey=\(scenario.window.isKeyWindow)
+            """
+        )
     }
 
     @Test
