@@ -1124,6 +1124,13 @@ collapses the file, and drops the row's *information* to 45%. **The toggle itsel
 is the control for undoing the state it reports, and dimming it hides it exactly when it is wanted.
 An eleven-file pass therefore leaves a visible trail, and the unreviewed files are the loud ones.
 
+**Collapsing a pinned file advances to the next file** *(12 October 2026, Davide's call)*.
+When the open file's natural header position is above the viewport, marking it viewed or closing
+it with the chevron places the next file's header at the viewport top. The collapsed bar remains
+immediately above it, reachable by scrolling back. When the natural header is still in view,
+collapsing preserves the viewport instead. The last file has no successor, so the scroll keeps
+its normal end-of-content constraint. The movement uses the existing disclosure animation.
+
 ### The word segment is a background, and the ratio is what is stated
 
 > **Reverted to `SPEC.md` §10, and the ratio is what survived** *(28 August 2026)*. This section

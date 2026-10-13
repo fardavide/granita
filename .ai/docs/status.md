@@ -2,6 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
+**Pinned-file collapse is prepared as 0.22.2 on `fix/collapse-scroll-position`; PR checks are pending.**
+An open file whose natural header is above the viewport advances to its successor when marked
+viewed or closed manually. A visible header preserves the viewport; the last file uses normal
+end clamping. The app-hosted regression reproduced a 450pt offset remaining after collapse where
+54pt was expected, then passed seven cases including navigation-bar, non-first and last-file
+boundaries. `make test`, `make build` and all 56 existing continuous-diff snapshots pass without
+baseline changes. The tests drive bound state, so a real control tap and visual motion check remain
+before release. The instrumented package suite passes all 1,905 tests, and both iOS coverage shards
+pass all 1,109 cases without failures or skips. Local `make coverage` reported Mac snapshot
+mismatches, then stalled at the reader captures; the owned test runner was interrupted. No complete
+local coverage verdict was produced, so the required Mac snapshot and coverage checks must pass
+in CI. Both unsigned apps also build at 0.22.2. No snapshot baselines or coverage rules changed.
+
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe
 rejected before starting HTTP because URL construction fell back to a file URL. The URL builder
