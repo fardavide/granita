@@ -45,7 +45,7 @@ public struct ContinuousDiffView: View {
     private let pointSize: CGFloat
 
     // A fixed duration keeps the viewport and the much taller collapsing layout in step.
-    private let collapseAnimation: Animation = .easeInOut(duration: 0.4)
+    private let collapseAnimation: Animation = .easeInOut(duration: 0.6)
 
     /// Whether a paired run opens into two columns, which the reader sets from the toolbar and this
     /// screen only carries. Design §4.5's call 6 keeps it global and device-local, so it arrives the

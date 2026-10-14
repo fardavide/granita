@@ -17,7 +17,7 @@ non-first pinned-file collapse position case; its expectation remains unchanged 
 **Smooth collapse is prepared as 0.22.3 in [PR #126](https://github.com/fardavide/granita/pull/126).**
 Davide reported a visible jump after 0.22.2. Native presentation-layer measurements reproduced
 the viewport arriving while the successor header remained over 230pt from its final slot.
-Moving collapse animation around the scroll container alone did not fix it. A shared 0.4-second
+Moving collapse animation around the scroll container alone did not fix it. A shared 0.6-second
 ease-in-out curve passes both viewed and manual motion cases, preserving the 2pt final-position
 tolerance. The fixture now waits for five stable native display frames and completed scrolling,
 with a three-second timeout, instead of counting run-loop turns. All nine collapse cases pass,
@@ -32,8 +32,12 @@ frame-step checks: 116pt and 129pt across 87ms and 94ms between samples. The mot
 lets native rendering perform layout instead of forcing layout on every run-loop turn, and records
 actual callback and capture timings on failure. All assertion limits remain unchanged. Both local
 instrumented comparisons pass 50 methods and 522 cases without failures or skips; they do not
-reproduce the later CI gaps, so their cause remains unverified. Required CI checks remain the
-landing gate.
+reproduce the later CI gaps, so their cause remains unverified. The second follow-up CI still
+fails only the frame-step limits: 107pt and 119pt across actual callback gaps of about 83ms;
+capturing each sample takes less than 1.3ms. Removing forced layouts did not resolve those gaps.
+The production curve is now gentler at 0.6 seconds; its focused nine cases and full instrumented
+shard pass all 50 methods and 522 cases without failures or skips. All motion and final-position
+assertion limits remain unchanged. Required CI checks remain the landing gate.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe
