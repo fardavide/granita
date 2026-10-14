@@ -37,7 +37,15 @@ fails only the frame-step limits: 107pt and 119pt across actual callback gaps of
 capturing each sample takes less than 1.3ms. Removing forced layouts did not resolve those gaps.
 The production curve is now gentler at 0.6 seconds; its focused nine cases and full instrumented
 shard pass all 50 methods and 522 cases without failures or skips. All motion and final-position
-assertion limits remain unchanged. Required CI checks remain the landing gate.
+assertion limits remain unchanged. The third follow-up CI passes the viewed motion case and all
+position checks, but manual motion still records a 112pt step after a 133ms callback gap.
+A native harness comparison confirms that its synchronous nested run-loop capture prevents queued
+MainActor work from running during the observation window; async suspension lets that work run
+within about 95ms. The motion test now suspends during warm-up and capture, retaining the same
+deadlines, probes and assertions. The focused nine cases and full instrumented shard pass all
+50 methods and 522 cases without failures, skips or suite interleaving during capture. This fixes
+the demonstrated harness scheduling problem; whether it resolves the CI gap still needs a fresh
+run. Required CI checks remain the landing gate.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

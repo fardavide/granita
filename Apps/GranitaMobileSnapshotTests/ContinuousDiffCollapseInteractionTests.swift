@@ -148,7 +148,7 @@ struct ContinuousDiffCollapseInteractionTests {
     @Test(arguments: [PinnedFileCollapse.viewed, .manual])
     func `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
         collapse: PinnedFileCollapse
-    ) throws {
+    ) async throws {
         // given
         let entries = ["Sources/First.swift", "Sources/Next.swift", "Sources/Last.swift"]
             .map { aRenderedFile(path: $0, lineCount: 160) }
@@ -165,7 +165,7 @@ struct ContinuousDiffCollapseInteractionTests {
         defer { probe.stop() }
         let observationReadyDeadline = CACurrentMediaTime() + 1
         while probe.samples.count < 3, CACurrentMediaTime() < observationReadyDeadline {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+            try await Task.sleep(for: .milliseconds(10))
         }
         try #require(probe.samples.count >= 3)
         probe.beginTransition()
@@ -183,10 +183,8 @@ struct ContinuousDiffCollapseInteractionTests {
         }
         // Sample actual display frames rather than counting run-loop turns or observing only the
         // model offset, which can already hold the destination while the screen is still moving.
-        let deadline = CACurrentMediaTime() + 1.2
-        while CACurrentMediaTime() < deadline {
-            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-        }
+        // Suspension lets queued MainActor work and UIKit's outer event loop run between frames.
+        try await Task.sleep(for: .seconds(1.2))
         probe.stop()
 
         // then
