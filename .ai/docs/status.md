@@ -15,37 +15,27 @@ The later [main CI run](https://github.com/fardavide/granita/actions/runs/383817
 non-first pinned-file collapse position case; its expectation remains unchanged in the follow-up.
 
 **Smooth collapse is prepared as 0.22.3 in [PR #126](https://github.com/fardavide/granita/pull/126).**
-Davide reported a visible jump after 0.22.2. Native presentation-layer measurements reproduced
-the viewport arriving while the successor header remained over 230pt from its final slot.
-Moving collapse animation around the scroll container alone did not fix it. A shared 0.6-second
-ease-in-out curve passes both viewed and manual motion cases, preserving the 2pt final-position
-tolerance. The fixture now waits for five stable native display frames and completed scrolling,
-with a three-second timeout, instead of counting run-loop turns. All nine collapse cases pass,
-including the non-first case above, and the full phone suite passes 71 tests in 31 suites without
-baseline changes. Package tests and both unsigned app builds pass at 0.22.3. Both instrumented
-phone shards pass all 71 tests with no failures or skips. Local `make coverage` is blocked by Mac
-baseline mismatches and `SCStreamError -3811` capture failures, so no complete local coverage
-verdict is available. The owned Mac runner was interrupted after those failures stalled the run.
-The first follow-up CI passes both builds, package tests, generated files, Mac snapshots and phone
-shard 0. Shard 1 passes all final-position and header-arrival checks, but fails the two motion
-frame-step checks: 116pt and 129pt across 87ms and 94ms between samples. The motion observer now
-lets native rendering perform layout instead of forcing layout on every run-loop turn, and records
-actual callback and capture timings on failure. All assertion limits remain unchanged. Both local
-instrumented comparisons pass 50 methods and 522 cases without failures or skips; they do not
-reproduce the later CI gaps, so their cause remains unverified. The second follow-up CI still
-fails only the frame-step limits: 107pt and 119pt across actual callback gaps of about 83ms;
-capturing each sample takes less than 1.3ms. Removing forced layouts did not resolve those gaps.
-The production curve is now gentler at 0.6 seconds; its focused nine cases and full instrumented
-shard pass all 50 methods and 522 cases without failures or skips. All motion and final-position
-assertion limits remain unchanged. The third follow-up CI passes the viewed motion case and all
-position checks, but manual motion still records a 112pt step after a 133ms callback gap.
-A native harness comparison confirms that its synchronous nested run-loop capture prevents queued
-MainActor work from running during the observation window; async suspension lets that work run
-within about 95ms. The motion test now suspends during warm-up and capture, retaining the same
-deadlines, probes and assertions. The focused nine cases and full instrumented shard pass all
-50 methods and 522 cases without failures, skips or suite interleaving during capture. This fixes
-the demonstrated harness scheduling problem; whether it resolves the CI gap still needs a fresh
-run. Required CI checks remain the landing gate.
+Davide reported a visible jump after 0.22.2. The viewport could arrive before its successor header;
+changing the curve alone did not reliably fix large word diffs. The header now renders as one
+geometry group, the expanded body leaves at an explicit removal boundary without retaining all its
+code for a fade, and fixed-height gutter and tint rows are lazy. The code column remains eager so
+an offscreen long line still determines horizontal travel. Viewport advance waits for successor
+layout and a subsequent animation update; explicit file selection cancels the pending advance.
+Reopening the source restores its header, preventing the successor's sticky header from remaining.
+Collapse and viewport advance retain the shared 0.6-second ease-in-out curve, distinct header
+target, and existing position behavior. All 24 native cases pass: the seven original
+position cases, ten plain and word-diff motion cases across both collapse controls, an offscreen
+widest-line check, and both controls with an already visible successor or explicit file selection
+during collapse, plus both controls reopening the source during the pending handoff. Exact native
+header images verify that reopening retains the source's visible header. The probe samples native
+presentation frames without forcing layout; asynchronous capture allows queued UI work to run.
+It checks matching successor descendants as well as their retained wrapper throughout the motion.
+The 2pt final-position tolerance, intermediate-frame requirement, maximum frame-step limit, and
+header-arrival limit remain unchanged. The full phone suite passes 75 tests in 31 suites without
+baseline changes. Package tests and both unsigned app builds pass. Both instrumented phone shards
+pass all 75 tests without failures or skips. Local `make coverage` reproduces the documented Mac
+snapshot baseline mismatch, so no complete local coverage verdict is available. Required CI checks
+remain the landing gate.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

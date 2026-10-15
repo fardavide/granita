@@ -213,7 +213,7 @@ public struct DiffFileLines: View {
     /// columns the side is positional, so the colour covers a cell's figures and its code and stops
     /// at the rule.
     private var tints: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(indexedRows, id: \.offset) { _, row in
                 switch row {
                 case .full(let line):
@@ -282,7 +282,7 @@ public struct DiffFileLines: View {
     /// Design §4.3's call 3: one shared column cannot say which side it numbers on the rows where the
     /// two differ, and inside a block most rows are exactly that.
     private var numbers: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(indexedRows, id: \.offset) { offset, row in
                 switch row {
                 case .full(let line):
@@ -293,6 +293,7 @@ public struct DiffFileLines: View {
                 }
             }
         }
+        .frame(width: numberColumnWidth)
     }
 
     /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
@@ -309,7 +310,7 @@ public struct DiffFileLines: View {
     /// right row an addition, so the glyph would be 18pt restating the column it is standing in —
     /// design §4.3. Outside a block it is untouched, so the `+` and the `−` never leave the file.
     private var markers: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(indexedRows, id: \.offset) { _, row in
                 switch row {
                 case .full(let line):
@@ -320,6 +321,7 @@ public struct DiffFileLines: View {
                 }
             }
         }
+        .frame(width: DiffGutter.markerWidth)
         .padding(.trailing, DiffGutter.markerTrailingSpace)
     }
 
@@ -393,7 +395,7 @@ public struct DiffFileLines: View {
 
     /// The two cells of every block, drawn over the pinned columns and moving with the scroll.
     private var blockCells: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             ForEach(indexedRows, id: \.offset) { offset, row in
                 switch row {
                 case .full:

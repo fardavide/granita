@@ -9,7 +9,7 @@ app also runs locally with `make run-mac`.
 
 ### 0.22.3 — 2026-10-13
 - **Follow the next file as it moves into place.** Closing a pinned file or marking it viewed now
-  moves the shrinking file and viewport together, so the next header arrives in one smooth motion.
+  moves the viewport and next header together, including when the file contains large word diffs.
 
 ### 0.22.2 — 2026-10-13
 - **Keep reading from the next file after closing a pinned one.** Marking a file viewed or closing

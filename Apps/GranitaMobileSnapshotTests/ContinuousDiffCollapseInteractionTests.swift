@@ -145,13 +145,25 @@ struct ContinuousDiffCollapseInteractionTests {
         #expect(abs(scroll.contentOffset.y - initialOffset - 2 * (DiffCollapsedFileBar.height + 10)) < 2)
     }
 
-    @Test(arguments: [PinnedFileCollapse.viewed, .manual])
+    @Test(
+        arguments: [PinnedFileCollapse.viewed, .manual],
+        [DiffMotionFixture.plain, .wordDiff, .unsegmentedWordDiff, .wordDiffOutgoing, .wordDiffSuccessor]
+    )
     func `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
-        collapse: PinnedFileCollapse
+        collapse: PinnedFileCollapse,
+        fixture: DiffMotionFixture
     ) async throws {
         // given
         let entries = ["Sources/First.swift", "Sources/Next.swift", "Sources/Last.swift"]
-            .map { aRenderedFile(path: $0, lineCount: 160) }
+            .enumerated().map { index, path in
+                switch fixture {
+                case .plain: aRenderedFile(path: path, lineCount: 160)
+                case .wordDiff: aRenderedWordDiffFile(path: path)
+                case .unsegmentedWordDiff: aRenderedWordDiffFile(path: path, segmented: false)
+                case .wordDiffOutgoing: aRenderedWordDiffFile(path: path, segmented: index == 0)
+                case .wordDiffSuccessor: aRenderedWordDiffFile(path: path, segmented: index == 1)
+                }
+            }
         let scenario = try Scenario(entries: entries)
         defer { scenario.close() }
         scenario.settleLayout()
@@ -171,7 +183,7 @@ struct ContinuousDiffCollapseInteractionTests {
         probe.beginTransition()
         let first = try #require(probe.samples.first)
         try #require(abs(first.presentationOffset - scroll.contentOffset.y) < 2)
-        try #require(first.headerFrames.count == 1)
+        try #require(first.headerFrames.count == 1, "Initial header candidates: \(first.headerCandidates)")
         let originalHeader = try #require(first.headerFrames.first)
 
         // when
@@ -208,23 +220,57 @@ struct ContinuousDiffCollapseInteractionTests {
         }
         try #require(finalSuccessors.count == 1)
         let successor = try #require(finalSuccessors.first)
-        let viewportArrival = try #require(probe.samples.first {
+        let viewportArrivalIndex = try #require(probe.samples.firstIndex {
             abs($0.presentationOffset - finalOffset) < 2
         })
+        let viewportArrival = probe.samples[viewportArrivalIndex]
         let successorAtArrival = try #require(viewportArrival.headerFrames.first {
             $0.identity == successor.identity
         })
         let successorLag = abs(successorAtArrival.frame.minY - successor.frame.minY)
-        let trace = probe.samples.map {
-            "time=\($0.elapsed), callbackTime=\($0.callbackElapsed), captureDuration=\($0.captureDuration), model=\($0.modelOffset), presentation=\($0.presentationOffset), headers=\($0.headerFrames)"
+        // A moving wrapper is not enough: every matching descendant of the unchanged successor
+        // must occupy the same presentation rectangle. The outgoing header's opacity may crossfade.
+        let successorDescendantGeometry = probe.samples.enumerated().flatMap { index, sample -> [NestedHeaderGeometry] in
+            let retained = sample.headerFrames.first { $0.identity == successor.identity }
+            return sample.headerCandidates.filter {
+                $0.ancestorIdentities.contains(successor.identity)
+            }.map { candidate in
+                NestedHeaderGeometry(sampleIndex: index, retained: retained, descendant: candidate.header)
+            }
+        }
+        let misalignedSuccessorDescendants = successorDescendantGeometry.filter { geometry in
+            guard let retained = geometry.retained else { return true }
+            return abs(retained.frame.minX - geometry.descendant.frame.minX) >= 2
+                || abs(retained.frame.minY - geometry.descendant.frame.minY) >= 2
+                || abs(retained.frame.width - geometry.descendant.frame.width) >= 2
+                || abs(retained.frame.height - geometry.descendant.frame.height) >= 2
+        }
+        // Bound only diagnostic output; every assertion above and below still uses every sample.
+        let largestStepEndIndex = (1..<probe.samples.count).max { left, right in
+            abs(probe.samples[left].presentationOffset - probe.samples[left - 1].presentationOffset)
+                < abs(probe.samples[right].presentationOffset - probe.samples[right - 1].presentationOffset)
+        } ?? 0
+        var traceIndices = Set(probe.samples.indices.prefix(4))
+        traceIndices.formUnion((largestStepEndIndex - 2...largestStepEndIndex).filter(probe.samples.indices.contains))
+        traceIndices.formUnion((viewportArrivalIndex - 2...viewportArrivalIndex + 2).filter(probe.samples.indices.contains))
+        traceIndices.formUnion(probe.samples.indices.suffix(2))
+        let trace = traceIndices.sorted().map { index in
+            let sample = probe.samples[index]
+            return "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), captureDuration=\(sample.captureDuration), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), headers=\(sample.headerFrames)"
         }.joined(separator: "\n")
         let diagnostic = Comment(rawValue: """
-        collapse=\(collapse), startPresentation=\(first.presentationOffset), endPresentation=\(last.presentationOffset)
+        collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset), endPresentation=\(last.presentationOffset)
         intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep), expectedTravel=\(expectedTravel)
         viewportArrivalTime=\(viewportArrival.elapsed), successorAtArrival=\(successorAtArrival.frame.minY)
         successorFinalPosition=\(successor.frame.minY), successorLag=\(successorLag)
+        successorDescendantChecks=\(successorDescendantGeometry.count), misalignedSuccessorDescendants=\(misalignedSuccessorDescendants.count)
+        firstMisalignedSuccessorDescendant=\(String(describing: misalignedSuccessorDescendants.first))
         \(trace)
         """)
+        #expect(successorDescendantGeometry.contains {
+            $0.sampleIndex == viewportArrivalIndex && $0.descendant.opacity > 0.99
+        }, diagnostic)
+        #expect(misalignedSuccessorDescendants.isEmpty, diagnostic)
         #expect(abs(scroll.contentOffset.y - finalOffset) < 2, diagnostic)
         #expect(abs(last.presentationOffset - finalOffset) < 2, diagnostic)
         // A quarter of the whole journey in one display frame is a generous detector for a snap,
@@ -234,6 +280,219 @@ struct ContinuousDiffCollapseInteractionTests {
         // A whole header of remaining travel after the viewport has arrived is a second visible
         // movement, rather than the two parts arriving as one gesture.
         #expect(successorLag < DiffFileHeader.height, diagnostic)
+    }
+
+    @Test
+    func `given a hunk with its widest line below the viewport when first rendered then horizontal travel matches the same line at the top`() throws {
+        // given
+        let visibleWidth: CGFloat
+        do {
+            let scenario = try Scenario(entries: [
+                aRenderedFile(path: "Sources/Wide.swift", lineCount: 160, widestLineAt: 1)
+            ])
+            defer { scenario.close() }
+            scenario.settleLayout()
+            let vertical = try #require(scenario.verticalScroll)
+            let horizontal = try #require(scenario.horizontalScroll)
+            try #require(abs(vertical.contentOffset.y + vertical.adjustedContentInset.top) < 2)
+            try #require(horizontal.bounds.height > vertical.bounds.height)
+            try #require(horizontal.contentSize.width > horizontal.bounds.width)
+            visibleWidth = horizontal.contentSize.width
+        }
+
+        // when
+        let scenario = try Scenario(entries: [
+            aRenderedFile(path: "Sources/Wide.swift", lineCount: 160, widestLineAt: 160)
+        ])
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let horizontal = try #require(scenario.horizontalScroll)
+        try #require(abs(vertical.contentOffset.y + vertical.adjustedContentInset.top) < 2)
+        try #require(horizontal.bounds.height > vertical.bounds.height)
+
+        // then
+        #expect(horizontal.contentSize.width > horizontal.bounds.width)
+        #expect(abs(horizontal.contentSize.width - visibleWidth) < 2)
+    }
+
+    @Test(arguments: [PinnedFileCollapse.viewed, .manual])
+    func `given the successor header is already visible when the pinned current file collapses then the successor starts at the viewport top`(
+        collapse: PinnedFileCollapse
+    ) throws {
+        // given
+        let entries = [
+            aRenderedFile(path: "Sources/First.swift", lineCount: 20),
+            aRenderedFile(path: "Sources/Next.swift", lineCount: 160)
+        ]
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialOffset = scroll.contentOffset.y
+        try #require(abs(initialOffset + scroll.adjustedContentInset.top) < 2)
+        scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + 47), animated: false)
+        scenario.settleLayout()
+        try #require(abs(scroll.contentOffset.y - initialOffset - 47) < 2)
+        try #require(scroll.contentOffset.y - initialOffset > DiffFileHeader.height)
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        try #require(scenario.visibleHeaders(in: scroll).count == 2)
+
+        // when
+        switch collapse {
+        case .viewed:
+            scenario.model.setViewed(true, fileId: entries[0].id)
+        case .manual:
+            scenario.model.setOpen(false, fileId: entries[0].id)
+        }
+        scenario.settleLayout()
+
+        // then
+        try #require(scenario.model.entries[0].collapse.isCollapsed)
+        #expect(abs(scroll.contentOffset.y - initialOffset - DiffCollapsedFileBar.height - 10) < 2)
+    }
+
+    @Test(arguments: [PinnedFileCollapse.viewed, .manual])
+    func `given a pinned file is collapsing when another file is selected then explicit selection wins over automatic advance`(
+        collapse: PinnedFileCollapse
+    ) async throws {
+        // given
+        let entries = [
+            aRenderedFile(path: "Sources/First.swift", lineCount: 20),
+            aRenderedFile(path: "Sources/Next.swift", lineCount: 20),
+            aRenderedFile(path: "Sources/Selected.swift", lineCount: 160)
+        ]
+        let collapsedFirst: ContinuousDiffEntry
+        switch collapse {
+        case .viewed: collapsedFirst = entries[0].viewed(true)
+        case .manual: collapsedFirst = entries[0].opened(false)
+        }
+        let expectedSelectedOffset: CGFloat
+        do {
+            let baseline = try Scenario(
+                entries: [collapsedFirst, entries[1], entries[2]]
+            )
+            defer { baseline.close() }
+            baseline.settleLayout()
+            let scroll = try #require(baseline.verticalScroll)
+            try #require(baseline.model.entries[0].collapse.isCollapsed)
+            try #require(baseline.model.jumpTarget == nil)
+            let baselineInitialOffset = scroll.contentOffset.y
+            try #require(abs(baselineInitialOffset + scroll.adjustedContentInset.top) < 2)
+            scroll.setContentOffset(CGPoint(x: 0, y: baselineInitialOffset + 47), animated: false)
+            baseline.settleLayout()
+            try #require(abs(scroll.contentOffset.y - baselineInitialOffset - 47) < 2)
+            // Match the user request on an already mounted scroll, rather than a seeded initial jump.
+            baseline.model.jumpTarget = entries[2].id
+            try await baseline.settleJump()
+            expectedSelectedOffset = scroll.contentOffset.y
+            // The selected file must be farther down than automatic advance to the second file.
+            try #require(expectedSelectedOffset + scroll.adjustedContentInset.top > DiffCollapsedFileBar.height + 10 + 2)
+        }
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialOffset = scroll.contentOffset.y
+        try #require(abs(initialOffset + scroll.adjustedContentInset.top) < 2)
+        scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + 47), animated: false)
+        scenario.settleLayout()
+        try #require(abs(scroll.contentOffset.y - initialOffset - 47) < 2)
+        try #require(scroll.contentOffset.y - initialOffset > DiffFileHeader.height)
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        try #require(scenario.model.jumpTarget == nil)
+        try #require(scenario.visibleHeaders(in: scroll).count == 2)
+
+        // when
+        switch collapse {
+        case .viewed:
+            scenario.model.setViewed(true, fileId: entries[0].id)
+        case .manual:
+            scenario.model.setOpen(false, fileId: entries[0].id)
+        }
+        scenario.model.jumpTarget = entries[2].id
+        try await scenario.settleJump()
+
+        // then
+        try #require(scenario.model.entries[0].collapse.isCollapsed)
+        #expect(
+            abs(scroll.contentOffset.y - expectedSelectedOffset) < 2,
+            "collapse=\(collapse), expectedSelectedOffset=\(expectedSelectedOffset), actualSelectedOffset=\(scroll.contentOffset.y)"
+        )
+    }
+
+    @Test(arguments: [PinnedFileCollapse.viewed, .manual])
+    func `given a collapsing source reopens when its successor mounts then the viewport stays with the source`(
+        collapse: PinnedFileCollapse
+    ) async throws {
+        // given
+        let entries = ["Sources/First.swift", "Sources/Next.swift", "Sources/Last.swift"]
+            .map { aRenderedFile(path: $0, lineCount: 160) }
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialOffset = scroll.contentOffset.y
+        scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + 450), animated: false)
+        scenario.settleLayout()
+        try #require(abs(scroll.contentOffset.y - initialOffset - 450) < 2)
+        let offsetBeforeCollapse = scroll.contentOffset.y
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        let initialHeaders = try scenario.visibleHeaders(in: scroll)
+        try #require(initialHeaders.count == 1)
+        let sourceHeader = try #require(initialHeaders.first)
+        let initialPresentation = try #require(scroll.layer.presentation())
+        let initialViewport = initialPresentation.convert(initialPresentation.bounds, to: nil)
+        let sourcePosition = CGPoint(
+            x: sourceHeader.frame.minX - initialViewport.minX,
+            y: sourceHeader.frame.minY - initialViewport.minY
+        )
+        let sourceHeaderImage = try scenario.headerImageData(in: sourceHeader.frame)
+        try #require(scenario.model.readingPositions.contains(1) == false, "Successor reading was already reported before collapse")
+        scenario.model.sourceReopenOnRead = SourceReopenOnRead(
+            position: 1,
+            sourceId: entries[0].id,
+            collapse: collapse,
+            scroll: scroll
+        )
+
+        // when
+        switch collapse {
+        case .viewed:
+            scenario.model.setViewed(true, fileId: entries[0].id)
+        case .manual:
+            scenario.model.setOpen(false, fileId: entries[0].id)
+        }
+        try await scenario.settleSourceReopen()
+
+        // then
+        let reopened = try #require(scenario.model.sourceReopenObservation)
+        try #require(reopened.sourceWasCollapsed)
+        // A callback after viewport movement cannot establish the requested before-handoff phase.
+        try #require(abs(reopened.modelOffset - offsetBeforeCollapse) < 2, "Successor reading arrived after the model viewport moved")
+        let presentationOffset = try #require(reopened.presentationOffset)
+        try #require(abs(presentationOffset - offsetBeforeCollapse) < 2, "Successor reading arrived after the visible viewport moved")
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        let finalHeaders = try scenario.visibleHeaders(in: scroll)
+        try #require(finalHeaders.count == 1, "Initial source header=\(sourceHeader), final headers=\(finalHeaders)")
+        let reopenedHeader = try #require(finalHeaders.first)
+        let finalPresentation = try #require(scroll.layer.presentation())
+        let finalViewport = finalPresentation.convert(finalPresentation.bounds, to: nil)
+        let reopenedPosition = CGPoint(
+            x: reopenedHeader.frame.minX - finalViewport.minX,
+            y: reopenedHeader.frame.minY - finalViewport.minY
+        )
+        let reopenedHeaderImage = try scenario.headerImageData(in: reopenedHeader.frame)
+        let diagnostic = Comment(rawValue: "collapse=\(collapse), sourceHeader=\(sourceHeader), reopenedHeader=\(reopenedHeader), sourcePosition=\(sourcePosition), reopenedPosition=\(reopenedPosition), reopen=\(reopened)")
+        if reopenedHeaderImage != sourceHeaderImage {
+            Attachment.record(Array(sourceHeaderImage), named: "source-header-\(collapse).png")
+            Attachment.record(Array(reopenedHeaderImage), named: "reopened-header-\(collapse).png")
+        }
+        #expect(reopenedHeaderImage == sourceHeaderImage, diagnostic)
+        #expect(
+            abs(reopenedPosition.x - sourcePosition.x) < 2 && abs(reopenedPosition.y - sourcePosition.y) < 2,
+            diagnostic
+        )
     }
 
     // MARK: - Scenario
@@ -257,10 +516,25 @@ struct ContinuousDiffCollapseInteractionTests {
             return nil
         }
 
-        init(entries: [ContinuousDiffEntry]) throws {
+        var horizontalScroll: UIScrollView? {
+            guard let root = verticalScroll else { return nil }
+            var remaining: [UIView] = [root]
+            while let view = remaining.popLast() {
+                if let scroll = view as? UIScrollView,
+                   scroll.bounds.height > 0,
+                   scroll.contentSize.height > 0,
+                   abs(scroll.contentSize.height - scroll.bounds.height) < 2 {
+                    return scroll
+                }
+                remaining.append(contentsOf: view.subviews)
+            }
+            return nil
+        }
+
+        init(entries: [ContinuousDiffEntry], jumpTarget: FileID? = nil) throws {
             let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
             previousWindow = scene.windows.first(where: \.isKeyWindow)
-            model = CollapseHarness(entries: entries)
+            model = CollapseHarness(entries: entries, jumpTarget: jumpTarget)
             controller = UIHostingController(rootView: CollapseHarnessView(model: model))
             window = UIWindow(windowScene: scene)
             window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
@@ -269,8 +543,55 @@ struct ContinuousDiffCollapseInteractionTests {
         }
 
         func close() {
+            model.sourceReopenOnRead = nil
             window.isHidden = true
             previousWindow?.makeKey()
+        }
+
+        func visibleHeaders(in scroll: UIScrollView) throws -> [HeaderPresentation] {
+            let probe = ViewportMotionProbe(scroll: scroll)
+            probe.start()
+            defer { probe.stop() }
+            let sample = try #require(probe.samples.last)
+            let presentation = try #require(scroll.layer.presentation())
+            let viewport = presentation.convert(presentation.bounds, to: nil)
+            return sample.headerFrames.filter { $0.opacity > 0.99 && $0.frame.intersects(viewport) }
+        }
+
+        func headerImageData(in frame: CGRect) throws -> Data {
+            try #require(window.bounds.contains(frame), "Header capture is outside the fixture window: \(frame)")
+            var rendered = false
+            let data = UIGraphicsImageRenderer(bounds: frame).pngData { _ in
+                rendered = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            try #require(rendered, "Fixture window header rendering did not complete")
+            return data
+        }
+
+        func settleJump() async throws {
+            let root = try #require(controller.viewIfLoaded)
+            let observation = RenderSettlementProbe(root: root)
+            observation.start()
+            defer { observation.stop() }
+            let deadline = CACurrentMediaTime() + 3
+            while (model.jumpTarget != nil || observation.quietFrames < 5), CACurrentMediaTime() < deadline {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            try #require(model.jumpTarget == nil, "Requested file selection did not finish")
+            try #require(observation.quietFrames >= 5, "Native file selection did not settle")
+        }
+
+        func settleSourceReopen() async throws {
+            let root = try #require(controller.viewIfLoaded)
+            let observation = RenderSettlementProbe(root: root)
+            observation.start()
+            defer { observation.stop() }
+            let deadline = CACurrentMediaTime() + 3
+            while (model.sourceReopenObservation == nil || observation.quietFrames < 5), CACurrentMediaTime() < deadline {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            try #require(model.sourceReopenObservation != nil, "Successor reading did not expose the reopen phase")
+            try #require(observation.quietFrames >= 5, "Native source reopen did not settle")
         }
 
         func settleLayout() {
@@ -296,6 +617,14 @@ struct ContinuousDiffCollapseInteractionTests {
 enum PinnedFileCollapse: Sendable {
     case viewed
     case manual
+}
+
+enum DiffMotionFixture: Sendable {
+    case plain
+    case wordDiff
+    case unsegmentedWordDiff
+    case wordDiffOutgoing
+    case wordDiffSuccessor
 }
 
 private struct ScrollRendering: Equatable {
@@ -367,13 +696,25 @@ private struct ViewportMotionSample {
     let captureDuration: CFTimeInterval
     let modelOffset: CGFloat
     let presentationOffset: CGFloat
+    let headerCandidates: [HeaderCandidate]
     let headerFrames: [HeaderPresentation]
+}
+
+private struct HeaderCandidate {
+    let header: HeaderPresentation
+    let ancestorIdentities: [ObjectIdentifier]
 }
 
 private struct HeaderPresentation {
     let identity: ObjectIdentifier
     let frame: CGRect
     let opacity: Float
+}
+
+private struct NestedHeaderGeometry {
+    let sampleIndex: Int
+    let retained: HeaderPresentation?
+    let descendant: HeaderPresentation
 }
 
 @MainActor
@@ -419,7 +760,7 @@ private final class ViewportMotionProbe: NSObject {
             return
         }
         var remaining = [scroll.layer]
-        var headerFrames: [HeaderPresentation] = []
+        var headerCandidates: [HeaderCandidate] = []
         while let layer = remaining.popLast() {
             if abs(layer.bounds.height - DiffFileHeader.height) < 0.5,
                abs(layer.bounds.width - scroll.bounds.width) < 2,
@@ -431,34 +772,51 @@ private final class ViewportMotionProbe: NSObject {
                     if parent.isHidden { opacity = 0 }
                     ancestor = parent.superlayer
                 }
-                headerFrames.append(HeaderPresentation(
-                    identity: ObjectIdentifier(layer),
-                    frame: drawn.convert(drawn.bounds, to: nil),
-                    opacity: drawn.isHidden ? 0 : opacity
+                var ancestorIdentities: [ObjectIdentifier] = []
+                var modelAncestor = layer.superlayer
+                while let parent = modelAncestor {
+                    ancestorIdentities.append(ObjectIdentifier(parent))
+                    modelAncestor = parent.superlayer
+                }
+                headerCandidates.append(HeaderCandidate(
+                    header: HeaderPresentation(
+                        identity: ObjectIdentifier(layer),
+                        frame: drawn.convert(drawn.bounds, to: nil),
+                        opacity: drawn.isHidden ? 0 : opacity
+                    ),
+                    ancestorIdentities: ancestorIdentities
                 ))
             }
             remaining.append(contentsOf: layer.sublayers ?? [])
         }
+        let candidateIdentities = Set(headerCandidates.map(\.header.identity))
+        // A header-sized wrapper and its header-sized descendant are one physical geometry unit.
+        // Keep the outermost candidate; unrelated siblings remain separate and fail the count guard.
+        let headerFrames = headerCandidates.filter { candidate in
+            candidate.ancestorIdentities.contains { candidateIdentities.contains($0) } == false
+        }.map(\.header)
         samples.append(ViewportMotionSample(
             elapsed: timestamp - startedAt,
             callbackElapsed: callbackStarted - startedAt,
             captureDuration: CACurrentMediaTime() - callbackStarted,
             modelOffset: scroll.contentOffset.y,
             presentationOffset: presentation.bounds.origin.y,
+            headerCandidates: headerCandidates,
             headerFrames: headerFrames
         ))
     }
 }
 
 @MainActor
-private func aRenderedFile(path: String, lineCount: Int) -> ContinuousDiffEntry {
+private func aRenderedFile(path: String, lineCount: Int, widestLineAt: Int? = nil) -> ContinuousDiffEntry {
     let lines = (1...lineCount).map { (number: Int) in
-        DiffLine(
+        let text = widestLineAt == number ? String(repeating: "x", count: 120) : "let value\(number) = \(number)"
+        return DiffLine(
             kind: .addition,
             oldNumber: nil,
             newNumber: number,
-            text: "let value\(number) = \(number)",
-            displayColumns: 20,
+            text: text,
+            displayColumns: widestLineAt == number ? text.count : 20,
             segments: nil
         )
     }
@@ -487,12 +845,80 @@ private func aRenderedFile(path: String, lineCount: Int) -> ContinuousDiffEntry 
 }
 
 @MainActor
+private func aRenderedWordDiffFile(path: String, segmented: Bool = true) -> ContinuousDiffEntry {
+    // Native word-diff layout for a generated array changing sixteen values on each line.
+    // The deletion/addition pairs carry real text and segments rather than timing work in the probe.
+    let lines = (1...160).flatMap { number -> [DiffLine] in
+        let prefix = WordSegment(text: "let values\(number) = [", isChanged: false)
+        let oldSegments = [prefix] + (0..<16).flatMap { value in
+            [
+                WordSegment(text: "oldValue\(value)", isChanged: true),
+                WordSegment(text: value == 15 ? "]" : ", ", isChanged: false)
+            ]
+        }
+        let newSegments = [prefix] + (0..<16).flatMap { value in
+            [
+                WordSegment(text: "newValue\(value)", isChanged: true),
+                WordSegment(text: value == 15 ? "]" : ", ", isChanged: false)
+            ]
+        }
+        let oldText = oldSegments.map(\.text).joined()
+        let newText = newSegments.map(\.text).joined()
+        return [
+            DiffLine(
+                kind: .deletion,
+                oldNumber: number,
+                newNumber: nil,
+                text: oldText,
+                displayColumns: oldText.count,
+                segments: segmented ? oldSegments : nil
+            ),
+            DiffLine(
+                kind: .addition,
+                oldNumber: nil,
+                newNumber: number,
+                text: newText,
+                displayColumns: newText.count,
+                segments: segmented ? newSegments : nil
+            )
+        ]
+    }
+    return .ready(FileDiff(
+        file: aChangedFile(
+            path: path,
+            status: .modified,
+            insertions: 160,
+            deletions: 160,
+            estimatedLineCount: lines.count
+        ),
+        hunks: [Hunk(
+            index: 0,
+            oldStart: 1,
+            oldCount: 160,
+            newStart: 1,
+            newCount: 160,
+            sectionHeading: nil,
+            lines: lines
+        )],
+        oldLineCount: 160,
+        newLineCount: 160,
+        isTruncated: false,
+        truncationReason: nil
+    ))
+}
+
+@MainActor
 @Observable
 private final class CollapseHarness {
     var entries: [ContinuousDiffEntry]
+    var jumpTarget: FileID?
+    var readingPositions: Set<Int> = []
+    var sourceReopenOnRead: SourceReopenOnRead?
+    var sourceReopenObservation: SourceReopenObservation?
 
-    init(entries: [ContinuousDiffEntry]) {
+    init(entries: [ContinuousDiffEntry], jumpTarget: FileID?) {
         self.entries = entries
+        self.jumpTarget = jumpTarget
     }
 
     func setViewed(_ isViewed: Bool, fileId: FileID) {
@@ -502,6 +928,38 @@ private final class CollapseHarness {
     func setOpen(_ isOpen: Bool, fileId: FileID) {
         entries = entries.map { $0.id == fileId ? $0.opened(isOpen) : $0 }
     }
+
+    func jumped() {
+        jumpTarget = nil
+    }
+
+    func reading(_ position: Int) {
+        readingPositions.insert(position)
+        guard let trigger = sourceReopenOnRead, trigger.position == position else { return }
+        sourceReopenOnRead = nil
+        sourceReopenObservation = SourceReopenObservation(
+            sourceWasCollapsed: entries.first { $0.id == trigger.sourceId }?.collapse.isCollapsed == true,
+            modelOffset: trigger.scroll.contentOffset.y,
+            presentationOffset: trigger.scroll.layer.presentation()?.bounds.minY
+        )
+        switch trigger.collapse {
+        case .viewed: setViewed(false, fileId: trigger.sourceId)
+        case .manual: setOpen(true, fileId: trigger.sourceId)
+        }
+    }
+}
+
+private struct SourceReopenOnRead {
+    let position: Int
+    let sourceId: FileID
+    let collapse: PinnedFileCollapse
+    let scroll: UIScrollView
+}
+
+private struct SourceReopenObservation {
+    let sourceWasCollapsed: Bool
+    let modelOffset: CGFloat
+    let presentationOffset: CGFloat?
 }
 
 @MainActor
@@ -514,11 +972,11 @@ private struct CollapseHarnessView: View {
                 state: .reading(model.entries),
                 logCopyState: .ready,
                 pointSize: SnapshotLayout.iPhoneLight.codePointSize,
-                jumpTarget: nil,
+                jumpTarget: model.jumpTarget,
                 isWaitingLong: false,
-                onReading: { _ in },
+                onReading: model.reading,
                 onRereading: { _ in },
-                onJumped: {},
+                onJumped: model.jumped,
                 onSetViewed: model.setViewed,
                 onSetOpen: model.setOpen,
                 onExpand: { _, _, _ in },

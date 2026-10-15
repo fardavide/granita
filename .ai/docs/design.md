@@ -1134,10 +1134,16 @@ its normal end-of-content constraint.
 **The file and viewport move together** *(13 October 2026, Davide's correction)*. The first
 implementation used the default disclosure spring for the collapsing layout and the scroll.
 Davide saw a jump: the viewport arrived while the next header was still moving into place. File
-collapse now uses one 0.6-second ease-in-out curve around the scroll container and for advancing
-its position. The next header travels into its final slot as part of the same movement. Loading
-content and other disclosures keep their existing curves. The gentler duration also limits how far
-the viewport travels between updates when rendering slows down.
+collapse uses one 0.6-second ease-in-out curve around the scroll container and for advancing its
+position. The header renders as one geometry unit while its natural slot moves, and the expanded
+body leaves without retaining every code row for a fade. Fixed-height gutter and tint rows draw
+lazily; the code keeps its complete width before offscreen long lines appear. The next header
+receives layout and a subsequent animation update before viewport advance begins, so its initial
+rendering does not consume the viewport's animation. Explicit file selection cancels that pending
+advance, as does reopening its source or removing either file. Reopening restores the source's
+header so the successor's sticky header cannot remain on screen. The next header travels into its
+final slot as part of the same movement. Loading content and other disclosures keep their existing
+curves.
 
 ### The word segment is a background, and the ratio is what is stated
 
