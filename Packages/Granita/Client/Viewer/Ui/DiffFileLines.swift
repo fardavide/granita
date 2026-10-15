@@ -330,20 +330,36 @@ public struct DiffFileLines: View {
     /// them.
     private var code: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
+            // A lazy column only measures mounted rows. Measure plain glyphs separately so a
+            // long offscreen line still sets travel without drawing every word-diff background.
+            ZStack(alignment: .topLeading) {
                 ForEach(indexedRows, id: \.offset) { _, row in
                     switch row {
                     case .full(let line):
-                        segmented(line)
+                        let drawn = DrawnDiffLine.of(line)
+                        let text = lexed(drawn, of: line).map { String($0.characters) } ?? drawn.text
+                        Text(verbatim: text)
+                            .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
                             .lineLimit(1)
-                            .frame(height: rowHeight, alignment: .leading)
                     case .block(let old, let new):
-                        // **What a block contributes here is travel and nothing visible.** Its cells
-                        // are drawn outside this scroll and ride its offset, so the only thing it
-                        // needs from the content is enough width that a drag can reach the end of
-                        // the longer of its two lines — which is further than the unified row needs,
-                        // because a cell is narrower than this scroll's own viewport.
                         Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
+                    }
+                }
+            }
+            .hidden()
+            .frame(height: contentHeight, alignment: .topLeading)
+            .overlay(alignment: .topLeading) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(indexedRows, id: \.offset) { _, row in
+                        switch row {
+                        case .full(let line):
+                            segmented(line)
+                                .lineLimit(1)
+                                .frame(height: rowHeight, alignment: .leading)
+                        case .block(let old, let new):
+                            // Cells draw outside this scroll; their placeholders reserve travel.
+                            Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
+                        }
                     }
                 }
             }

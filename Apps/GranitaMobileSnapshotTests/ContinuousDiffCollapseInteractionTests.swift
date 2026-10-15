@@ -200,8 +200,6 @@ struct ContinuousDiffCollapseInteractionTests {
         probe.stop()
 
         // then
-        try #require(probe.missingPresentationFrames == 0)
-        let last = try #require(probe.samples.last)
         let finalOffset = initialOffset + DiffCollapsedFileBar.height + 10
         let expectedTravel: CGFloat = 450 - DiffCollapsedFileBar.height - 10
         let intermediateFrames = probe.samples.filter {
@@ -211,6 +209,35 @@ struct ContinuousDiffCollapseInteractionTests {
         let largestFrameStep = zip(probe.samples, probe.samples.dropFirst())
             .map { abs($0.presentationOffset - $1.presentationOffset) }
             .max() ?? 0
+        let observedViewportArrivalIndex = probe.samples.firstIndex {
+            abs($0.presentationOffset - finalOffset) < 2
+        }
+        // Build the bounded trace before requiring a final successor, so an unfinished arrival
+        // reports the same native samples as a frame-step or coherence failure.
+        let largestStepEndIndex = (1..<probe.samples.count).max { left, right in
+            abs(probe.samples[left].presentationOffset - probe.samples[left - 1].presentationOffset)
+                < abs(probe.samples[right].presentationOffset - probe.samples[right - 1].presentationOffset)
+        } ?? 0
+        var traceIndices = Set(probe.samples.indices.prefix(4))
+        traceIndices.formUnion((largestStepEndIndex - 2...largestStepEndIndex).filter(probe.samples.indices.contains))
+        if let observedViewportArrivalIndex {
+            traceIndices.formUnion((observedViewportArrivalIndex - 2...observedViewportArrivalIndex + 2).filter(probe.samples.indices.contains))
+        }
+        traceIndices.formUnion(probe.samples.indices.suffix(2))
+        let trace = traceIndices.sorted().map { index in
+            let sample = probe.samples[index]
+            return "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), captureDuration=\(sample.captureDuration), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), headers=\(sample.headerFrames)"
+        }.joined(separator: "\n")
+        let observationDiagnostic = Comment(rawValue: """
+        collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset)
+        endPresentation=\(String(describing: probe.samples.last?.presentationOffset)), endModel=\(scroll.contentOffset.y), finalOffset=\(finalOffset)
+        missingPresentationFrames=\(probe.missingPresentationFrames), sampleCount=\(probe.samples.count)
+        intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep), expectedTravel=\(expectedTravel)
+        viewportArrivalIndex=\(String(describing: observedViewportArrivalIndex)), originalHeader=\(originalHeader)
+        \(trace)
+        """)
+        try #require(probe.missingPresentationFrames == 0, observationDiagnostic)
+        let last = try #require(probe.samples.last, observationDiagnostic)
         // Identify the opaque successor at the exact final slot, then follow its model-layer
         // identity backwards. The outgoing first header is a separate layer that fades away.
         let finalSuccessors = last.headerFrames.filter {
@@ -218,15 +245,13 @@ struct ContinuousDiffCollapseInteractionTests {
                 && $0.opacity > 0.99
                 && abs($0.frame.minY - originalHeader.frame.minY) < 2
         }
-        try #require(finalSuccessors.count == 1)
-        let successor = try #require(finalSuccessors.first)
-        let viewportArrivalIndex = try #require(probe.samples.firstIndex {
-            abs($0.presentationOffset - finalOffset) < 2
-        })
+        try #require(finalSuccessors.count == 1, observationDiagnostic)
+        let successor = try #require(finalSuccessors.first, observationDiagnostic)
+        let viewportArrivalIndex = try #require(observedViewportArrivalIndex, observationDiagnostic)
         let viewportArrival = probe.samples[viewportArrivalIndex]
         let successorAtArrival = try #require(viewportArrival.headerFrames.first {
             $0.identity == successor.identity
-        })
+        }, observationDiagnostic)
         let successorLag = abs(successorAtArrival.frame.minY - successor.frame.minY)
         // A moving wrapper is not enough: every matching descendant of the unchanged successor
         // must occupy the same presentation rectangle. The outgoing header's opacity may crossfade.
@@ -246,18 +271,6 @@ struct ContinuousDiffCollapseInteractionTests {
                 || abs(retained.frame.height - geometry.descendant.frame.height) >= 2
         }
         // Bound only diagnostic output; every assertion above and below still uses every sample.
-        let largestStepEndIndex = (1..<probe.samples.count).max { left, right in
-            abs(probe.samples[left].presentationOffset - probe.samples[left - 1].presentationOffset)
-                < abs(probe.samples[right].presentationOffset - probe.samples[right - 1].presentationOffset)
-        } ?? 0
-        var traceIndices = Set(probe.samples.indices.prefix(4))
-        traceIndices.formUnion((largestStepEndIndex - 2...largestStepEndIndex).filter(probe.samples.indices.contains))
-        traceIndices.formUnion((viewportArrivalIndex - 2...viewportArrivalIndex + 2).filter(probe.samples.indices.contains))
-        traceIndices.formUnion(probe.samples.indices.suffix(2))
-        let trace = traceIndices.sorted().map { index in
-            let sample = probe.samples[index]
-            return "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), captureDuration=\(sample.captureDuration), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), headers=\(sample.headerFrames)"
-        }.joined(separator: "\n")
         let diagnostic = Comment(rawValue: """
         collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset), endPresentation=\(last.presentationOffset)
         intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep), expectedTravel=\(expectedTravel)

@@ -1136,8 +1136,9 @@ implementation used the default disclosure spring for the collapsing layout and 
 Davide saw a jump: the viewport arrived while the next header was still moving into place. File
 collapse uses one 0.6-second ease-in-out curve around the scroll container and for advancing its
 position. The header renders as one geometry unit while its natural slot moves, and the expanded
-body leaves without retaining every code row for a fade. Fixed-height gutter and tint rows draw
-lazily; the code keeps its complete width before offscreen long lines appear. The next header
+body leaves without retaining every code row for a fade. Gutter, tint and code rows draw lazily;
+an invisible plain-text ruler measures every line's glyphs so offscreen long lines still set the
+complete horizontal travel, including text that needs Unicode measurement. The next header
 receives layout and a subsequent animation update before viewport advance begins, so its initial
 rendering does not consume the viewport's animation. Explicit file selection cancels that pending
 advance, as does reopening its source or removing either file. Reopening restores the source's
