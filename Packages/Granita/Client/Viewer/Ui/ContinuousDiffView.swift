@@ -201,6 +201,8 @@ public struct ContinuousDiffView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             content(of: entry)
                         }
+                            // Animate the body as one unit instead of moving each code row.
+                            .geometryGroup()
                             // Measure the body: a pinned header's rendered position hides where
                             // its original slot is. Only the file crossing the top qualifies.
                             .onGeometryChange(for: Bool.self) { proxy in

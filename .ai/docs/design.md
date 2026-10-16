@@ -1135,14 +1135,13 @@ its normal end-of-content constraint.
 implementation used the default disclosure spring for the collapsing layout and the scroll.
 Davide saw a jump: the viewport arrived while the next header was still moving into place. File
 collapse uses one 0.6-second ease-in-out curve around the scroll container and for advancing its
-position. The header renders as one geometry unit while its natural slot moves, and the expanded
-body leaves without retaining every code row for a fade. Gutter, tint and code rows draw lazily;
+position. The header and body each render as one geometry unit while their natural slots move, and
+the expanded body leaves without retaining every code row for a fade. Gutter, tint and code rows draw lazily;
 an invisible plain-text ruler measures every line's glyphs so offscreen long lines still set the
 complete horizontal travel, including text that needs Unicode measurement. Code painting stays
 outside the horizontal scroll's full-hunk viewport so the vertical viewport can cull its rows;
-it follows the horizontal offset in the same way as split cells. Figures, markers and code share
-one lazy row stack rather than placing the same visible rows in independent columns; tint and
-selection retain their compositing order behind it. The next header
+it follows the horizontal offset in the same way as split cells. The body groups its movement so
+the animation does not push a new frame through each code row. The next header
 receives layout and a subsequent animation update before viewport advance begins, so its initial
 rendering does not consume the viewport's animation. Explicit file selection cancels that pending
 advance, as does reopening its source or removing either file. Reopening restores the source's

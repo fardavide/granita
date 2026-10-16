@@ -7,11 +7,14 @@ import CoreReviewDomain
 /// One hunk's diff lines with wrap off: the numbers and markers pinned, and the code scrolling under
 /// them.
 ///
-/// **The native scroll owns travel, while the rows draw outside it.** `SPEC.md` §10 says long lines
-/// scroll horizontally with the gutter pinned. A hidden ruler gives the scroll its complete width;
-/// each visible row offsets only its code, keeping the figures in place. Drawing outside the
-/// horizontal viewport also lets the vertical viewport cull rows, and one lazy row stack places
-/// figures, markers and code together. The separate tint stack shares the fixed row height below.
+/// **The two halves are separate view trees, and that is the shape rather than an implementation
+/// detail.** `SPEC.md` §10 says long lines scroll horizontally within the file *with the gutter
+/// pinned*, and a gutter inside the row is inside whatever scrolls the row — the first attempt put
+/// both in one view and the baseline came back with the numbers pushed off the leading edge, because
+/// a row wider than its container is centred in it. So the numbers are a fixed column outside the
+/// scroll, the code is a stack inside it, and the price is that two stacks have to agree on every
+/// row's height. That height is therefore stated once, below, rather than left to two text engines
+/// to arrive at independently. See `.ai/docs/decisions.md`.
 ///
 /// **The tints are drawn behind both halves rather than on either.** A row's colour says which side
 /// of the comparison the line is on, which is a fact about the row and not about the text — so it
@@ -142,6 +145,7 @@ public struct DiffFileLines: View {
                 tints
                 selection
                 columns
+                blockCells
             }
             .font(.system(size: pointSize, design: .monospaced))
             // **Overlaid rather than added to the row, which is the whole of design §7.3's call 7.**
@@ -267,42 +271,58 @@ public struct DiffFileLines: View {
     }
 
     private var columns: some View {
-        code
-            .padding(.leading, numberColumnWidth + DiffGutter.markerWidth + DiffGutter.markerTrailingSpace)
-            // Paint outside the full-height horizontal viewport so vertical scrolling culls rows.
-            // One row places its figures and code together instead of repeating lazy placement.
-            .overlay(alignment: .topLeading) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(indexedRows, id: \.offset) { offset, row in
-                        switch row {
-                        case .full(let line):
-                            HStack(spacing: 0) {
-                                figure(of: line, isPending: isPending(row: offset, side: nil))
-                                    .frame(height: rowHeight)
-                                marker(of: line)
-                                    .frame(width: DiffGutter.markerWidth, height: rowHeight)
-                                    .padding(.trailing, DiffGutter.markerTrailingSpace)
-                                segmented(line)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .offset(x: -scrolledBy)
-                                    .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
-                                    .clipped()
-                                    .mask(alignment: .leading) { fade }
-                            }
-                        case .block(let old, let new):
-                            HStack(spacing: 0) {
-                                cell(of: old, at: offset, on: .old)
-                                Color.clear.frame(width: 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth)
-                                cell(of: new, at: offset, on: .new)
-                                Spacer(minLength: 0)
-                            }
-                            .frame(height: rowHeight)
-                        }
-                    }
+        HStack(alignment: .top, spacing: 0) {
+            numbers
+            markers
+            code
+        }
+    }
+
+    /// **A block row's figures belong to its cells, so the file's own column leaves that row empty.**
+    /// Design §4.3's call 3: one shared column cannot say which side it numbers on the rows where the
+    /// two differ, and inside a block most rows are exactly that.
+    private var numbers: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { offset, row in
+                switch row {
+                case .full(let line):
+                    figure(of: line, isPending: isPending(row: offset, side: nil))
+                        .frame(height: rowHeight)
+                case .block:
+                    Color.clear.frame(width: numberColumnWidth, height: rowHeight)
                 }
-                .allowsHitTesting(false)
             }
+        }
+        .frame(width: numberColumnWidth)
+    }
+
+    /// **The strongest colour in a row lives here rather than behind the code**, which is rule 2's
+    /// whole argument. It frees the row tint to be almost nothing, and it is the only marker that
+    /// survives red-green colour blindness, sunlight, and a chat client that dims the screenshot.
+    ///
+    /// Outside the horizontal scroll with the numbers: a marker that scrolled away would leave the
+    /// row saying nothing on exactly the long lines the reader had to scroll to read.
+    /// **The gap after it is on the column rather than on the glyph**, so the `+` and the `−` stay
+    /// centred in one another's width down the file while the code clears them — a padding inside the
+    /// frame would move the glyph instead of the code.
+    ///
+    /// **A block row carries no marker at all.** Inside one, every left row is a deletion and every
+    /// right row an addition, so the glyph would be 18pt restating the column it is standing in —
+    /// design §4.3. Outside a block it is untouched, so the `+` and the `−` never leave the file.
+    private var markers: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { _, row in
+                switch row {
+                case .full(let line):
+                    marker(of: line)
+                        .frame(width: DiffGutter.markerWidth, height: rowHeight)
+                case .block:
+                    Color.clear.frame(width: DiffGutter.markerWidth, height: rowHeight)
+                }
+            }
+        }
+        .frame(width: DiffGutter.markerWidth)
+        .padding(.trailing, DiffGutter.markerTrailingSpace)
     }
 
     /// One scroll for the whole hunk rather than one per line, which is what keeps the lines aligned
@@ -344,6 +364,32 @@ public struct DiffFileLines: View {
         // The same arithmetic the tints behind it use, so the two trees cannot come out different
         // heights.
         .frame(height: contentHeight)
+        // The horizontal scroll's viewport is the full hunk height, so rows inside it all mount.
+        // Paint outside it to inherit the vertical viewport, as the split cells already do.
+        .overlay(alignment: .topLeading) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(indexedRows, id: \.offset) { _, row in
+                    switch row {
+                    case .full(let line):
+                        segmented(line)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .offset(x: -scrolledBy)
+                            .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
+                            .clipped()
+                    case .block:
+                        Color.clear.frame(width: visibleWidth, height: rowHeight)
+                    }
+                }
+            }
+            .allowsHitTesting(false)
+        }
+        // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
+        // scroll, so a gradient painted in the background colour would have to composite the tint
+        // back on top of itself to avoid a grey notch on every added and removed row. Fading the
+        // code away instead reveals whatever is behind it, which is already the right colour in both
+        // appearances and over every tint.
+        .mask(alignment: .leading) { fade }
         .onScrollGeometryChange(for: CGFloat.self) { geometry in
             geometry.contentOffset.x
         } action: { _, offset in
@@ -365,6 +411,26 @@ public struct DiffFileLines: View {
                 endPoint: .trailing
             )
             .frame(width: Self.trailingFade)
+        }
+    }
+
+    /// The two cells of every block, drawn over the pinned columns and moving with the scroll.
+    private var blockCells: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(indexedRows, id: \.offset) { offset, row in
+                switch row {
+                case .full:
+                    Color.clear.frame(height: rowHeight)
+                case .block(let old, let new):
+                    HStack(spacing: 0) {
+                        cell(of: old, at: offset, on: .old)
+                        Color.clear.frame(width: 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth)
+                        cell(of: new, at: offset, on: .new)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(height: rowHeight)
+                }
+            }
         }
     }
 

@@ -26,9 +26,12 @@ the census confirms that the vertical viewport culls distant rows. An invisible 
 still measures every line, preserving horizontal travel and Unicode widths. The subsequent
 [CI run](https://github.com/fardavide/granita/actions/runs/38827443668) passed every header-coherence,
 final-position and image check, but five motion cases still exceeded the unchanged frame-step limit.
-A simulator CPU trace showed most sampled main-thread work in SwiftUI layout and view updates.
-Figures, markers and code now share one lazy row stack, reducing the hunk from five lazy stacks to
-two while preserving the tint and selection layers. Viewport advance waits
+A later consolidation of the lazy columns did not resolve the CI failures and was reverted.
+Timestamped native tracing ruled out ruler rebuilding during viewport movement. The body now groups
+its geometry as the header already does, retaining the separate lazy columns and shared code mask.
+Across sixteen matched scrolling windows this reduced sampled main-thread work from 4,122ms to
+2,875ms, including drawing from 833ms to 254ms. The same tests still pass and distant rows remain
+unmounted during collapse. Viewport advance waits
 for successor layout and a subsequent animation update. Explicit selection cancels the pending
 advance; reopening restores the source's header. The shared 0.6-second curve and existing position
 behavior remain unchanged. All 26 native cases pass, including the original position and motion
