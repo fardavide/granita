@@ -1129,7 +1129,25 @@ When the open file's natural header position is above the viewport, marking it v
 it with the chevron places the next file's header at the viewport top. The collapsed bar remains
 immediately above it, reachable by scrolling back. When the natural header is still in view,
 collapsing preserves the viewport instead. The last file has no successor, so the scroll keeps
-its normal end-of-content constraint. The movement uses the existing disclosure animation.
+its normal end-of-content constraint.
+
+**The file and viewport move together** *(13 October 2026, Davide's correction)*. The first
+implementation used the default disclosure spring for the collapsing layout and the scroll.
+Davide saw a jump: the viewport arrived while the next header was still moving into place. File
+collapse uses one 0.6-second ease-in-out curve around the scroll container and for advancing its
+position. The header and body each render as one geometry unit while their natural slots move, and
+the expanded body leaves without retaining every code row for a fade. Gutter, tint and code rows draw lazily;
+an invisible plain-text ruler measures every line's glyphs so offscreen long lines still set the
+complete horizontal travel, including text that needs Unicode measurement. Code painting stays
+outside the horizontal scroll's full-hunk viewport so the vertical viewport can cull its rows;
+it follows the horizontal offset in the same way as split cells. The body groups its movement so
+the animation does not push a new frame through each code row. The next header
+receives layout and a subsequent animation update before viewport advance begins, so its initial
+rendering does not consume the viewport's animation. Explicit file selection cancels that pending
+advance, as does reopening its source or removing either file. Reopening restores the source's
+header so the successor's sticky header cannot remain on screen. The next header travels into its
+final slot as part of the same movement. Loading content and other disclosures keep their existing
+curves.
 
 ### The word segment is a background, and the ratio is what is stated
 

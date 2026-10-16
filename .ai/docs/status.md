@@ -2,27 +2,45 @@
 
 Where the project is. Update this when a slice lands.
 
-**Pinned-file collapse is prepared as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
+**Pinned-file collapse merged as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
 An open file whose natural header is above the viewport advances to its successor when marked
 viewed or closed manually. A visible header preserves the viewport; the last file uses normal
 end clamping. The app-hosted regression reproduced a 450pt offset remaining after collapse where
 54pt was expected, then passed seven cases including navigation-bar, non-first and last-file
-boundaries. `make test`, `make build` and all 56 existing continuous-diff snapshots pass without
-baseline changes. The tests drive bound state, so a real control tap and visual motion check remain
-before release. The instrumented package suite passes all 1,905 tests, and both iOS coverage shards
-pass all 1,109 cases without failures or skips. Local `make coverage` reported Mac snapshot
-mismatches, then stalled at the reader captures; the owned test runner was interrupted. No complete
-local coverage verdict was produced, so the required Mac snapshot and coverage checks must pass
-in CI. Both unsigned apps also build at 0.22.2. No snapshot baselines or coverage rules changed.
-The first two CI runs pass package tests, both builds, generated files, Mac snapshots and the
-first iOS shard. The second shard fails only the two new manual-collapse cases. Diagnostics locate
-the viewport at document position 8pt instead of the next header's natural 54pt start: exactly one
-46pt header early, with unchanged navigation insets and over a second of layout settling. Viewed
-cases and existing snapshots pass. Local reproduction probes, including the exact instrumented
-shard, remain green. Collapse now targets a distinct header identity rather than the section's
-identity; file-selector jumps retain a separate file target. All seven collapse cases and all 56
-existing continuous-diff snapshots pass with that correction. The expectation and 2pt tolerance
-are unchanged. Current CI results and the numerical coverage verdict are tracked on the PR.
+boundaries. Collapse targets a distinct header identity rather than the section's identity;
+file-selector jumps retain a separate file target. All seven required CI checks, including both
+iOS shards, Mac snapshots and all six coverage ratchets, passed before the merge. No snapshot
+baselines or coverage rules changed.
+The later [main CI run](https://github.com/fardavide/granita/actions/runs/38381724558) failed the
+non-first pinned-file collapse position case; its expectation remains unchanged in the follow-up.
+
+**Smooth collapse is prepared as 0.22.3 in [PR #126](https://github.com/fardavide/granita/pull/126).**
+Davide reported a visible jump after 0.22.2. The viewport could arrive before its successor header;
+changing the curve alone did not reliably fix large word diffs. The header now renders as one
+geometry group, the expanded body leaves at an explicit removal boundary without retaining all its
+code for a fade, and gutter, tint and code rows are lazy. CI exposed large sampled frame steps and
+unfinished word-diff motion. A native appearance census confirmed that placing the lazy code inside
+the horizontal scroll still mounted distant rows: that scroll's viewport spans the whole hunk.
+Code painting now sits outside it and follows the existing horizontal offset, as split cells do;
+the census confirms that the vertical viewport culls distant rows. An invisible plain-text ruler
+still measures every line, preserving horizontal travel and Unicode widths. The subsequent
+[CI run](https://github.com/fardavide/granita/actions/runs/38827443668) passed every header-coherence,
+final-position and image check, but five motion cases still exceeded the unchanged frame-step limit.
+A later consolidation of the lazy columns did not resolve the CI failures and was reverted.
+Timestamped native tracing ruled out ruler rebuilding during viewport movement. The body now groups
+its geometry as the header already does, retaining the separate lazy columns and shared code mask.
+Across sixteen matched scrolling windows this reduced sampled main-thread work from 4,122ms to
+2,875ms, including drawing from 833ms to 254ms. The same tests still pass and distant rows remain
+unmounted during collapse. Viewport advance waits
+for successor layout and a subsequent animation update. Explicit selection cancels the pending
+advance; reopening restores the source's header. The shared 0.6-second curve and existing position
+behavior remain unchanged. All 26 native cases pass, including the original position and motion
+limits, offscreen width, selection and reopening, plus exact nonblank code-image checks after deep
+vertical scrolling and a horizontal round trip. Package tests and both unsigned app builds pass.
+Both instrumented phone shards pass all 77 tests without failures or skips, with matching source digests and complete
+inventories. Local Mac snapshots differ from the CI-recorded baselines; that coverage attempt was
+interrupted after confirmed mismatches without a complete verdict. Required CI remains the landing
+gate. No coverage rules changed.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

@@ -39,10 +39,14 @@ public struct ContinuousDiffView: View {
     @State private var scrolledTo: ScrollDestination?
 
     @State private var pinnedFiles: Set<FileID> = []
+    @State private var pendingAdvance: PendingAdvance = .none
 
     private let state: ContinuousDiffState
     private let logCopyState: DiagnosticCopyState
     private let pointSize: CGFloat
+
+    // A fixed duration keeps the viewport and the much taller collapsing layout in step.
+    private let collapseAnimation: Animation = .easeInOut(duration: 0.6)
 
     /// Whether a paired run opens into two columns, which the reader sets from the toolbar and this
     /// screen only carries. Design §4.5's call 6 keeps it global and device-local, so it arrives the
@@ -189,13 +193,16 @@ public struct ContinuousDiffView: View {
     }
 
     private func scroll(of entries: [ContinuousDiffEntry]) -> some View {
-        ScrollView {
+        let advance = pendingAdvance
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
                     Section {
                         VStack(alignment: .leading, spacing: 0) {
                             content(of: entry)
                         }
+                            // Animate the body as one unit instead of moving each code row.
+                            .geometryGroup()
                             // Measure the body: a pinned header's rendered position hides where
                             // its original slot is. Only the file crossing the top qualifies.
                             .onGeometryChange(for: Bool.self) { proxy in
@@ -204,6 +211,32 @@ public struct ContinuousDiffView: View {
                                     && frame.maxY > DiffFileHeader.height
                             } action: { isPinned in
                                 recordPinnedFile(entry, isPinned: isPinned)
+                            }
+                            .onGeometryChange(for: Bool.self) { proxy in
+                                switch advance {
+                                case .none, .update:
+                                    false
+                                case .layout(let request):
+                                    request.target == entry.id
+                                        && proxy.size.width > 0 && proxy.size.height > 0
+                                }
+                            } action: { isReady in
+                                handleAdvanceEvent(.layoutReady(isReady), for: entry.id)
+                            }
+                            .background {
+                                if case .update(let request) = pendingAdvance,
+                                   request.target == entry.id {
+                                    // Let the laid-out successor receive an animation update before
+                                    // starting viewport motion; its first draw can be expensive.
+                                    TimelineView(.animation) { context in
+                                        Color.clear.onChange(of: context.date) { _, _ in
+                                            handleAdvanceEvent(.animationUpdated, for: entry.id)
+                                        }
+                                    }
+                                    .transition(.identity)
+                                    .allowsHitTesting(false)
+                                    .accessibilityHidden(true)
+                                }
                             }
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
@@ -215,6 +248,8 @@ public struct ContinuousDiffView: View {
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
+                            // Move the header's rendering as one unit when its natural slot moves.
+                            .geometryGroup()
                             // Collapse targets the header itself; a section also contains a body.
                             .id(ScrollDestination.header(entry.id))
                     }
@@ -222,14 +257,6 @@ public struct ContinuousDiffView: View {
                 }
             }
             .scrollTargetLayout()
-            // **Shutting and opening a file is animated here, on the stack, and not on the two
-            // halves inside it.** What has to travel when a file shuts is every *other* file below
-            // it, and their positions belong to this stack — an animation attached inside a section
-            // scopes to that section, so 0.5.2 cross-faded the bar into the header while the rest of
-            // the scroll snapped to its new place, which is the jump wearing a fade. One scope over
-            // the whole stack is also what makes the two halves of the swap one gesture rather than
-            // two. The curve is stated once, in `Animation.disclosure`.
-            //
             // **A diff arriving is keyed here too now, and it used to be deliberately excluded.** The
             // old comment read "so a diff arriving still lands without dragging the scroll around",
             // which was right while a file reserved its own height and the swap moved nothing. It
@@ -239,7 +266,6 @@ public struct ContinuousDiffView: View {
             //
             // Under `.scrollTargetLayout()` rather than over it: the marker wants the stack itself,
             // and a jump landing on a file is a different gesture from a file opening under a thumb.
-            .animation(.disclosure, value: entries.map(\.collapse.isCollapsed))
             .animation(.disclosure, value: entries.map(\.isReady))
         }
         // **A scroll position by identity, and a `ScrollViewReader` is what it replaces.** The first
@@ -262,6 +288,7 @@ public struct ContinuousDiffView: View {
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)
         }
+        .animation(collapseAnimation, value: entries.map(\.collapse.isCollapsed))
         // **The one gesture that re-reads this screen, and the only place a reader can make it is the
         // top of the scroll.** That is what settles it against `SPEC.md` §10: a read replaces every
         // entry, drops what has been lexed and re-fetches every batch, and the rule forbids that
@@ -279,6 +306,7 @@ public struct ContinuousDiffView: View {
         // starts absent.
         .onChange(of: jumpTarget, initial: true) { _, target in
             guard let target else { return }
+            pendingAdvance = .none
             // **Nothing to animate when the scroll is already there**, which is the seeded first
             // layout and is also a reader tapping the file they are looking at. Animating it anyway
             // re-ran the transition from where it had already landed, and the baseline caught the
@@ -299,6 +327,7 @@ public struct ContinuousDiffView: View {
         // bars, between a bar and a header, and under the last file — where a rule per boundary
         // would be four.
         .background(Color.diffPage)
+        .onDisappear { pendingAdvance = .none }
     }
 
     private func recordPinnedFile(_ entry: ContinuousDiffEntry, isPinned: Bool) {
@@ -315,20 +344,78 @@ public struct ContinuousDiffView: View {
         from previous: [ContinuousDiffEntry],
         to current: [ContinuousDiffEntry]
     ) {
+        switch pendingAdvance {
+        case .none:
+            break
+        case .layout(let request), .update(let request):
+            if current.contains(where: { $0.id == request.source && $0.collapse.isCollapsed }) == false
+                || current.contains(where: { $0.id == request.target }) == false {
+                pendingAdvance = .none
+                if current.contains(where: { $0.id == request.source && $0.collapse.isCollapsed == false }) {
+                    withAnimation(collapseAnimation) {
+                        scrolledTo = .header(request.source)
+                    }
+                }
+            }
+        }
         guard let position = current.firstIndex(where: { entry in
             pinnedFiles.contains(entry.id) && entry.collapse.isCollapsed
                 && previous.contains { $0.id == entry.id && $0.collapse.isCollapsed == false }
         }) else { return }
         pinnedFiles.remove(current[position].id)
         guard current.indices.contains(position + 1) else { return }
-        withAnimation(.disclosure) {
-            scrolledTo = .header(current[position + 1].id)
+        pendingAdvance = .layout(AdvanceRequest(
+            source: current[position].id,
+            target: current[position + 1].id
+        ))
+    }
+
+    private func handleAdvanceEvent(_ event: AdvanceEvent, for file: FileID) {
+        let request: AdvanceRequest
+        switch pendingAdvance {
+        case .none:
+            return
+        case .layout(let value), .update(let value):
+            request = value
+        }
+        let isRequested: Bool
+        switch event {
+        case .layoutReady(let ready):
+            isRequested = ready && pendingAdvance == .layout(request) && request.target == file
+        case .animationUpdated:
+            isRequested = pendingAdvance == .update(request) && request.target == file
+        }
+        guard isRequested else { return }
+        switch event {
+        case .layoutReady:
+            pendingAdvance = .update(request)
+        case .animationUpdated:
+            withAnimation(collapseAnimation) {
+                pendingAdvance = .none
+                scrolledTo = .header(file)
+            }
         }
     }
 
     private enum ScrollDestination: Hashable {
         case file(FileID)
         case header(FileID)
+    }
+
+    nonisolated private enum PendingAdvance: Equatable, Sendable {
+        case none
+        case layout(AdvanceRequest)
+        case update(AdvanceRequest)
+    }
+
+    nonisolated private struct AdvanceRequest: Equatable, Sendable {
+        let source: FileID
+        let target: FileID
+    }
+
+    nonisolated private enum AdvanceEvent: Sendable {
+        case layoutReady(Bool)
+        case animationUpdated
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
@@ -399,82 +486,85 @@ public struct ContinuousDiffView: View {
             // the 44pt its bar takes and not one row more.
             EmptyView()
         } else {
-            // **Under the header and above the code**, which is the only place left for a comment
-            // whose rows are gone. See `StaleCommentRow` for why inserting 44pt here does not break
-            // the no-reflow rule, and for what would make it start breaking it.
-            //
-            // **One row for the file rather than one per comment.** Two of them stacked would be 88pt
-            // of chrome saying the same sentence twice, and the second one's line number is a handle
-            // on something the reader has to open the review to see anyway.
-            if let stale = stale(of: entry) {
-                StaleCommentRow(count: stale.count, line: stale.firstLine, onOpenReview: onOpenReview)
-            }
-            switch entry.content {
-            case .awaiting(let file):
-                // **Still no spinner, and still for the reason that kept one off this screen**: five
-                // files are in flight at once, the reader is waiting on none of them, and there is no
-                // per-file measurement the Mac could report. What replaced the blank is not an
-                // instrument — it is the rows the file has not sent yet, under one sentence saying
-                // who is being asked. Design §9.
-                DiffAwaitingBody(
-                    file: file,
-                    wait: isWaitingLong ? .stillReading : .reading,
-                    rows: entry.reservedRows,
-                    pointSize: pointSize
-                )
-                // **The skeleton fades out where the code fades in**, rather than one replacing the
-                // other in a frame. Paired with the height animation on the stack above, what the
-                // reader sees is a file arriving; without it, the same two facts arrive as a flicker
-                // and a jump.
-                .transition(.opacity)
-            case .failed(let file):
-                // The same block with the sweep stopped and the bars at half weight, which on a
-                // screen where four other cards are moving makes the one that has stopped visible
-                // from across the room. The sentence is there for the reader who arrives after
-                // everything has stopped.
-                DiffAwaitingBody(
-                    file: file,
-                    wait: .failed,
-                    rows: entry.reservedRows,
-                    pointSize: pointSize
-                )
-            case .ready(let diff):
-                // **A picture draws pictures where a file draws hunks, and it has none to draw.**
-                // Git answers `Binary files … differ` for a PNG, so this card's `FileDiff` is a real
-                // answer with an empty body — before this existed the whole file was a collapsed bar
-                // reading `binary · no diff to show` with no chevron on it, which is the smallest
-                // possible lie about a file with two pictures behind it. The bytes arrive beside the
-                // diff rather than inside it, which is why the branch is a lookup here rather than a
-                // case on the content.
-                if let image = images[entry.id] {
-                    DiffImageBody(
-                        file: diff.file,
-                        image: image,
-                        onOpen: onOpenImage,
-                        onRetry: onRetryImage
+            VStack(alignment: .leading, spacing: 0) {
+                // **Under the header and above the code**, which is the only place left for a comment
+                // whose rows are gone. See `StaleCommentRow` for why inserting 44pt here does not break
+                // the no-reflow rule, and for what would make it start breaking it.
+                //
+                // **One row for the file rather than one per comment.** Two of them stacked would be 88pt
+                // of chrome saying the same sentence twice, and the second one's line number is a handle
+                // on something the reader has to open the review to see anyway.
+                if let stale = stale(of: entry) {
+                    StaleCommentRow(count: stale.count, line: stale.firstLine, onOpenReview: onOpenReview)
+                }
+                switch entry.content {
+                case .awaiting(let file):
+                    // **Still no spinner, and still for the reason that kept one off this screen**: five
+                    // files are in flight at once, the reader is waiting on none of them, and there is no
+                    // per-file measurement the Mac could report. What replaced the blank is not an
+                    // instrument — it is the rows the file has not sent yet, under one sentence saying
+                    // who is being asked. Design §9.
+                    DiffAwaitingBody(
+                        file: file,
+                        wait: isWaitingLong ? .stillReading : .reading,
+                        rows: entry.reservedRows,
+                        pointSize: pointSize
                     )
+                    // **The skeleton fades out where the code fades in**, rather than one replacing the
+                    // other in a frame. Paired with the height animation on the stack above, what the
+                    // reader sees is a file arriving; without it, the same two facts arrive as a flicker
+                    // and a jump.
                     .transition(.opacity)
-                } else {
-                    DiffFileContent(
-                        diff: diff,
-                        pointSize: pointSize,
-                        isSplit: isSplit,
-                        // The rails are drawn from the comments that still resolve; a stale one has
-                        // the row above instead. Handed the raw comments because `CommentRail` is
-                        // what decides which of them this file's hunks can place.
-                        comments: comments.filter { $0.isStale == false }.map(\.comment),
-                        pending: pending,
-                        // Nothing at all until this file's first side lands, which is every file for
-                        // the first beat and a refused one forever.
-                        highlighted: highlighted[entry.id] ?? .none,
-                        acceptsTargeting: acceptsTargeting,
-                        onExpand: onExpand,
-                        onTapGutter: onTapGutter,
-                        onLongPressGutter: onLongPressGutter
+                case .failed(let file):
+                    // The same block with the sweep stopped and the bars at half weight, which on a
+                    // screen where four other cards are moving makes the one that has stopped visible
+                    // from across the room. The sentence is there for the reader who arrives after
+                    // everything has stopped.
+                    DiffAwaitingBody(
+                        file: file,
+                        wait: .failed,
+                        rows: entry.reservedRows,
+                        pointSize: pointSize
                     )
-                    .transition(.opacity)
+                case .ready(let diff):
+                    // **A picture draws pictures where a file draws hunks, and it has none to draw.**
+                    // Git answers `Binary files … differ` for a PNG, so this card's `FileDiff` is a real
+                    // answer with an empty body — before this existed the whole file was a collapsed bar
+                    // reading `binary · no diff to show` with no chevron on it, which is the smallest
+                    // possible lie about a file with two pictures behind it. The bytes arrive beside the
+                    // diff rather than inside it, which is why the branch is a lookup here rather than a
+                    // case on the content.
+                    if let image = images[entry.id] {
+                        DiffImageBody(
+                            file: diff.file,
+                            image: image,
+                            onOpen: onOpenImage,
+                            onRetry: onRetryImage
+                        )
+                        .transition(.opacity)
+                    } else {
+                        DiffFileContent(
+                            diff: diff,
+                            pointSize: pointSize,
+                            isSplit: isSplit,
+                            // The rails are drawn from the comments that still resolve; a stale one has
+                            // the row above instead. Handed the raw comments because `CommentRail` is
+                            // what decides which of them this file's hunks can place.
+                            comments: comments.filter { $0.isStale == false }.map(\.comment),
+                            pending: pending,
+                            // Nothing at all until this file's first side lands, which is every file for
+                            // the first beat and a refused one forever.
+                            highlighted: highlighted[entry.id] ?? .none,
+                            acceptsTargeting: acceptsTargeting,
+                            onExpand: onExpand,
+                            onTapGutter: onTapGutter,
+                            onLongPressGutter: onLongPressGutter
+                        )
+                        .transition(.opacity)
+                    }
                 }
             }
+            .transition(.identity)
         }
     }
 
