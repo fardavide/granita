@@ -348,21 +348,6 @@ public struct DiffFileLines: View {
             }
             .hidden()
             .frame(height: contentHeight, alignment: .topLeading)
-            .overlay(alignment: .topLeading) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(indexedRows, id: \.offset) { _, row in
-                        switch row {
-                        case .full(let line):
-                            segmented(line)
-                                .lineLimit(1)
-                                .frame(height: rowHeight, alignment: .leading)
-                        case .block(let old, let new):
-                            // Cells draw outside this scroll; their placeholders reserve travel.
-                            Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
-                        }
-                    }
-                }
-            }
             .padding(.trailing, DiffGutter.codeTrailingInset)
             // Watched rather than read once: expanding a hunk splices longer lines into these rows,
             // and an indicator sized on the width the hunk had before the expansion is an indicator
@@ -379,6 +364,26 @@ public struct DiffFileLines: View {
         // The same arithmetic the tints behind it use, so the two trees cannot come out different
         // heights.
         .frame(height: contentHeight)
+        // The horizontal scroll's viewport is the full hunk height, so rows inside it all mount.
+        // Paint outside it to inherit the vertical viewport, as the split cells already do.
+        .overlay(alignment: .topLeading) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(indexedRows, id: \.offset) { _, row in
+                    switch row {
+                    case .full(let line):
+                        segmented(line)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .offset(x: -scrolledBy)
+                            .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
+                            .clipped()
+                    case .block:
+                        Color.clear.frame(width: visibleWidth, height: rowHeight)
+                    }
+                }
+            }
+            .allowsHitTesting(false)
+        }
         // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
         // scroll, so a gradient painted in the background colour would have to composite the tint
         // back on top of itself to avoid a grey notch on every added and removed row. Fading the

@@ -18,26 +18,22 @@ non-first pinned-file collapse position case; its expectation remains unchanged 
 Davide reported a visible jump after 0.22.2. The viewport could arrive before its successor header;
 changing the curve alone did not reliably fix large word diffs. The header now renders as one
 geometry group, the expanded body leaves at an explicit removal boundary without retaining all its
-code for a fade, and gutter, tint and code rows are lazy. An invisible plain-text ruler measures
-every line so offscreen long lines still determine horizontal travel. Viewport advance waits for successor
-layout and a subsequent animation update; explicit file selection cancels the pending advance.
-Reopening the source restores its header, preventing the successor's sticky header from remaining.
-Collapse and viewport advance retain the shared 0.6-second ease-in-out curve, distinct header
-target, and existing position behavior. All 24 native cases pass: the seven original
-position cases, ten plain and word-diff motion cases across both collapse controls, an offscreen
-widest-line check, and both controls with an already visible successor or explicit file selection
-during collapse, plus both controls reopening the source during the pending handoff. Exact native
-header images verify that reopening retains the source's visible header. The probe samples native
-presentation frames without forcing layout; asynchronous capture allows queued UI work to run.
-It checks matching successor descendants as well as their retained wrapper throughout the motion.
-The 2pt final-position tolerance, intermediate-frame requirement, maximum frame-step limit, and
-header-arrival limit remain unchanged. The full phone suite passes 75 tests in 31 suites without
-baseline changes. Package tests and both unsigned app builds pass. Both instrumented phone shards
-pass all 75 tests without failures or skips. Local `make coverage` reproduces the documented Mac
-snapshot baseline mismatch, so no complete local coverage verdict is available. Required CI checks
-remain the landing gate. The latest CI run exposed large sampled frame steps and unfinished
-word-diff motion, plus one image-comparison button-material mismatch. Lazy code rendering is under
-validation against those unchanged motion limits; no snapshot baselines or coverage rules changed.
+code for a fade, and gutter, tint and code rows are lazy. CI exposed large sampled frame steps and
+unfinished word-diff motion. A native appearance census confirmed that placing the lazy code inside
+the horizontal scroll still mounted distant rows: that scroll's viewport spans the whole hunk.
+Code painting now sits outside it and follows the existing horizontal offset, as split cells do;
+the census confirms that the vertical viewport culls distant rows. An invisible plain-text ruler
+still measures every line, preserving horizontal travel and Unicode widths. Viewport advance waits
+for successor layout and a subsequent animation update. Explicit selection cancels the pending
+advance; reopening restores the source's header. The shared 0.6-second curve and existing position
+behavior remain unchanged. All 26 native cases pass, including the original position and motion
+limits, offscreen width, selection and reopening, plus exact nonblank code-image checks after deep
+vertical scrolling and a horizontal round trip. The full phone suite passes 77 tests in 31 suites
+without baseline changes. Package tests and both unsigned app builds pass. Both instrumented phone
+shards pass all 77 tests without failures or skips, with matching source digests and complete
+inventories. Local Mac snapshots differ from the CI-recorded baselines; that coverage attempt was
+interrupted after confirmed mismatches without a complete verdict. Required CI remains the landing
+gate. No coverage rules changed.
 
 **Local IPv4 reconnection is fixed in the working tree; phone delivery and acceptance are pending.**
 The running Mac's Bonjour resolver returned `192.168.50.185%en0`, which the native health probe

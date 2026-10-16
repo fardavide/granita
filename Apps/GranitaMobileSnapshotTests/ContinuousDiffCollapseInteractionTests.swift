@@ -365,6 +365,134 @@ struct ContinuousDiffCollapseInteractionTests {
         #expect(abs(scroll.contentOffset.y - initialOffset - DiffCollapsedFileBar.height - 10) < 2)
     }
 
+    @Test
+    func `given a long hunk when scrolled far into its repeated rows then the code remains visibly correct`() throws {
+        // given
+        let repeatedCode = "let repeatedValue = 12345"
+        let expectedCode: Data
+        let crop: CGRect
+        let referenceContentHeight: CGFloat
+        do {
+            let reference = try Scenario(entries: [
+                aRenderedFile(path: "Sources/Repeated.swift", lineCount: 160, repeatedLine: repeatedCode)
+            ])
+            defer { reference.close() }
+            reference.settleLayout()
+            let vertical = try #require(reference.verticalScroll)
+            let horizontal = try #require(reference.horizontalScroll)
+            try #require(abs(vertical.contentOffset.y + vertical.adjustedContentInset.top) < 2)
+            let codePresentation = try #require(horizontal.layer.presentation())
+            let codeFrame = codePresentation.convert(codePresentation.bounds, to: nil)
+            // The native horizontal scroll contains code, while the changing line-number gutter
+            // is outside it. Keep the crop inside its leading edge and clear of hunk chrome.
+            crop = CGRect(x: codeFrame.minX + 8, y: codeFrame.minY + 80, width: 200, height: 90)
+            try #require(codeFrame.contains(crop))
+            referenceContentHeight = horizontal.contentSize.height
+            expectedCode = try reference.imageData(in: crop)
+        }
+        do {
+            let blank = try Scenario(entries: [
+                aRenderedFile(path: "Sources/Repeated.swift", lineCount: 160, repeatedLine: "")
+            ])
+            defer { blank.close() }
+            blank.settleLayout()
+            let blankCode = try blank.imageData(in: crop)
+            try #require(expectedCode != blankCode, "The reference code crop does not distinguish text from blank rows")
+        }
+        let scenario = try Scenario(entries: [
+            aRenderedFile(path: "Sources/Repeated.swift", lineCount: 320, repeatedLine: repeatedCode)
+        ])
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let horizontal = try #require(scenario.horizontalScroll)
+        let initialOffset = vertical.contentOffset.y
+        try #require(abs(initialOffset + vertical.adjustedContentInset.top) < 2)
+        // Equal three-digit gutters and identical row text keep geometry the same. Subtracting
+        // independently mounted hunk heights removes constant padding from the native row pitch.
+        let rowPitch = (horizontal.contentSize.height - referenceContentHeight) / 160
+        try #require(rowPitch > 0)
+        let travel = rowPitch * 200
+        try #require(travel > vertical.bounds.height * 3)
+        let pixelTravel = travel * scenario.window.screen.scale
+        try #require(abs(pixelTravel - pixelTravel.rounded()) < 0.01, "The comparison must preserve the text's pixel phase")
+
+        // when
+        vertical.setContentOffset(CGPoint(x: 0, y: initialOffset + travel), animated: false)
+        scenario.settleLayout()
+
+        // then
+        try #require(abs(vertical.contentOffset.y - initialOffset - travel) < 2)
+        let presentation = try #require(vertical.layer.presentation())
+        try #require(presentation.convert(presentation.bounds, to: nil).contains(crop))
+        let actualCode = try scenario.imageData(in: crop)
+        if actualCode != expectedCode {
+            Attachment.record(Array(expectedCode), named: "expected-visible-code.png")
+            Attachment.record(Array(actualCode), named: "scrolled-visible-code.png")
+        }
+        #expect(actualCode == expectedCode, "rowPitch=\(rowPitch), travel=\(travel), crop=\(crop)")
+    }
+
+    @Test
+    func `given wide code when scrolled horizontally and back then the visible code changes and returns exactly`() throws {
+        // given
+        let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
+        let blankCode: Data
+        let blankCrop: CGRect
+        do {
+            let blank = try Scenario(entries: [
+                aRenderedFile(path: "Sources/Wide.swift", lineCount: 160, repeatedLine: "")
+            ])
+            defer { blank.close() }
+            blank.settleLayout()
+            let horizontal = try #require(blank.horizontalScroll)
+            let presentation = try #require(horizontal.layer.presentation())
+            let codeFrame = presentation.convert(presentation.bounds, to: nil)
+            blankCrop = CGRect(x: codeFrame.minX + 8, y: codeFrame.minY + 80, width: 200, height: 90)
+            try #require(codeFrame.contains(blankCrop))
+            blankCode = try blank.imageData(in: blankCrop)
+        }
+        let scenario = try Scenario(entries: [
+            aRenderedFile(path: "Sources/Wide.swift", lineCount: 160, repeatedLine: wideCode)
+        ])
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let horizontal = try #require(scenario.horizontalScroll)
+        try #require(abs(vertical.contentOffset.y + vertical.adjustedContentInset.top) < 2)
+        try #require(abs(horizontal.contentOffset.x) < 2)
+        let maximumOffset = horizontal.contentSize.width - horizontal.bounds.width + horizontal.adjustedContentInset.right
+        try #require(maximumOffset > 100)
+        let presentation = try #require(horizontal.layer.presentation())
+        let codeFrame = presentation.convert(presentation.bounds, to: nil)
+        let crop = CGRect(x: codeFrame.minX + 8, y: codeFrame.minY + 80, width: 200, height: 90)
+        try #require(codeFrame.contains(crop))
+        try #require(crop == blankCrop, "Blank reference and visible code must use identical crop geometry")
+        let originalCode = try scenario.imageData(in: crop)
+
+        // when
+        horizontal.setContentOffset(CGPoint(x: maximumOffset, y: horizontal.contentOffset.y), animated: false)
+        scenario.settleLayout()
+        try #require(abs(horizontal.contentOffset.x - maximumOffset) < 2)
+        let trailingCode = try scenario.imageData(in: crop)
+        horizontal.setContentOffset(CGPoint(x: 0, y: horizontal.contentOffset.y), animated: false)
+        scenario.settleLayout()
+
+        // then
+        try #require(abs(horizontal.contentOffset.x) < 2)
+        let restoredCode = try scenario.imageData(in: crop)
+        if originalCode == blankCode || trailingCode == blankCode || trailingCode == originalCode || restoredCode != originalCode {
+            Attachment.record(Array(blankCode), named: "horizontal-blank-code.png")
+            Attachment.record(Array(originalCode), named: "horizontal-original-code.png")
+            Attachment.record(Array(trailingCode), named: "horizontal-trailing-code.png")
+            Attachment.record(Array(restoredCode), named: "horizontal-restored-code.png")
+        }
+        #expect(originalCode != blankCode, "The initial horizontal crop must contain visible code")
+        #expect(trailingCode != blankCode, "The trailing horizontal crop must contain visible code")
+        #expect(trailingCode != originalCode, "Horizontal travel=\(maximumOffset), crop=\(crop)")
+        #expect(restoredCode == originalCode, "Horizontal travel=\(maximumOffset), crop=\(crop)")
+    }
+
     @Test(arguments: [PinnedFileCollapse.viewed, .manual])
     func `given a pinned file is collapsing when another file is selected then explicit selection wins over automatic advance`(
         collapse: PinnedFileCollapse
@@ -460,7 +588,7 @@ struct ContinuousDiffCollapseInteractionTests {
             x: sourceHeader.frame.minX - initialViewport.minX,
             y: sourceHeader.frame.minY - initialViewport.minY
         )
-        let sourceHeaderImage = try scenario.headerImageData(in: sourceHeader.frame)
+        let sourceHeaderImage = try scenario.imageData(in: sourceHeader.frame)
         try #require(scenario.model.readingPositions.contains(1) == false, "Successor reading was already reported before collapse")
         scenario.model.sourceReopenOnRead = SourceReopenOnRead(
             position: 1,
@@ -495,7 +623,7 @@ struct ContinuousDiffCollapseInteractionTests {
             x: reopenedHeader.frame.minX - finalViewport.minX,
             y: reopenedHeader.frame.minY - finalViewport.minY
         )
-        let reopenedHeaderImage = try scenario.headerImageData(in: reopenedHeader.frame)
+        let reopenedHeaderImage = try scenario.imageData(in: reopenedHeader.frame)
         let diagnostic = Comment(rawValue: "collapse=\(collapse), sourceHeader=\(sourceHeader), reopenedHeader=\(reopenedHeader), sourcePosition=\(sourcePosition), reopenedPosition=\(reopenedPosition), reopen=\(reopened)")
         if reopenedHeaderImage != sourceHeaderImage {
             Attachment.record(Array(sourceHeaderImage), named: "source-header-\(collapse).png")
@@ -571,13 +699,13 @@ struct ContinuousDiffCollapseInteractionTests {
             return sample.headerFrames.filter { $0.opacity > 0.99 && $0.frame.intersects(viewport) }
         }
 
-        func headerImageData(in frame: CGRect) throws -> Data {
-            try #require(window.bounds.contains(frame), "Header capture is outside the fixture window: \(frame)")
+        func imageData(in frame: CGRect) throws -> Data {
+            try #require(window.bounds.contains(frame), "Capture is outside the fixture window: \(frame)")
             var rendered = false
             let data = UIGraphicsImageRenderer(bounds: frame).pngData { _ in
                 rendered = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
             }
-            try #require(rendered, "Fixture window header rendering did not complete")
+            try #require(rendered, "Fixture window rendering did not complete")
             return data
         }
 
@@ -821,15 +949,20 @@ private final class ViewportMotionProbe: NSObject {
 }
 
 @MainActor
-private func aRenderedFile(path: String, lineCount: Int, widestLineAt: Int? = nil) -> ContinuousDiffEntry {
+private func aRenderedFile(
+    path: String,
+    lineCount: Int,
+    widestLineAt: Int? = nil,
+    repeatedLine: String? = nil
+) -> ContinuousDiffEntry {
     let lines = (1...lineCount).map { (number: Int) in
-        let text = widestLineAt == number ? String(repeating: "x", count: 120) : "let value\(number) = \(number)"
+        let text = widestLineAt == number ? String(repeating: "x", count: 120) : repeatedLine ?? "let value\(number) = \(number)"
         return DiffLine(
             kind: .addition,
             oldNumber: nil,
             newNumber: number,
             text: text,
-            displayColumns: widestLineAt == number ? text.count : 20,
+            displayColumns: widestLineAt == number || repeatedLine != nil ? text.count : 20,
             segments: nil
         )
     }
