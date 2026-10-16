@@ -23,14 +23,18 @@ unfinished word-diff motion. A native appearance census confirmed that placing t
 the horizontal scroll still mounted distant rows: that scroll's viewport spans the whole hunk.
 Code painting now sits outside it and follows the existing horizontal offset, as split cells do;
 the census confirms that the vertical viewport culls distant rows. An invisible plain-text ruler
-still measures every line, preserving horizontal travel and Unicode widths. Viewport advance waits
+still measures every line, preserving horizontal travel and Unicode widths. The subsequent
+[CI run](https://github.com/fardavide/granita/actions/runs/38827443668) passed every header-coherence,
+final-position and image check, but five motion cases still exceeded the unchanged frame-step limit.
+A simulator CPU trace showed most sampled main-thread work in SwiftUI layout and view updates.
+Figures, markers and code now share one lazy row stack, reducing the hunk from five lazy stacks to
+two while preserving the tint and selection layers. Viewport advance waits
 for successor layout and a subsequent animation update. Explicit selection cancels the pending
 advance; reopening restores the source's header. The shared 0.6-second curve and existing position
 behavior remain unchanged. All 26 native cases pass, including the original position and motion
 limits, offscreen width, selection and reopening, plus exact nonblank code-image checks after deep
-vertical scrolling and a horizontal round trip. The full phone suite passes 77 tests in 31 suites
-without baseline changes. Package tests and both unsigned app builds pass. Both instrumented phone
-shards pass all 77 tests without failures or skips, with matching source digests and complete
+vertical scrolling and a horizontal round trip. Package tests and both unsigned app builds pass.
+Both instrumented phone shards pass all 77 tests without failures or skips, with matching source digests and complete
 inventories. Local Mac snapshots differ from the CI-recorded baselines; that coverage attempt was
 interrupted after confirmed mismatches without a complete verdict. Required CI remains the landing
 gate. No coverage rules changed.
