@@ -171,8 +171,18 @@ struct MacReaderScreenSnapshotTests {
             }
             await sidebar.load()
             // Loading the sidebar inserts the chosen detail and starts its own appearance task.
-            // Drain that transaction before restoring the fixture's inspector and file state.
-            try await Task.sleep(for: .milliseconds(100))
+            if subject == .remoteWhileLocalBlocked {
+                // Before this fixture calls load itself, leaving the initial loading state proves
+                // that the mounted detail's real appearance read has committed its answer.
+                let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+                while viewer.state == .loading, ContinuousClock.now < deadline {
+                    try await Task.sleep(for: .milliseconds(2))
+                }
+                try #require(viewer.state != .loading, "The mounted remote reader's appearance load did not finish")
+            } else {
+                // Drain that transaction before restoring the fixture's inspector and file state.
+                try await Task.sleep(for: .milliseconds(100))
+            }
             await viewer.load()
             await viewer.reading(0)
             await viewer.drawing(
@@ -242,6 +252,25 @@ struct MacReaderScreenSnapshotTests {
             case .batchReadFailed:
                 #expect(viewer.batchFailure != nil)
             case .remoteWhileLocalBlocked:
+                let expectedDiffs = repository.fileDiffs
+                try #require(expectedDiffs.count == 5)
+                let expectedState = ContinuousDiffState.reading(expectedDiffs.map(ContinuousDiffEntry.ready))
+                let hasExpectedHighlights: () -> Bool = {
+                    expectedDiffs.allSatisfy { diff in
+                        diff.hunks.flatMap(\.lines).allSatisfy { line in
+                            guard let text = viewer.highlighted[diff.file.id]?.text(of: line) else { return false }
+                            return String(text.characters) == line.text
+                        }
+                    }
+                }
+                // reading/drawing can overlap the screen's own in-flight batch/highlighter pass.
+                // Await their actual public results rather than accepting matching placeholder IDs.
+                let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+                while (viewer.state != expectedState || hasExpectedHighlights() == false), ContinuousClock.now < deadline {
+                    try await Task.sleep(for: .milliseconds(2))
+                }
+                try #require(viewer.state == expectedState, "The remote reader must capture all five complete fixture diffs")
+                try #require(hasExpectedHighlights(), "The remote reader must capture highlighted code for every fixture row")
                 #expect(reader.selection.source == .remote(DiscoveredServer(
                     id: BonjourInstanceName(rawValue: "granita-mac-studio"), name: "Mac Studio"
                 )))
