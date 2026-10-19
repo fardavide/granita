@@ -2,6 +2,15 @@
 
 Where the project is. Update this when a slice lands.
 
+**The horizontal-scroll regression is fixed locally for 0.22.4; CI verification is pending.**
+An actual touch test reproduced a 918pt vertical jump after reviewing a pinned file and scrolling
+sideways inside its successor. Releasing the one-shot header alignment after animation makes that
+test and the fresh-review swipe case pass. Collapse preparation now holds one pending request
+instead of layout/update phases, removing the geometry feedback warning during collapse. All 27
+native cases pass, including the ten unchanged motion cases, selection and source-reopen checks.
+The actual-touch suite now gates the iOS CI result separately from coverage collection. See
+[0241](decisions/0241-header-alignment-ends-with-its-animation.md).
+
 **Pinned-file collapse merged as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**
 An open file whose natural header is above the viewport advances to its successor when marked
 viewed or closed manually. A visible header preserves the viewport; the last file uses normal
@@ -14,7 +23,7 @@ baselines or coverage rules changed.
 The later [main CI run](https://github.com/fardavide/granita/actions/runs/38381724558) failed the
 non-first pinned-file collapse position case; its expectation remains unchanged in the follow-up.
 
-**Smooth collapse is prepared as 0.22.3 in [PR #126](https://github.com/fardavide/granita/pull/126).**
+**Smooth collapse merged as 0.22.3 in [PR #126](https://github.com/fardavide/granita/pull/126).**
 Davide reported a visible jump after 0.22.2. The viewport could arrive before its successor header;
 changing the curve alone did not reliably fix large word diffs. The header now renders as one
 geometry group, the expanded body leaves at an explicit removal boundary without retaining all its

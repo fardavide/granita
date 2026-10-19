@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.22.4 — 2026-10-19
+- **Keep your place while scrolling long lines.** Swiping code sideways after marking a file viewed
+  keeps the same lines on screen instead of jumping back to the file header.
+
 ### 0.22.3 — 2026-10-13
 - **Follow the next file as it moves into place.** Closing a pinned file or marking it viewed now
   moves the viewport and next header together, including when the file contains large word diffs.

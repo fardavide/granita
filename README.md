@@ -66,9 +66,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.22.4** — scrolling code sideways keeps your place after marking a file viewed.
 - **0.22.3** — closing a pinned file moves smoothly to the next header so you can follow it into place.
 - **0.22.2** — closing a pinned file brings the next file's header to the top so you can keep reading.
-- **0.22.1** — connect to your Mac on home Wi-Fi when its Tailscale connection is unavailable.
 
 [Every release](CHANGELOG.md).
 

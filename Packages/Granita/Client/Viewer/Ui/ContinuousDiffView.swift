@@ -39,7 +39,7 @@ public struct ContinuousDiffView: View {
     @State private var scrolledTo: ScrollDestination?
 
     @State private var pinnedFiles: Set<FileID> = []
-    @State private var pendingAdvance: PendingAdvance = .none
+    @State private var pendingAdvance: AdvanceRequest?
 
     private let state: ContinuousDiffState
     private let logCopyState: DiagnosticCopyState
@@ -193,8 +193,7 @@ public struct ContinuousDiffView: View {
     }
 
     private func scroll(of entries: [ContinuousDiffEntry]) -> some View {
-        let advance = pendingAdvance
-        return ScrollView {
+        ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { position, entry in
                     Section {
@@ -212,25 +211,20 @@ public struct ContinuousDiffView: View {
                             } action: { isPinned in
                                 recordPinnedFile(entry, isPinned: isPinned)
                             }
-                            .onGeometryChange(for: Bool.self) { proxy in
-                                switch advance {
-                                case .none, .update:
-                                    false
-                                case .layout(let request):
-                                    request.target == entry.id
-                                        && proxy.size.width > 0 && proxy.size.height > 0
-                                }
-                            } action: { isReady in
-                                handleAdvanceEvent(.layoutReady(isReady), for: entry.id)
-                            }
                             .background {
-                                if case .update(let request) = pendingAdvance,
+                                if let request = pendingAdvance,
                                    request.target == entry.id {
                                     // Let the laid-out successor receive an animation update before
                                     // starting viewport motion; its first draw can be expensive.
-                                    TimelineView(.animation) { context in
-                                        Color.clear.onChange(of: context.date) { _, _ in
-                                            handleAdvanceEvent(.animationUpdated, for: entry.id)
+                                    GeometryReader { geometry in
+                                        TimelineView(.animation) { context in
+                                            Color.clear.onChange(of: context.date) { _, _ in
+                                                if geometry.size.width > 0, geometry.size.height > 0,
+                                                   pendingAdvance == request {
+                                                    pendingAdvance = nil
+                                                    alignHeader(of: request.target)
+                                                }
+                                            }
                                         }
                                     }
                                     .transition(.identity)
@@ -306,7 +300,7 @@ public struct ContinuousDiffView: View {
         // starts absent.
         .onChange(of: jumpTarget, initial: true) { _, target in
             guard let target else { return }
-            pendingAdvance = .none
+            pendingAdvance = nil
             // **Nothing to animate when the scroll is already there**, which is the seeded first
             // layout and is also a reader tapping the file they are looking at. Animating it anyway
             // re-ran the transition from where it had already landed, and the baseline caught the
@@ -327,7 +321,7 @@ public struct ContinuousDiffView: View {
         // bars, between a bar and a header, and under the last file — where a rule per boundary
         // would be four.
         .background(Color.diffPage)
-        .onDisappear { pendingAdvance = .none }
+        .onDisappear { pendingAdvance = nil }
     }
 
     private func recordPinnedFile(_ entry: ContinuousDiffEntry, isPinned: Bool) {
@@ -344,17 +338,12 @@ public struct ContinuousDiffView: View {
         from previous: [ContinuousDiffEntry],
         to current: [ContinuousDiffEntry]
     ) {
-        switch pendingAdvance {
-        case .none:
-            break
-        case .layout(let request), .update(let request):
+        if let request = pendingAdvance {
             if current.contains(where: { $0.id == request.source && $0.collapse.isCollapsed }) == false
                 || current.contains(where: { $0.id == request.target }) == false {
-                pendingAdvance = .none
+                pendingAdvance = nil
                 if current.contains(where: { $0.id == request.source && $0.collapse.isCollapsed == false }) {
-                    withAnimation(collapseAnimation) {
-                        scrolledTo = .header(request.source)
-                    }
+                    alignHeader(of: request.source)
                 }
             }
         }
@@ -364,35 +353,20 @@ public struct ContinuousDiffView: View {
         }) else { return }
         pinnedFiles.remove(current[position].id)
         guard current.indices.contains(position + 1) else { return }
-        pendingAdvance = .layout(AdvanceRequest(
+        pendingAdvance = AdvanceRequest(
             source: current[position].id,
             target: current[position + 1].id
-        ))
+        )
     }
 
-    private func handleAdvanceEvent(_ event: AdvanceEvent, for file: FileID) {
-        let request: AdvanceRequest
-        switch pendingAdvance {
-        case .none:
-            return
-        case .layout(let value), .update(let value):
-            request = value
-        }
-        let isRequested: Bool
-        switch event {
-        case .layoutReady(let ready):
-            isRequested = ready && pendingAdvance == .layout(request) && request.target == file
-        case .animationUpdated:
-            isRequested = pendingAdvance == .update(request) && request.target == file
-        }
-        guard isRequested else { return }
-        switch event {
-        case .layoutReady:
-            pendingAdvance = .update(request)
-        case .animationUpdated:
-            withAnimation(collapseAnimation) {
-                pendingAdvance = .none
-                scrolledTo = .header(file)
+    private func alignHeader(of file: FileID) {
+        withAnimation(collapseAnimation) {
+            scrolledTo = .header(file)
+        } completion: {
+            // Release the one-shot header request before later hunk layout updates.
+            // A newer file selection owns the position if it arrived during the animation.
+            if scrolledTo == .header(file) {
+                scrolledTo = nil
             }
         }
     }
@@ -402,20 +376,9 @@ public struct ContinuousDiffView: View {
         case header(FileID)
     }
 
-    nonisolated private enum PendingAdvance: Equatable, Sendable {
-        case none
-        case layout(AdvanceRequest)
-        case update(AdvanceRequest)
-    }
-
     nonisolated private struct AdvanceRequest: Equatable, Sendable {
         let source: FileID
         let target: FileID
-    }
-
-    nonisolated private enum AdvanceEvent: Sendable {
-        case layoutReady(Bool)
-        case animationUpdated
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
