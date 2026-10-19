@@ -511,7 +511,7 @@ struct ContinuousDiffCollapseInteractionTests {
         vertical.setContentOffset(CGPoint(x: 0, y: selectedFileOffset + 450), animated: false)
         scenario.settleLayout()
         let verticalBefore = vertical.contentOffset.y
-        try #require(abs(verticalBefore - selectedFileOffset - 450) < 2)
+        try #require(abs(verticalBefore - selectedFileOffset - 450) < 2, "Selected offset=\(selectedFileOffset), requested=\(selectedFileOffset + 450), actual=\(verticalBefore), presentation=\(String(describing: vertical.layer.presentation()?.bounds)), contentSize=\(vertical.contentSize), viewport=\(vertical.bounds)")
         try #require(verticalBefore - listTop > vertical.bounds.height * 2)
         let verticalPresentation = try #require(vertical.layer.presentation())
         try #require(abs(verticalPresentation.bounds.minY - verticalBefore) < 2)
@@ -542,8 +542,17 @@ struct ContinuousDiffCollapseInteractionTests {
         let requestedHorizontalOffset = min(maximumOffset, 160)
         let horizontalPresentation = try #require(horizontal.layer.presentation())
         let codeFrame = horizontalPresentation.convert(horizontalPresentation.bounds, to: nil)
-        let crop = CGRect(x: codeFrame.minX + 8, y: viewport.minY + 100, width: 200, height: 90)
-        try #require(codeFrame.contains(crop) && viewport.contains(crop))
+        let visibleCode = codeFrame.intersection(viewport)
+        // Containing the input point does not imply that a hunk contains a viewport-fixed crop.
+        // Translate the whole 200x90 crop into its visible intersection without changing its size.
+        let crop = CGRect(x: visibleCode.midX - 100, y: visibleCode.midY - 45, width: 200, height: 90)
+        let cropDiagnostic = Comment(rawValue: """
+        codePoint=\(codePoint), codeFrame=\(codeFrame), viewport=\(viewport), visibleCode=\(visibleCode), crop=\(crop)
+        verticalModelOffset=\(vertical.contentOffset), verticalPresentationBounds=\(verticalPresentation.bounds)
+        horizontalModelOffset=\(horizontal.contentOffset), horizontalPresentationBounds=\(horizontalPresentation.bounds)
+        """)
+        try #require(visibleCode.width >= 200 && visibleCode.height >= 90, cropDiagnostic)
+        try #require(codeFrame.contains(crop) && viewport.contains(crop), cropDiagnostic)
         let originalCode = try scenario.imageData(in: crop)
         let verticalProbe = ViewportMotionProbe(scroll: vertical)
         verticalProbe.start()

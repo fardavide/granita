@@ -2,13 +2,16 @@
 
 Where the project is. Update this when a slice lands.
 
-**The horizontal-scroll regression is fixed locally for 0.22.4; CI verification is pending.**
-An actual touch test reproduced a 918pt vertical jump after reviewing a pinned file and scrolling
-sideways inside its successor. Releasing the one-shot header alignment after animation makes that
-test and the fresh-review swipe case pass. Collapse preparation now holds one pending request
-instead of layout/update phases, removing the geometry feedback warning during collapse. All 27
-native cases pass, including the ten unchanged motion cases, selection and source-reopen checks.
-The actual-touch suite now gates the iOS CI result separately from coverage collection. See
+**The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
+The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a
+fresh review on CI. Releasing header alignment alone passed the first case but did not fix the
+second. The current candidate uses a typed scroll position without nearest-section identity
+tracking and releases completed file/header requests. Collapse preparation holds one pending
+request instead of layout/update phases, removing geometry feedback during collapse. All 27 native
+cases pass locally, including all ten motion cases, selection, source reopening and horizontal
+movement inside a later file after selection. Both actual-touch cases pass locally. CI still
+reports two motion failures on the previous candidate; final CI verification remains pending.
+The actual-touch suite gates iOS CI separately from coverage collection. See
 [0241](decisions/0241-header-alignment-ends-with-its-animation.md).
 
 **Pinned-file collapse merged as 0.22.2 in [PR #125](https://github.com/fardavide/granita/pull/125).**

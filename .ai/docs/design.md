@@ -1146,7 +1146,7 @@ receives layout and a subsequent animation update before viewport advance begins
 rendering does not consume the viewport's animation. Explicit file selection cancels that pending
 advance, as does reopening its source or removing either file. Reopening restores the source's
 header so the successor's sticky header cannot remain on screen. The next header travels into its
-final slot as part of the same movement. The explicit header alignment ends with its animation;
+final slot as part of the same movement. Explicit scroll requests yield to manual scrolling;
 later horizontal code movement preserves the reader's vertical position. Loading content and other
 disclosures keep their existing curves.
 

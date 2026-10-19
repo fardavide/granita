@@ -29,14 +29,14 @@ public struct ContinuousDiffView: View {
 
     /// Where the scroll is, as the scroll's own state rather than the model's.
     ///
-    /// This and the model's `jumpTarget` answer different questions: the model says *go here*, once,
-    /// and this says *here is where we are* for as long as the reader keeps scrolling. Feeding the
-    /// second back into the model would make every frame of an ordinary scroll a write.
+    /// The model's `jumpTarget` asks *go here*, once. SwiftUI owns manual position; this binding
+    /// carries explicit requests without subscribing to the nearest section's identity, which
+    /// would realign a reader inside a file when its horizontal code layout changes.
     ///
     /// Seeded from the target so the **first** layout is already in the right place. A view built
     /// holding a jump has nothing to animate towards, and in the app that seed is always absent
     /// because a screen is opened before a file is chosen in it.
-    @State private var scrolledTo: ScrollDestination?
+    @State private var scrolledTo: ScrollPosition
 
     @State private var pinnedFiles: Set<FileID> = []
     @State private var pendingAdvance: AdvanceRequest?
@@ -159,7 +159,9 @@ public struct ContinuousDiffView: View {
         // area — so the file the reader opens on sat 92pt down a page of empty grey, on every phone
         // and every iPad. Nothing asked for that position: it was stated in order not to be settled,
         // and the settled one was right.
-        _scrolledTo = State(initialValue: jumpTarget.map(ScrollDestination.file))
+        _scrolledTo = State(initialValue: jumpTarget.map {
+            ScrollPosition(id: ScrollDestination.file($0), anchor: .top)
+        } ?? ScrollPosition())
         self.onReading = onReading
         self.onRereading = onRereading
         self.onJumped = onJumped
@@ -222,7 +224,7 @@ public struct ContinuousDiffView: View {
                                                 if geometry.size.width > 0, geometry.size.height > 0,
                                                    pendingAdvance == request {
                                                     pendingAdvance = nil
-                                                    alignHeader(of: request.target)
+                                                    scroll(to: .header(request.target), animation: collapseAnimation)
                                                 }
                                             }
                                         }
@@ -278,7 +280,7 @@ public struct ContinuousDiffView: View {
         // so it is `scrollPosition` and pinned section headers interacting — the reader gets the file
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
-        .scrollPosition(id: $scrolledTo, anchor: .top)
+        .scrollPosition($scrolledTo, anchor: .top)
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)
         }
@@ -305,10 +307,8 @@ public struct ContinuousDiffView: View {
             // layout and is also a reader tapping the file they are looking at. Animating it anyway
             // re-ran the transition from where it had already landed, and the baseline caught the
             // scroll mid-flight at a different offset on each run.
-            if scrolledTo != .file(target) {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    scrolledTo = .file(target)
-                }
+            if scrolledTo.viewID(type: ScrollDestination.self) != .file(target) {
+                scroll(to: .file(target), animation: .easeInOut(duration: 0.2))
             }
             // Reported back so the same row can be tapped twice: held as the value alone, a second
             // tap would be a change from a value to itself, and the row would go quiet.
@@ -343,7 +343,7 @@ public struct ContinuousDiffView: View {
                 || current.contains(where: { $0.id == request.target }) == false {
                 pendingAdvance = nil
                 if current.contains(where: { $0.id == request.source && $0.collapse.isCollapsed == false }) {
-                    alignHeader(of: request.source)
+                    scroll(to: .header(request.source), animation: collapseAnimation)
                 }
             }
         }
@@ -359,19 +359,18 @@ public struct ContinuousDiffView: View {
         )
     }
 
-    private func alignHeader(of file: FileID) {
-        withAnimation(collapseAnimation) {
-            scrolledTo = .header(file)
+    private func scroll(to destination: ScrollDestination, animation: Animation) {
+        withAnimation(animation) {
+            scrolledTo.scrollTo(id: destination, anchor: .top)
         } completion: {
-            // Release the one-shot header request before later hunk layout updates.
-            // A newer file selection owns the position if it arrived during the animation.
-            if scrolledTo == .header(file) {
-                scrolledTo = nil
+            // A completed request must not realign later hunk layout. A newer request owns it.
+            if scrolledTo.viewID(type: ScrollDestination.self) == destination {
+                scrolledTo = ScrollPosition()
             }
         }
     }
 
-    private enum ScrollDestination: Hashable {
+    nonisolated private enum ScrollDestination: Hashable, Sendable {
         case file(FileID)
         case header(FileID)
     }
