@@ -33,7 +33,7 @@ packages:
 # .ai/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.22.3
+    MARKETING_VERSION: 0.22.4
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -290,6 +290,41 @@ targets:
         BUNDLE_LOADER: "$(TEST_HOST)"
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.snapshottests
 
+  # Offline fixture application for actual iOS touch delivery, never linked by the shipping app.
+  GranitaMobileUiTestHost:
+    type: application
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - Apps/GranitaMobileUiTestHost
+    dependencies:
+      - package: Granita
+        product: ClientAppMain
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.uifixture
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: 1
+
+  # XCTest is confined to the UI runner because XCUIApplication has no Swift Testing equivalent.
+  # This launches the fixture out of process, so TEST_HOST and BUNDLE_LOADER are absent.
+  GranitaMobileUiTests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - Apps/GranitaMobileUiTests
+    dependencies:
+      - target: GranitaMobileUiTestHost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+
   # Real URLSession TLS handshakes must run inside the app whose ATS policy they judge.
   GranitaMobileConnectionTests:
     type: bundle.unit-test
@@ -310,6 +345,16 @@ targets:
 # Cloud's product list comes up empty with no explanation — verify with
 # `xcodebuild -project Granita.xcodeproj -describeAllArchivableProducts -json`.
 schemes:
+
+  GranitaMobileUi:
+    build:
+      targets:
+        GranitaMobileUiTestHost: [test]
+        GranitaMobileUiTests: [test]
+    test:
+      config: Debug
+      targets:
+        - GranitaMobileUiTests
 
   GranitaMobileConnections:
     build:

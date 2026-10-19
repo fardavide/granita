@@ -361,7 +361,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 5
     steps:
-      - name: Require every isolated shard and the TLS verdict
+      - name: Require every isolated shard, TLS and reader gesture verdict
         env:
           RESULT: ${{ needs.snapshot-tests-shards.result }}
         run: test "$RESULT" = success
@@ -387,7 +387,7 @@ jobs:
         run: make coverage-ios-restore
 
       # Snapshot execution uses the transferred products. Only shard 0 needs package clones for
-      # the separate required TLS integration pass; its counters stay outside measurement scope.
+      # the separate required TLS and reader gesture passes; their counters stay outside measurement scope.
       #
       # Keyed on project.yml rather than on the project's Package.resolved, which is what Aura keys
       # on. Aura hand-maintains its .xcodeproj so that file is committed there; here the project is
@@ -476,6 +476,18 @@ jobs:
       - name: Run pinned TLS connection tests
         if: matrix.shard == 0
         run: make tls-tests-ios TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
+
+      - name: Verify horizontal reader gestures
+        if: matrix.shard == 0
+        run: make ui-tests-ios IOS_SIM_NAME='${{ steps.simulator.outputs.name }}' UI_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages" RESULT_BUNDLE=build/ui-tests-ios.xcresult
+      - name: Upload the reader gesture test result bundle
+        if: always() && matrix.shard == 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-reader-gesture-results
+          path: build/ui-tests-ios.xcresult
+          retention-days: 7
+          if-no-files-found: warn
 
       # On a mismatch the freshly-rendered image is written beside the baseline it failed against
       # (SnapshotSupport pins SNAPSHOT_ARTIFACTS there). Pair them into one self-contained HTML page

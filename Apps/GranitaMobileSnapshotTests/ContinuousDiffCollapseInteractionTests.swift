@@ -493,6 +493,105 @@ struct ContinuousDiffCollapseInteractionTests {
         #expect(restoredCode == originalCode, "Horizontal travel=\(maximumOffset), crop=\(crop)")
     }
 
+    @Test
+    func `given the viewport is inside a later file when its code scrolls horizontally then the vertical reading position stays unchanged`() async throws {
+        // given
+        let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
+        let entries = ["Sources/First.swift", "Sources/Middle.swift", "Sources/Last.swift"]
+            .map { aRenderedFile(path: $0, lineCount: 160, repeatedLine: wideCode) }
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let listTop = vertical.contentOffset.y
+        scenario.model.jumpTarget = entries[2].id
+        try await scenario.settleJump()
+        try #require(scenario.model.readingPositions.contains(2))
+        let selectedFileOffset = vertical.contentOffset.y
+        vertical.setContentOffset(CGPoint(x: 0, y: selectedFileOffset + 450), animated: false)
+        scenario.settleLayout()
+        let verticalBefore = vertical.contentOffset.y
+        try #require(abs(verticalBefore - selectedFileOffset - 450) < 2, "Selected offset=\(selectedFileOffset), requested=\(selectedFileOffset + 450), actual=\(verticalBefore), presentation=\(String(describing: vertical.layer.presentation()?.bounds)), contentSize=\(vertical.contentSize), viewport=\(vertical.bounds)")
+        try #require(verticalBefore - listTop > vertical.bounds.height * 2)
+        let verticalPresentation = try #require(vertical.layer.presentation())
+        try #require(abs(verticalPresentation.bounds.minY - verticalBefore) < 2)
+        let viewport = verticalPresentation.convert(verticalPresentation.bounds, to: nil)
+        // Select the hunk at the fixed code point; multiple hunks can share the viewport.
+        let codePoint = CGPoint(x: viewport.midX, y: viewport.minY + 145)
+        var remaining: [UIView] = [vertical]
+        var visibleHorizontalScrolls: [UIScrollView] = []
+        var candidateGeometry: [String] = []
+        while let view = remaining.popLast() {
+            if let scroll = view as? UIScrollView,
+               scroll.bounds.height > 0,
+               abs(scroll.contentSize.height - scroll.bounds.height) < 2,
+               let presentation = scroll.layer.presentation() {
+                let frame = presentation.convert(presentation.bounds, to: nil)
+                if frame.contains(codePoint) {
+                    visibleHorizontalScrolls.append(scroll)
+                    candidateGeometry.append("frame=\(frame), modelOffset=\(scroll.contentOffset), presentationBounds=\(presentation.bounds)")
+                }
+            }
+            remaining.append(contentsOf: view.subviews)
+        }
+        try #require(visibleHorizontalScrolls.count == 1, "Expected one later-file code scroll at \(codePoint); found \(visibleHorizontalScrolls.count): \(candidateGeometry)")
+        let horizontal = try #require(visibleHorizontalScrolls.first)
+        try #require(abs(horizontal.contentOffset.x) < 2)
+        let maximumOffset = horizontal.contentSize.width - horizontal.bounds.width + horizontal.adjustedContentInset.right
+        try #require(maximumOffset > 100)
+        let requestedHorizontalOffset = min(maximumOffset, 160)
+        let horizontalPresentation = try #require(horizontal.layer.presentation())
+        let codeFrame = horizontalPresentation.convert(horizontalPresentation.bounds, to: nil)
+        let visibleCode = codeFrame.intersection(viewport)
+        // Containing the input point does not imply that a hunk contains a viewport-fixed crop.
+        // Translate the whole 200x90 crop into its visible intersection without changing its size.
+        let crop = CGRect(x: visibleCode.midX - 100, y: visibleCode.midY - 45, width: 200, height: 90)
+        let cropDiagnostic = Comment(rawValue: """
+        codePoint=\(codePoint), codeFrame=\(codeFrame), viewport=\(viewport), visibleCode=\(visibleCode), crop=\(crop)
+        verticalModelOffset=\(vertical.contentOffset), verticalPresentationBounds=\(verticalPresentation.bounds)
+        horizontalModelOffset=\(horizontal.contentOffset), horizontalPresentationBounds=\(horizontalPresentation.bounds)
+        """)
+        try #require(visibleCode.width >= 200 && visibleCode.height >= 90, cropDiagnostic)
+        try #require(codeFrame.contains(crop) && viewport.contains(crop), cropDiagnostic)
+        let originalCode = try scenario.imageData(in: crop)
+        let verticalProbe = ViewportMotionProbe(scroll: vertical)
+        verticalProbe.start()
+        defer { verticalProbe.stop() }
+
+        // when
+        // This app-hosted harness has no public touch-injection API. Drive native scrolling
+        // without claiming to synthesize a pan recognizer or a user's swipe.
+        horizontal.setContentOffset(
+            CGPoint(x: requestedHorizontalOffset, y: horizontal.contentOffset.y),
+            animated: true
+        )
+        scenario.settleLayout()
+        verticalProbe.stop()
+
+        // then
+        let horizontalAfter = try #require(horizontal.layer.presentation())
+        let verticalAfter = try #require(vertical.layer.presentation())
+        let scrolledCode = try scenario.imageData(in: crop)
+        let largestVerticalDisplacement = verticalProbe.samples.map {
+            max(abs($0.modelOffset - verticalBefore), abs($0.presentationOffset - verticalBefore))
+        }.max() ?? 0
+        let diagnostic = Comment(rawValue: "horizontalRequested=\(requestedHorizontalOffset), horizontalModel=\(horizontal.contentOffset.x), horizontalPresentation=\(horizontalAfter.bounds.minX), listTop=\(listTop), verticalBefore=\(verticalBefore), verticalModel=\(vertical.contentOffset.y), verticalPresentation=\(verticalAfter.bounds.minY), largestVerticalDisplacement=\(largestVerticalDisplacement), observedFrames=\(verticalProbe.samples.count)")
+        if scrolledCode == originalCode || abs(vertical.contentOffset.y - verticalBefore) >= 2 {
+            Attachment.record(Array(originalCode), named: "later-file-before-horizontal-scroll.png")
+            Attachment.record(Array(scrolledCode), named: "later-file-after-horizontal-scroll.png")
+        }
+        #expect(abs(horizontal.contentOffset.x - requestedHorizontalOffset) < 2, diagnostic)
+        #expect(abs(horizontalAfter.bounds.minX - requestedHorizontalOffset) < 2, diagnostic)
+        #expect(scrolledCode != originalCode, diagnostic)
+        #expect(verticalProbe.missingPresentationFrames == 0, diagnostic)
+        #expect(verticalProbe.samples.isEmpty == false, diagnostic)
+        #expect(verticalProbe.samples.allSatisfy {
+            abs($0.modelOffset - verticalBefore) < 2 && abs($0.presentationOffset - verticalBefore) < 2
+        }, diagnostic)
+        #expect(abs(vertical.contentOffset.y - verticalBefore) < 2, diagnostic)
+        #expect(abs(verticalAfter.bounds.minY - verticalBefore) < 2, diagnostic)
+    }
+
     @Test(arguments: [PinnedFileCollapse.viewed, .manual])
     func `given a pinned file is collapsing when another file is selected then explicit selection wins over automatic advance`(
         collapse: PinnedFileCollapse
@@ -806,8 +905,8 @@ private final class RenderSettlementProbe: NSObject {
         var remainingViews = [root]
         while let view = remainingViews.popLast() {
             if let scroll = view as? UIScrollView,
-               scroll.bounds.height > 100,
-               scroll.contentSize.height > scroll.bounds.height,
+               (scroll.bounds.height > 100 && scroll.contentSize.height > scroll.bounds.height
+                    || scroll.bounds.width > 0 && scroll.contentSize.width > scroll.bounds.width),
                let presentation = scroll.layer.presentation() {
                 scrollGeometry[ObjectIdentifier(scroll)] = ScrollRendering(
                     bounds: scroll.bounds,
@@ -816,6 +915,7 @@ private final class RenderSettlementProbe: NSObject {
                     adjustedInset: scroll.adjustedContentInset
                 )
                 nativeScrolling = nativeScrolling || scroll.isScrollAnimating
+                    || abs(presentation.bounds.minX - scroll.bounds.minX) >= 0.1
                     || abs(presentation.bounds.minY - scroll.bounds.minY) >= 0.1
             }
             remainingViews.append(contentsOf: view.subviews)
