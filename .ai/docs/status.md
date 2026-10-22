@@ -16,8 +16,13 @@ to capture only its selection binding repaired the blank reader after a file jum
 cases now pass with the feature enabled. Repeated coverage passed package instrumentation and
 both iOS shards (21 and 57 tests), then stopped at Mac image mismatches on this host; no aggregate
 local coverage verdict exists. A fresh package test run, both unsigned app builds and all six
-actual-touch tests passed with the callback fix, which is ready for CI verification. The scope and
-evidence are recorded in 0242.
+actual-touch tests passed with the callback fix. The next CI run passed every functional job,
+including both iOS shards, but failed four coverage ratchets. Coverage repair is in progress:
+transient touch decisions move into a Foundation-only value with direct tests, and the native
+adapter exposes configuration and event dispatch independently of SwiftUI's opaque context.
+Keeping frame reads at input time preserves collapse motion: the 27 focused native cases, full
+package suite, both unsigned app builds and instrumented iOS shards (23 and 58 tests) pass after
+extraction. Aggregate coverage remains for CI's Mac run. The scope and evidence are in 0242.
 
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a

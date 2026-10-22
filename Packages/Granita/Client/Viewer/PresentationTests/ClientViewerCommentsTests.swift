@@ -477,6 +477,32 @@ struct ClientViewerCommentsTests {
     // MARK: - The gesture, and what it opens
 
     @Test
+    func `given no review has loaded when dragging a gutter row then no selection or sheet opens`() {
+        // given
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.draggedGutter(to: anAddition, in: FileID(rawValue: "file-0"))
+
+        // then
+        #expect(scenario.sut.draft == .idle)
+        #expect(scenario.sut.sheet == nil)
+    }
+
+    @Test
+    func `given no review has loaded when a gutter drag finishes then no selection or sheet opens`() {
+        // given
+        let scenario = Scenario()
+
+        // when
+        scenario.sut.finishedDraggingGutter()
+
+        // then
+        #expect(scenario.sut.draft == .idle)
+        #expect(scenario.sut.sheet == nil)
+    }
+
+    @Test
     func `given a held row when dragging to another and releasing then the composer opens on that range`() async {
         // given
         let scenario = Scenario()

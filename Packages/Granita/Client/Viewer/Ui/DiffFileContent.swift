@@ -53,9 +53,7 @@ public struct DiffFileContent: View {
     private let onPressingChanged: (Bool) -> Void
 
     @State private var hunkFrames: [Int: CGRect] = [:]
-    @State private var isPressing = false
-    @State private var pressX: CGFloat = 0
-    @State private var holds = 0
+    @State private var input = DiffLineInput()
 
     /// The expansion and the two gutter gestures all report which file they are in, because this view
     /// has the whole `FileDiff` and its caller would only be re-attaching an identifier it is already
@@ -139,17 +137,27 @@ public struct DiffFileContent: View {
         #if canImport(UIKit)
         .gesture(DiffLineLongPress(
             isEnabled: acceptsTargeting,
-            onBegan: { beganPress(at: $0) },
-            onChanged: { dragged(to: $0) },
-            onEnded: { finishedPress() },
-            onCancelled: { cancelledPress() }
+            onBegan: {
+                input.began(
+                    at: $0, targeting: targeting,
+                    onHold: { onLongPressGutter($0, diff.file.id) },
+                    onPressingChanged: onPressingChanged
+                )
+            },
+            onChanged: {
+                input.dragged(to: $0, targeting: targeting, onDrag: { onDragGutter($0, diff.file.id) })
+            },
+            onEnded: { input.finished(onPressingChanged: onPressingChanged, onEnd: onEndGutterDrag) },
+            onCancelled: { input.cancelled(onPressingChanged: onPressingChanged) }
         ))
         .simultaneousGesture(
-            SpatialTapGesture().onEnded { tapped(at: $0.location) },
+            SpatialTapGesture().onEnded {
+                input.tapped(at: $0.location, targeting: targeting, onTap: { onTapGutter($0, diff.file.id) })
+            },
             isEnabled: acceptsTargeting
         )
-        .sensoryFeedback(.selection, trigger: holds)
-        .onDisappear { cancelledPress() }
+        .sensoryFeedback(.selection, trigger: input.holds)
+        .onDisappear { input.cancelled(onPressingChanged: onPressingChanged) }
         #endif
         // **Twenty lines arriving is a layout change the reader pressed for, so it moves rather than
         // jumps.** Keyed on how many lines each hunk is drawing rather than on the whole diff: that
@@ -163,54 +171,15 @@ public struct DiffFileContent: View {
         .animation(.disclosure, value: isSplit)
     }
 
-    private func target(at point: CGPoint) -> DiffLinePosition? {
-        guard let width = hunkFrames.values.first?.width else { return nil }
-        return GutterTarget.line(
-            at: point,
-            in: diff.hunks,
+    private var targeting: DiffLineTargeting {
+        DiffLineTargeting(
+            hunks: diff.hunks,
             frames: hunkFrames,
+            pointSize: pointSize,
             rowHeight: DiffLineHeight.at(pointSize: pointSize),
-            splitting: isSplit && SplitBlockLayout.fits(
-                rowWidth: width,
-                highestLineNumber: highestNumber,
-                atPointSize: pointSize,
-                trailingInset: DiffGutter.codeTrailingInset
-            ),
-            cellWidth: SplitBlockLayout.cellWidth(inRowWidth: width, trailingInset: DiffGutter.codeTrailingInset)
+            isSplit: isSplit,
+            acceptsTargeting: acceptsTargeting
         )
-    }
-
-    private func tapped(at point: CGPoint) {
-        guard acceptsTargeting, isPressing == false, let line = target(at: point) else { return }
-        onTapGutter(line, diff.file.id)
-    }
-
-    private func beganPress(at point: CGPoint) {
-        guard acceptsTargeting, let line = target(at: point) else { return }
-        pressX = point.x
-        isPressing = true
-        holds += 1
-        onLongPressGutter(line, diff.file.id)
-        onPressingChanged(true)
-    }
-
-    private func dragged(to point: CGPoint) {
-        guard acceptsTargeting, isPressing,
-              let line = target(at: CGPoint(x: pressX, y: point.y)) else { return }
-        onDragGutter(line, diff.file.id)
-    }
-
-    private func finishedPress() {
-        guard isPressing else { return }
-        isPressing = false
-        onPressingChanged(false)
-        onEndGutterDrag()
-    }
-
-    private func cancelledPress() {
-        guard isPressing else { return }
-        isPressing = false
-        onPressingChanged(false)
     }
 
     /// The column the expander puts its glyph in, so an arrow standing for hidden lines lands where

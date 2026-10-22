@@ -57,8 +57,26 @@ The repeated full coverage command passed package instrumentation and both iOS s
 shard 0 and 57 in shard 1. It then stopped at Mac image comparisons (`coverage-mac` exit 65): 29 of
 30 test functions failed on this macOS 27.0.1 host. There is still no aggregate local coverage
 verdict. A fresh package test run, both unsigned app builds and all six actual-touch tests passed
-with the callback fix. The first PR CI run passed Mac snapshots; the callback fix is awaiting CI
-verification.
+with the callback fix. The [next CI run](https://github.com/fardavide/granita/actions/runs/39733012320)
+passed all functional jobs, including both iOS shards and Mac snapshots. Coverage failed Unit
+regions (94.9% against 95.1%), Snapshot lines (98.8% against 99.4%), Snapshot regions (96.5% against
+97.9%) and All-tests regions (95.5% against 95.7%).
+
+The export identified input decisions left inside the file view and missing refusal cases in
+the draft, measured targeting and model. Transient finger state and measured-layout resolution
+belong to Foundation-only domain values; the view forwards each action with a single call.
+The native adapter's configuration and state dispatch have direct seams because SwiftUI exposes
+no public initializer for its generic context or coordinate converter. Real-window hosting and
+public hit testing did not expose the recognizer through UIKit's view tree, so direct adapter
+tests complement the actual-touch suite rather than using private event injection. Coverage scopes,
+baselines and tolerances remain unchanged.
+
+Measured frames are read when input arrives, rather than while building the view. Reading them in
+the body introduced a rendering dependency on geometry writes during collapse. Returning to
+action-time reads cleared the four motion failures found by instrumentation: all 27 focused native
+cases and both instrumented iOS shards (23 and 58 test functions) pass. The full package suite and
+both unsigned app builds pass. The remaining uncovered input methods only bridge SwiftUI's opaque
+context or construct the current targeting value; aggregate coverage still requires CI's Mac run.
 
 Fresh Xcode resolution advanced the test-only SnapshotTesting pin from 1.19.6 to 1.19.7 and its
 IssueReporting dependency from 2.1.1 to 2.1.2. The required `make resolve` output retains the complete

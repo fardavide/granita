@@ -93,6 +93,7 @@
 		E65AD3A4E278A99895C10F4D /* MacReaderScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 169340A626DBF30EB02C3F19 /* MacReaderScreenSnapshotTests.swift */; };
 		E71B3AB9767677F491983FF5 /* ReviewSettingsPaneSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3589F8FD01D97EA2DC389FE2 /* ReviewSettingsPaneSnapshotTests.swift */; };
 		E7F6AB9B8358DC951E0EC94E /* GranitaMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */; };
+		ED8383DE2EFA1042A3F7CC67 /* DiffLineLongPressInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6C3B0C3BF44A58326BFC39 /* DiffLineLongPressInteractionTests.swift */; };
 		F0838C2B10B545CCF67FF561 /* GranitaMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E504EDABFEC781FB5C4E4768 /* GranitaMacApp.swift */; };
 		F451CFA8FD535AAF87E72A98 /* LoopbackTlsServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A902E1A07630201AB7DB611F /* LoopbackTlsServer.swift */; };
 		F596F8B37214464488DA320A /* SnapshotSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B5A52A78377F68D4732194 /* SnapshotSupport.swift */; };
@@ -197,6 +198,7 @@
 		9199F61D59B2B2B7BBF8D1F0 /* GranitaMobileConnectionTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileConnectionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		947F84A35F0E5E6ED6FED344 /* SettingsScreenFakes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreenFakes.swift; sourceTree = "<group>"; };
 		9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
+		9F6C3B0C3BF44A58326BFC39 /* DiffLineLongPressInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffLineLongPressInteractionTests.swift; sourceTree = "<group>"; };
 		9F9FE8487D5575EA3DEA0CFF /* DiffCollapsedFileBarSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffCollapsedFileBarSnapshotTests.swift; sourceTree = "<group>"; };
 		9FFACD82663DDE524B24D652 /* MacReaderMenuViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacReaderMenuViewSnapshotTests.swift; sourceTree = "<group>"; };
 		A24FA077A3CD672C62C1DF94 /* DiffFileContentSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffFileContentSnapshotTests.swift; sourceTree = "<group>"; };
@@ -357,6 +359,7 @@
 				17CCA12B46FF0D7559C4EE66 /* DiffFileHeaderSnapshotTests.swift */,
 				046AC56E1048173E87744376 /* DiffFileLinesSnapshotTests.swift */,
 				EF274F91272E00E5D5C30D5A /* DiffImageCardSnapshotTests.swift */,
+				9F6C3B0C3BF44A58326BFC39 /* DiffLineLongPressInteractionTests.swift */,
 				F75B6644EDDAA61749C299D6 /* ErrorDiagnosticsSnapshotTests.swift */,
 				6EBD9439AF37818ED0CF7923 /* FakeDiagnosticLogsCopying.swift */,
 				1E98ACE3257ECAA43FE2C616 /* FakeDiagnosticReportProviding.swift */,
@@ -838,6 +841,7 @@
 				1C4B36142518830B2C122D29 /* DiffFileHeaderSnapshotTests.swift in Sources */,
 				5D257D034D949A40A9C555F1 /* DiffFileLinesSnapshotTests.swift in Sources */,
 				B325A60E2BF34D593A1D51CE /* DiffImageCardSnapshotTests.swift in Sources */,
+				ED8383DE2EFA1042A3F7CC67 /* DiffLineLongPressInteractionTests.swift in Sources */,
 				3024C3968BCEB616043D0A1C /* ErrorDiagnosticsSnapshotTests.swift in Sources */,
 				751D7C27505E21E782BE5998 /* FakeDiagnosticLogsCopying.swift in Sources */,
 				66A8858B352E10E96A2A0F68 /* FakeDiagnosticReportProviding.swift in Sources */,

@@ -30,12 +30,16 @@ struct DiffLineLongPress: UIGestureRecognizerRepresentable {
     }
 
     func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        makeRecognizer(delegate: context.coordinator)
+    }
+
+    func makeRecognizer(delegate: Coordinator) -> UILongPressGestureRecognizer {
         let recognizer = UILongPressGestureRecognizer()
         recognizer.minimumPressDuration = 0.35
         recognizer.allowableMovement = 10
         recognizer.cancelsTouchesInView = false
         recognizer.isEnabled = isEnabled
-        recognizer.delegate = context.coordinator
+        recognizer.delegate = delegate
         return recognizer
     }
 
@@ -44,16 +48,20 @@ struct DiffLineLongPress: UIGestureRecognizerRepresentable {
     }
 
     func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
-        if recognizer.state == .began {
-            onBegan(context.converter.localLocation)
+        handle(state: recognizer.state, at: context.converter.localLocation)
+    }
+
+    func handle(state: UIGestureRecognizer.State, at point: CGPoint) {
+        if state == .began {
+            onBegan(point)
         }
-        if recognizer.state == .changed || recognizer.state == .ended {
-            onChanged(context.converter.localLocation)
+        if state == .changed || state == .ended {
+            onChanged(point)
         }
-        if recognizer.state == .ended {
+        if state == .ended {
             onEnded()
         }
-        if recognizer.state == .cancelled || recognizer.state == .failed {
+        if state == .cancelled || state == .failed {
             onCancelled()
         }
     }

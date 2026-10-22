@@ -97,7 +97,55 @@ struct CommentDraftTests {
         #expect(next.pending == nil)
     }
 
+    @Test(arguments: [
+        CommentDraft.idle,
+        .composing(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+    ])
+    func `given no held selection when dragging then the draft stays unchanged`(_ draft: CommentDraft) {
+        // given - when
+        let next = draft.dragged(to: aRow(20), in: aFile)
+
+        // then
+        #expect(next == draft)
+    }
+
+    @Test(arguments: [
+        CommentDraft.holding(file: aFile, end: aRow(11)),
+        .selecting(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+    ])
+    func `given a held selection when dragging into another file then the selection stays unchanged`(_ draft: CommentDraft) {
+        // given - when
+        let next = draft.dragged(to: aRow(20), in: anotherFile)
+
+        // then
+        #expect(next == draft)
+    }
+
     // MARK: - The second tap
+
+    @Test
+    func `given a live range when another row is tapped then composition starts from the original hold`() {
+        // given
+        let draft = CommentDraft.selecting(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+
+        // when
+        let next = draft.tapped(aRow(20), in: aFile)
+
+        // then
+        #expect(next == .composing(PendingComment(file: aFile, from: aRow(11), to: aRow(20))))
+    }
+
+    @Test
+    func `given a live range when another file is tapped then composition starts on the tapped row`() {
+        // given
+        let draft = CommentDraft.selecting(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+
+        // when
+        let next = draft.tapped(aRow(20), in: anotherFile)
+
+        // then
+        #expect(next == .composing(PendingComment(file: anotherFile, from: aRow(20), to: aRow(20))))
+    }
 
     @Test
     func `given a held row when another is tapped then the run reaches from one to the other`() {
@@ -204,6 +252,18 @@ struct CommentDraftTests {
     }
 
     // MARK: - What the screen reads off it
+
+    @Test
+    func `given a live range when the screen asks for its held end then the original hold is retained`() {
+        // given
+        let draft = CommentDraft.selecting(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+
+        // when
+        let heldEnd = draft.heldEnd
+
+        // then
+        #expect(heldEnd == aRow(11))
+    }
 
     @Test
     func `given a held row when the screen asks then it has an end and no pending run`() {
