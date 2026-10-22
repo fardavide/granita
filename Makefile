@@ -88,6 +88,7 @@ coverage: ## Run required suites once, merge raw coverage and enforce the CI rat
 	$(MAKE) coverage-unit coverage-ios-build coverage-ios-enumerate coverage-ios-plan
 	$(MAKE) coverage-ios-shard SHARD=0
 	$(MAKE) coverage-ios-shard SHARD=1
+	$(MAKE) coverage-ui
 	$(MAKE) coverage-mac
 	$(MAKE) coverage-report
 
@@ -100,6 +101,10 @@ coverage-ios: ## Run required iOS snapshots with fresh coverage counters
 
 coverage-mac: ## Run required macOS snapshots with fresh coverage counters
 	bash .github/scripts/collect-coverage.sh mac
+
+.PHONY: coverage-ui
+coverage-ui: ## Run the required touch and native adapter tests once with coverage
+	bash .github/scripts/collect-coverage.sh ui
 
 coverage-legacy: ## Measure the retained path for equivalence comparisons
 	bash .github/scripts/measure-coverage-legacy.sh

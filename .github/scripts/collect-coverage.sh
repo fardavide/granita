@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT="$(pwd)"
 SOURCE_DIGEST="$(python3 .github/scripts/source_digest.py)"
-SUITE="${1:?Expected unit, ios or mac}"
+SUITE="${1:?Expected unit, ios, mac or ui}"
 OUT="${ROOT}/build/coverage-inputs/${SUITE}"
 DERIVED="${ROOT}/build/derived/${SUITE}"
 rm -rf "$OUT"
@@ -26,8 +26,8 @@ case "$SUITE" in
         done
         test "$(grep -Ec 'Test run with [1-9][0-9]* tests .*passed' "$OUT/tests.log")" -eq "${#OBJECTS[@]}"
         ;;
-    ios|ios-0|ios-1|mac)
-        if [ "$SUITE" != mac ]; then DERIVED="${ROOT}/build/derived/ios"; fi
+    ios|ios-0|ios-1|mac|ui)
+        if [ "$SUITE" != mac ] && [ "$SUITE" != ui ]; then DERIVED="${ROOT}/build/derived/ios"; fi
         rm -rf "$DERIVED/Build/ProfileData"
         if [ "$SUITE" != mac ]; then
             SCHEME=GranitaMobile
@@ -38,6 +38,12 @@ case "$SUITE" in
             xcrun simctl boot "$SIMULATOR" || true
             PRODUCTS="$DERIVED/Build/Products/Debug-iphonesimulator/Granita.app"
             CANDIDATES=("$PRODUCTS/Granita.debug.dylib" "$PRODUCTS/Granita" "$PRODUCTS/PlugIns/$TARGET.xctest/$TARGET")
+            if [ "$SUITE" = ui ]; then
+                SCHEME=GranitaMobileUi
+                TARGET=GranitaMobileNativeUiTests
+                PRODUCTS="$DERIVED/Build/Products/Debug-iphonesimulator/GranitaMobileUiTestHost.app"
+                CANDIDATES=("$PRODUCTS/GranitaMobileUiTestHost.debug.dylib" "$PRODUCTS/GranitaMobileUiTestHost" "$PRODUCTS/PlugIns/$TARGET.xctest/$TARGET")
+            fi
         else
             SCHEME=GranitaMac
             TARGET=GranitaMacSnapshotTests
@@ -47,6 +53,17 @@ case "$SUITE" in
         fi
         ACTION=test
         ARGUMENTS=(-project Granita.xcodeproj -scheme "$SCHEME" -only-testing:"$TARGET" -clonedSourcePackagesDirPath SourcePackages)
+        if [ "$SUITE" = ui ]; then
+            ARGUMENTS=(-project Granita.xcodeproj -scheme "$SCHEME" -clonedSourcePackagesDirPath SourcePackages -parallel-testing-enabled NO)
+            xcodebuild build-for-testing "${ARGUMENTS[@]}" \
+                -destination "$DESTINATION" -derivedDataPath "$DERIVED" \
+                -enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO
+            ACTION=test-without-building
+            xcodebuild "$ACTION" "${ARGUMENTS[@]}" \
+                -destination "$DESTINATION" -derivedDataPath "$DERIVED" \
+                -enumerate-tests -test-enumeration-style flat -test-enumeration-format json \
+                -test-enumeration-output-path "$OUT/enumerated-tests.json" CODE_SIGNING_ALLOWED=NO
+        fi
         if [ "$SUITE" = ios-0 ] || [ "$SUITE" = ios-1 ]; then
             TEST_RUNS=("$DERIVED/Build/Products/"*.xctestrun)
             test "${#TEST_RUNS[@]}" -eq 1
@@ -107,3 +124,6 @@ jq -n --arg suite "$SUITE" --arg source_revision "$REVISION" --arg run "$RUN" \
     --arg toolchain "$TOOLCHAIN" --arg source_root "$ROOT" --arg source_digest "$SOURCE_DIGEST" --argjson files "$FILES" \
     '{schema: 1, complete: true, suite: $suite, source_revision: $source_revision,
       run: $run, toolchain: $toolchain, source_root: $source_root, source_digest: $source_digest, files: $files}' > "$OUT/manifest.json"
+if [ "$SUITE" = ui ]; then
+    python3 .github/scripts/coverage_artifacts.py "$OUT/manifest.json" "$REVISION" "$RUN" "$TOOLCHAIN" "$SOURCE_DIGEST"
+fi

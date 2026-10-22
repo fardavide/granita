@@ -7,6 +7,7 @@ enforces it, before it is enforced. That is cheap enough that it never justifies
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import coverage
 
@@ -535,6 +536,44 @@ class TestActionClosureLines:
 
 
 class TestCollect:
+
+    def test_given_input_only_ui_code_when_collecting_then_snapshot_excludes_it_and_host_scopes_stay_unchanged(
+        self: TestCollect,
+        tmp_path: Path,
+    ) -> None:
+        # given
+        path = tmp_path / "export.json"
+        path.write_text(
+            json.dumps(
+                export(
+                    [
+                        ("/w/Packages/Granita/Client/Viewer/Ui/Input/DiffLinePressGesture.swift", (0, 60), (0, 20)),
+                        ("/w/Packages/Granita/Client/Viewer/Ui/DiffFileLines.swift", (20, 40), (4, 9)),
+                        ("/w/Packages/Granita/Core/Diff/Domain/Parser.swift", (30, 500), (10, 200)),
+                    ]
+                )
+            )
+        )
+        out = tmp_path / "summary.json"
+
+        # when
+        for category in ("snapshot", "unit", "all"):
+            coverage.collect(
+                coverage.parse(
+                    ["collect", "--category", category, "--export", str(path), "--out", str(out), "--ref", "main"]
+                )
+            )
+
+        # then
+        written = json.loads(out.read_text())
+        assert written["categories"]["snapshot"] == entry((20, 40), (4, 9), scope=coverage.VIEWS_SCOPE)
+        expected_host = entry(
+            (30, 500),
+            (10, 200),
+            scope="host-reachable-no-system-services-no-screens-no-appkit-no-camera-serial",
+        )
+        assert written["categories"]["unit"] == expected_host
+        assert written["categories"]["all"] == expected_host
 
     def test_given_an_export_when_collecting_then_only_package_sources_count(self, tmp_path):
         path = tmp_path / "export.json"

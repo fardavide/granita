@@ -28,3 +28,22 @@ class TestMakeCoverage:
         # then
         assert result.returncode == 0, result.stderr
         assert "unexpected simulator discovery" not in result.stderr
+
+    def test_given_ui_coverage_when_planned_then_required_suite_is_collected_once(
+        self: "TestMakeCoverage",
+    ) -> None:
+        # given
+        root = Path(__file__).resolve().parents[2]
+
+        # when
+        result = subprocess.run(
+            ["make", "-n", "coverage-ui", "IOS_SIM_NAME=iPhone18Pro"],
+            capture_output=True,
+            check=False,
+            cwd=root,
+            text=True,
+        )
+
+        # then
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == ["bash .github/scripts/collect-coverage.sh ui"]

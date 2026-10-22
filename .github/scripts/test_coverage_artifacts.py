@@ -29,6 +29,67 @@ class Manifest(TypedDict):
 
 
 class TestCoverageArtifacts:
+    def test_given_missing_completed_ui_test_when_validating_manifest_then_rejects_artifact(
+        self: "TestCoverageArtifacts",
+        tmp_path: Path,
+    ) -> None:
+        # given
+        scenario = self._Scenario(tmp_path)
+        scenario.manifest["suite"] = "ui"
+        receipts = {
+            "enumerated-tests.json": json.dumps({
+                "errors": [],
+                "values": [{
+                    "disabledTests": [],
+                    "enabledTests": [
+                        {"identifier": "GranitaInputChecks/LinePressTests/testHold()"},
+                        {"identifier": "GranitaMobileUiTests/CommentInteractionTests/testTouch()"},
+                    ],
+                    "testPlan": "GranitaMobile",
+                }],
+            }).encode("utf-8"),
+            "objects/object-1": b"mapping-1",
+            "objects/object-2": b"mapping-2",
+            "test-inventory.json": json.dumps({
+                "testNodes": [{
+                    "nodeIdentifier": "LinePressTests/testHold()",
+                    "nodeType": "Test Case",
+                    "result": "Passed",
+                }],
+            }).encode("utf-8"),
+            "test-summary.json": json.dumps({
+                "failedTests": 0,
+                "passedTests": 2,
+                "result": "Passed",
+                "skippedTests": 0,
+                "totalTestCount": 2,
+            }).encode("utf-8"),
+        }
+        for path, content in receipts.items():
+            (tmp_path / path).write_bytes(content)
+            scenario.manifest["files"].append({
+                "path": path,
+                "sha256": hashlib.sha256(content).hexdigest(),
+            })
+        # when
+        with pytest.raises(ValueError, match="inventory") as error:
+            scenario.validate()
+        # then
+        assert "CommentInteractionTests/testTouch()" in str(error.value)
+
+    def test_given_missing_ui_summary_when_validating_manifest_then_rejects_artifact(
+        self: "TestCoverageArtifacts",
+        tmp_path: Path,
+    ) -> None:
+        # given
+        scenario = self._Scenario(tmp_path)
+        scenario.manifest["suite"] = "ui"
+        # when
+        with pytest.raises(ValueError, match="receipt") as error:
+            scenario.validate()
+        # then
+        assert "test-summary.json" in str(error.value)
+
     def test_given_missing_snapshot_summary_when_validating_manifest_then_rejects_artifact(
         self: "TestCoverageArtifacts",
         tmp_path: Path,

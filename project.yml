@@ -315,12 +315,31 @@ targets:
     type: bundle.ui-testing
     supportedDestinations: [iOS, iPadOS]
     sources:
-      - Apps/GranitaMobileUiTests
+      - path: Apps/GranitaMobileUiTests
+        excludes:
+          - "Native/**"
     dependencies:
       - target: GranitaMobileUiTestHost
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+
+  # Public UIKit adapter checks need an app host, while actual touches use the out-of-process runner.
+  GranitaMobileNativeUiTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, iPadOS]
+    sources:
+      - Apps/GranitaMobileUiTests/Native
+    dependencies:
+      - target: GranitaMobileUiTestHost
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/GranitaMobileUiTestHost.app/GranitaMobileUiTestHost"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.fardavide.granita.mobile.nativeuitests
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
@@ -351,10 +370,12 @@ schemes:
       targets:
         GranitaMobileUiTestHost: [test]
         GranitaMobileUiTests: [test]
+        GranitaMobileNativeUiTests: [test]
     test:
       config: Debug
       targets:
         - GranitaMobileUiTests
+        - GranitaMobileNativeUiTests
 
   GranitaMobileConnections:
     build:

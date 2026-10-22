@@ -15,6 +15,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "60D690C2A84E138B95BEACC7"
+               BuildableName = "GranitaMobileNativeUiTests.xctest"
+               BlueprintName = "GranitaMobileNativeUiTests"
+               ReferencedContainer = "container:Granita.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "5B9D4E9830B7660F556E5E72"
                BuildableName = "GranitaMobileUiTestHost.app"
                BlueprintName = "GranitaMobileUiTestHost"
@@ -46,9 +60,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5B9D4E9830B7660F556E5E72"
-            BuildableName = "GranitaMobileUiTestHost.app"
-            BlueprintName = "GranitaMobileUiTestHost"
+            BlueprintIdentifier = "60D690C2A84E138B95BEACC7"
+            BuildableName = "GranitaMobileNativeUiTests.xctest"
+            BlueprintName = "GranitaMobileNativeUiTests"
             ReferencedContainer = "container:Granita.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "2648849D7ACB1FF118F1859F"
                BuildableName = "GranitaMobileUiTests.xctest"
                BlueprintName = "GranitaMobileUiTests"
+               ReferencedContainer = "container:Granita.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "60D690C2A84E138B95BEACC7"
+               BuildableName = "GranitaMobileNativeUiTests.xctest"
+               BlueprintName = "GranitaMobileNativeUiTests"
                ReferencedContainer = "container:Granita.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -78,16 +103,15 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5B9D4E9830B7660F556E5E72"
-            BuildableName = "GranitaMobileUiTestHost.app"
-            BlueprintName = "GranitaMobileUiTestHost"
+            BlueprintIdentifier = "60D690C2A84E138B95BEACC7"
+            BuildableName = "GranitaMobileNativeUiTests.xctest"
+            BlueprintName = "GranitaMobileNativeUiTests"
             ReferencedContainer = "container:Granita.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -95,16 +119,15 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5B9D4E9830B7660F556E5E72"
-            BuildableName = "GranitaMobileUiTestHost.app"
-            BlueprintName = "GranitaMobileUiTestHost"
+            BlueprintIdentifier = "60D690C2A84E138B95BEACC7"
+            BuildableName = "GranitaMobileNativeUiTests.xctest"
+            BlueprintName = "GranitaMobileNativeUiTests"
             ReferencedContainer = "container:Granita.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

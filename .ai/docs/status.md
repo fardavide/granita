@@ -22,7 +22,16 @@ transient touch decisions move into a Foundation-only value with direct tests, a
 adapter exposes configuration and event dispatch independently of SwiftUI's opaque context.
 Keeping frame reads at input time preserves collapse motion: the 27 focused native cases, full
 package suite, both unsigned app builds and instrumented iOS shards (23 and 58 tests) pass after
-extraction. Aggregate coverage remains for CI's Mac run. The scope and evidence are in 0242.
+extraction. The next CI run passed every functional check and Unit/All-tests coverage, leaving two
+Snapshot ratchets red. Davide approved collecting the required behavioral Ui profiles and separating
+input-only wiring from Snapshot's rendering scope; implementation and verification are in progress.
+Snapshot will establish a new scope baseline and Ui its first baseline on main. The approved
+measurement boundary and unchanged Unit/All-tests comparisons are recorded in 0243. The tooling
+suite passes 128 checks; package tests, both unsigned app builds, both iOS shards (21 and 58
+functions), and all six touch tests plus eleven native adapter cases pass. Ui profiles execute all
+five previously unexecuted input bridges. Full local coverage stops at Mac image mismatches and a
+stalled menu test, interrupted after more than six minutes without progress. The test processes
+have stopped; no aggregate local verdict is claimed. CI verification remains pending.
 
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a

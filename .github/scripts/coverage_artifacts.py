@@ -62,7 +62,7 @@ def validate_manifest(
         runs = re.findall(r"Test run with [1-9][0-9]* tests .*passed", receipt)
         if len(runs) != len(declared_mappings):
             raise ValueError("Completed positive test runs must match every unit mapping")
-    if manifest.get("suite") in ("ios", "ios-0", "ios-1", "mac"):
+    if manifest.get("suite") in ("ios", "ios-0", "ios-1", "mac", "ui"):
         for receipt in ("test-summary.json", "test-inventory.json"):
             if receipt not in paths:
                 raise ValueError(f"Snapshot coverage requires {receipt} receipt")
@@ -73,6 +73,15 @@ def validate_manifest(
             raise ValueError("Snapshot tests failed or are incomplete")
         if len(declared_mappings) != 3:
             raise ValueError("Snapshot coverage requires all three mappings")
+        if manifest.get("suite") == "ui":
+            from snapshot_shards import planned_tests, verify_completed_tests
+
+            if "enumerated-tests.json" not in paths:
+                raise ValueError("Ui coverage requires enumerated-tests.json receipt")
+            verify_completed_tests(
+                planned_tests(json.loads((manifest_path.parent / "enumerated-tests.json").read_text())),
+                json.loads((manifest_path.parent / "test-inventory.json").read_text()),
+            )
         if manifest.get("suite") in ("ios-0", "ios-1"):
             from snapshot_shards import verify_completed_tests
 
