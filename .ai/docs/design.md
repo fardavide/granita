@@ -1945,10 +1945,11 @@ field.
 > plus 4, `SPEC.md` §10 makes the code size a setting, and the regular-width default is already 20 —
 > so the exception is being asked for at one end of a range the reader controls.
 
-**The strip is everything to the left of the code's origin**: the figure column, the 12pt marker, and
+**The original strip was everything to the left of the code's origin**: the figure column, the 12pt marker, and
 the 6pt after it — all three already outside the per-hunk horizontal scroll, so taking them together
 costs nothing. About 51pt on a three-figure file, 57 on four, and **38 on a file with nine lines in
-it**, which is the narrowest a change set can produce.
+it**, which is the narrowest a change set can produce. The iOS prototype below expands targeting
+to the whole row without changing its height or drawing a separate control.
 
 > **Two of §4's numbers are corrected by this section.** It quotes the gutter as 39pt and the code
 > origin as 48 as though both were constants. `DiffGutter.columnWidth` sizes the figures per file:
@@ -1957,8 +1958,20 @@ it**, which is the narrowest a change set can produce.
 
 ### §7.1 — A held row needs a way out, so it gets a sentence
 
-Tap the gutter to comment on that row. Long press to hold one. A second tap extends the run and opens
-the composer.
+**On iOS, tap anywhere on a code row to comment on it, and long press anywhere to hold it.**
+This includes the code and trailing space. After the hold, dragging updates the existing indigo
+selection tint and rail; lifting the finger opens the composer on the selected range. Releasing
+without changing rows keeps the held line, so the existing second-tap method remains available,
+including after scrolling to a distant endpoint.
+
+Ordinary vertical and horizontal swipes keep scrolling. Only a recognised hold pauses native
+scrolling, and release or cancellation restores it. Split rows resolve the touched cell, with the
+starting side retained during a drag; an absent cell and the divider are not targets. Input remains
+disabled while a sheet is open. The prototype does not automatically scroll at the viewport edge.
+
+This replaces the gutter-only target on the phone and iPad. It uses the existing selection treatment
+and composer, with no new screen, control or resting visual state. See
+[0242](decisions/0242-whole-row-selection-follows-measured-hunks.md).
 
 The hold leaves the reader somewhere iOS has no convention for — one row marked, the app waiting for a
 second tap that may never come — and nothing in the scroll can explain it, because every pixel of the
@@ -1987,12 +2000,15 @@ Three rules the held state obeys:
 > selection is the opposite kind of thing: it lasts seconds and has to be unmissable while it does.
 > 2d settles it by drawing a commented row with no tint at all, only its own green.
 
-> **Built with one recogniser per hunk rather than per file**, which the review's own shape requires:
+> **Originally built with one recogniser per hunk rather than per file**:
 > `DiffFileContent` lays out one `DiffFileLines` per hunk with 44pt torn rows between them, so there is
 > no single coordinate space a file-level `floor(y / rowHeight)` could use. Every property the section
-> argues for survives. In [`decisions.md`](decisions.md).
+> argues for survives. The iOS prototype now measures each hunk in a file coordinate space, so a
+> single native recogniser can follow a drag across the torn rows without assuming uniform file
+> geometry. The Mac retains its per-hunk input. In [`decisions.md`](decisions.md).
 >
-> **The cancel-by-tapping-the-code the section also offers is not built.** That area is inside the
+> **The cancel-by-tapping-the-code the section also offers is superseded on iOS by whole-row targeting.**
+> A code tap now selects an endpoint. The original limitation was that the area is inside the
 > horizontal scroll whose trailing 26pt is masked, so a tap there competes with the pan. Cancel and a
 > second tap are the two ways out.
 

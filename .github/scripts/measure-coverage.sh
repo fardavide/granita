@@ -13,7 +13,7 @@ SOURCE_DIGEST="$(python3 .github/scripts/source_digest.py)"
 rm -rf "$COVERAGE"
 mkdir -p "$COVERAGE"
 
-for suite in unit ios-0 ios-1 mac; do
+for suite in unit ios-0 ios-1 mac ui; do
     python3 .github/scripts/coverage_artifacts.py "$INPUTS/$suite/manifest.json" "$REVISION" "$RUN" "$TOOLCHAIN" "$SOURCE_DIGEST"
     jq -e --arg suite "$suite" --arg root "$ROOT" '.suite == $suite and .source_root == $root' "$INPUTS/$suite/manifest.json"
     # Artifact transport may rewrite mtimes. Provenance and content hashes above establish
@@ -26,7 +26,9 @@ python3 .github/scripts/snapshot_shards.py partition "$INPUTS/ios-0/enumerated-t
 
 UNIT_OBJECTS=()
 SNAPSHOT_OBJECTS=()
+UI_OBJECTS=()
 for object in "$INPUTS/unit/objects/"*; do UNIT_OBJECTS+=(-object "$object"); done
+for object in "$INPUTS/ui/objects/"*; do UI_OBJECTS+=(-object "$object"); done
 for suite in ios-0 ios-1 mac; do
     for object in "$INPUTS/$suite/objects/"*; do SNAPSHOT_OBJECTS+=(-object "$object"); done
 done
@@ -35,6 +37,12 @@ xcrun llvm-cov export -arch "$(uname -m)" --check-binary-ids -instr-profile "$IN
     "${UNIT_OBJECTS[@]}" > "$COVERAGE/unit.json" 2> "$COVERAGE/unit-diagnostics.log"
 test ! -s "$COVERAGE/unit-diagnostics.log"
 python3 .github/scripts/coverage.py collect --category unit --export "$COVERAGE/unit.json" \
+    --out "$COVERAGE/summary.json" --ref "$REF"
+
+xcrun llvm-cov export -arch "$(uname -m)" --check-binary-ids -instr-profile "$INPUTS/ui/profile.profdata" \
+    "${UI_OBJECTS[@]}" > "$COVERAGE/ui.json" 2> "$COVERAGE/ui-diagnostics.log"
+test ! -s "$COVERAGE/ui-diagnostics.log"
+python3 .github/scripts/coverage.py collect --category ui --export "$COVERAGE/ui.json" \
     --out "$COVERAGE/summary.json" --ref "$REF"
 
 xcrun llvm-profdata merge -sparse "$INPUTS/ios-0/profile.profdata" "$INPUTS/ios-1/profile.profdata" "$INPUTS/mac/profile.profdata" \
@@ -47,11 +55,12 @@ python3 .github/scripts/coverage.py collect --category snapshot --export "$COVER
 
 # Total is the union of unfiltered counters and mappings, never category percentages.
 xcrun llvm-profdata merge -sparse "$INPUTS/unit/profile.profdata" \
-    "$INPUTS/ios-0/profile.profdata" "$INPUTS/ios-1/profile.profdata" "$INPUTS/mac/profile.profdata" -o "$COVERAGE/all.profdata"
+    "$INPUTS/ios-0/profile.profdata" "$INPUTS/ios-1/profile.profdata" "$INPUTS/mac/profile.profdata" \
+    "$INPUTS/ui/profile.profdata" -o "$COVERAGE/all.profdata"
 xcrun llvm-cov export -arch "$(uname -m)" --check-binary-ids -instr-profile "$COVERAGE/all.profdata" \
-    "${UNIT_OBJECTS[@]}" "${SNAPSHOT_OBJECTS[@]}" > "$COVERAGE/all.json" 2> "$COVERAGE/all-diagnostics.log"
+    "${UNIT_OBJECTS[@]}" "${SNAPSHOT_OBJECTS[@]}" "${UI_OBJECTS[@]}" > "$COVERAGE/all.json" 2> "$COVERAGE/all-diagnostics.log"
 test ! -s "$COVERAGE/all-diagnostics.log"
 python3 .github/scripts/coverage.py collect --category all --export "$COVERAGE/all.json" \
     --out "$COVERAGE/summary.json" --ref "$REF"
-jq -e '.categories | ([.unit, .snapshot, .all] | all(.[]; .lines.count > 0 and .regions.count > 0))' "$COVERAGE/summary.json"
+jq -e '.categories | ([.unit, .ui, .snapshot, .all] | all(.[]; .lines.count > 0 and .regions.count > 0))' "$COVERAGE/summary.json"
 echo "Wrote $COVERAGE/summary.json"

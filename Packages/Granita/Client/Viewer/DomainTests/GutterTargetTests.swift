@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -177,6 +178,79 @@ struct GutterTargetTests {
         #expect(GutterTarget.row(at: 20, of: lines, rowHeight: 0) == nil)
     }
 
+    // MARK: - Crossing hunks
+
+    @Test
+    func `given separated hunks when dragging into the second then its measured frame resolves its actual line`() {
+        // given
+        let hunks = [
+            Hunk(
+                index: 0, oldStart: 1, oldCount: 2, newStart: 1, newCount: 2,
+                sectionHeading: nil, lines: numbered(2)
+            ),
+            Hunk(
+                index: 1, oldStart: 81, oldCount: 2, newStart: 81, newCount: 2,
+                sectionHeading: nil,
+                lines: [aLine(kind: .context, old: 81, new: 81), aLine(kind: .context, old: 82, new: 82)]
+            )
+        ]
+        let frames = [
+            0: CGRect(x: 0, y: 100, width: 400, height: 36),
+            1: CGRect(x: 0, y: 180, width: 400, height: 36)
+        ]
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 260, y: 207), in: hunks, frames: frames,
+            rowHeight: 18, splitting: false, cellWidth: 200
+        )
+
+        // then
+        #expect(position == DiffLinePosition(oldNumber: 82, newNumber: 82))
+    }
+
+    @Test
+    func `given a touch outside every measured hunk when it is resolved then there is no target`() {
+        // given
+        let hunks = [
+            Hunk(
+                index: 0, oldStart: 1, oldCount: 2, newStart: 1, newCount: 2,
+                sectionHeading: nil, lines: numbered(2)
+            )
+        ]
+        let frames = [0: CGRect(x: 0, y: 100, width: 400, height: 36)]
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 260, y: 150), in: hunks, frames: frames,
+            rowHeight: 18, splitting: false, cellWidth: 200
+        )
+
+        // then
+        #expect(position == nil)
+    }
+
+    @Test
+    func `given a hunk with no matching measured frame when a touch is resolved then there is no target`() {
+        // given
+        let hunks = [
+            Hunk(
+                index: 0, oldStart: 1, oldCount: 2, newStart: 1, newCount: 2,
+                sectionHeading: nil, lines: numbered(2)
+            )
+        ]
+        let frames = [1: CGRect(x: 0, y: 100, width: 400, height: 36)]
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 260, y: 109), in: hunks, frames: frames,
+            rowHeight: 18, splitting: false, cellWidth: 200
+        )
+
+        // then
+        #expect(position == nil)
+    }
+
     // MARK: - How wide the strip is
 
     @Test
@@ -209,6 +283,114 @@ struct GutterTargetTests {
     }
 
     // MARK: - Which cell a thumb meant, once a row can be a block
+
+    @Test(arguments: [
+        (CGPoint(x: 160, y: 9), DiffLinePosition(oldNumber: 10, newNumber: nil)),
+        (CGPoint(x: 360, y: 9), DiffLinePosition(oldNumber: nil, newNumber: 10)),
+        (CGPoint(x: 160, y: 27), DiffLinePosition(oldNumber: 11, newNumber: nil)),
+        (CGPoint(x: 360, y: 27), nil),
+        (CGPoint(x: 203, y: 9), nil)
+    ] as [(CGPoint, DiffLinePosition?)])
+    func `given whole line targeting when a split cell is touched then only that cell can answer`(
+        touch: CGPoint,
+        expected: DiffLinePosition?
+    ) {
+        // given — the second row has no new-side line; the 200pt cells have the split's gap between them.
+        let lines = [aDeletion(10), aDeletion(11), anAddition(10)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when
+        let position = GutterTarget.line(
+            at: touch,
+            of: rows,
+            lines: lines,
+            rowHeight: 18,
+            splitting: true,
+            cellWidth: 200
+        )
+
+        // then
+        #expect(position == expected)
+    }
+
+    @Test(arguments: [CGFloat(160), CGFloat(360)])
+    func `given a context row in split mode when either cell is touched then the whole row answers`(_ x: CGFloat) {
+        // given
+        let lines = numbered(4)
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: x, y: 27), of: rows, lines: lines,
+            rowHeight: 18, splitting: true, cellWidth: 200
+        )
+
+        // then
+        #expect(position == DiffLinePosition(oldNumber: 2, newNumber: 2))
+    }
+
+    @Test(arguments: [CGFloat(-1), CGFloat(36)])
+    func `given a touch outside the split rows when it is resolved then there is no target`(_ y: CGFloat) {
+        // given
+        let lines = [aDeletion(10), aDeletion(11), anAddition(10)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 160, y: y), of: rows, lines: lines,
+            rowHeight: 18, splitting: true, cellWidth: 200
+        )
+
+        // then
+        #expect(position == nil)
+    }
+
+    @Test(arguments: [CGFloat(0), CGFloat(-18)])
+    func `given nonpositive split row height when a touch is resolved then there is no target`(_ rowHeight: CGFloat) {
+        // given
+        let lines = [aDeletion(10), anAddition(10)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 160, y: 9), of: rows, lines: lines,
+            rowHeight: rowHeight, splitting: true, cellWidth: 200
+        )
+
+        // then
+        #expect(position == nil)
+    }
+
+    @Test(arguments: [CGFloat(0), CGFloat(-18)])
+    func `given nonpositive row height when the old side is targeted directly then there is no target`(_ rowHeight: CGFloat) {
+        // given
+        let lines = [aDeletion(10), anAddition(10)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: true)
+
+        // when
+        let position = GutterTarget.line(
+            at: 9, on: .old, of: rows, lines: lines, rowHeight: rowHeight
+        )
+
+        // then
+        #expect(position == nil)
+    }
+
+    @Test
+    func `given a unified hunk with no numbered row when the whole line is touched then there is no target`() {
+        // given
+        let lines = [aLine(kind: .noNewlineMarker, old: nil, new: nil)]
+        let rows = SplitDiffRow.rows(of: lines, splitting: false)
+
+        // when
+        let position = GutterTarget.line(
+            at: CGPoint(x: 160, y: 9), of: rows, lines: lines,
+            rowHeight: 18, splitting: false, cellWidth: 200
+        )
+
+        // then
+        #expect(position == nil)
+    }
 
     @Test
     func `given the unified strip when a touch is resolved then it answers as it always did`() {

@@ -20,7 +20,7 @@ public struct PendingComment: Hashable, Sendable {
     }
 }
 
-/// Tap, long press, tap — design §7.1's gesture, as the three states it actually is.
+/// A held line, a live dragged range, and the composer that follows either form of selection.
 ///
 /// **A state machine in `Domain` rather than a pair of closures on a view**, which is this
 /// repository's rule for any gesture that decides something: a `Ui` view reports what happened and
@@ -44,6 +44,9 @@ public enum CommentDraft: Hashable, Sendable {
     /// looking for it would be unusable.
     case holding(file: FileID, end: DiffLinePosition)
 
+    /// A live range under the finger; the composer opens only after release.
+    case selecting(PendingComment)
+
     /// A run picked out, with the composer over it.
     case composing(PendingComment)
 
@@ -55,6 +58,7 @@ public enum CommentDraft: Hashable, Sendable {
     public var heldEnd: DiffLinePosition? {
         switch self {
         case .holding(_, let end): end
+        case .selecting(let selection): selection.from
         case .idle, .composing: nil
         }
     }
@@ -63,15 +67,15 @@ public enum CommentDraft: Hashable, Sendable {
     public var pending: PendingComment? {
         switch self {
         case .composing(let pending): pending
-        case .idle, .holding: nil
+        case .idle, .holding, .selecting: nil
         }
     }
 
-    /// The held row as a run of one, so the instruction bar can name it through the same resolution
-    /// the composer's own header uses rather than a second spelling of it.
+    /// The held line or live range, shared by the instruction bar and the diff's selection tint.
     public var held: PendingComment? {
         switch self {
         case .holding(let file, let end): PendingComment(file: file, from: end, to: end)
+        case .selecting(let selection): selection
         case .idle, .composing: nil
         }
     }
@@ -90,6 +94,10 @@ public enum CommentDraft: Hashable, Sendable {
             held == file
                 ? .composing(PendingComment(file: file, from: start, to: end))
                 : .composing(PendingComment(file: file, from: end, to: end))
+        case .selecting(let selection):
+            selection.file == file
+                ? .composing(PendingComment(file: file, from: selection.from, to: end))
+                : .composing(PendingComment(file: file, from: end, to: end))
         // Unreachable while the sheet is up — the diff behind it takes no gestures at the composer's
         // own detent. Answered rather than assumed: a tap that quietly replaced an open composer
         // would discard a paragraph without asking.
@@ -98,13 +106,33 @@ public enum CommentDraft: Hashable, Sendable {
         }
     }
 
-    /// A long press on the gutter, which begins a run.
+    /// A long press on a row, which begins a run.
     public func longPressed(_ end: DiffLinePosition, in file: FileID) -> CommentDraft {
         switch self {
-        case .idle, .holding:
+        case .idle, .holding, .selecting:
             .holding(file: file, end: end)
         case .composing:
             self
+        }
+    }
+
+    public func dragged(to end: DiffLinePosition, in file: FileID) -> CommentDraft {
+        switch self {
+        case .holding(let held, let start):
+            guard held == file, start != end else { return self }
+            return .selecting(PendingComment(file: file, from: start, to: end))
+        case .selecting(let selection):
+            guard selection.file == file else { return self }
+            return .selecting(PendingComment(file: file, from: selection.from, to: end))
+        case .idle, .composing:
+            return self
+        }
+    }
+
+    public func finishedDragging() -> CommentDraft {
+        switch self {
+        case .selecting(let selection): .composing(selection)
+        case .idle, .holding, .composing: self
         }
     }
 

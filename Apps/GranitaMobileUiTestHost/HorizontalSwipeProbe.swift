@@ -14,6 +14,7 @@ final class HorizontalSwipeProbe: UIView {
     private let sampleCount = ProbeValueLabel("sampleCount")
     private let missingFrames = ProbeValueLabel("missingFrames")
     private let codeChanged = ProbeValueLabel("codeChanged")
+    private let scrollCandidates = ProbeValueLabel("scrollCandidates")
     private var displayLink: CADisplayLink?
     private var previous: ScrollGeometry?
     private var quietFrames = 0
@@ -32,7 +33,8 @@ final class HorizontalSwipeProbe: UIView {
         super.init(frame: frame)
         backgroundColor = .systemBackground
         let stack = UIStackView(arrangedSubviews: [
-            status, verticalDepth, firstFileEnd, verticalPosition, horizontalTravel, verticalDrift, panFrames, sampleCount, missingFrames, codeChanged
+            status, verticalDepth, firstFileEnd, verticalPosition, horizontalTravel, verticalDrift, panFrames, sampleCount, missingFrames, codeChanged,
+            scrollCandidates
         ])
         stack.axis = .vertical
         stack.distribution = .fillEqually
@@ -151,15 +153,22 @@ final class HorizontalSwipeProbe: UIView {
     private func visibleScrolls() -> (vertical: UIScrollView, horizontal: UIScrollView)? {
         guard let root = window?.rootViewController?.view else { return nil }
         var remaining = [root]
+        var allScrolls: [UIScrollView] = []
         var verticals: [UIScrollView] = []
         while let view = remaining.popLast() {
+            if let scroll = view as? UIScrollView {
+                allScrolls.append(scroll)
+            }
             if let scroll = view as? UIScrollView, scroll.bounds.height > 100,
                scroll.contentSize.height > scroll.bounds.height {
                 verticals.append(scroll)
             }
             remaining.append(contentsOf: view.subviews)
         }
-        guard verticals.count == 1, let vertical = verticals.first, let presentation = vertical.layer.presentation() else { return nil }
+        guard verticals.count == 1, let vertical = verticals.first, let presentation = vertical.layer.presentation() else {
+            scrollCandidates.set("verticals=\(verticals.count); all=\(allScrolls.map(scrollDescription).joined(separator: " | "))")
+            return nil
+        }
         let viewport = presentation.convert(presentation.bounds, to: nil)
         guard let window else { return nil }
         let gesturePoint = CGPoint(x: window.bounds.midX, y: window.bounds.midY)
@@ -175,8 +184,17 @@ final class HorizontalSwipeProbe: UIView {
             }
             remaining.append(contentsOf: view.subviews)
         }
-        guard horizontals.count == 1, let horizontal = horizontals.first else { return nil }
+        guard horizontals.count == 1, let horizontal = horizontals.first else {
+            scrollCandidates.set("verticals=1; horizontals=\(horizontals.count); point=\(gesturePoint); viewport=\(viewport); all=\(allScrolls.map(scrollDescription).joined(separator: " | "))")
+            return nil
+        }
+        scrollCandidates.set("verticals=1; horizontals=1")
         return (vertical, horizontal)
+    }
+
+    private func scrollDescription(_ scroll: UIScrollView) -> String {
+        let frame = scroll.layer.presentation().map { $0.convert($0.bounds, to: nil) }
+        return "\(ObjectIdentifier(scroll)) size=\(scroll.contentSize) bounds=\(scroll.bounds) overflowY=\(scroll.contentSize.height - scroll.bounds.height) presentation=\(String(describing: frame)) hidden=\(scroll.isHidden)"
     }
 
     private func geometry(of scrolls: (vertical: UIScrollView, horizontal: UIScrollView)) -> ScrollGeometry? {

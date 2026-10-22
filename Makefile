@@ -88,6 +88,7 @@ coverage: ## Run required suites once, merge raw coverage and enforce the CI rat
 	$(MAKE) coverage-unit coverage-ios-build coverage-ios-enumerate coverage-ios-plan
 	$(MAKE) coverage-ios-shard SHARD=0
 	$(MAKE) coverage-ios-shard SHARD=1
+	$(MAKE) coverage-ui
 	$(MAKE) coverage-mac
 	$(MAKE) coverage-report
 
@@ -100,6 +101,10 @@ coverage-ios: ## Run required iOS snapshots with fresh coverage counters
 
 coverage-mac: ## Run required macOS snapshots with fresh coverage counters
 	bash .github/scripts/collect-coverage.sh mac
+
+.PHONY: coverage-ui
+coverage-ui: ## Run the required touch and native adapter tests once with coverage
+	bash .github/scripts/collect-coverage.sh ui
 
 coverage-legacy: ## Measure the retained path for equivalence comparisons
 	bash .github/scripts/measure-coverage-legacy.sh
@@ -203,7 +208,7 @@ tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the ph
 
 .PHONY: ui-tests-ios
 ui-tests-ios: ## Swipe the production phone reader in an offline fixture application
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:GranitaMobileUiTests -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:GranitaMobileUiTests$(if $(IOS_UI_TEST),/$(IOS_UI_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
 
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment

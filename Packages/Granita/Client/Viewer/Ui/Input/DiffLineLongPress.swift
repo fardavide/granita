@@ -1,0 +1,79 @@
+#if canImport(UIKit)
+import SwiftUI
+import UIKit
+
+/// A stationary hold reports its location when it begins, without requiring a drag to follow it.
+struct DiffLineLongPress: UIGestureRecognizerRepresentable {
+
+    let isEnabled: Bool
+    let onBegan: (CGPoint) -> Void
+    let onChanged: (CGPoint) -> Void
+    let onEnded: () -> Void
+    let onCancelled: () -> Void
+
+    init(
+        isEnabled: Bool,
+        onBegan: @escaping (CGPoint) -> Void,
+        onChanged: @escaping (CGPoint) -> Void = { _ in },
+        onEnded: @escaping () -> Void = {},
+        onCancelled: @escaping () -> Void = {}
+    ) {
+        self.isEnabled = isEnabled
+        self.onBegan = onBegan
+        self.onChanged = onChanged
+        self.onEnded = onEnded
+        self.onCancelled = onCancelled
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        makeRecognizer(delegate: context.coordinator)
+    }
+
+    func makeRecognizer(delegate: Coordinator) -> UILongPressGestureRecognizer {
+        let recognizer = UILongPressGestureRecognizer()
+        recognizer.minimumPressDuration = 0.35
+        recognizer.allowableMovement = 10
+        recognizer.cancelsTouchesInView = false
+        recognizer.isEnabled = isEnabled
+        recognizer.delegate = delegate
+        return recognizer
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        handle(state: recognizer.state, at: context.converter.localLocation)
+    }
+
+    func handle(state: UIGestureRecognizer.State, at point: CGPoint) {
+        if state == .began {
+            onBegan(point)
+        }
+        if state == .changed || state == .ended {
+            onChanged(point)
+        }
+        if state == .ended {
+            onEnded()
+        }
+        if state == .cancelled || state == .failed {
+            onCancelled()
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            otherGestureRecognizer is UIPanGestureRecognizer
+        }
+    }
+}
+#endif

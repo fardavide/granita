@@ -55,6 +55,7 @@
 		72FF572B047EDB5793845596 /* ReviewSheetViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD1AA38DA7CA468143AC9CA /* ReviewSheetViewSnapshotTests.swift */; };
 		7381A8F9316C881E69E52446 /* SnapshotTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 8C48D413A221B85C8A6A3993 /* SnapshotTesting */; };
 		751D7C27505E21E782BE5998 /* FakeDiagnosticLogsCopying.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBD9439AF37818ED0CF7923 /* FakeDiagnosticLogsCopying.swift */; };
+		76443013A7AF8A70521FFE35 /* HunkFramesPreferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EBDC2EF7325A83E5D54B786 /* HunkFramesPreferenceTests.swift */; };
 		7E43CF11D8E3A8E933415A49 /* identity.p12.base64 in Resources */ = {isa = PBXBuildFile; fileRef = FA0D14E342A11D975CD831F8 /* identity.p12.base64 */; };
 		8794F825EDF08F11196C05CF /* DiffFailureBarSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0D0CB644B6AE6A744C295A /* DiffFailureBarSnapshotTests.swift */; };
 		8A5AE7E674E3117242BFE682 /* ProjectsSettingsViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */; };
@@ -74,6 +75,7 @@
 		A9C2295445A8583FDDD21E4E /* WorktreeDiffScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1921F6DE07387F2370CD13 /* WorktreeDiffScreenSnapshotTests.swift */; };
 		AA44462D702F910B96524E06 /* FakeDiffSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A38FC197C62671336DD162A /* FakeDiffSource.swift */; };
 		AE4F642A1FA7D7451B96533C /* FakeAppearancePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA8B079F967819E6A825B06A /* FakeAppearancePreferences.swift */; };
+		AEAA62C7FC53C834344193D0 /* DiffLineLongPressInteractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6921667BF23E5465C06AAB58 /* DiffLineLongPressInteractionTests.swift */; };
 		B325A60E2BF34D593A1D51CE /* DiffImageCardSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF274F91272E00E5D5C30D5A /* DiffImageCardSnapshotTests.swift */; };
 		B527EDF5CE66094E01452955 /* WorktreeSidebarViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5803D019712FAFEE85FBAFFB /* WorktreeSidebarViewSnapshotTests.swift */; };
 		BC8AC7E9546590C4BE3A8F4D /* MacSourceMenuContentViewSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE7AA367125A3AF0B58E6C7D /* MacSourceMenuContentViewSnapshotTests.swift */; };
@@ -122,6 +124,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = B8DC2D4590D63149903BE29C;
 			remoteInfo = GranitaMobile;
+		};
+		5626FF0C798F54E927F215B8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1CEF00856D1D808269D70C0A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5B9D4E9830B7660F556E5E72;
+			remoteInfo = GranitaMobileUiTestHost;
 		};
 		AEEA6270B1E1BB08DFA58472 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -186,6 +195,7 @@
 		65241507AAD96B51BE22F184 /* FakeMacReaderSelectionMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeMacReaderSelectionMemory.swift; sourceTree = "<group>"; };
 		671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeReviewPasteboard.swift; sourceTree = "<group>"; };
 		682FAD294D9C10F0B38995DD /* FakePairingSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakePairingSource.swift; sourceTree = "<group>"; };
+		6921667BF23E5465C06AAB58 /* DiffLineLongPressInteractionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffLineLongPressInteractionTests.swift; sourceTree = "<group>"; };
 		6E9A228051C1EFD31BC31763 /* GranitaMobileUiTestHostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaMobileUiTestHostApp.swift; sourceTree = "<group>"; };
 		6EBD9439AF37818ED0CF7923 /* FakeDiagnosticLogsCopying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeDiagnosticLogsCopying.swift; sourceTree = "<group>"; };
 		6FA5BF872AB3724793E72CAD /* FakeSettingsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSettingsRepository.swift; sourceTree = "<group>"; };
@@ -194,6 +204,7 @@
 		7C4AAF50BE1C172B84513D1A /* ContinuousDiffHorizontalSwipeUiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuousDiffHorizontalSwipeUiTests.swift; sourceTree = "<group>"; };
 		8A2E57A0D14A99FC00986648 /* DiagnosticClipboardIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticClipboardIntegrationTests.swift; sourceTree = "<group>"; };
 		8B8C72B250B4997EC1C445BA /* WorktreeSplitScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeSplitScreenSnapshotTests.swift; sourceTree = "<group>"; };
+		8EBDC2EF7325A83E5D54B786 /* HunkFramesPreferenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HunkFramesPreferenceTests.swift; sourceTree = "<group>"; };
 		9199F61D59B2B2B7BBF8D1F0 /* GranitaMobileConnectionTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileConnectionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		947F84A35F0E5E6ED6FED344 /* SettingsScreenFakes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreenFakes.swift; sourceTree = "<group>"; };
 		9F5B932B922C94530E5843DB /* ProjectsSettingsViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsSettingsViewSnapshotTests.swift; sourceTree = "<group>"; };
@@ -214,6 +225,7 @@
 		C488B1C48CE6408B3068F6E3 /* AddRepositoriesSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRepositoriesSheetSnapshotTests.swift; sourceTree = "<group>"; };
 		C77CD613CBDF5A03306382D2 /* GranitaMacSnapshotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GranitaMacSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD319A545DAEB850388DA600 /* CodeSizeViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeSizeViewSnapshotTests.swift; sourceTree = "<group>"; };
+		CE73C5971006C788C81CCC67 /* GranitaMobileNativeUiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GranitaMobileNativeUiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D091EDEC0B618663C17BD257 /* FakeSystemSettingsOpening.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeSystemSettingsOpening.swift; sourceTree = "<group>"; };
 		D0FB3B0BE8F6837D2FEBD448 /* ReadmeScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadmeScreenshotTests.swift; sourceTree = "<group>"; };
 		D3BC98CD00B6E3ADAEC253C8 /* PairingOutcomeViewSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingOutcomeViewSnapshotTests.swift; sourceTree = "<group>"; };
@@ -282,6 +294,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		180AC619A9C5E6685DED4B6B /* Native */ = {
+			isa = PBXGroup;
+			children = (
+				6921667BF23E5465C06AAB58 /* DiffLineLongPressInteractionTests.swift */,
+			);
+			path = Native;
+			sourceTree = "<group>";
+		};
 		20145001FBDDE2057DA7AA46 /* GranitaMac */ = {
 			isa = PBXGroup;
 			children = (
@@ -369,6 +389,7 @@
 				ABD95D5288CD43102F5B06BD /* FakeWorktreeReadAnnouncing.swift */,
 				026EBA1C39CC3A5EC44446C6 /* FakeWorktreeSource.swift */,
 				51403CA6C39240D759A48F28 /* FileSelectorViewSnapshotTests.swift */,
+				8EBDC2EF7325A83E5D54B786 /* HunkFramesPreferenceTests.swift */,
 				EF43807BAA54A5B0588ECC3E /* ImageComparisonSnapshotTests.swift */,
 				B85631EC084E712173149587 /* PairingEntryViewSnapshotTests.swift */,
 				D3BC98CD00B6E3ADAEC253C8 /* PairingOutcomeViewSnapshotTests.swift */,
@@ -394,6 +415,7 @@
 			isa = PBXGroup;
 			children = (
 				7C4AAF50BE1C172B84513D1A /* ContinuousDiffHorizontalSwipeUiTests.swift */,
+				180AC619A9C5E6685DED4B6B /* Native */,
 			);
 			path = GranitaMobileUiTests;
 			sourceTree = "<group>";
@@ -439,6 +461,7 @@
 				F4BC23246FF9F1BFC805482B /* GranitaMacUiTests.xctest */,
 				F97E4BC6F28CE4A30011888B /* GranitaMobile.app */,
 				9199F61D59B2B2B7BBF8D1F0 /* GranitaMobileConnectionTests.xctest */,
+				CE73C5971006C788C81CCC67 /* GranitaMobileNativeUiTests.xctest */,
 				60122123568D79059A4AE559 /* GranitaMobileSnapshotTests.xctest */,
 				0D1607E62352065621B501E6 /* GranitaMobileUiTestHost.app */,
 				DA1178B94C7293E2AB06040B /* GranitaMobileUiTests.xctest */,
@@ -571,6 +594,24 @@
 			productName = GranitaMobileUiTestHost;
 			productReference = 0D1607E62352065621B501E6 /* GranitaMobileUiTestHost.app */;
 			productType = "com.apple.product-type.application";
+		};
+		60D690C2A84E138B95BEACC7 /* GranitaMobileNativeUiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5CCB2BD4D8EE7185E23D3B0C /* Build configuration list for PBXNativeTarget "GranitaMobileNativeUiTests" */;
+			buildPhases = (
+				63312C8F31075F7AA157FE10 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2C67368496295E9AB2D0F168 /* PBXTargetDependency */,
+			);
+			name = GranitaMobileNativeUiTests;
+			packageProductDependencies = (
+			);
+			productName = GranitaMobileNativeUiTests;
+			productReference = CE73C5971006C788C81CCC67 /* GranitaMobileNativeUiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		7B067AD556BEC5707F901D69 /* GranitaMacSnapshotTests */ = {
 			isa = PBXNativeTarget;
@@ -722,6 +763,7 @@
 				5431A1C6D34DB1A6CADE4051 /* GranitaMobileSnapshotTests */,
 				5B9D4E9830B7660F556E5E72 /* GranitaMobileUiTestHost */,
 				2648849D7ACB1FF118F1859F /* GranitaMobileUiTests */,
+				60D690C2A84E138B95BEACC7 /* GranitaMobileNativeUiTests */,
 				C7F48CE26579F97BBA2457E3 /* GranitaMobileConnectionTests */,
 			);
 		};
@@ -768,6 +810,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				D2255D025C54D46CD93A9A3B /* ContinuousDiffHorizontalSwipeUiTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		63312C8F31075F7AA157FE10 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AEAA62C7FC53C834344193D0 /* DiffLineLongPressInteractionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -850,6 +900,7 @@
 				1ECA875228F326D5BBD1F46D /* FakeWorktreeReadAnnouncing.swift in Sources */,
 				8D8175FAF169DC1D987AB722 /* FakeWorktreeSource.swift in Sources */,
 				118220695C6969CCFBE990DF /* FileSelectorViewSnapshotTests.swift in Sources */,
+				76443013A7AF8A70521FFE35 /* HunkFramesPreferenceTests.swift in Sources */,
 				DA0674DD76EF4270DBBD125D /* ImageComparisonSnapshotTests.swift in Sources */,
 				D3E8A4F63CC80BADB7F1BAD7 /* PairingEntryViewSnapshotTests.swift in Sources */,
 				00C254676FE3707E9F7EC34A /* PairingOutcomeViewSnapshotTests.swift in Sources */,
@@ -898,6 +949,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		2C67368496295E9AB2D0F168 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5B9D4E9830B7660F556E5E72 /* GranitaMobileUiTestHost */;
+			targetProxy = 5626FF0C798F54E927F215B8 /* PBXContainerItemProxy */;
+		};
 		3AF14156D9FD549A4228908E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = FA07D85BF2AAA45A59FA9A3B /* GranitaMac */;
@@ -941,7 +997,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -989,7 +1045,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -1018,7 +1074,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1049,7 +1105,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -1188,7 +1244,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -1214,7 +1270,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.22.4;
+				MARKETING_VERSION = 0.23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -1279,6 +1335,29 @@
 			};
 			name = Release;
 		};
+		76E7A3124683A21F7C82038A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.nativeuitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GranitaMobileUiTestHost.app/GranitaMobileUiTestHost";
+			};
+			name = Debug;
+		};
 		833C36729B88BDF4493D7D83 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1310,6 +1389,29 @@
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac.snapshottests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Granita.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Granita";
+			};
+			name = Release;
+		};
+		9D298C09DB85423B187D8890 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.nativeuitests;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GranitaMobileUiTestHost.app/GranitaMobileUiTestHost";
 			};
 			name = Release;
 		};
@@ -1438,6 +1540,15 @@
 			buildConfigurations = (
 				223A7377BB06B494CB6209DA /* Debug */,
 				4E464876805240622849A3F3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5CCB2BD4D8EE7185E23D3B0C /* Build configuration list for PBXNativeTarget "GranitaMobileNativeUiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				76E7A3124683A21F7C82038A /* Debug */,
+				9D298C09DB85423B187D8890 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

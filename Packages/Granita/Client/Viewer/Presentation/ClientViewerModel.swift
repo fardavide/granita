@@ -832,6 +832,20 @@ public final class ClientViewerModel {
         draft = draft.longPressed(end, in: file)
     }
 
+    public func draggedGutter(to end: DiffLinePosition, in file: FileID) {
+        let next = draft.dragged(to: end, in: file)
+        guard next != draft else { return }
+        draft = next
+    }
+
+    public func finishedDraggingGutter() {
+        let next = draft.finishedDragging()
+        guard next != draft else { return }
+        draft = next
+        composerText = editingComment?.text ?? ""
+        sheet = .composer
+    }
+
     /// The instruction bar's Cancel.
     public func cancelDraft() {
         draft = draft.cancelled()

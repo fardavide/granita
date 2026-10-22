@@ -2,6 +2,109 @@ import XCTest
 
 /// XCUIApplication's touch delivery requires XCTest; the separate UI bundle is the exception.
 final class ContinuousDiffHorizontalSwipeUiTests: XCTestCase {
+    func testTapOnCodeComposesThatLine() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let lineNumber = app.staticTexts["8"].firstMatch
+        XCTAssertTrue(lineNumber.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(app.frame.contains(lineNumber.frame), app.debugDescription)
+        let code = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: lineNumber.frame.midY - app.frame.minY))
+        let composerRange = app.staticTexts["selection-probe.composerRange"]
+        XCTAssertEqual(composerRange.value as? String, "none")
+
+        // when
+        code.tap()
+
+        // then
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "8:8"), object: composerRange)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, app.debugDescription)
+    }
+
+    func testLongPressOnCodeHoldsThatLine() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let lineNumber = app.staticTexts["8"].firstMatch
+        XCTAssertTrue(lineNumber.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(lineNumber.isHittable, app.debugDescription)
+        let code = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: lineNumber.frame.midY - app.frame.minY))
+        let heldLine = app.staticTexts["selection-probe.heldLine"]
+        XCTAssertEqual(heldLine.value as? String, "none")
+
+        // when
+        code.press(forDuration: 0.7)
+
+        // then
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "8"), object: heldLine)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, app.debugDescription)
+    }
+
+    func testLongPressAndDragOnCodeComposesRange() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let firstLine = app.staticTexts["8"].firstMatch
+        let lastLine = app.staticTexts["12"].firstMatch
+        XCTAssertTrue(firstLine.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(lastLine.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(app.frame.contains(firstLine.frame), app.debugDescription)
+        XCTAssertTrue(app.frame.contains(lastLine.frame), app.debugDescription)
+        let codeStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: firstLine.frame.midY - app.frame.minY))
+        let codeEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: lastLine.frame.midY - app.frame.minY))
+        let composerRange = app.staticTexts["selection-probe.composerRange"]
+        XCTAssertEqual(composerRange.value as? String, "none")
+
+        // when
+        codeStart.press(forDuration: 0.7, thenDragTo: codeEnd)
+
+        // then
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "8:12"), object: composerRange)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, app.debugDescription)
+    }
+
+    func testDragAcrossHunkGapComposesRange() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["selection-gap"]
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let firstLine = app.staticTexts["8"].firstMatch
+        let lastLine = app.staticTexts["17"].firstMatch
+        XCTAssertTrue(firstLine.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(lastLine.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(app.frame.contains(firstLine.frame), app.debugDescription)
+        XCTAssertTrue(app.frame.contains(lastLine.frame), app.debugDescription)
+        let codeStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: firstLine.frame.midY - app.frame.minY))
+        let codeEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0))
+            .withOffset(CGVector(dx: 0, dy: lastLine.frame.midY - app.frame.minY))
+        let composerRange = app.staticTexts["selection-probe.composerRange"]
+        XCTAssertEqual(composerRange.value as? String, "none")
+
+        // when
+        codeStart.press(forDuration: 0.7, thenDragTo: codeEnd)
+
+        // then
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "8:17"), object: composerRange)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, app.debugDescription)
+    }
+
     func testHorizontalSwipeKeepsLaterFileVerticalPosition() throws {
         // given
         continueAfterFailure = false

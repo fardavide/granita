@@ -265,7 +265,7 @@ UNREACHABLE_FILES = {
 # number rather than raising it. That the regions column did not move is the check that the closures
 # leaving are exactly the ones already out of it.
 DEFAULT_SCOPE = "package"
-VIEWS_SCOPE = "views-and-screens-no-action-closures-per-record"
+VIEWS_SCOPE = "rendering-views-and-screens-no-input-no-action-closures-per-record"
 HOST_REACHABLE_SCOPE = "host-reachable-no-system-services-no-screens-no-appkit-no-camera-serial"
 SCOPES = {"snapshot": VIEWS_SCOPE, "unit": HOST_REACHABLE_SCOPE, "all": HOST_REACHABLE_SCOPE}
 
@@ -305,7 +305,7 @@ def is_view_path(relative: str) -> bool:
     """
     parts = pathlib.PurePosixPath(relative).parts[:-1]
     if DRAWING_LAYER in parts:
-        return True
+        return parts[parts.index(DRAWING_LAYER) + 1:][:1] != ("Input",)
     return is_screen_path(relative)
 
 

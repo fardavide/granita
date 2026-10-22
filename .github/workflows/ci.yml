@@ -254,6 +254,11 @@ jobs:
         with:
           name: coverage-input-mac
           path: build/coverage-inputs/mac
+      - name: Download behavioral Ui coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-input-ui
+          path: build/coverage-inputs/ui
 
       # The gate's arithmetic decides whether a pull request can merge, so it is verified by the job
       # that enforces it, before it is enforced. A virtualenv because Homebrew's Python on this
@@ -274,6 +279,7 @@ jobs:
           name: coverage-exports
           path: |
             build/coverage/unit.json
+            build/coverage/ui.json
             build/coverage/snapshot.json
             build/coverage/all.json
             build/coverage/summary.json
@@ -479,13 +485,25 @@ jobs:
 
       - name: Verify horizontal reader gestures
         if: matrix.shard == 0
-        run: make ui-tests-ios IOS_SIM_NAME='${{ steps.simulator.outputs.name }}' UI_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages" RESULT_BUNDLE=build/ui-tests-ios.xcresult
+        run: make coverage-ui IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
+      - name: Upload behavioral Ui coverage
+        if: always() && matrix.shard == 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-input-ui
+          path: |
+            build/coverage-inputs/ui/manifest.json
+            build/coverage-inputs/ui/profile.profdata
+            build/coverage-inputs/ui/objects
+            build/coverage-inputs/ui/*.json
+          retention-days: 7
+          if-no-files-found: error
       - name: Upload the reader gesture test result bundle
         if: always() && matrix.shard == 0
         uses: actions/upload-artifact@v4
         with:
           name: ios-reader-gesture-results
-          path: build/ui-tests-ios.xcresult
+          path: build/coverage-inputs/ui/tests.xcresult
           retention-days: 7
           if-no-files-found: warn
 

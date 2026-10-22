@@ -40,6 +40,7 @@ public struct ContinuousDiffView: View {
 
     @State private var pinnedFiles: Set<FileID> = []
     @State private var pendingAdvance: AdvanceRequest?
+    @State private var isSelectingLines = false
 
     private let state: ContinuousDiffState
     private let logCopyState: DiagnosticCopyState
@@ -98,6 +99,8 @@ public struct ContinuousDiffView: View {
     private let onExpand: (ContextDirection, Int, FileID) -> Void
     private let onTapGutter: (DiffLinePosition, FileID) -> Void
     private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
+    private let onDragGutter: (DiffLinePosition, FileID) -> Void
+    private let onEndGutterDrag: () -> Void
     private let onOpenImage: (DiffSide, FileID) -> Void
     private let onRetryImage: (DiffSide, FileID) -> Void
     private let onOpenReview: () -> Void
@@ -128,6 +131,8 @@ public struct ContinuousDiffView: View {
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
         onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onDragGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onEndGutterDrag: @escaping () -> Void = {},
         // **No default, unlike the two gutter gestures above.** A no-op default on a callback that
         // is the whole of what a control does is a dead control with a place to hide: a caller that
         // forgets one ships a picture you can tap and a *Try Again* you can press, both of which
@@ -170,6 +175,8 @@ public struct ContinuousDiffView: View {
         self.onExpand = onExpand
         self.onTapGutter = onTapGutter
         self.onLongPressGutter = onLongPressGutter
+        self.onDragGutter = onDragGutter
+        self.onEndGutterDrag = onEndGutterDrag
         self.onOpenImage = onOpenImage
         self.onRetryImage = onRetryImage
         self.onOpenReview = onOpenReview
@@ -281,6 +288,7 @@ public struct ContinuousDiffView: View {
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
         .scrollPosition($scrolledTo, anchor: .top)
+        .scrollDisabled(isSelectingLines)
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)
         }
@@ -520,7 +528,12 @@ public struct ContinuousDiffView: View {
                             acceptsTargeting: acceptsTargeting,
                             onExpand: onExpand,
                             onTapGutter: onTapGutter,
-                            onLongPressGutter: onLongPressGutter
+                            onLongPressGutter: onLongPressGutter,
+                            onDragGutter: onDragGutter,
+                            onEndGutterDrag: onEndGutterDrag,
+                            onPressingChanged: { [selection = $isSelectingLines] in
+                                selection.wrappedValue = $0
+                            }
                         )
                         .transition(.opacity)
                     }

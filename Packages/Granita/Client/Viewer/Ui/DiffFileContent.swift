@@ -48,6 +48,11 @@ public struct DiffFileContent: View {
     private let onExpand: (ContextDirection, Int, FileID) -> Void
     private let onTapGutter: (DiffLinePosition, FileID) -> Void
     private let onLongPressGutter: (DiffLinePosition, FileID) -> Void
+    private let onDragGutter: (DiffLinePosition, FileID) -> Void
+    private let onEndGutterDrag: () -> Void
+    private let onPressingChanged: (Bool) -> Void
+
+    @State private var hunkFrames: [Int: CGRect] = [:]
 
     /// The expansion and the two gutter gestures all report which file they are in, because this view
     /// has the whole `FileDiff` and its caller would only be re-attaching an identifier it is already
@@ -62,7 +67,10 @@ public struct DiffFileContent: View {
         acceptsTargeting: Bool = true,
         onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
         onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
-        onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in }
+        onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onDragGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onEndGutterDrag: @escaping () -> Void = {},
+        onPressingChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.diff = diff
         self.pointSize = pointSize
@@ -74,6 +82,9 @@ public struct DiffFileContent: View {
         self.onExpand = onExpand
         self.onTapGutter = onTapGutter
         self.onLongPressGutter = onLongPressGutter
+        self.onDragGutter = onDragGutter
+        self.onEndGutterDrag = onEndGutterDrag
+        self.onPressingChanged = onPressingChanged
     }
 
     public var body: some View {
@@ -85,6 +96,12 @@ public struct DiffFileContent: View {
                         onExpand(direction, hunk, diff.file.id)
                     }
                 case .hunk(let hunk):
+                    #if canImport(UIKit)
+                    // One native recognizer follows a finger across this file's measured hunks.
+                    let targetsHunk = false
+                    #else
+                    let targetsHunk = acceptsTargeting
+                    #endif
                     DiffFileLines(
                         lines: hunk.lines,
                         highestNumber: highestNumber,
@@ -98,13 +115,38 @@ public struct DiffFileContent: View {
                         // line is filed under the number the gutter draws, so a hunk takes what it
                         // needs by asking rather than by being handed a slice.
                         highlighted: highlighted,
-                        acceptsTargeting: acceptsTargeting,
+                        acceptsTargeting: targetsHunk,
                         onTap: { onTapGutter($0, diff.file.id) },
                         onLongPress: { onLongPressGutter($0, diff.file.id) }
                     )
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(
+                                key: HunkFramesPreference.self,
+                                value: [hunk.index: geometry.frame(in: .named(diff.file.id))]
+                            )
+                        }
+                        .allowsHitTesting(false)
+                    }
                 }
             }
         }
+        .coordinateSpace(name: diff.file.id)
+        .onPreferenceChange(HunkFramesPreference.self) { hunkFrames = $0 }
+        #if canImport(UIKit)
+        .modifier(DiffLineSelection(
+            diff: diff,
+            pointSize: pointSize,
+            isSplit: isSplit,
+            acceptsTargeting: acceptsTargeting,
+            hunkFrames: $hunkFrames,
+            onTap: { onTapGutter($0, diff.file.id) },
+            onHold: { onLongPressGutter($0, diff.file.id) },
+            onDrag: { onDragGutter($0, diff.file.id) },
+            onEnd: onEndGutterDrag,
+            onPressingChanged: onPressingChanged
+        ))
+        #endif
         // **Twenty lines arriving is a layout change the reader pressed for, so it moves rather than
         // jumps.** Keyed on how many lines each hunk is drawing rather than on the whole diff: that
         // is exactly what an expansion changes, and the height of everything below the band is what
@@ -131,5 +173,13 @@ public struct DiffFileContent: View {
         let highestOld = lines.compactMap(\.oldNumber).max() ?? 0
         let highestNew = lines.compactMap(\.newNumber).max() ?? 0
         return max(highestOld, highestNew)
+    }
+}
+
+struct HunkFramesPreference: PreferenceKey {
+    static var defaultValue: [Int: CGRect] { [:] }
+
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
     }
 }
