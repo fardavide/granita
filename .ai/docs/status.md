@@ -2,6 +2,19 @@
 
 Where the project is. Update this when a slice lands.
 
+**Whole-line selection is implemented locally, with version 0.23.0 prepared.**
+Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
+including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an
+endpoint remains available. Ordinary vertical and horizontal swipes remain usable before the hold
+is recognized. All six actual-touch simulator tests, the full package suite and both unsigned app
+builds pass. This prototype does not automatically scroll at the viewport edge. The interaction
+contract and verification are in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md).
+PR preparation is blocked on the local app-hosted later-file horizontal-scroll test: file selection
+lands at a negative offset before the horizontal action, also with the original gutter-only view
+behavior restored. Coverage passed package instrumentation and iOS shard 0, then stopped at that
+single shard 1 failure; no full coverage verdict exists. Main CI is already red on other motion
+cases and a Mac composer assertion. The scope and evidence are recorded in 0242.
+
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a
 fresh review on CI. Releasing header alignment alone passed the first case but did not fix the

@@ -477,6 +477,29 @@ struct ClientViewerCommentsTests {
     // MARK: - The gesture, and what it opens
 
     @Test
+    func `given a held row when dragging to another and releasing then the composer opens on that range`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.load()
+        let file = FileID(rawValue: "file-0")
+        scenario.sut.longPressedGutter(aContextRow, in: file)
+
+        // when
+        scenario.sut.draggedGutter(to: anAddition, in: file)
+        #expect(scenario.sut.sheet == nil)
+        #expect(scenario.sut.draft.held == PendingComment(file: file, from: aContextRow, to: anAddition))
+        scenario.sut.finishedDraggingGutter()
+
+        // then
+        #expect(scenario.sut.sheet == .composer)
+        #expect(scenario.sut.composerAnchorLabel == "File0.swift:1-2")
+        #expect(scenario.sut.composerExcerpt == [
+            ExcerptLine(number: 1, text: "let answer = 42"),
+            ExcerptLine(number: 2, text: "let question = 6 * 9")
+        ])
+    }
+
+    @Test
     func `given a diff on screen when the gutter is tapped then the composer opens on that row`() async {
         // given
         let scenario = Scenario()

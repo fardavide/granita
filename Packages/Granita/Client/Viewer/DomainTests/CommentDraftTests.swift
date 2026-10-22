@@ -45,6 +45,58 @@ struct CommentDraftTests {
         #expect(next == .holding(file: aFile, end: aRow(11)))
     }
 
+    // MARK: - Dragging
+
+    @Test
+    func `given a held row when dragging to another row then the highlighted run grows without opening the composer`() {
+        // given
+        let draft = CommentDraft.holding(file: aFile, end: aRow(11))
+
+        // when
+        let next = draft.dragged(to: aRow(14), in: aFile)
+
+        // then
+        #expect(next.held == PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+        #expect(next.pending == nil)
+    }
+
+    @Test
+    func `given a dragged range when the finger lifts then the composer opens on the selected range`() {
+        // given
+        let draft = CommentDraft.holding(file: aFile, end: aRow(11))
+            .dragged(to: aRow(14), in: aFile)
+
+        // when
+        let next = draft.finishedDragging()
+
+        // then
+        #expect(next == .composing(PendingComment(file: aFile, from: aRow(11), to: aRow(14))))
+    }
+
+    @Test(arguments: [
+        CommentDraft.idle,
+        .holding(file: aFile, end: aRow(11)),
+        .composing(PendingComment(file: aFile, from: aRow(11), to: aRow(14)))
+    ])
+    func `given no live range when the finger lifts then the draft stays unchanged`(_ draft: CommentDraft) {
+        // given - when - then
+        #expect(draft.finishedDragging() == draft)
+    }
+
+    @Test
+    func `given a live range when dragging reverses direction then the original anchor stays fixed`() {
+        // given
+        let draft = CommentDraft.holding(file: aFile, end: aRow(14))
+            .dragged(to: aRow(11), in: aFile)
+
+        // when
+        let next = draft.dragged(to: aRow(20), in: aFile)
+
+        // then
+        #expect(next.held == PendingComment(file: aFile, from: aRow(14), to: aRow(20)))
+        #expect(next.pending == nil)
+    }
+
     // MARK: - The second tap
 
     @Test

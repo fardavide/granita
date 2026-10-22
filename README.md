@@ -34,8 +34,9 @@ app reads them.
 The diff is every changed file in one scroll: syntax highlighted, word-level changes, conflict
 markers, torn bands over what git skipped, mark-as-viewed.
 
-Comment on a line by tapping its number, or on a run by holding one and tapping another. Comments
-live on the phone that wrote them; the review copies as text.
+On iPhone and iPad, comment by tapping anywhere on a code line, or select a range by holding and
+dragging across lines. Holding one line and tapping another still works. Comments live on the phone
+that wrote them; the review copies as text.
 
 <p align="center">
   <img src="Apps/GranitaMobileSnapshotTests/__Snapshots__/ReadmeScreenshotTests/screenshot-of.review-iPhone-light.png" width="250" alt="The review screen">
@@ -66,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.23.0** — tap anywhere on a code line or hold and drag to select a range on iPhone and iPad.
 - **0.22.4** — scrolling code sideways keeps your place inside the file.
 - **0.22.3** — closing a pinned file moves smoothly to the next header so you can follow it into place.
-- **0.22.2** — closing a pinned file brings the next file's header to the top so you can keep reading.
 
 [Every release](CHANGELOG.md).
 

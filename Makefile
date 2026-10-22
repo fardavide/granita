@@ -203,7 +203,7 @@ tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the ph
 
 .PHONY: ui-tests-ios
 ui-tests-ios: ## Swipe the production phone reader in an offline fixture application
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:GranitaMobileUiTests -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:GranitaMobileUiTests$(if $(IOS_UI_TEST),/$(IOS_UI_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
 
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment

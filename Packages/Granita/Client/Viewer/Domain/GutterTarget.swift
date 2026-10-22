@@ -75,6 +75,63 @@ public enum GutterTarget {
         return DiffLinePosition.of(line)
     }
 
+    /// A touch anywhere on the line, including its code and trailing space.
+    /// Split cells keep their own targets; the gap between them and an absent cell answer nothing.
+    public static func line(
+        at touch: CGPoint,
+        of rows: [SplitDiffRow],
+        lines: [DiffLine],
+        rowHeight: CGFloat,
+        splitting: Bool,
+        cellWidth: CGFloat
+    ) -> DiffLinePosition? {
+        guard splitting else {
+            return line(at: touch.y, on: nil, of: rows, lines: lines, rowHeight: rowHeight)
+        }
+        guard rowHeight > 0 else { return nil }
+        let landed = Int((touch.y / rowHeight).rounded(.down))
+        guard rows.indices.contains(landed) else { return nil }
+        let side: DiffSide
+        switch rows[landed] {
+        case .full:
+            side = .old
+        case .block:
+            if touch.x < cellWidth {
+                side = .old
+            } else if touch.x >= cellWidth + 2 * SplitBlockLayout.gap + SplitBlockLayout.ruleWidth {
+                side = .new
+            } else {
+                return nil
+            }
+        }
+        return line(at: touch.y, on: side, of: rows, lines: lines, rowHeight: rowHeight)
+    }
+
+    /// Frames belong to rendered hunks, so crossing a torn gap cannot clamp a drag to its first hunk.
+    public static func line(
+        at touch: CGPoint,
+        in hunks: [Hunk],
+        frames: [Int: CGRect],
+        rowHeight: CGFloat,
+        splitting: Bool,
+        cellWidth: CGFloat
+    ) -> DiffLinePosition? {
+        for hunk in hunks {
+            guard let frame = frames[hunk.index],
+                  touch.x >= frame.origin.x, touch.x < frame.origin.x + frame.size.width,
+                  touch.y >= frame.origin.y, touch.y < frame.origin.y + frame.size.height else { continue }
+            return line(
+                at: CGPoint(x: touch.x - frame.origin.x, y: touch.y - frame.origin.y),
+                of: SplitDiffRow.rows(of: hunk.lines, splitting: splitting),
+                lines: hunk.lines,
+                rowHeight: rowHeight,
+                splitting: splitting,
+                cellWidth: cellWidth
+            )
+        }
+        return nil
+    }
+
     /// The numbered row whose centre is closest to the touch, preferring the earlier one when two are
     /// equally close.
     private static func nearestNumbered(to y: CGFloat, of lines: [DiffLine], rowHeight: CGFloat) -> Int? {

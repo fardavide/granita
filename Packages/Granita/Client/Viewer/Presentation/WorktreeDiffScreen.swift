@@ -411,6 +411,8 @@ public struct WorktreeDiffScreen: View {
             onExpand: { way, hunk, file in Task { await model.expand(way, hunk: hunk, in: file) } },
             onTapGutter: { row, file in model.tappedGutter(row, in: file) },
             onLongPressGutter: { row, file in model.longPressedGutter(row, in: file) },
+            onDragGutter: { row, file in model.draggedGutter(to: row, in: file) },
+            onEndGutterDrag: { model.finishedDraggingGutter() },
             onOpenImage: { side, file in model.openImage(side, of: file) },
             onRetryImage: { side, file in Task { await model.retryImage(side, of: file) } },
             onOpenReview: { model.showReview() },
