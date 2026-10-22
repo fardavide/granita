@@ -531,7 +531,9 @@ public struct ContinuousDiffView: View {
                             onLongPressGutter: onLongPressGutter,
                             onDragGutter: onDragGutter,
                             onEndGutterDrag: onEndGutterDrag,
-                            onPressingChanged: { isSelectingLines = $0 }
+                            onPressingChanged: { [selection = $isSelectingLines] in
+                                selection.wrappedValue = $0
+                            }
                         )
                         .transition(.opacity)
                     }

@@ -512,6 +512,9 @@ struct ContinuousDiffCollapseInteractionTests {
         scenario.settleLayout()
         let verticalBefore = vertical.contentOffset.y
         try #require(abs(verticalBefore - selectedFileOffset - 450) < 2, "Selected offset=\(selectedFileOffset), requested=\(selectedFileOffset + 450), actual=\(verticalBefore), presentation=\(String(describing: vertical.layer.presentation()?.bounds)), contentSize=\(vertical.contentSize), viewport=\(vertical.bounds)")
+        if verticalBefore - listTop <= vertical.bounds.height * 2 {
+            Attachment.record(Array(try scenario.imageData(in: scenario.window.bounds)), named: "later-file-setup.png")
+        }
         try #require(
             verticalBefore - listTop > vertical.bounds.height * 2,
             "Initial offset=\(listTop), selected offset=\(selectedFileOffset), actual=\(verticalBefore), contentSize=\(vertical.contentSize), viewport=\(vertical.bounds)"

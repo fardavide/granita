@@ -40,13 +40,27 @@ the original gutter-only view behavior also reproduced it. All experimental remo
 except redundant inner-handler additions: the file-level recognizer owns iOS input, and the inner
 view now retains its original behavior on both platforms.
 
-The current main [CI run](https://github.com/fardavide/granita/actions/runs/39224803139) passed that
-specific test but failed other motion cases and a Mac composer assertion. The cause of the local
-file-selection failure remains unverified. The coverage command stops before Mac collection and
-aggregation, so there is no complete local coverage verdict. No expectations, baselines, tolerances
-or coverage predicates were weakened.
+The first [PR CI run](https://github.com/fardavide/granita/actions/runs/39721697056) reproduced that
+setup failure and two collapse-motion failures. All six actual-touch tests, package tests, unsigned
+app builds, generated files and Mac snapshots passed. Coverage stopped at the failed iOS suite.
+
+An isolated checkout of the exact base, `ca4cbf56489bbaa8aa1f4a167a95852f9eaaa35f`, passed all 27
+focused native cases on the same simulator. The failure image on the feature branch showed an empty
+reader, and the native scroll remained attached throughout. Restoring the original file-content
+view cleared the failure; retaining only its new state fields also passed. The new scrolling-pause
+callback captured the containing reader implicitly. Capturing only the selection binding repaired
+the jump with the full feature enabled: all 27 native cases passed. The failure path now attaches a
+window image so a missing file cannot be mistaken for an offset-only discrepancy. No expectations,
+baselines, tolerances or coverage predicates were weakened.
+
+The repeated full coverage command passed package instrumentation and both iOS shards: 21 tests in
+shard 0 and 57 in shard 1. It then stopped at Mac image comparisons (`coverage-mac` exit 65): 29 of
+30 test functions failed on this macOS 27.0.1 host. There is still no aggregate local coverage
+verdict. A fresh package test run, both unsigned app builds and all six actual-touch tests passed
+with the callback fix. The first PR CI run passed Mac snapshots; the callback fix is awaiting CI
+verification.
 
 Fresh Xcode resolution advanced the test-only SnapshotTesting pin from 1.19.6 to 1.19.7 and its
 IssueReporting dependency from 2.1.1 to 2.1.2. The required `make resolve` output retains the complete
-30-pin union; the lockfile was not hand-edited. These resolver changes remain visible in the diff
-for approval alongside the incomplete local coverage verdict.
+30-pin union; the lockfile was not hand-edited. These resolver changes were included in the approved
+PR scope.
