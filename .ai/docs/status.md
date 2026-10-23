@@ -25,6 +25,15 @@ assertions, baselines and coverage gates remain unchanged. CI verification is pe
 [0245](decisions/0245-native-widths-with-fewer-ruler-views.md) records the measurement evidence and
 the deliberately narrow rendering change.
 
+The next CI run, [39958096134](https://github.com/fardavide/granita/actions/runs/39958096134),
+passed both builds, package tests, generated files and Mac snapshots, but both iOS shards failed
+simulator selection before tests started. Coverage again stopped on the failed suite prerequisite.
+The selector erased a valid numbered iPhone when a later runtime contained only iPhone Duo.
+All four selector copies now retain the last valid selection, and `make coverage-tests` passes
+140 cases, including twelve selector cases that execute the production expressions;
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md) records the
+policy. CI motion and aggregate coverage remain unverified on the ruler repair.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases
