@@ -12,6 +12,19 @@ failure and repair. Package tests, both unsigned app builds, resolver validation
 unsigned physical-device Release compile pass on the final 0.23.1 sources. The repair is ready
 for review; Cloud archiving and TestFlight delivery remain unverified.
 
+Required CI for [PR #129](https://github.com/fardavide/granita/pull/129) also exposed four existing
+collapse-motion cases; coverage stopped on their failed suite verdict before comparing percentages.
+The same CI-built products pass those motion cases locally. A candidate now reduces the hunk's
+hidden measurement views while retaining exact native text widths. All 59 focused native cases
+pass, including 32 independent width checks at four code sizes. Full package tests, both unsigned
+apps, an unsigned device Release build and generated-file verification pass. Instrumented iOS
+shards pass 21 and 59 functions with no failures or skips; all six touch tests and eleven native
+adapter cases pass. Full local coverage stops at the documented Mac snapshot mismatches followed
+by the menu-test stall; that run was interrupted and has no aggregate verdict. The original
+assertions, baselines and coverage gates remain unchanged. CI verification is pending.
+[0245](decisions/0245-native-widths-with-fewer-ruler-views.md) records the measurement evidence and
+the deliberately narrow rendering change.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases

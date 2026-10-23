@@ -295,6 +295,117 @@ struct ContinuousDiffCollapseInteractionTests {
         #expect(successorLag < DiffFileHeader.height, diagnostic)
     }
 
+    @Test(arguments: NativeHunkWidthFixture.allCases, [CGFloat(8), 11, 12, 17])
+    func `given native text with its widest line below the viewport when first rendered then horizontal content fits the actual widest line`(
+        fixture: NativeHunkWidthFixture,
+        pointSize: CGFloat
+    ) throws {
+        // given
+        let candidateTexts: [String]
+        switch fixture {
+        case .printableAscii:
+            candidateTexts = [
+                String(repeating: "i", count: 264),
+                String(repeating: "W", count: 264),
+                String(repeating: ".", count: 264),
+                String(repeating: " ", count: 300),
+                String(repeating: "x", count: 295) + "          "
+            ]
+        case .highlightFallback:
+            candidateTexts = ["short", String(repeating: "let value = oldValue + newValue; ", count: 8)]
+        case .tabs:
+            candidateTexts = ["short", String(repeating: "\tlet\tvalue\t=\t42", count: 16)]
+        case .cjkRanking:
+            // The first candidate has more columns; native font fallback can make the second wider.
+            candidateTexts = [String(repeating: "日本語", count: 54), String(repeating: "x", count: 300)]
+        case .combiningAndAmbiguous:
+            candidateTexts = ["short", String(repeating: "e\u{0301} o\u{0308} caffè — · Ω α ", count: 24)]
+        case .emoji:
+            candidateTexts = ["short", String(repeating: "family 👨‍👩‍👧 ice 🧊 heart ❤️ ", count: 24)]
+        case .controls:
+            candidateTexts = ["short", String(repeating: "let value = 42; ", count: 24) + "\r\u{0000}\u{0001}"]
+        case .conflictWeight:
+            candidateTexts = ["short", "<<<<<<< HEAD " + String(repeating: "feature/long-branch-name-", count: 20)]
+        }
+        let firstCandidateLine = 161 - candidateTexts.count
+        let lines = (1...160).map { number in
+            let text = number >= firstCandidateLine ? candidateTexts[number - firstCandidateLine] : "let value = 1"
+            return DiffLine(
+                kind: fixture == .conflictWeight && number == 160 ? .conflictMarker : .context,
+                oldNumber: number,
+                newNumber: number,
+                text: text,
+                displayColumns: DisplayWidth(of: text).columns,
+                segments: nil
+            )
+        }
+        let file = aChangedFile(
+            path: "Sources/NativeWidth.swift",
+            status: fixture == .conflictWeight ? .conflicted : .modified,
+            insertions: 0,
+            deletions: 0,
+            estimatedLineCount: lines.count
+        )
+        let entry = ContinuousDiffEntry.ready(FileDiff(
+            file: file,
+            hunks: [Hunk(
+                index: 0,
+                oldStart: 1,
+                oldCount: lines.count,
+                newStart: 1,
+                newCount: lines.count,
+                sectionHeading: nil,
+                lines: lines
+            )],
+            oldLineCount: lines.count,
+            newLineCount: lines.count,
+            isTruncated: false,
+            truncationReason: nil
+        ))
+        let highlighted: [FileID: HighlightedFile] = fixture == .highlightFallback
+            ? [file.id: HighlightedFile(old: [160: AttributedString("short")], new: [160: AttributedString("short")])]
+            : [:]
+        let scenario = try Scenario(entries: [entry], pointSize: pointSize, highlighted: highlighted)
+        defer { scenario.close() }
+
+        // when
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let horizontal = try #require(scenario.horizontalScroll)
+        try #require(abs(vertical.contentOffset.y + vertical.adjustedContentInset.top) < 2)
+        try #require(horizontal.bounds.height > 2 * vertical.bounds.height)
+        let renderedContentWidth = horizontal.contentSize.width
+        let renderedViewportWidth = horizontal.bounds.width
+        let scene = try #require(scenario.window.windowScene)
+        let oracle = UIHostingController(rootView: AnyView(EmptyView()))
+        let oracleWindow = UIWindow(windowScene: scene)
+        oracleWindow.frame = scenario.window.frame
+        oracleWindow.rootViewController = oracle
+        oracleWindow.makeKeyAndVisible()
+        defer {
+            oracleWindow.isHidden = true
+            scenario.window.makeKey()
+        }
+        let nativeWidths = candidateTexts.enumerated().map { index, text in
+            oracle.rootView = AnyView(
+                Text(verbatim: MonospacedGrid.expandingTabs(in: text))
+                    .font(.system(size: pointSize, weight: fixture == .conflictWeight && index == candidateTexts.count - 1 ? .semibold : .regular, design: .monospaced))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: true)
+            )
+            oracle.view.layoutIfNeeded()
+            return oracle.sizeThatFits(in: CGSize(width: 100_000, height: 10_000)).width
+        }
+        let expectedContentWidth = try #require(nativeWidths.max()) + 12
+        try #require(expectedContentWidth > renderedViewportWidth)
+
+        // then
+        #expect(
+            abs(renderedContentWidth - expectedContentWidth) < 2,
+            "fixture=\(fixture), pointSize=\(pointSize), nativeWidths=\(nativeWidths), expectedContentWidth=\(expectedContentWidth), actualContentWidth=\(renderedContentWidth)"
+        )
+    }
+
     @Test
     func `given a hunk with its widest line below the viewport when first rendered then horizontal travel matches the same line at the top`() throws {
         // given
@@ -777,11 +888,16 @@ struct ContinuousDiffCollapseInteractionTests {
             return nil
         }
 
-        init(entries: [ContinuousDiffEntry], jumpTarget: FileID? = nil) throws {
+        init(
+            entries: [ContinuousDiffEntry],
+            jumpTarget: FileID? = nil,
+            pointSize: CGFloat = SnapshotLayout.iPhoneLight.codePointSize,
+            highlighted: [FileID: HighlightedFile] = [:]
+        ) throws {
             let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
             previousWindow = scene.windows.first(where: \.isKeyWindow)
             model = CollapseHarness(entries: entries, jumpTarget: jumpTarget)
-            controller = UIHostingController(rootView: CollapseHarnessView(model: model))
+            controller = UIHostingController(rootView: CollapseHarnessView(model: model, pointSize: pointSize, highlighted: highlighted))
             window = UIWindow(windowScene: scene)
             window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
             window.rootViewController = controller
@@ -871,6 +987,17 @@ enum DiffMotionFixture: Sendable {
     case unsegmentedWordDiff
     case wordDiffOutgoing
     case wordDiffSuccessor
+}
+
+enum NativeHunkWidthFixture: CaseIterable, Hashable, Sendable {
+    case printableAscii
+    case tabs
+    case cjkRanking
+    case combiningAndAmbiguous
+    case emoji
+    case controls
+    case highlightFallback
+    case conflictWeight
 }
 
 private struct ScrollRendering: Equatable {
@@ -1217,14 +1344,17 @@ private struct SourceReopenObservation {
 @MainActor
 private struct CollapseHarnessView: View {
     let model: CollapseHarness
+    let pointSize: CGFloat
+    let highlighted: [FileID: HighlightedFile]
 
     var body: some View {
         NavigationStack {
             ContinuousDiffView(
                 state: .reading(model.entries),
                 logCopyState: .ready,
-                pointSize: SnapshotLayout.iPhoneLight.codePointSize,
+                pointSize: pointSize,
                 jumpTarget: model.jumpTarget,
+                highlighted: highlighted,
                 isWaitingLong: false,
                 onReading: model.reading,
                 onRereading: { _ in },
