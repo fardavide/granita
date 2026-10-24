@@ -2,36 +2,72 @@
 
 Where the project is. Update this when a slice lands.
 
-**Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
-Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
-including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an
-endpoint remains available. Ordinary vertical and horizontal swipes remain usable before the hold
-is recognized. All six actual-touch simulator tests, the full package suite and both unsigned app
-builds pass. This prototype does not automatically scroll at the viewport edge. The interaction
-contract and verification are in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md).
-The first CI run passed the six touch tests, package tests, app builds, generated files and Mac
-snapshots, but failed the later-file jump setup and two collapse-motion assertions; coverage then
-stopped. The exact base passed all 27 native cases locally. Narrowing the scrolling-pause callback
-to capture only its selection binding repaired the blank reader after a file jump: all 27 native
-cases now pass with the feature enabled. Repeated coverage passed package instrumentation and
-both iOS shards (21 and 57 tests), then stopped at Mac image mismatches on this host; no aggregate
-local coverage verdict exists. A fresh package test run, both unsigned app builds and all six
-actual-touch tests passed with the callback fix. The next CI run passed every functional job,
-including both iOS shards, but failed four coverage ratchets. Coverage repair is in progress:
-transient touch decisions move into a Foundation-only value with direct tests, and the native
-adapter exposes configuration and event dispatch independently of SwiftUI's opaque context.
-Keeping frame reads at input time preserves collapse motion: the 27 focused native cases, full
-package suite, both unsigned app builds and instrumented iOS shards (23 and 58 tests) pass after
-extraction. The next CI run passed every functional check and Unit/All-tests coverage, leaving two
-Snapshot ratchets red. Davide approved collecting the required behavioral Ui profiles and separating
-input-only wiring from Snapshot's rendering scope; implementation and verification are in progress.
-Snapshot will establish a new scope baseline and Ui its first baseline on main. The approved
-measurement boundary and unchanged Unit/All-tests comparisons are recorded in 0243. The tooling
-suite passes 128 checks; package tests, both unsigned app builds, both iOS shards (21 and 58
-functions), and all six touch tests plus eleven native adapter cases pass. Ui profiles execute all
-five previously unexecuted input bridges. Full local coverage stops at Mac image mismatches and a
-stalled menu test, interrupted after more than six minutes without progress. The test processes
-have stopped; no aggregate local verdict is claimed. CI verification remains pending.
+**The 0.23.1 archive repair is prepared locally; delivery is not yet verified.** Xcode Cloud build
+178 started automatically after [PR #128](https://github.com/fardavide/granita/pull/128) merged, but
+Swift 6.4 crashed during optimized iOS compilation and TestFlight distribution was skipped. The
+same unsigned device Release compile failed locally, then passed with an explicit CoreGraphics
+geometry import in Viewer Domain. Davide approved that narrow exception and chose no Release CI
+check. [0244](decisions/0244-explicit-geometry-overlay-for-release-compilation.md) records the
+failure and repair. Package tests, both unsigned app builds, resolver validation and a second
+unsigned physical-device Release compile pass on the final 0.23.1 sources. The repair is ready
+for review; Cloud archiving and TestFlight delivery remain unverified.
+
+Required CI for [PR #129](https://github.com/fardavide/granita/pull/129) also exposed four existing
+collapse-motion cases; coverage stopped on their failed suite verdict before comparing percentages.
+The same CI-built products pass those motion cases locally. A candidate now reduces the hunk's
+hidden measurement views while retaining exact native text widths. All 59 focused native cases
+pass, including 32 independent width checks at four code sizes. Full package tests, both unsigned
+apps, an unsigned device Release build and generated-file verification pass. Instrumented iOS
+shards pass 21 and 59 functions with no failures or skips; all six touch tests and eleven native
+adapter cases pass. Full local coverage stops at the documented Mac snapshot mismatches followed
+by the menu-test stall; that run was interrupted and has no aggregate verdict. The original
+assertions, baselines and coverage gates remain unchanged. CI verification is pending.
+[0245](decisions/0245-native-widths-with-fewer-ruler-views.md) records the measurement evidence and
+the deliberately narrow rendering change.
+
+The next CI run, [39958096134](https://github.com/fardavide/granita/actions/runs/39958096134),
+passed both builds, package tests, generated files and Mac snapshots, but both iOS shards failed
+simulator selection before tests started. Coverage again stopped on the failed suite prerequisite.
+The selector erased a valid numbered iPhone when a later runtime contained only iPhone Duo.
+All four selector copies now retain the last valid selection, and `make coverage-tests` passes
+140 cases, including twelve selector cases that execute the production expressions;
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md) records the
+policy. CI motion and aggregate coverage remain unverified on the ruler repair.
+
+CI run [40011176859](https://github.com/fardavide/granita/actions/runs/40011176859) confirms the
+simulator-selection repair: both shards render on iPhone 18 Pro, iOS 27.0. Both builds, package
+tests, generated files and Mac snapshots pass. Four collapse-motion cases still fail, with five
+issues; one trace shows 551 pt of successor travel remaining when the viewport arrives. A touch
+case also times out before its horizontal swipe, with the native probe reporting two horizontal
+scroll candidates at the gesture point. Coverage stops on those suite verdicts, without a numeric
+comparison. A candidate starts the typed header request in the collapse update and retires its
+pending pair on completion and removes the obsolete Timeline background. Full package tests,
+both unsigned app builds, the focused 59 native executions and all six actual-touch tests pass on
+the final sources. Resolver validation passes with no lockfile change. CI confirmation is pending.
+Gesture timeout messages now include the full native scroll candidate list, without changing their
+predicate or timeout. No release has been merged or distributed.
+
+CI run [40060044107](https://github.com/fardavide/granita/actions/runs/40060044107) is terminal red.
+Both builds, package tests, generated files, Mac snapshots, the other iOS shard, TLS and all
+seventeen input cases pass. Five collapse-motion cases still report eight issues, including up
+to 621 pt of successor lag. Synchronous header initiation did not resolve that defect. Coverage
+stops before numeric comparison. The next diagnostic records native layer/animation clocks and
+first-movement milestones without changing assertions; a separately recorded replay runs after
+the required shard fails and preserves its original verdict and coverage artifacts.
+
+**Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
+All seven required checks passed before merge, including both iOS shards, all six touch tests,
+eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases
+passed with unchanged assertions on the successful retry. Main's subsequent GitHub CI failed
+simulator availability checks, independently of the Cloud archive failure.
+
+Tapping or holding anywhere on a code row targets that line; holding and dragging selects across
+lines and hunk gaps. Releasing opens the composer, and hold-release-tap remains available. Ordinary
+swipes work before hold recognition; edge auto-scrolling is outside the feature. The interaction
+contract is in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md). The approved
+behavioral Ui and rendering Snapshot measurement boundary is in
+[0243](decisions/0243-native-input-is-measured-by-behavioral-coverage.md); Unit/All-tests scopes and
+numeric ratchets remain unchanged.
 
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a

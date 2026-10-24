@@ -13,12 +13,13 @@ PROJECT      := Granita.xcodeproj
 # trips on 4 September 2026: nothing reproduced locally, and the device was one of the reasons ruled
 # out by hand each time rather than never being in question.
 #
-# **The first iPhone of the newest iOS runtime, not the first iPhone in the list.** `OS=latest` is
+# **The first supported iPhone of the newest matching iOS runtime.** `OS=latest` is
 # the newest runtime *that has that name*, and with two runtimes installed the list opens on the
 # older one. On 28 September 2026 that meant `iPhone 17 Pro`, a name iOS 27 does not ship, so every
 # render would have been iOS 26.5 while CI renders on 27. The runtimes are listed oldest first, so
-# each iOS header resets the pick, and the last one standing is the newest runtime's first iPhone.
-IOS_SIM_NAME = $(shell xcrun simctl list devices available | awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($$0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($$0, RSTART, RLENGTH)} END{sub(/ +$$/, "", name); print name}')
+# each iOS header resets only the per-runtime match flag. A later runtime containing only an
+# unsupported model must not erase the last valid pick.
+IOS_SIM_NAME = $(shell xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($$0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($$0, RSTART, RLENGTH); found=1} END{sub(/ +$$/, "", name); print name}')
 IOS_SIM      = platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
@@ -200,7 +201,7 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 
 .PHONY: snapshots-ios
 snapshots-ios: ## Render the phone's screens on a simulator
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(IOS_SNAPSHOT_RESULT_BUNDLE),-resultBundlePath '$(IOS_SNAPSHOT_RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: tls-tests-ios
 tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy

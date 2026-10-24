@@ -195,7 +195,11 @@ final class ContinuousDiffHorizontalSwipeUiTests: XCTestCase {
         let status = app.staticTexts["swipe-probe.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 15), app.debugDescription)
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", value), object: status)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 15), .completed, app.debugDescription)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation], timeout: 15),
+            .completed,
+            "\(app.debugDescription)\nNative scroll candidates: \(String(describing: app.staticTexts["swipe-probe.scrollCandidates"].value))"
+        )
     }
 
     private func number(_ name: String, in app: XCUIApplication) throws -> Double {

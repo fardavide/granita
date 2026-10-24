@@ -330,20 +330,32 @@ public struct DiffFileLines: View {
     /// them.
     private var code: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            // A lazy column only measures mounted rows. Measure plain glyphs separately so a
-            // long offscreen line still sets travel without drawing every word-diff background.
+            let fullLines = rows.compactMap { row -> DiffRulerLine? in
+                switch row {
+                case .full(let line):
+                    let drawn = DrawnDiffLine.of(line)
+                    let text = lexed(drawn, of: line).map { String($0.characters) } ?? drawn.text
+                    return DiffRulerLine(text: text, kind: line.kind)
+                case .block:
+                    return nil
+                }
+            }
+            let blockTravel = rows.reduce(CGFloat.zero) { width, row in
+                switch row {
+                case .full:
+                    return width
+                case .block(let old, let new):
+                    return max(width, travelNeeded(old, new))
+                }
+            }
+            // Keep native glyph measurement without laying out every equivalent ASCII line.
+            // Unicode still measures every line, including long lines below the viewport.
             ZStack(alignment: .topLeading) {
-                ForEach(indexedRows, id: \.offset) { _, row in
-                    switch row {
-                    case .full(let line):
-                        let drawn = DrawnDiffLine.of(line)
-                        let text = lexed(drawn, of: line).map { String($0.characters) } ?? drawn.text
-                        Text(verbatim: text)
-                            .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
-                            .lineLimit(1)
-                    case .block(let old, let new):
-                        Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
-                    }
+                Color.clear.frame(width: blockTravel, height: rowHeight)
+                ForEach(Array(DiffRulerLine.representatives(in: fullLines).enumerated()), id: \.offset) { _, line in
+                    Text(verbatim: line.text)
+                        .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
+                        .lineLimit(1)
                 }
             }
             .hidden()

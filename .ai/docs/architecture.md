@@ -69,6 +69,11 @@ The layer rules are declared once, in the package manifest, and enforced by the 
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
 | `Main` | anything — it is a composition root | being depended on by anything |
 
+The viewer's Domain has one geometry-only exception: an explicit CoreGraphics import makes its
+existing Foundation geometry types agree with SwiftUI during Release optimization. It adds no
+drawing or I/O; [0244](decisions/0244-explicit-geometry-overlay-for-release-compilation.md) records
+the compiler failure and the approved boundary.
+
 **`Presentation` depends on `Ui`**, which inverts what most SwiftUI projects do and is deliberate. A
 `Ui` module is a vocabulary of stateless views: each takes what it renders and reports what happened,
 owning no view model and no state beyond a view's own. A `Presentation` module owns the view models
