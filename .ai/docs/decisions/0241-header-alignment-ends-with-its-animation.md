@@ -30,6 +30,14 @@ Timeline background is removed. This local result is not yet proof that CI's pha
 repaired. The animation curve, capture window, assertions, tolerances and final position remain
 unchanged; CI still judges the original motion and header-coherence limits.
 
+CI run [40060044107](https://github.com/fardavide/granita/actions/runs/40060044107) rejected the
+synchronous candidate too: five motion cases reported eight issues, with up to 621 pt of successor
+lag. The same run passed all actual-touch and native adapter cases. The deferred hand-off is
+therefore not a sufficient explanation. Native animation-clock attachments retain the original
+samples and assertions, and a separate recorded replay runs only after the required motion shard
+fails. Its video and result bundle are diagnostic artifacts; they do not replace the required
+suite verdict or any coverage inputs.
+
 The UI runner launches a separate offline fixture application containing the production reader.
 Public native scroll geometry and two code crops provide observations; only the out-of-process
 UI runner supplies touch input. The fixture is absent from shipping app schemes. Its required CI

@@ -201,7 +201,7 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 
 .PHONY: snapshots-ios
 snapshots-ios: ## Render the phone's screens on a simulator
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(IOS_SNAPSHOT_RESULT_BUNDLE),-resultBundlePath '$(IOS_SNAPSHOT_RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: tls-tests-ios
 tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy

@@ -47,6 +47,14 @@ the final sources. Resolver validation passes with no lockfile change. CI confir
 Gesture timeout messages now include the full native scroll candidate list, without changing their
 predicate or timeout. No release has been merged or distributed.
 
+CI run [40060044107](https://github.com/fardavide/granita/actions/runs/40060044107) is terminal red.
+Both builds, package tests, generated files, Mac snapshots, the other iOS shard, TLS and all
+seventeen input cases pass. Five collapse-motion cases still report eight issues, including up
+to 621 pt of successor lag. Synchronous header initiation did not resolve that defect. Coverage
+stops before numeric comparison. The next diagnostic records native layer/animation clocks and
+first-movement milestones without changing assertions; a separately recorded replay runs after
+the required shard fails and preserves its original verdict and coverage artifacts.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases

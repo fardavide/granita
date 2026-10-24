@@ -253,6 +253,37 @@ struct ContinuousDiffCollapseInteractionTests {
             $0.identity == successor.identity
         }, observationDiagnostic)
         let successorLag = abs(successorAtArrival.frame.minY - successor.frame.minY)
+        let firstViewportMovementIndex = probe.samples.firstIndex {
+            abs($0.presentationOffset - first.presentationOffset) >= 2
+        }
+        let firstSuccessorIndex = probe.samples.firstIndex { sample in
+            sample.headerFrames.contains { $0.identity == successor.identity }
+        }
+        let firstSuccessorFrame = firstSuccessorIndex.flatMap { index in
+            probe.samples[index].headerFrames.first { $0.identity == successor.identity }?.frame
+        }
+        let firstSuccessorMovementIndex = firstSuccessorFrame.flatMap { initialFrame in
+            probe.samples.firstIndex { sample in
+                sample.headerFrames.contains {
+                    $0.identity == successor.identity && abs($0.frame.minY - initialFrame.minY) >= 2
+                }
+            }
+        }
+        let clockMilestones = Set([
+            0, firstViewportMovementIndex, firstSuccessorIndex, firstSuccessorMovementIndex,
+            viewportArrivalIndex, probe.samples.indices.last
+        ].compactMap { $0 })
+        var previousClocks: [ObjectIdentifier: NativeLayerTiming] = [:]
+        var nativeClockEvents: [String] = []
+        for (index, sample) in probe.samples.enumerated() {
+            for clock in sample.nativeClocks {
+                if previousClocks[clock.timing.identity] != clock.timing || clockMilestones.contains(index) {
+                    nativeClockEvents.append("sample=\(index), callbackTime=\(sample.callbackElapsed), localTime=\(clock.localTime), modelFrame=\(clock.modelFrame), clock=\(clock.timing)")
+                }
+                previousClocks[clock.timing.identity] = clock.timing
+            }
+        }
+        let nativeClockTrace = nativeClockEvents.prefix(100).joined(separator: "\n")
         // A moving wrapper is not enough: every matching descendant of the unchanged successor
         // must occupy the same presentation rectangle. The outgoing header's opacity may crossfade.
         let successorDescendantGeometry = probe.samples.enumerated().flatMap { index, sample -> [NestedHeaderGeometry] in
@@ -278,8 +309,14 @@ struct ContinuousDiffCollapseInteractionTests {
         successorFinalPosition=\(successor.frame.minY), successorLag=\(successorLag)
         successorDescendantChecks=\(successorDescendantGeometry.count), misalignedSuccessorDescendants=\(misalignedSuccessorDescendants.count)
         firstMisalignedSuccessorDescendant=\(String(describing: misalignedSuccessorDescendants.first))
+        firstViewportMovementCallback=\(String(describing: firstViewportMovementIndex.map { probe.samples[$0].callbackElapsed }))
+        firstSuccessorAppearanceCallback=\(String(describing: firstSuccessorIndex.map { probe.samples[$0].callbackElapsed }))
+        firstSuccessorMovementCallback=\(String(describing: firstSuccessorMovementIndex.map { probe.samples[$0].callbackElapsed }))
+        nativeClockEvents=\(nativeClockEvents.count), shownNativeClockEvents=\(min(nativeClockEvents.count, 100))
         \(trace)
+        \(nativeClockTrace)
         """)
+        Attachment.record(trace + "\n" + nativeClockTrace, named: "native-motion-\(collapse)-\(fixture).txt")
         #expect(successorDescendantGeometry.contains {
             $0.sampleIndex == viewportArrivalIndex && $0.descendant.opacity > 0.99
         }, diagnostic)
@@ -1072,6 +1109,35 @@ private struct ViewportMotionSample {
     let presentationOffset: CGFloat
     let headerCandidates: [HeaderCandidate]
     let headerFrames: [HeaderPresentation]
+    let nativeClocks: [NativeLayerClock]
+}
+
+private struct NativeLayerClock {
+    let localTime: CFTimeInterval
+    let modelFrame: CGRect
+    let timing: NativeLayerTiming
+}
+
+private struct NativeLayerTiming: Equatable {
+    let identity: ObjectIdentifier
+    let type: String
+    let beginTime: CFTimeInterval
+    let duration: CFTimeInterval
+    let timeOffset: CFTimeInterval
+    let speed: Float
+    let animationCount: Int
+    let animations: [NativeAnimationTiming]
+}
+
+private struct NativeAnimationTiming: Equatable {
+    let path: String
+    let type: String
+    let keyPath: String?
+    let beginTime: CFTimeInterval
+    let duration: CFTimeInterval
+    let timeOffset: CFTimeInterval
+    let speed: Float
+    let childCount: Int
 }
 
 private struct HeaderCandidate {
@@ -1135,10 +1201,14 @@ private final class ViewportMotionProbe: NSObject {
         }
         var remaining = [scroll.layer]
         var headerCandidates: [HeaderCandidate] = []
+        var capturedClocks: Set<ObjectIdentifier> = []
+        var nativeClocks: [NativeLayerClock] = []
+        captureClock(scroll.layer, at: callbackStarted, required: true, visited: &capturedClocks, into: &nativeClocks)
         while let layer = remaining.popLast() {
             if abs(layer.bounds.height - DiffFileHeader.height) < 0.5,
                abs(layer.bounds.width - scroll.bounds.width) < 2,
                let drawn = layer.presentation() {
+                captureClock(layer, at: callbackStarted, required: true, visited: &capturedClocks, into: &nativeClocks)
                 var opacity = drawn.opacity
                 var ancestor = drawn.superlayer
                 while let parent = ancestor {
@@ -1150,6 +1220,7 @@ private final class ViewportMotionProbe: NSObject {
                 var modelAncestor = layer.superlayer
                 while let parent = modelAncestor {
                     ancestorIdentities.append(ObjectIdentifier(parent))
+                    captureClock(parent, at: callbackStarted, required: false, visited: &capturedClocks, into: &nativeClocks)
                     modelAncestor = parent.superlayer
                 }
                 headerCandidates.append(HeaderCandidate(
@@ -1176,7 +1247,57 @@ private final class ViewportMotionProbe: NSObject {
             modelOffset: scroll.contentOffset.y,
             presentationOffset: presentation.bounds.origin.y,
             headerCandidates: headerCandidates,
-            headerFrames: headerFrames
+            headerFrames: headerFrames,
+            nativeClocks: nativeClocks
+        ))
+    }
+
+    private func captureClock(
+        _ layer: CALayer,
+        at hostTime: CFTimeInterval,
+        required: Bool,
+        visited: inout Set<ObjectIdentifier>,
+        into clocks: inout [NativeLayerClock]
+    ) {
+        guard visited.insert(ObjectIdentifier(layer)).inserted else { return }
+        let keys = layer.animationKeys() ?? []
+        guard required || keys.isEmpty == false || layer.speed != 1 || layer.timeOffset != 0 || layer.beginTime != 0 else { return }
+        var animations: [NativeAnimationTiming] = []
+        var pending = keys.prefix(4).compactMap { key -> (path: String, animation: CAAnimation, depth: Int)? in
+            guard let animation = layer.animation(forKey: key) else { return nil }
+            return (path: key, animation: animation, depth: 0)
+        }
+        while let item = pending.popLast() {
+            let children = (item.animation as? CAAnimationGroup)?.animations ?? []
+            animations.append(NativeAnimationTiming(
+                path: item.path,
+                type: String(describing: type(of: item.animation)),
+                keyPath: (item.animation as? CAPropertyAnimation)?.keyPath,
+                beginTime: item.animation.beginTime,
+                duration: item.animation.duration,
+                timeOffset: item.animation.timeOffset,
+                speed: item.animation.speed,
+                childCount: children.count
+            ))
+            if item.depth < 2 {
+                pending.append(contentsOf: children.prefix(4).enumerated().map { index, child in
+                    (path: "\(item.path)/\(index)", animation: child, depth: item.depth + 1)
+                })
+            }
+        }
+        clocks.append(NativeLayerClock(
+            localTime: layer.convertTime(hostTime, from: nil),
+            modelFrame: layer.convert(layer.bounds, to: nil),
+            timing: NativeLayerTiming(
+                identity: ObjectIdentifier(layer),
+                type: String(describing: type(of: layer)),
+                beginTime: layer.beginTime,
+                duration: layer.duration,
+                timeOffset: layer.timeOffset,
+                speed: layer.speed,
+                animationCount: keys.count,
+                animations: animations
+            )
         ))
     }
 }
