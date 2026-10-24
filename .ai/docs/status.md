@@ -34,6 +34,19 @@ All four selector copies now retain the last valid selection, and `make coverage
 [0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md) records the
 policy. CI motion and aggregate coverage remain unverified on the ruler repair.
 
+CI run [40011176859](https://github.com/fardavide/granita/actions/runs/40011176859) confirms the
+simulator-selection repair: both shards render on iPhone 18 Pro, iOS 27.0. Both builds, package
+tests, generated files and Mac snapshots pass. Four collapse-motion cases still fail, with five
+issues; one trace shows 551 pt of successor travel remaining when the viewport arrives. A touch
+case also times out before its horizontal swipe, with the native probe reporting two horizontal
+scroll candidates at the gesture point. Coverage stops on those suite verdicts, without a numeric
+comparison. A candidate starts the typed header request in the collapse update and retires its
+pending pair on completion and removes the obsolete Timeline background. Full package tests,
+both unsigned app builds, the focused 59 native executions and all six actual-touch tests pass on
+the final sources. Resolver validation passes with no lockfile change. CI confirmation is pending.
+Gesture timeout messages now include the full native scroll candidate list, without changing their
+predicate or timeout. No release has been merged or distributed.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases

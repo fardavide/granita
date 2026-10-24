@@ -15,13 +15,20 @@ must not realign a completed request. Seed an explicit file selection on first l
 review has no seeded target. One request function serves selector jumps, collapse and source
 reopening, preserving their distinct header/section destinations and animation curves.
 
-Collapse preparation holds one pending source/successor pair. Its successor background checks
-positive layout size on a subsequent animation update before starting viewport motion. The former
-geometry action changed the phase that its own geometry transform read, necessarily changing the
-reported readiness back to false. Removing that feedback edge removed the warning during collapse
-while the existing motion, source-reopen and explicit-selection cases still passed. The animation
-curve, capture window, tolerances and final position remain unchanged. CI still judges the original
-motion assertions; passing a local run does not waive its frame-step or header-coherence limits.
+Collapse preparation holds one pending source/successor pair and requests its typed header identity
+in the same state update as the collapse. The request completion retires only its own pending pair,
+independently of whether a manual gesture already released the typed scroll position. Reopening,
+explicit selection and disappearance retain their cancellation paths.
+
+The previous successor background waited for positive layout size and a Timeline animation update
+before requesting viewport motion. CI run
+[40011176859](https://github.com/fardavide/granita/actions/runs/40011176859) still recorded a case
+where the viewport arrived with 551 pt of successor travel remaining; successive native samples
+showed the header continuing to move afterwards. Moving the typed request into the collapse update
+passes all 59 focused native executions and all six actual-touch tests locally. The obsolete
+Timeline background is removed. This local result is not yet proof that CI's phase difference is
+repaired. The animation curve, capture window, assertions, tolerances and final position remain
+unchanged; CI still judges the original motion and header-coherence limits.
 
 The UI runner launches a separate offline fixture application containing the production reader.
 Public native scroll geometry and two code crops provide observations; only the out-of-process

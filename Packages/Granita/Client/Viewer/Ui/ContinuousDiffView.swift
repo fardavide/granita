@@ -220,27 +220,6 @@ public struct ContinuousDiffView: View {
                             } action: { isPinned in
                                 recordPinnedFile(entry, isPinned: isPinned)
                             }
-                            .background {
-                                if let request = pendingAdvance,
-                                   request.target == entry.id {
-                                    // Let the laid-out successor receive an animation update before
-                                    // starting viewport motion; its first draw can be expensive.
-                                    GeometryReader { geometry in
-                                        TimelineView(.animation) { context in
-                                            Color.clear.onChange(of: context.date) { _, _ in
-                                                if geometry.size.width > 0, geometry.size.height > 0,
-                                                   pendingAdvance == request {
-                                                    pendingAdvance = nil
-                                                    scroll(to: .header(request.target), animation: collapseAnimation)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .transition(.identity)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                                }
-                            }
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
                             // with `contentOffset`, and the reason is the same one the whole screen
@@ -365,15 +344,20 @@ public struct ContinuousDiffView: View {
             source: current[position].id,
             target: current[position + 1].id
         )
+        scroll(to: .header(current[position + 1].id), animation: collapseAnimation)
     }
 
     private func scroll(to destination: ScrollDestination, animation: Animation) {
+        let request = pendingAdvance
         withAnimation(animation) {
             scrolledTo.scrollTo(id: destination, anchor: .top)
         } completion: {
             // A completed request must not realign later hunk layout. A newer request owns it.
             if scrolledTo.viewID(type: ScrollDestination.self) == destination {
                 scrolledTo = ScrollPosition()
+            }
+            if let request, pendingAdvance == request {
+                pendingAdvance = nil
             }
         }
     }
