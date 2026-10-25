@@ -61,6 +61,33 @@ video also shows the misalignment. A narrow candidate replaces only the header's
 with a compositing group. All 59 original focused executions pass locally with the coherence,
 motion and position assertions unchanged. CI still needs to judge this candidate.
 
+CI run [40171825933](https://github.com/fardavide/granita/actions/runs/40171825933) rejects that
+header-only candidate: seven motion cases fail, while both builds, package tests, generated files,
+Mac snapshots, the other iOS shard and all seventeen input cases pass. Coverage stops at the failed
+motion suite before numeric comparison. The header's original geometry group is restored. A new
+local long-word-diff successor fixture reproduces a 159 pt frame step against the unchanged 99 pt
+limit. Skipping unused display-column calculation for tab-free segmented lines passes that fixture
+in isolation, but full focused runs still reject its frame step with either header grouping. All
+59 original executions and the existing tab and Unicode unit tests pass. A second optimization
+reuses cumulative character counts, adding byte counts only for ASCII without CR/LF and preserving
+the original concatenated-string count for all other text. Neither optimization alone resolves the
+stall. Native geometry tracing identifies the successor's first upward layout movement; a one-shot
+waiting/scrolling phase now starts the typed header request from that observation. The combined
+candidate passes all 60 focused executions, including the long-line regression and existing
+reopening, explicit-selection and horizontal-scroll cases. Removing the text optimizations, or
+keeping only the tab optimization, restores a 120 pt frame-step failure. Original motion assertions,
+baselines and coverage gates remain unchanged. The instrumented shard passes every original case
+but still rejects a 101.3 pt step in the long-line fixture. A profile identifies repeated character
+indexing during word highlighting; ranges now advance from the previous endpoint. All 62 focused
+executions pass, including two short-successor cases. The rebuilt instrumented motion shard
+passes all 61 functions in 17 suites with no failures or skips. The other shard passes 21 functions,
+and all six actual-touch and eleven native-input cases pass. Complete unit, both iOS shard and
+behavioral Ui receipts share one source digest. Full package tests, both unsigned app builds,
+resolver validation and a fresh unsigned device Release compile pass on these sources. Local Mac
+snapshot differences and the documented menu-test stall still prevent a local aggregate coverage
+verdict; required CI confirmation remains pending. Version 0.23.1 is retained, with no new Release
+CI check, baseline recording or coverage-gate change. TestFlight delivery remains unverified.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases

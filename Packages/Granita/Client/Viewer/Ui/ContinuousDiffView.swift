@@ -230,8 +230,13 @@ public struct ContinuousDiffView: View {
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
-                            // Compose header effects without a separate geometry-animation boundary.
-                            .compositingGroup()
+                            .onGeometryChange(for: CGFloat.self) { proxy in
+                                proxy.frame(in: .scrollView(axis: .vertical)).minY
+                            } action: { oldY, newY in
+                                advanceAfterHeaderMovement(from: oldY, to: newY, in: entry.id)
+                            }
+                            // Move the header's rendering as one unit when its natural slot moves.
+                            .geometryGroup()
                             // Collapse targets the header itself; a section also contains a body.
                             .id(ScrollDestination.header(entry.id))
                     }
@@ -342,9 +347,17 @@ public struct ContinuousDiffView: View {
         guard current.indices.contains(position + 1) else { return }
         pendingAdvance = AdvanceRequest(
             source: current[position].id,
-            target: current[position + 1].id
+            target: current[position + 1].id,
+            phase: .waiting
         )
-        scroll(to: .header(current[position + 1].id), animation: collapseAnimation)
+    }
+
+    private func advanceAfterHeaderMovement(from oldY: CGFloat, to newY: CGFloat, in file: FileID) {
+        guard var request = pendingAdvance, request.target == file, request.phase == .waiting,
+              newY < oldY || newY <= 0 else { return }
+        request.phase = .scrolling
+        pendingAdvance = request
+        scroll(to: .header(file), animation: collapseAnimation)
     }
 
     private func scroll(to destination: ScrollDestination, animation: Animation) {
@@ -370,6 +383,12 @@ public struct ContinuousDiffView: View {
     nonisolated private struct AdvanceRequest: Equatable, Sendable {
         let source: FileID
         let target: FileID
+        var phase: Phase
+
+        enum Phase: Sendable {
+            case waiting
+            case scrolling
+        }
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header

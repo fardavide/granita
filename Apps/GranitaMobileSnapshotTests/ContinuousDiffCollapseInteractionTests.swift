@@ -65,6 +65,43 @@ struct ContinuousDiffCollapseInteractionTests {
         )
     }
 
+    @Test(arguments: [PinnedFileCollapse.viewed, .manual])
+    func `given a just pinned file followed by a short successor when collapsed then the successor natural start aligns with the viewport`(
+        collapse: PinnedFileCollapse
+    ) throws {
+        // given
+        let entries = [
+            aRenderedFile(path: "Sources/First.swift", lineCount: 160),
+            aRenderedFile(path: "Sources/Next.swift", lineCount: 20),
+            aRenderedFile(path: "Sources/Last.swift", lineCount: 160)
+        ]
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialOffset = scroll.contentOffset.y
+        scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + 47), animated: false)
+        scenario.settleLayout()
+        try #require(abs(scroll.contentOffset.y - initialOffset - 47) < 2)
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+
+        // when
+        switch collapse {
+        case .viewed:
+            scenario.model.setViewed(true, fileId: entries[0].id)
+        case .manual:
+            scenario.model.setOpen(false, fileId: entries[0].id)
+        }
+        scenario.settleLayout()
+
+        // then
+        #expect(scenario.model.entries[0].collapse.isCollapsed)
+        #expect(
+            abs(scroll.contentOffset.y - initialOffset - DiffCollapsedFileBar.height - 10) < 2,
+            "collapse=\(collapse), initialOffset=\(initialOffset), endOffset=\(scroll.contentOffset.y), nextNaturalStart=\(initialOffset + DiffCollapsedFileBar.height + 10)"
+        )
+    }
+
     @Test
     func `given a short file whose natural header is in the viewport when marked viewed then the scroll position stays unchanged`() throws {
         // given
@@ -162,6 +199,8 @@ struct ContinuousDiffCollapseInteractionTests {
                 case .unsegmentedWordDiff: aRenderedWordDiffFile(path: path, segmented: false)
                 case .wordDiffOutgoing: aRenderedWordDiffFile(path: path, segmented: index == 0)
                 case .wordDiffSuccessor: aRenderedWordDiffFile(path: path, segmented: index == 1)
+                case .longWordDiffSuccessor:
+                    aRenderedWordDiffFile(path: path, segmented: index == 1, valueCount: index == 1 ? 96 : 16)
                 }
             }
         let scenario = try Scenario(entries: entries)
@@ -330,6 +369,14 @@ struct ContinuousDiffCollapseInteractionTests {
         // A whole header of remaining travel after the viewport has arrived is a second visible
         // movement, rather than the two parts arriving as one gesture.
         #expect(successorLag < DiffFileHeader.height, diagnostic)
+    }
+
+    @Test
+    func `given a pinned file with a long word diff successor when manually collapsed then the viewport and successor header arrive in one coherent motion`() async throws {
+        try await `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
+            collapse: .manual,
+            fixture: .longWordDiffSuccessor
+        )
     }
 
     @Test(arguments: NativeHunkWidthFixture.allCases, [CGFloat(8), 11, 12, 17])
@@ -1024,6 +1071,7 @@ enum DiffMotionFixture: Sendable {
     case unsegmentedWordDiff
     case wordDiffOutgoing
     case wordDiffSuccessor
+    case longWordDiffSuccessor
 }
 
 enum NativeHunkWidthFixture: CaseIterable, Hashable, Sendable {
@@ -1345,21 +1393,21 @@ private func aRenderedFile(
 }
 
 @MainActor
-private func aRenderedWordDiffFile(path: String, segmented: Bool = true) -> ContinuousDiffEntry {
-    // Native word-diff layout for a generated array changing sixteen values on each line.
+private func aRenderedWordDiffFile(path: String, segmented: Bool = true, valueCount: Int = 16) -> ContinuousDiffEntry {
+    // Native word-diff layout for a generated array changing values on each line.
     // The deletion/addition pairs carry real text and segments rather than timing work in the probe.
     let lines = (1...160).flatMap { number -> [DiffLine] in
         let prefix = WordSegment(text: "let values\(number) = [", isChanged: false)
-        let oldSegments = [prefix] + (0..<16).flatMap { value in
+        let oldSegments = [prefix] + (0..<valueCount).flatMap { value in
             [
                 WordSegment(text: "oldValue\(value)", isChanged: true),
-                WordSegment(text: value == 15 ? "]" : ", ", isChanged: false)
+                WordSegment(text: value == valueCount - 1 ? "]" : ", ", isChanged: false)
             ]
         }
-        let newSegments = [prefix] + (0..<16).flatMap { value in
+        let newSegments = [prefix] + (0..<valueCount).flatMap { value in
             [
                 WordSegment(text: "newValue\(value)", isChanged: true),
-                WordSegment(text: value == 15 ? "]" : ", ", isChanged: false)
+                WordSegment(text: value == valueCount - 1 ? "]" : ", ", isChanged: false)
             ]
         }
         let oldText = oldSegments.map(\.text).joined()

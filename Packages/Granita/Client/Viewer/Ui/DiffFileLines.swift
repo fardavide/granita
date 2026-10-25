@@ -647,10 +647,14 @@ public struct DiffFileLines: View {
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
         }
         let characters = attributed.characters
+        var cursor = characters.startIndex
+        var characterOffset = 0
         for range in drawn.changed {
-            let start = characters.index(characters.startIndex, offsetBy: range.lowerBound)
-            let end = characters.index(characters.startIndex, offsetBy: range.upperBound)
+            let start = characters.index(cursor, offsetBy: range.lowerBound - characterOffset)
+            let end = characters.index(start, offsetBy: range.count)
             attributed[start..<end].backgroundColor = segmentTint(of: line)
+            cursor = end
+            characterOffset = range.upperBound
         }
         return Text(attributed)
     }
