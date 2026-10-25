@@ -38,6 +38,17 @@ samples and assertions, and a separate recorded replay runs only after the requi
 fails. Its video and result bundle are diagnostic artifacts; they do not replace the required
 suite verdict or any coverage inputs.
 
+The next diagnostic run, [40133024145](https://github.com/fardavide/granita/actions/runs/40133024145),
+recorded the same delayed header position in both model and presentation layers: at viewport
+arrival one header still had 439 pt to travel. The separate replay video showed the visible
+misalignment too. This rules out a compositor-only explanation. Removing the header geometry
+group locally reduced the lag, but removed the nested layer observed by the existing coherence
+assertion, so that experiment remained red. Replacing that group with a compositing group passes
+all 59 original focused executions, including the unchanged descendant checks. This keeps header
+effects composed without the separate geometry-animation barrier; the body's geometry group,
+lazy stack, animation curve and every assertion remain unchanged. It is a candidate pending CI,
+not a verified repair of the runner failure.
+
 The UI runner launches a separate offline fixture application containing the production reader.
 Public native scroll geometry and two code crops provide observations; only the out-of-process
 UI runner supplies touch input. The fixture is absent from shipping app schemes. Its required CI

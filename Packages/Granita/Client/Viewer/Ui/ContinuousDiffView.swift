@@ -230,8 +230,8 @@ public struct ContinuousDiffView: View {
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
-                            // Move the header's rendering as one unit when its natural slot moves.
-                            .geometryGroup()
+                            // Compose header effects without a separate geometry-animation boundary.
+                            .compositingGroup()
                             // Collapse targets the header itself; a section also contains a body.
                             .id(ScrollDestination.header(entry.id))
                     }

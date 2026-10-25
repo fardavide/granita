@@ -55,6 +55,12 @@ stops before numeric comparison. The next diagnostic records native layer/animat
 first-movement milestones without changing assertions; a separately recorded replay runs after
 the required shard fails and preserves its original verdict and coverage artifacts.
 
+CI run [40133024145](https://github.com/fardavide/granita/actions/runs/40133024145) reproduced the
+failure with native model and presentation geometry agreeing on the delayed header; its replay
+video also shows the misalignment. A narrow candidate replaces only the header's geometry group
+with a compositing group. All 59 original focused executions pass locally with the coherence,
+motion and position assertions unchanged. CI still needs to judge this candidate.
+
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
 eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases
