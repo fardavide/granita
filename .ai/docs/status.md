@@ -13,6 +13,14 @@ image mismatches and a stalled View-menu test prevented an aggregate coverage ve
 pending. The original phone-side Bonjour delay remains unexplained. The scope and evidence are in
 [0247](decisions/0247-cancelled-resolution-cannot-publish-a-remembered-connection.md).
 
+The first [PR #130](https://github.com/fardavide/granita/pull/130) CI run passed unit tests, both app
+builds, generated files and Mac snapshots, but both iOS shards stopped at simulator selection;
+coverage had no iOS profiles to aggregate. The selector-only correction from
+[PR #129](https://github.com/fardavide/granita/pull/129) is applied here with its regression tests.
+All four production selectors reproduced the empty-name failure before the fix; the tooling suite
+now passes all 140 tests. The policy is recorded in
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md). Fresh CI is pending.
+
 **Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
 Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
 including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an

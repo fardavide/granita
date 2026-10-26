@@ -32,7 +32,7 @@ case "$SUITE" in
         if [ "$SUITE" != mac ]; then
             SCHEME=GranitaMobile
             TARGET=GranitaMobileSnapshotTests
-            SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{name=""; inios=1; next} /^-- /{inios=0} inios && name=="" && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH)} END{sub(/ +$/, "", name); print name}')"
+            SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH); found=1} END{sub(/ +$/, "", name); print name}')"
             test -n "$SIMULATOR"
             DESTINATION="platform=iOS Simulator,name=${SIMULATOR},OS=latest"
             xcrun simctl boot "$SIMULATOR" || true
