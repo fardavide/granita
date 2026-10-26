@@ -2,6 +2,17 @@
 
 Where the project is. Update this when a slice lands.
 
+**Remembered-connection cancellation is fixed locally for 0.23.1.** Two deterministic regressions
+reproduce a cancelled lookup opening a saved fallback and a late successful lookup populating the
+connection cache. Both were observed failing before their fixes; all 37 remembered-connection tests,
+the full 1,943-test package suite, and both unsigned app builds pass. The project was regenerated
+and `make resolve` verified the 30-pin Xcode union graph; dependency revisions are unchanged.
+Coverage collection passed package instrumentation, both iOS snapshot shards and the required
+interaction suite. The second iOS shard passed on retry after a killed test host. Local Mac snapshot
+image mismatches and a stalled View-menu test prevented an aggregate coverage verdict. Release is
+pending. The original phone-side Bonjour delay remains unexplained. The scope and evidence are in
+[0247](decisions/0247-cancelled-resolution-cannot-publish-a-remembered-connection.md).
+
 **Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
 Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
 including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an
