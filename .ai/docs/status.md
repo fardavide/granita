@@ -2,21 +2,32 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129): local repair verification
-is in progress; nothing new has been pushed or merged.** The archive import repair remains in
-0.23.1. The latest rendering candidate keeps native Text and full native widths, preparing only
-potentially visible word backgrounds. Batched native span searches and contiguous eligibility
-checks pass 34 focused cases, both horizontal image cases and the unchanged dense collapse
-acceptance. [0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records
-the measured costs, rejected custom-drawing approach and retained contracts. Package tests, both
-unsigned app builds and device Release compilation pass on the final sources. All 76 original
-diff snapshots and both complete instrumented iOS groups pass: 1,168 cases with no failures,
-skips or runtime warnings. All 20 native touch cases also pass. Unit, both iOS groups and Ui
-coverage receipts share the same source digest. The local Mac suite finishes red: image
-differences plus model-settling and window-minimum assertions, with MDB_MAP_FULL in its log.
-There is no successful Mac receipt or aggregate coverage verdict. All seven required CI checks
-remain pending on the unpublished repair. No image baseline, original assertion, animation
-bound or numeric coverage gate changed.
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 26 October: CI remains
+red; delivery is not verified.** The 0.23.1 device Release compile passes locally. The native Text
+candidate in commit `bebe1ad` passes package tests, both unsigned app builds, 34 focused cases,
+76 original diff snapshots, all 1,168 instrumented iOS cases and 20 native touch cases locally.
+Its local Mac run is red and provides no aggregate coverage verdict.
+
+[CI 380](https://github.com/fardavide/granita/actions/runs/40342124350) passes both builds,
+generated files, package tests, Mac snapshots and iOS group 0. Required group 1 has five motion
+issues: viewed/plain frame step 129 pt, viewed/word-successor 108.33 pt, manual/word-successor
+144.33 pt, long successor 126 pt, and no final successor in the dense case after an initial
+approximately 844 ms callback delay. The frame read itself takes approximately 0.517 ms. The
+application, scene and key window are active. Coverage stops at the failed prerequisite; there
+is no numeric verdict. A separate video replay is worse and is not the required-run result.
+
+The next diagnostic replaces that post-failure video replay with an exact-process CPU recording.
+The diagnostic Swift fixture stays outside normal target enumeration until copied and rebuilt
+after required results and receipts are uploaded. It records a separate source digest, waits for
+the profiler's actual started banner, then exercises the original plain and dense cases. Local
+validation records both phase markers and 1,659 CPU samples with the two original cases passing.
+The pending CI recording is necessary to attribute the remaining runner stalls; the earlier
+word-background finding does not explain the plain-case failure by itself.
+
+[0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records the measured
+preparation costs and retained contracts. No image baseline, original assertion, animation bound
+or numeric coverage gate changed. The approved replacement PR wording is held until every
+required check passes. No merge or release has been performed.
 
 The native test harness also requires an active actual key-window scene plus a native frame
 before rendering. The swipe probe excludes candidates hidden, transparent or clipped by an

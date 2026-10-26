@@ -272,6 +272,7 @@ struct ContinuousDiffCollapseInteractionTests {
         }.joined(separator: "\n")
         let observationDiagnostic = Comment(rawValue: """
         collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset)
+        probeStartMonotonic=\(probe.startedAt)
         endPresentation=\(String(describing: probe.samples.last?.presentationOffset)), endModel=\(scroll.contentOffset.y), finalOffset=\(finalOffset)
         missingPresentationFrames=\(probe.missingPresentationFrames), sampleCount=\(probe.samples.count)
         intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep), expectedTravel=\(expectedTravel)
@@ -346,6 +347,7 @@ struct ContinuousDiffCollapseInteractionTests {
         // Bound only diagnostic output; every assertion above and below still uses every sample.
         let diagnostic = Comment(rawValue: """
         collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset), endPresentation=\(last.presentationOffset)
+        probeStartMonotonic=\(probe.startedAt)
         intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep), expectedTravel=\(expectedTravel)
         viewportArrivalTime=\(viewportArrival.elapsed), successorAtArrival=\(successorAtArrival.frame.minY)
         successorFinalPosition=\(successor.frame.minY), successorLag=\(successorLag)
@@ -1360,7 +1362,7 @@ private final class ViewportMotionProbe: NSObject {
     private(set) var missingPresentationFrames = 0
 
     private let scroll: UIScrollView
-    private var startedAt: CFTimeInterval
+    private(set) var startedAt: CFTimeInterval
     private lazy var displayLink = CADisplayLink(target: self, selector: #selector(sampleFrame(_:)))
 
     init(scroll: UIScrollView) {

@@ -212,6 +212,17 @@ tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the ph
 ui-tests-ios: ## Swipe the production phone reader in an offline fixture application
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:$(IOS_UI_TEST_TARGET)$(if $(IOS_UI_TEST),/$(IOS_UI_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
 
+.PHONY: profile-collapse-ios
+profile-collapse-ios: ## Record only the diagnostic simulator app after the required suite
+	bash .github/scripts/profile-collapse.sh '$(IOS_SIM_NAME)'
+
+.PHONY: profile-collapse-build-ios profile-collapse-capture-ios
+profile-collapse-build-ios:
+	xcodebuild build-for-testing -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -derivedDataPath build/derived/motion-cpu-profile -enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO $(XCODE_QUIET)
+
+profile-collapse-capture-ios:
+	xcodebuild test-without-building -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' -derivedDataPath build/derived/motion-cpu-profile '-only-testing:GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests/temporarySynchronizedCiCpuProfile()' -collect-test-diagnostics never -resultBundlePath build/motion-cpu-profile/tests.xcresult -enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO $(XCODE_QUIET)
+
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment
 	@# **A red run here is the normal state on a developer's Mac, and is not something to fix.**

@@ -44,4 +44,11 @@ also pass. All 20 native touch cases pass. Unit, both iOS groups and Ui receipts
 digest. The local Mac run finishes red, with image differences, a model-settling failure and a
 640×460 content-minimum observation against the unchanged 640×480 assertion. It also reports
 MDB_MAP_FULL; no cause is inferred from that log alone. The failed suite produces no successful
-Mac receipt or aggregate coverage verdict. Required CI remains pending.
+Mac receipt or aggregate coverage verdict.
+
+[CI 380](https://github.com/fardavide/granita/actions/runs/40342124350) passes Mac snapshots but
+fails five motion cases in required iOS group 1, including a plain-text case. The dense case's
+first callback is delayed approximately 844 ms while its read costs approximately 0.517 ms;
+application, scene and key window remain active. Local success does not establish a complete
+repair. A separate exact-process CPU recording on the CI runner is the next diagnostic; it must
+retain the primary verdict and receipts and identify its modified diagnostic source separately.
