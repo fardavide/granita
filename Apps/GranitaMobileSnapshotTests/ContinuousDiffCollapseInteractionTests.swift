@@ -1,5 +1,6 @@
 import Observation
 import QuartzCore
+import SnapshotTesting
 import SwiftUI
 import Testing
 import UIKit
@@ -201,6 +202,8 @@ struct ContinuousDiffCollapseInteractionTests {
                 case .wordDiffSuccessor: aRenderedWordDiffFile(path: path, segmented: index == 1)
                 case .longWordDiffSuccessor:
                     aRenderedWordDiffFile(path: path, segmented: index == 1, valueCount: index == 1 ? 96 : 16)
+                case .denseWordDiffSuccessor:
+                    aRenderedWordDiffFile(path: path, segmented: index == 1, valueCount: index == 1 ? 256 : 16)
                 }
             }
         let scenario = try Scenario(entries: entries)
@@ -265,7 +268,7 @@ struct ContinuousDiffCollapseInteractionTests {
         traceIndices.formUnion(probe.samples.indices.suffix(2))
         let trace = traceIndices.sorted().map { index in
             let sample = probe.samples[index]
-            return "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), captureDuration=\(sample.captureDuration), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), headers=\(sample.headerFrames)"
+            return "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), captureDuration=\(sample.captureDuration), appState=\(sample.applicationState.rawValue), sceneState=\(String(describing: sample.sceneState?.rawValue)), keyWindow=\(String(describing: sample.windowIsKey)), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), headers=\(sample.headerFrames)"
         }.joined(separator: "\n")
         let observationDiagnostic = Comment(rawValue: """
         collapse=\(collapse), fixture=\(fixture), startPresentation=\(first.presentationOffset)
@@ -376,6 +379,14 @@ struct ContinuousDiffCollapseInteractionTests {
         try await `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
             collapse: .manual,
             fixture: .longWordDiffSuccessor
+        )
+    }
+
+    @Test
+    func `given a pinned file with a dense word diff successor when manually collapsed then the viewport and successor header arrive in one coherent motion`() async throws {
+        try await `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
+            collapse: .manual,
+            fixture: .denseWordDiffSuccessor
         )
     }
 
@@ -688,6 +699,138 @@ struct ContinuousDiffCollapseInteractionTests {
         #expect(restoredCode == originalCode, "Horizontal travel=\(maximumOffset), crop=\(crop)")
     }
 
+    @Test(arguments: [false, true])
+    func `given segmented ASCII code when scrolled horizontally and back then code translates visually and returns exactly`(
+        isSplit: Bool
+    ) throws {
+        // given
+        let oldSegments: [WordSegment] = [WordSegment(text: "let x = [", isChanged: false)]
+            + (0..<24).flatMap { _ -> [WordSegment] in
+                [
+                    WordSegment(text: "oldValue", isChanged: true),
+                    WordSegment(text: "!?(){}<>:,. ", isChanged: false)
+                ]
+            } + [WordSegment(text: "]", isChanged: false)]
+        let newSegments: [WordSegment] = [WordSegment(text: "let x = [", isChanged: false)]
+            + (0..<24).flatMap { _ -> [WordSegment] in
+                [
+                    WordSegment(text: "newValue", isChanged: true),
+                    WordSegment(text: "!?(){}<>:,. ", isChanged: false)
+                ]
+            } + [WordSegment(text: "]", isChanged: false)]
+        let oldText = oldSegments.map(\.text).joined()
+        let newText = newSegments.map(\.text).joined()
+        let lines: [DiffLine] = (1...80).flatMap { (number: Int) -> [DiffLine] in
+            [
+                DiffLine(
+                    kind: .deletion, oldNumber: number, newNumber: nil,
+                    text: oldText, displayColumns: oldText.count, segments: oldSegments
+                ),
+                DiffLine(
+                    kind: .addition, oldNumber: nil, newNumber: number,
+                    text: newText, displayColumns: newText.count, segments: newSegments
+                )
+            ]
+        }
+        let entry = ContinuousDiffEntry.ready(FileDiff(
+            file: aChangedFile(
+                path: "Sources/Segmented.swift", status: .modified,
+                insertions: 80, deletions: 80, estimatedLineCount: lines.count
+            ),
+            hunks: [Hunk(
+                index: 0, oldStart: 1, oldCount: 80, newStart: 1, newCount: 80,
+                sectionHeading: nil, lines: lines
+            )],
+            oldLineCount: 80, newLineCount: 80, isTruncated: false, truncationReason: nil
+        ))
+        let scenario = try Scenario(entries: [entry], isSplit: isSplit, windowWidth: 834)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let vertical = try #require(scenario.verticalScroll)
+        let horizontal = try #require(scenario.horizontalScroll)
+        let verticalBefore = vertical.contentOffset.y
+        let scale = scenario.window.screen.scale
+        try #require(abs(horizontal.contentOffset.x) * scale < 0.01)
+        try #require(horizontal.contentSize.width - horizontal.bounds.width > 90)
+        let presentation = try #require(horizontal.layer.presentation())
+        let codeFrame = presentation.convert(presentation.bounds, to: nil)
+        let verticalPresentation = try #require(vertical.layer.presentation())
+        let viewport = verticalPresentation.convert(verticalPresentation.bounds, to: nil)
+        // Both crops are inside the left cell in split mode, beyond its figure column and before
+        // its trailing fade. The unified code viewport begins after both figures and the marker.
+        try #require(codeFrame.width > 600)
+        let crop = CGRect(x: codeFrame.minX + 20, y: codeFrame.minY + 80, width: 80, height: 90)
+        let interiorCrop = crop.offsetBy(dx: 90, dy: 0)
+        try #require(codeFrame.contains(crop) && codeFrame.contains(interiorCrop))
+        try #require(viewport.contains(crop) && viewport.contains(interiorCrop))
+        try #require(interiorCrop.maxX < codeFrame.midX - 40)
+        // Capture once on the window's native pixel grid. Redrawing separate fractional-point
+        // crops can round their origins to different pixels even when they differ by exactly 90pt.
+        let pixelCrop = CGRect(
+            x: (codeFrame.minX * scale).rounded() + 20 * scale,
+            y: (codeFrame.minY * scale).rounded() + 80 * scale,
+            width: 80 * scale,
+            height: 90 * scale
+        )
+        let interiorPixelCrop = pixelCrop.offsetBy(dx: 90 * scale, dy: 0)
+        func pixelData(in frame: CGRect, of image: CGImage) throws -> Data {
+            let cropped = try #require(image.cropping(to: frame))
+            return try #require(UIImage(cgImage: cropped).pngData())
+        }
+        let initialWindowData = try scenario.imageData(in: scenario.window.bounds)
+        let initialWindow = try #require(UIImage(data: initialWindowData)?.cgImage)
+        try #require(initialWindow.width == Int(scenario.window.bounds.width * scale))
+        try #require(initialWindow.height == Int(scenario.window.bounds.height * scale))
+        let originalCode = try pixelData(in: pixelCrop, of: initialWindow)
+        let expectedTranslatedCode = try pixelData(in: interiorPixelCrop, of: initialWindow)
+        try #require(originalCode != expectedTranslatedCode, "The native interior crops must distinguish translated content")
+        let verticalProbe = ViewportMotionProbe(scroll: vertical)
+        verticalProbe.start()
+        defer { verticalProbe.stop() }
+
+        // when
+        horizontal.setContentOffset(CGPoint(x: 90, y: horizontal.contentOffset.y), animated: false)
+        scenario.settleLayout()
+        let translatedPresentation = try #require(horizontal.layer.presentation())
+        try #require(abs(horizontal.contentOffset.x - 90) * scale < 0.01)
+        try #require(abs(translatedPresentation.bounds.minX - 90) * scale < 0.01)
+        let translatedWindowData = try scenario.imageData(in: scenario.window.bounds)
+        let translatedWindow = try #require(UIImage(data: translatedWindowData)?.cgImage)
+        let translatedCode = try pixelData(in: pixelCrop, of: translatedWindow)
+        horizontal.setContentOffset(CGPoint(x: 0, y: horizontal.contentOffset.y), animated: false)
+        scenario.settleLayout()
+        verticalProbe.stop()
+
+        // then
+        let restoredPresentation = try #require(horizontal.layer.presentation())
+        let restoredWindowData = try scenario.imageData(in: scenario.window.bounds)
+        let restoredWindow = try #require(UIImage(data: restoredWindowData)?.cgImage)
+        let restoredCode = try pixelData(in: pixelCrop, of: restoredWindow)
+        // Use the suite's existing image policy for native shade rounding; SPEC asks for stable,
+        // readable code and spans. Restoration at the same position still compares exact PNGs.
+        let expectedImage = try #require(UIImage(data: expectedTranslatedCode))
+        let actualImage = try #require(UIImage(data: translatedCode))
+        let translationDifference = Diffing<UIImage>.image(precision: 0.999, perceptualPrecision: 0.87)
+            .diffV2(expectedImage, actualImage)?.0
+        let diagnostic = Comment(rawValue: "isSplit=\(isSplit), crop=\(crop), interiorCrop=\(interiorCrop), pixelCrop=\(pixelCrop), interiorPixelCrop=\(interiorPixelCrop), scale=\(scale), codeFrame=\(codeFrame), translatedOffset=\(translatedPresentation.bounds.minX)")
+        if translationDifference != nil || restoredCode != originalCode {
+            Attachment.record(Array(originalCode), named: "segmented-original-\(isSplit).png")
+            Attachment.record(Array(expectedTranslatedCode), named: "segmented-native-interior-\(isSplit).png")
+            Attachment.record(Array(translatedCode), named: "segmented-translated-\(isSplit).png")
+            Attachment.record(Array(restoredCode), named: "segmented-restored-\(isSplit).png")
+        }
+        #expect(translationDifference == nil, diagnostic)
+        #expect(restoredCode == originalCode, diagnostic)
+        #expect(abs(horizontal.contentOffset.x) * scale < 0.01, diagnostic)
+        #expect(abs(restoredPresentation.bounds.minX) * scale < 0.01, diagnostic)
+        #expect(verticalProbe.missingPresentationFrames == 0, diagnostic)
+        #expect(verticalProbe.samples.isEmpty == false, diagnostic)
+        #expect(verticalProbe.samples.allSatisfy {
+            abs($0.modelOffset - verticalBefore) * scale < 0.01
+                && abs($0.presentationOffset - verticalBefore) * scale < 0.01
+        }, diagnostic)
+    }
+
     @Test
     func `given the viewport is inside a later file when its code scrolls horizontally then the vertical reading position stays unchanged`() async throws {
         // given
@@ -976,14 +1119,16 @@ struct ContinuousDiffCollapseInteractionTests {
             entries: [ContinuousDiffEntry],
             jumpTarget: FileID? = nil,
             pointSize: CGFloat = SnapshotLayout.iPhoneLight.codePointSize,
-            highlighted: [FileID: HighlightedFile] = [:]
+            highlighted: [FileID: HighlightedFile] = [:],
+            isSplit: Bool = false,
+            windowWidth: CGFloat = 390
         ) throws {
-            let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+            let scene = try prepareSnapshotScene()
             previousWindow = scene.windows.first(where: \.isKeyWindow)
             model = CollapseHarness(entries: entries, jumpTarget: jumpTarget)
-            controller = UIHostingController(rootView: CollapseHarnessView(model: model, pointSize: pointSize, highlighted: highlighted))
+            controller = UIHostingController(rootView: CollapseHarnessView(model: model, pointSize: pointSize, highlighted: highlighted, isSplit: isSplit))
             window = UIWindow(windowScene: scene)
-            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            window.frame = CGRect(x: 0, y: 0, width: windowWidth, height: 844)
             window.rootViewController = controller
             window.makeKeyAndVisible()
         }
@@ -1072,6 +1217,7 @@ enum DiffMotionFixture: Sendable {
     case wordDiffOutgoing
     case wordDiffSuccessor
     case longWordDiffSuccessor
+    case denseWordDiffSuccessor
 }
 
 enum NativeHunkWidthFixture: CaseIterable, Hashable, Sendable {
@@ -1153,6 +1299,9 @@ private struct ViewportMotionSample {
     let elapsed: CFTimeInterval
     let callbackElapsed: CFTimeInterval
     let captureDuration: CFTimeInterval
+    let applicationState: UIApplication.State
+    let sceneState: UIScene.ActivationState?
+    let windowIsKey: Bool?
     let modelOffset: CGFloat
     let presentationOffset: CGFloat
     let headerCandidates: [HeaderCandidate]
@@ -1292,6 +1441,9 @@ private final class ViewportMotionProbe: NSObject {
             elapsed: timestamp - startedAt,
             callbackElapsed: callbackStarted - startedAt,
             captureDuration: CACurrentMediaTime() - callbackStarted,
+            applicationState: UIApplication.shared.applicationState,
+            sceneState: scroll.window?.windowScene?.activationState,
+            windowIsKey: scroll.window?.isKeyWindow,
             modelOffset: scroll.contentOffset.y,
             presentationOffset: presentation.bounds.origin.y,
             headerCandidates: headerCandidates,
@@ -1515,6 +1667,7 @@ private struct CollapseHarnessView: View {
     let model: CollapseHarness
     let pointSize: CGFloat
     let highlighted: [FileID: HighlightedFile]
+    let isSplit: Bool
 
     var body: some View {
         NavigationStack {
@@ -1522,6 +1675,7 @@ private struct CollapseHarnessView: View {
                 state: .reading(model.entries),
                 logCopyState: .ready,
                 pointSize: pointSize,
+                isSplit: isSplit,
                 jumpTarget: model.jumpTarget,
                 highlighted: highlighted,
                 isWaitingLong: false,

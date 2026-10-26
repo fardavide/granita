@@ -22,6 +22,17 @@ public struct DrawnDiffLine: Hashable, Sendable {
         self.changed = changed
     }
 
+    public static func text(of line: DiffLine) -> String {
+        guard let segments = line.segments, segments.count > 1 else {
+            return of(line).text
+        }
+        var text = segments.map(\.text).joined()
+        if text.withUTF8({ $0.contains(0x09) }) {
+            return of(line).text
+        }
+        return text
+    }
+
     /// The line, split where the parser paired it and put back together on one grid.
     ///
     /// **The emphasis is a background because the text colour is spoken for.** Design §4 originally
@@ -41,7 +52,7 @@ public struct DrawnDiffLine: Hashable, Sendable {
         var changed: [Range<Int>] = []
         var columns = 0
         var characterCount = 0
-        let hasTabs = segments.contains { $0.text.contains("\t") }
+        let hasTabs = segments.contains { $0.text.utf8.contains(0x09) }
         // ASCII characters count independently, except that a CR and LF can form one character.
         let hasAdditiveCharacterCounts = segments.allSatisfy { segment in
             segment.text.utf8.allSatisfy { $0 < 128 && $0 != 13 && $0 != 10 }

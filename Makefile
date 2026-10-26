@@ -32,6 +32,7 @@ UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLO
 # Set it back when the noise is the problem: `make snapshots XCODE_QUIET=-quiet`.
 XCODE_QUIET  ?=
 TEST_DIAGNOSTICS ?= on-failure
+IOS_UI_TEST_TARGET ?= GranitaMobileUiTests
 # Generated and committed, and therefore checkable. The icons are generated and committed too but
 # are deliberately absent — see verify-generated.
 GENERATED    := $(PROJECT) $(PACKAGE)/Core/Diff/DomainTests/Fixtures
@@ -209,7 +210,7 @@ tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the ph
 
 .PHONY: ui-tests-ios
 ui-tests-ios: ## Swipe the production phone reader in an offline fixture application
-	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:GranitaMobileUiTests$(if $(IOS_UI_TEST),/$(IOS_UI_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
+	xcodebuild test -project $(PROJECT) -scheme GranitaMobileUi -destination '$(IOS_SIM)' -only-testing:$(IOS_UI_TEST_TARGET)$(if $(IOS_UI_TEST),/$(IOS_UI_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(RESULT_BUNDLE),-resultBundlePath '$(RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(UI_PACKAGE_FLAGS)
 
 .PHONY: snapshots-mac
 snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, see the comment

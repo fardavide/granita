@@ -2,6 +2,31 @@
 
 Where the project is. Update this when a slice lands.
 
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129): local repair verification
+is in progress; nothing new has been pushed or merged.** The archive import repair remains in
+0.23.1. The latest rendering candidate keeps native Text and full native widths, preparing only
+potentially visible word backgrounds. Batched native span searches and contiguous eligibility
+checks pass 34 focused cases, both horizontal image cases and the unchanged dense collapse
+acceptance. [0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records
+the measured costs, rejected custom-drawing approach and retained contracts. Package tests, both
+unsigned app builds and device Release compilation pass on the final sources. All 76 original
+diff snapshots and both complete instrumented iOS groups pass: 1,168 cases with no failures,
+skips or runtime warnings. All 20 native touch cases also pass. Unit, both iOS groups and Ui
+coverage receipts share the same source digest. The local Mac suite finishes red: image
+differences plus model-settling and window-minimum assertions, with MDB_MAP_FULL in its log.
+There is no successful Mac receipt or aggregate coverage verdict. All seven required CI checks
+remain pending on the unpublished repair. No image baseline, original assertion, animation
+bound or numeric coverage gate changed.
+
+The native test harness also requires an active actual key-window scene plus a native frame
+before rendering. The swipe probe excludes candidates hidden, transparent or clipped by an
+ancestor. Their focused tests and the complete final-source native touch run pass.
+An interrupted local snapshot run was killed by another worktree installing the same app on its
+shared simulator, confirmed by the simulator's install/termination log. Subsequent focused runs
+use an existing idle iPhone 18 Pro Max on the same iOS version; snapshot dimensions stay fixed.
+
+Earlier investigation and CI evidence follows.
+
 **The 0.23.1 archive repair is prepared locally; delivery is not yet verified.** Xcode Cloud build
 178 started automatically after [PR #128](https://github.com/fardavide/granita/pull/128) merged, but
 Swift 6.4 crashed during optimized iOS compilation and TestFlight distribution was skipped. The
@@ -87,6 +112,37 @@ resolver validation and a fresh unsigned device Release compile pass on these so
 snapshot differences and the documented menu-test stall still prevent a local aggregate coverage
 verdict; required CI confirmation remains pending. Version 0.23.1 is retained, with no new Release
 CI check, baseline recording or coverage-gate change. TestFlight delivery remains unverified.
+
+CI run [40233647872](https://github.com/fardavide/granita/actions/runs/40233647872) rejects that
+candidate too. Both builds, unit tests, generated files and Mac snapshots pass. The iOS failures
+include collapse frame steps, the image comparison's dark Done material, and an input probe that
+finds two horizontal candidates before its swipe. Coverage stops at the failed suite prerequisite;
+it has no numeric verdict. The prior local coverage receipts do not validate subsequent edits.
+
+A denser word-diff successor now reproduces a 356 pt frame step locally against the unchanged
+99 pt limit while the app and scene remain active. Stable child views reduce repeated text
+preparation but do not repair that stall. Native layout timing and an animation-inheritance A/B
+also leave it red; these diagnostic wrappers and flags are removed. Separately, native input
+regressions demonstrate that raw scroll rectangles include descendants of hidden, clipped and
+transparent ancestors. Filtering only those demonstrably invisible candidates passes all fourteen
+native input cases. The original CI ambiguity has no media or ancestor visibility evidence, so
+those regressions do not establish its exact cause. The repair remains uncommitted and incomplete.
+
+All six actual-touch tests now pass with the observer repair, including the CI timeout case. Two
+immutable image diagnostics reproduce the exact dark material mismatch while inactive and match
+after activation plus one native frame, preserving the same mounted host. The snapshot helper now
+requires that observed readiness before rendering; the original sixteen image cases pass without
+baseline or tolerance changes. [0247](decisions/0247-snapshot-materials-require-an-active-native-frame.md)
+records the evidence and its limits. Collapse and full CI verification remain incomplete.
+
+An approved, synchronized CPU profile captures the dense collapse's 516.8 ms callback gap with
+the app and scene active. Of 515 ms main-thread sampled weight inside the two native frame
+markers, 417 ms occurs under backing-store display and 315 ms includes Core Graphics rectangle
+painting/blending. Omitting only word-background assignments removes the stall, but changes the
+rendering and is rejected as a fix. Resolving colors once and a clipped drawing group also remain
+red and are removed. Native motion setup now uses the same active-scene preparation before its
+unchanged observation window. A render-preserving clipping repair is still under investigation;
+no new candidate is committed or published.
 
 **Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
 All seven required checks passed before merge, including both iOS shards, all six touch tests,
