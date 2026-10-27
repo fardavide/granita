@@ -2,6 +2,35 @@
 
 Where the project is. Update this when a slice lands.
 
+**Remembered-connection cancellation is fixed locally for 0.23.1.** Two deterministic regressions
+reproduce a cancelled lookup opening a saved fallback and a late successful lookup populating the
+connection cache. Both were observed failing before their fixes; all 37 remembered-connection tests,
+the full 1,943-test package suite, and both unsigned app builds pass. The project was regenerated
+and `make resolve` verified the 30-pin Xcode union graph; dependency revisions are unchanged.
+Coverage collection passed package instrumentation, both iOS snapshot shards and the required
+interaction suite. The second iOS shard passed on retry after a killed test host. Local Mac snapshot
+image mismatches and a stalled View-menu test prevented an aggregate coverage verdict. Release is
+pending. The original phone-side Bonjour delay remains unexplained. The scope and evidence are in
+[0247](decisions/0247-cancelled-resolution-cannot-publish-a-remembered-connection.md).
+
+The first [PR #130](https://github.com/fardavide/granita/pull/130) CI run passed unit tests, both app
+builds, generated files and Mac snapshots, but both iOS shards stopped at simulator selection;
+coverage had no iOS profiles to aggregate. The selector-only correction from
+[PR #129](https://github.com/fardavide/granita/pull/129) is applied here with its regression tests.
+All four production selectors reproduced the empty-name failure before the fix; the tooling suite
+now passes all 140 tests. The policy is recorded in
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md). The next run
+passed simulator selection and the first iOS shard. The second shard failed collapse-motion and
+image assertions. Motion work remains separate in [PR #129](https://github.com/fardavide/granita/pull/129).
+After it merges, this branch must update from `main` and reconcile its release version.
+
+The same run exposed a reader reload race in the Mac snapshots. Suspending highlighting after a
+diff arrives, then reloading metadata, deterministically reproduced a visible file staying awaiting.
+Diff request tracking now ends before derived work suspends; the new regression passed after
+failing against the original implementation. All 1,944 package tests and both unsigned app builds
+pass. Fresh CI verification is pending. The request lifetime is recorded in
+[0248](decisions/0248-diff-request-tracking-ends-before-derived-work.md).
+
 **Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
 Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
 including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an

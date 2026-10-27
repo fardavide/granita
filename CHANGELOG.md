@@ -7,6 +7,12 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.23.1 — 2026-10-26
+- **Stop connecting when you leave the worktree list.** A cancelled lookup no longer opens and
+  keeps a fallback connection that the next read can inherit.
+- **Keep files loading after a reader refresh.** Reloading the file list while syntax colors are
+  being prepared no longer leaves visible files waiting for a diff.
+
 ### 0.23.0 — 2026-10-21
 - **Select lines anywhere on the row on iPhone and iPad.** Tap a code line to comment, or hold and
   drag across lines to select a range. Holding one line and tapping another still works.
