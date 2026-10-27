@@ -481,6 +481,9 @@ jobs:
 
       # The required suite keeps its original result and coverage artifacts. The diagnostic
       # fixture is copied and rebuilt only afterwards, with its own recorded source digest.
+      - name: Install XcodeGen for the CPU diagnostic
+        if: failure() && matrix.shard == 1 && steps.snapshots.outcome == 'failure' && steps.simulator.outcome == 'success'
+        run: brew install --quiet xcodegen
       - name: Record the failed motion app CPU profile
         if: failure() && matrix.shard == 1 && steps.snapshots.outcome == 'failure' && steps.simulator.outcome == 'success'
         run: make profile-collapse-ios IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
