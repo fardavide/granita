@@ -46,11 +46,19 @@ case "$app_command" in
     */CoreSimulator/Devices/*/Granita.app/Granita) ;;
     *) echo "::error::Unexpected diagnostic process: $app_command"; exit 1 ;;
 esac
+device_path="${app_command#*/CoreSimulator/Devices/}"
+device_id="${device_path%%/*}"
+if [[ ! "$device_id" =~ ^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}$ ]]; then
+    echo "::error::Invalid simulator identity in diagnostic process path: $device_id"
+    exit 1
+fi
+printf '%s\n' "$device_id" > "$OUT/device-id.txt"
+echo "Recording Granita process $app_pid on simulator $device_id"
 
 # script supplies the same PTY used by the proven local recording protocol. The
 # started banner is a readiness signal: never arm merely because the process exists.
 script -qF "$OUT/recorder.log" xcrun xctrace record --template 'Time Profiler' \
-    --device "$SIMULATOR" --attach "$app_pid" --time-limit 20s --output "$OUT/collapse.trace" &
+    --device "$device_id" --attach "$app_pid" --time-limit 20s --output "$OUT/collapse.trace" &
 recorder_pid=$!
 armed_deadline=$((SECONDS + 90))
 while [ ! -f "$OUT/recorder.log" ] || ! grep -Fq 'Ctrl-C to stop the recording' "$OUT/recorder.log"; do
