@@ -146,6 +146,37 @@ struct ClientViewerHighlightingTests {
     // MARK: - What invalidates it
 
     @Test
+    func `given highlighting in flight when the metadata reloads then the visible file becomes ready`() async {
+        // given
+        let files = aChangeSet(of: 1)
+        let hunk = anAdditionSaying("let answer = 42")
+        let scenario = Scenario(files: files, hunks: [hunk], suspendingFirstHighlight: true)
+        await scenario.sut.load()
+        let initialRead = Task { await scenario.sut.reading(0) }
+        await scenario.highlighter.waitUntilAsked()
+
+        // when
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        scenario.highlighter.resumeHighlighting()
+        await initialRead.value
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("Reloading metadata must retain the visible file list.")
+            return
+        }
+        #expect(entries[0].content == .ready(FileDiff(
+            file: files[0],
+            hunks: [hunk],
+            oldLineCount: files[0].estimatedLineCount,
+            newLineCount: files[0].estimatedLineCount,
+            isTruncated: false,
+            truncationReason: nil
+        )))
+    }
+
+    @Test
     func `given the appearance changing when the screen says so then every side is lexed again for it`() async {
         // given — the colours are baked into the answer rather than applied over it, so a dark screen
         // needs a different answer and not the same one restyled.
@@ -312,7 +343,8 @@ private struct Scenario {
         files: [FileChange],
         hunks: [Hunk],
         lexerRefuses: Bool = false,
-        lexerDropsALine: Bool = false
+        lexerDropsALine: Bool = false,
+        suspendingFirstHighlight: Bool = false
     ) {
         fileIds = files.map(\.id)
         let changes = WorktreeChanges(
@@ -327,7 +359,11 @@ private struct Scenario {
                 uniqueKeysWithValues: zip(files.map(\.id), hunks.map { [$0] })
             )
         )
-        highlighter = FakeSyntaxHighlighter(refuses: lexerRefuses, dropsALine: lexerDropsALine)
+        highlighter = FakeSyntaxHighlighter(
+            refuses: lexerRefuses,
+            dropsALine: lexerDropsALine,
+            suspendingFirstRequest: suspendingFirstHighlight
+        )
         sut = ClientViewerModel(
             worktree: WorktreeID(rawValue: "b7c1e0a4f2d84391"),
             macName: "MacBook Pro",

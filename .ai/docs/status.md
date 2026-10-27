@@ -19,7 +19,17 @@ coverage had no iOS profiles to aggregate. The selector-only correction from
 [PR #129](https://github.com/fardavide/granita/pull/129) is applied here with its regression tests.
 All four production selectors reproduced the empty-name failure before the fix; the tooling suite
 now passes all 140 tests. The policy is recorded in
-[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md). Fresh CI is pending.
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md). The next run
+passed simulator selection and the first iOS shard. The second shard failed collapse-motion and
+image assertions. Motion work remains separate in [PR #129](https://github.com/fardavide/granita/pull/129).
+After it merges, this branch must update from `main` and reconcile its release version.
+
+The same run exposed a reader reload race in the Mac snapshots. Suspending highlighting after a
+diff arrives, then reloading metadata, deterministically reproduced a visible file staying awaiting.
+Diff request tracking now ends before derived work suspends; the new regression passed after
+failing against the original implementation. All 1,944 package tests and both unsigned app builds
+pass. Fresh CI verification is pending. The request lifetime is recorded in
+[0248](decisions/0248-diff-request-tracking-ends-before-derived-work.md).
 
 **Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
 Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,

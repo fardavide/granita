@@ -26,10 +26,31 @@ final class FakeSyntaxHighlighter: SyntaxHighlighter {
     private let dropsALine: Bool
 
     private let asked = Mutex<[HighlightRequest]>([])
+    private let suspendsFirstRequest: Bool
+    private let requestStarted: AsyncStream<Void>
+    private let requestStartedContinuation: AsyncStream<Void>.Continuation
+    private let suspendedHighlighting: AsyncStream<Void>
+    private let suspendedHighlightingContinuation: AsyncStream<Void>.Continuation
 
-    init(refuses: Bool = false, dropsALine: Bool = false) {
+    init(refuses: Bool = false, dropsALine: Bool = false, suspendingFirstRequest: Bool = false) {
         self.refuses = refuses
         self.dropsALine = dropsALine
+        suspendsFirstRequest = suspendingFirstRequest
+        let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        requestStarted = started.stream
+        requestStartedContinuation = started.continuation
+        let suspended = AsyncStream<Void>.makeStream()
+        suspendedHighlighting = suspended.stream
+        suspendedHighlightingContinuation = suspended.continuation
+    }
+
+    func waitUntilAsked() async {
+        var events = requestStarted.makeAsyncIterator()
+        _ = await events.next()
+    }
+
+    func resumeHighlighting() {
+        suspendedHighlightingContinuation.finish()
     }
 
     func highlight(
@@ -38,10 +59,16 @@ final class FakeSyntaxHighlighter: SyntaxHighlighter {
         for appearance: HighlightAppearance,
         themed theme: CodeTheme
     ) async -> [AttributedString]? {
-        asked.withLock {
+        let ordinal = asked.withLock {
             $0.append(
                 HighlightRequest(text: text, language: language, appearance: appearance, theme: theme)
             )
+            return $0.count
+        }
+        requestStartedContinuation.yield(())
+        if suspendsFirstRequest && ordinal == 1 {
+            var events = suspendedHighlighting.makeAsyncIterator()
+            _ = await events.next()
         }
         guard refuses == false else { return nil }
         let lines = text.components(separatedBy: "\n").map(AttributedString.init)
