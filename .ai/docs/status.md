@@ -2,32 +2,34 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 26 October: CI remains
-red; delivery is not verified.** The 0.23.1 device Release compile passes locally. The native Text
-candidate in commit `bebe1ad` passes package tests, both unsigned app builds, 34 focused cases,
-76 original diff snapshots, all 1,168 instrumented iOS cases and 20 native touch cases locally.
-Its local Mac run is red and provides no aggregate coverage verdict.
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 27 October: the 0.23.1
+repair is prepared; TestFlight delivery is not verified.** Package tests, both unsigned app builds,
+optimized device Release compilation and generated-file verification pass. The guarded native
+position refinement passes 59 focused cases, all 65 original collapse/scrolling acceptance cases,
+all 1,168 instrumented iOS cases and all 20 native input cases. Unit, both iOS groups and Ui
+receipts share source digest `821005562b2f7bf83fce463ecd5b612fbe1f07fa80efc4ee4cce4d3ebd4fbc58`.
 
-[CI 380](https://github.com/fardavide/granita/actions/runs/40342124350) passes both builds,
-generated files, package tests, Mac snapshots and iOS group 0. Required group 1 has five motion
-issues: viewed/plain frame step 129 pt, viewed/word-successor 108.33 pt, manual/word-successor
-144.33 pt, long successor 126 pt, and no final successor in the dense case after an initial
-approximately 844 ms callback delay. The frame read itself takes approximately 0.517 ms. The
-application, scene and key window are active. Coverage stops at the failed prerequisite; there
-is no numeric verdict. A separate video replay is worse and is not the required-run result.
+[CI 384](https://github.com/fardavide/granita/actions/runs/40468956878), at `fc00d84`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Required group 1 fails
+motion checks, so coverage stops at its prerequisite without a numeric verdict. Its separate
+exact-process recording attributes the dense replay's initial 633 ms callback gap to 620 ms of
+sampled main-thread work, including 284 ms in native caret queries. App, scene and key window
+remain active. Primary receipts and the modified diagnostic source provenance stay separate.
 
-The next diagnostic replaces that post-failure video replay with an exact-process CPU recording.
-The diagnostic Swift fixture stays outside normal target enumeration until copied and rebuilt
-after required results and receipts are uploaded. It records a separate source digest, waits for
-the profiler's actual started banner, then exercises the original plain and dense cases. Local
-validation records both phase markers and 1,659 CPU samples with the two original cases passing.
-The pending CI recording is necessary to attribute the remaining runner stalls; the earlier
-word-background finding does not explain the plain-case failure by itself.
+The refinement reuses measured native glyph positions only for a complete unadjusted monospaced
+ASCII mapping. Substitutions, kerning, ligatures and unknown geometry keep native caret queries.
+Native Text, syntax colours, widths and the original range predicates remain unchanged. A
+same-device diagnostic pair reduces sampled layout-helper work from 195 ms to 88 ms. The profiled
+replay still fails a later frame-step bound during native painting; the original unprofiled and
+complete instrumented iOS suites pass. The temporary recording fixture and CI tools are removed.
 
 [0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records the measured
-preparation costs and retained contracts. No image baseline, original assertion, animation bound
-or numeric coverage gate changed. The approved replacement PR wording is held until every
-required check passes. No merge or release has been performed.
+costs, rejected alternatives and retained contracts. The current local Mac run reports the
+documented image differences, then is interrupted after its reader menu case stops producing
+output. It provides no successful Mac receipt or aggregate coverage verdict. No
+image baseline, original assertion, animation bound, coverage scope or numeric gate changes.
+Delivery requires a fresh complete CI attempt with every required check green. The approved
+replacement PR wording stays held until then. No merge or release has been performed.
 
 The native test harness also requires an active actual key-window scene plus a native frame
 before rendering. The swipe probe excludes candidates hidden, transparent or clipped by an

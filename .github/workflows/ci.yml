@@ -479,23 +479,6 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      # The required suite keeps its original result and coverage artifacts. The diagnostic
-      # fixture is copied and rebuilt only afterwards, with its own recorded source digest.
-      - name: Install XcodeGen for the CPU diagnostic
-        if: failure() && matrix.shard == 1 && steps.snapshots.outcome == 'failure' && steps.simulator.outcome == 'success'
-        run: brew install --quiet xcodegen
-      - name: Record the failed motion app CPU profile
-        if: failure() && matrix.shard == 1 && steps.snapshots.outcome == 'failure' && steps.simulator.outcome == 'success'
-        run: make profile-collapse-ios IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
-      - name: Upload motion CPU profile
-        if: always() && matrix.shard == 1 && steps.snapshots.outcome == 'failure' && steps.simulator.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: motion-cpu-profile
-          path: build/motion-cpu-profile
-          retention-days: 7
-          if-no-files-found: warn
-
       # Native TLS must be judged inside the app host, not by host-only certificate unit tests.
       - name: Run pinned TLS connection tests
         if: matrix.shard == 0

@@ -25,6 +25,36 @@ view equality; there is no retained layout cache or prebuilt view tree.
 Printable-byte checks use scoped contiguous UTF-8 buffers. This preserves the eligibility
 predicate while avoiding generic string-view iteration.
 
+The runner's remaining preparation cost is native caret measurement. In
+[CI 384](https://github.com/fardavide/granita/actions/runs/40468956878), the profiled dense replay's
+first callback gap is approximately 633 ms, with 620 ms of sampled main-thread running time.
+Native endpoint queries account for 284 ms inside that interval. Application, scene and key
+window stay active. This attribution belongs to that replay and interval, not every motion case.
+
+Enumerating every native caret once is more expensive than the targeted queries: a same-device
+dense recording raises layout-helper CPU samples from 195 ms to 314 ms. Seeding the searches
+with native hit testing preserves exact boundaries but leaves endpoint-query samples at 189 ms.
+Neither approach is retained.
+
+The retained refinement copies native glyph positions only for an unadjusted mapping. It requires
+printable ASCII, a monospaced font and one complete left-to-right identity run with one native
+glyph per UTF-16 index. Nominal and shaped glyphs must agree; native advances must match the
+font's glyph advances; positions must start at zero and remain exactly contiguous. The stored
+values are native positions, never calculated cell widths. Unsupported mappings and the final
+line boundary keep the original caret query. The data lives only in the temporary layout value.
+
+One glyph per character is insufficient by itself. A real kerned Times-Roman fixture has native
+carets approximately 1.03 pt away from glyph origins. Independent boundary tests retain that
+counterexample, ligature interiors, native monospaced text and trailing spaces. Native API
+characterizations on both host and iOS also check every printable ASCII character.
+
+The guarded mapping reduces sampled layout-helper work from 195 ms to 88 ms in a same-device
+dense replay; native caret queries have no samples in the latter recording. This is a measured
+preparation reduction, not a complete motion verdict. That profiled replay still fails a later
+frame-step bound: its 100 ms callback gap contains 84 ms of sampled main-thread work, including
+61 ms in transaction commit and 58 ms in backing-store work. These inclusive counts overlap.
+The original unprofiled acceptance suite passes all 65 cases. Required CI remains authoritative.
+
 A custom text renderer was rejected. Its rasterization introduced small translated-edge color
 differences, and a rounding option also failed original phone snapshots. The added translation
 check uses the repository's existing 0.999 area / 0.87 perceptual image policy, calibrated by a wrong
@@ -36,19 +66,19 @@ representable by the wire model and exercise client stress behavior; the current
 those long lines without segments. The original 16-value fixture remains a production-reachable
 case. The repair retains all their existing motion bounds.
 
-All 34 focused geometry/native-layout/projection cases, both translated-image cases and the
-unchanged dense motion acceptance pass on the batched path. All 76 original diff snapshots and
-both complete instrumented iOS groups pass on the final sources: 1,168 cases with no failures,
-skips or runtime warnings. Package tests, both unsigned app builds and device Release compilation
-also pass. All 20 native touch cases pass. Unit, both iOS groups and Ui receipts share one source
-digest. The local Mac run finishes red, with image differences, a model-settling failure and a
-640×460 content-minimum observation against the unchanged 640×480 assertion. It also reports
-MDB_MAP_FULL; no cause is inferred from that log alone. The failed suite produces no successful
-Mac receipt or aggregate coverage verdict.
+All 59 focused eligibility/native-layout/projection cases and all 65 original collapse and
+scrolling acceptance cases pass on the guarded mapping. Package tests, both unsigned app builds
+and device Release compilation also pass. Both complete instrumented iOS groups pass: 1,168
+cases, including the original diff snapshots, with no failures, skips or runtime warnings. All
+20 native input cases pass. Unit, both iOS groups and Ui receipts share source digest
+`821005562b2f7bf83fce463ecd5b612fbe1f07fa80efc4ee4cce4d3ebd4fbc58`.
 
-[CI 380](https://github.com/fardavide/granita/actions/runs/40342124350) passes Mac snapshots but
-fails five motion cases in required iOS group 1, including a plain-text case. The dense case's
-first callback is delayed approximately 844 ms while its read costs approximately 0.517 ms;
-application, scene and key window remain active. Local success does not establish a complete
-repair. A separate exact-process CPU recording on the CI runner is the next diagnostic; it must
-retain the primary verdict and receipts and identify its modified diagnostic source separately.
+The local Mac run reports image differences, then stops producing output in its first reader
+menu case. It is interrupted after the idle interval; its partial result records 80 failed cases
+and one passing case. There is no successful Mac receipt or aggregate coverage verdict. The
+unchanged complete Mac suite and numeric coverage gates remain required in CI.
+
+The successful runner recording identifies the exact app process and simulator, keeps both phase
+markers and records the diagnostic source digest separately from the primary required receipts.
+Its temporary fixture and CI recording steps are removed after diagnosis. A fresh complete CI
+attempt must validate the repair; no primary result or coverage receipt is replaced or relabelled.
