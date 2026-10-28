@@ -4,6 +4,30 @@ Where the project is. Update this when a slice lands.
 
 **Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 28 October: the 0.23.1
 repair remains under verification; TestFlight delivery is unverified.**
+[CI 387](https://github.com/fardavide/granita/actions/runs/40746642387), at `638a113`, passes both
+builds, generated files, package tests and iOS group 0, including native input coverage. Mac
+snapshots fail readiness for the remote-readable subject; iOS group 1 still fails original
+collapse bounds and the new selector guard. Coverage stops at these prerequisites without a
+numeric verdict. The complete local iOS results below do not establish a CI repair.
+
+The Mac failure has a deterministic controlled reproduction: a reload during post-ready syntax
+highlighting resets entries while the previous fetch still owns their in-flight IDs. The repair
+ends fetch ownership before awaiting highlighting or images. Both controlled cases, all157
+related model tests and the complete package suite pass locally. Native Mac and remote
+confirmation remain pending. [0252](decisions/0252-release-content-fetch-ownership-before-decoration.md)
+records the ownership boundary; the snapshot setup and assertions are unchanged.
+Both unsigned Debug apps also pass. Fresh unsigned Release builds return zero, again with the
+exit-code0 SwiftCompile diagnostic; clean compiler diagnostics are not claimed.
+
+Local validation used Xcode27.1 (`27A9275`), whereas CI uses Xcode27.0 (`27A266a`). A separate
+CI-native motion recording is prepared to measure the failing environment. Its separate workflow
+leaves required suites and collectors unchanged. Both one-case local smoke recordings pass,
+contain paired phase markers and exact-process metadata, and restore the original source
+fingerprint. These are recorder checks on the local toolchain, not CI motion evidence. No new
+renderer experiment or conclusion about the remaining motion cause is accepted from this
+toolchain difference alone.
+
+**Previous candidate and local verification.**
 [CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both
 builds, generated files, package tests, Mac snapshots and iOS group 0 with native input coverage.
 Group 1 fails four original collapse cases. Coverage stops at that prerequisite without a

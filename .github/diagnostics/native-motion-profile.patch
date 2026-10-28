@@ -1,0 +1,133 @@
+diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests.swift b/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests.swift
+--- a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests.swift
++++ b/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests.swift
+@@ -1,2 +1,3 @@
+ import Observation
++import os
+ import QuartzCore
+@@ -14,3 +15,21 @@
+ struct ContinuousDiffCollapseInteractionTests {
+-
++
++    @Test
++    func temporaryDenseCollapseCpuProfile() async throws {
++        try await waitForNativeCpuRecorder(for: .dense)
++        try await `given a pinned file when collapsed then the viewport and successor header arrive in one coherent motion`(
++            collapse: .manual,
++            fixture: .denseWordDiffSuccessor
++        )
++    }
++
++    @Test
++    func temporarySelectorCpuProfile() async throws {
++        try await waitForNativeCpuRecorder(for: .selector)
++        try await `given wide files when a later file is selected then the viewport visibly animates to its header`()
++    }
++
+     @Test(arguments: [PinnedFileCollapse.viewed, .manual], [DiffFileHeader.height + 1, 450])
+@@ -225,3 +245,4 @@
+         probe.beginTransition()
++        os_signpost(.begin, log: nativeCpuProfileLog, name: "DenseCollapseCapture")
++        var cpuProfilePhaseOpen = true
++        defer {
++            if cpuProfilePhaseOpen {
++                os_signpost(.end, log: nativeCpuProfileLog, name: "DenseCollapseCapture")
++            }
++        }
+         let first = try #require(probe.samples.first)
+         try #require(abs(first.presentationOffset - scroll.contentOffset.y) < 2)
+@@ -241,4 +262,5 @@
+         try await Task.sleep(for: .seconds(1.2))
+         probe.stop()
++        os_signpost(.end, log: nativeCpuProfileLog, name: "DenseCollapseCapture")
++        cpuProfilePhaseOpen = false
+-
++
+         // then
+@@ -874,5 +896,7 @@
+         // when
++        os_signpost(.begin, log: nativeCpuProfileLog, name: "SelectorCapture")
++        var cpuProfilePhaseOpen = true
++        defer {
++            if cpuProfilePhaseOpen {
++                os_signpost(.end, log: nativeCpuProfileLog, name: "SelectorCapture")
++            }
++        }
+         scenario.model.jumpTarget = entries[2].id
+         try await scenario.settleJump()
+         probe.stop()
++        os_signpost(.end, log: nativeCpuProfileLog, name: "SelectorCapture")
++        cpuProfilePhaseOpen = false
+-
++
+         // then
+@@ -1296,3 +1320,62 @@
++private let nativeCpuProfileLog = OSLog(subsystem: "dev.fardavide.granita.native-cpu-profile", category: "PointsOfInterest")
++
++private enum NativeCpuProfileCase: String {
++    case dense
++    case selector
++}
++
++private struct NativeCpuProfileMetadata: Encodable {
++    let processId: Int32
++    let bundleId: String
++    let caseName: String
++    let uptime: Double
++    let monotonic: Double
++    let wallTime: Double
++    let operatingSystem: String
++    let areAnimationsEnabled: Bool
++    let isReduceMotionEnabled: Bool
++    let applicationState: Int
++    let swiftUiReduceMotion: String
++}
++
++@MainActor
++private func waitForNativeCpuRecorder(for profile: NativeCpuProfileCase) async throws {
++    let base = "/private/tmp/granita-ci-native-motion-" + profile.rawValue
++    let readyUrl = URL(filePath: base + ".ready.json")
++    let armedPath = base + ".armed"
++    try #require(FileManager.default.fileExists(atPath: readyUrl.path) == false)
++    try #require(FileManager.default.fileExists(atPath: armedPath) == false)
++    let metadata = NativeCpuProfileMetadata(
++        processId: ProcessInfo.processInfo.processIdentifier,
++        bundleId: try #require(Bundle.main.bundleIdentifier),
++        caseName: profile.rawValue,
++        uptime: ProcessInfo.processInfo.systemUptime,
++        monotonic: CACurrentMediaTime(),
++        wallTime: Date().timeIntervalSince1970,
++        operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
++        areAnimationsEnabled: UIView.areAnimationsEnabled,
++        isReduceMotionEnabled: UIAccessibility.isReduceMotionEnabled,
++        applicationState: UIApplication.shared.applicationState.rawValue,
++        swiftUiReduceMotion: "unavailable: the existing harness does not expose the SwiftUI environment value"
++    )
++    let data = try JSONEncoder().encode(metadata)
++    try data.write(to: readyUrl, options: .atomic)
++    Attachment.record(Array(data), named: "native-cpu-ready-" + profile.rawValue + ".json")
++    let deadline = ContinuousClock.now.advanced(by: .seconds(120))
++    while FileManager.default.fileExists(atPath: armedPath) == false {
++        try #require(ContinuousClock.now < deadline, "CPU recorder did not start before the setup deadline")
++        try await Task.sleep(for: .milliseconds(10))
++    }
++}
++
+ enum PinnedFileCollapse: Sendable {
+     case viewed
+     case manual
+@@ -1482,3 +1565,15 @@
+     private func capture(at timestamp: CFTimeInterval) {
+         let callbackStarted = CACurrentMediaTime()
++        os_signpost(
++            .event, log: nativeCpuProfileLog, name: "NativeFrame",
++            "elapsed=%{public}.9f animations=%{public}d reduceMotion=%{public}d app=%{public}ld scene=%{public}ld key=%{public}d scrolling=%{public}d",
++            callbackStarted - startedAt,
++            UIView.areAnimationsEnabled ? 1 : 0,
++            UIAccessibility.isReduceMotionEnabled ? 1 : 0,
++            UIApplication.shared.applicationState.rawValue,
++            scroll.window?.windowScene?.activationState.rawValue ?? -1,
++            scroll.window?.isKeyWindow == true ? 1 : 0,
++            scroll.isScrollAnimating ? 1 : 0
++        )
+         guard let presentation = scroll.layer.presentation() else {

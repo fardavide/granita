@@ -1060,50 +1060,54 @@ public final class ClientViewerModel {
     /// once for the batch, and the bar at the bottom is the one thing that asks again.
     private func fetch(_ wanted: [FileID]) async {
         guard wanted.isEmpty == false else { return }
-        inFlight.formUnion(wanted)
-        let saying = sayingTheWaitIsLong()
-        defer {
-            inFlight.subtract(wanted)
-            saying.cancel()
-            if inFlight.isEmpty {
-                isWaitingLong = false
-            }
-        }
-
-        let diffs: [FileDiff]
+        // Content is ready before colouring starts. A reload during colouring must be able to
+        // fetch it again, and this request must release ownership before another can acquire it.
         do {
-            diffs = try await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext)
-        } catch .cancelled {
-            // **The app's own doing, so nothing is marked failed.** A `.task` is torn down whenever
-            // its view goes away, and a card reading *couldn’t read this file* because the reader
-            // pressed Back is the app blaming the Mac for something the app did.
-            return
-        } catch {
-            refuse(wanted, with: error)
-            return
+            inFlight.formUnion(wanted)
+            let saying = sayingTheWaitIsLong()
+            defer {
+                inFlight.subtract(wanted)
+                saying.cancel()
+                if inFlight.isEmpty {
+                    isWaitingLong = false
+                }
+            }
+
+            let diffs: [FileDiff]
+            do {
+                diffs = try await repository.diffs(of: wanted, in: worktree, contextLines: surroundingContext)
+            } catch .cancelled {
+                // **The app's own doing, so nothing is marked failed.** A `.task` is torn down whenever
+                // its view goes away, and a card reading *couldn’t read this file* because the reader
+                // pressed Back is the app blaming the Mac for something the app did.
+                return
+            } catch {
+                refuse(wanted, with: error)
+                return
+            }
+            isRetryingDiffs = false
+            for diff in diffs {
+                guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
+                // The mark and the chevron are the phone's, and a diff arriving is the Mac answering a
+                // question that was asked before either was touched. Keeping what is on screen stops a
+                // mark the reader has just set being taken back off by a batch already in flight.
+                entries[position] = entries[position].arrived(diff)
+            }
+            // **The bar goes when the last blank card does, not when one batch answers.** Two batches can
+            // fail and one of them recover, and a bar that cleared on the first answer would leave the
+            // other five cards saying they failed with nothing left to press.
+            if entries.contains(where: \.isFailed) == false {
+                diffFailure = nil
+                hasTriedDiffsAgain = false
+            }
+            state = .reading(entries)
+            // **A batch landing is the moment a comment on that file becomes placeable.** `load()` orders
+            // a restored review while every file is still awaiting, so the only key available there is
+            // the reported line — the one `ReviewedComment.ordered` documents as wrong across the two
+            // sides. Re-ordering here is what settles it, and it costs nothing on the ordinary screen
+            // because a review is a handful of comments.
+            comments = ReviewedComment.ordered(comments, against: entries)
         }
-        isRetryingDiffs = false
-        for diff in diffs {
-            guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
-            // The mark and the chevron are the phone's, and a diff arriving is the Mac answering a
-            // question that was asked before either was touched. Keeping what is on screen stops a
-            // mark the reader has just set being taken back off by a batch already in flight.
-            entries[position] = entries[position].arrived(diff)
-        }
-        // **The bar goes when the last blank card does, not when one batch answers.** Two batches can
-        // fail and one of them recover, and a bar that cleared on the first answer would leave the
-        // other five cards saying they failed with nothing left to press.
-        if entries.contains(where: \.isFailed) == false {
-            diffFailure = nil
-            hasTriedDiffsAgain = false
-        }
-        state = .reading(entries)
-        // **A batch landing is the moment a comment on that file becomes placeable.** `load()` orders
-        // a restored review while every file is still awaiting, so the only key available there is
-        // the reported line — the one `ReviewedComment.ordered` documents as wrong across the two
-        // sides. Re-ordering here is what settles it, and it costs nothing on the ordinary screen
-        // because a review is a handful of comments.
-        comments = ReviewedComment.ordered(comments, against: entries)
         await highlight()
         await fetchImages(of: wanted)
     }

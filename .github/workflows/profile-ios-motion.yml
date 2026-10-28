@@ -1,0 +1,35 @@
+name: Native motion CPU diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-motion-cpu-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  profile:
+    if: >-
+      github.head_ref == 'fix/release-input-compilation' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      # Default checkout preserves the same synthetic merge revision as required CI.
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/select-xcode
+      - name: Record dense collapse and selector separately
+        run: make profile-ios-motion
+      - name: Preserve diagnostic traces and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-motion-cpu-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/native-motion-profile
+          retention-days: 7
+          if-no-files-found: error

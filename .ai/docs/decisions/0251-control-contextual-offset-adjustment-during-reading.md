@@ -69,3 +69,9 @@ have the same source digest. The local Mac collector reports image differences a
 its reader-menu case; it is interrupted and supplies no successful Mac receipt or aggregate
 coverage verdict. Existing baselines, assertions and numeric gates remain unchanged. Required
 remote checks remain the delivery gate.
+
+[CI 387](https://github.com/fardavide/granita/actions/runs/40746642387), at `638a113`, passes
+group0 and native input coverage but still fails original collapse bounds and the new selector
+guard in group1. This disproves treating the local native results as a complete motion repair.
+The local build uses Xcode27.1 (`27A9275`); CI uses Xcode27.0 (`27A266a`). The remaining cause
+requires measurement on CI's toolchain; this difference alone does not establish causality.
