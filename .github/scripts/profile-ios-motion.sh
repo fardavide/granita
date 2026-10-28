@@ -117,6 +117,9 @@ all)
         sort_by(.runtime.version | split(".") | map(tonumber)) | last | .device.udid | select(type == "string")
     ' "$OUT/devices.json")
     printf '%s\n' "$simulator" > "$OUT/simulator-udid.txt"
+    # Finish cold simulator setup before the diagnostic app's readiness budget starts.
+    xcrun simctl bootstatus "$simulator" -b > "$OUT/simulator-boot.txt"
+    xcrun xctrace list devices > "$OUT/instruments-devices.txt"
     overall_status=0
     for scenario in dense selector; do
         bash "$SCRIPT" capture "$scenario" "$simulator" &
@@ -176,7 +179,7 @@ capture)
         "IOS_PROFILE_TEST=$method" "IOS_PROFILE_RESULT=$CASE_OUT/tests.xcresult" \
         "IOS_SIM=platform=iOS Simulator,id=$simulator" &
     test_pid=$!
-    deadline=$((SECONDS + 180))
+    deadline=$((SECONDS + 300))
     while [[ ! -s "$ready" ]]; do
         if ! kill -0 "$test_pid" 2>/dev/null; then
             wait "$test_pid"
@@ -207,7 +210,7 @@ capture)
     xcrun xctrace record --template 'Time Profiler' --device "$simulator" --attach "$app_pid" \
         --time-limit 10s --notify-tracing-started "$notice" --output "$CASE_OUT/cpu.trace" &
     recorder_pid=$!
-    if read -r -t 30 notification < "$pipe"; then
+    if read -r -t 120 notification < "$pipe"; then
         wait "$notice_pid"
         notice_pid=
         printf '%s\n' "$notification" > "$CASE_OUT/recording-started.txt"

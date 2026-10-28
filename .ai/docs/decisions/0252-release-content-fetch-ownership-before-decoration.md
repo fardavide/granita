@@ -26,3 +26,7 @@ implementation details.
 The two controlled cases, all157 related model tests and the complete package suite pass
 locally. The original Mac snapshot setup, readiness deadline and assertions remain unchanged.
 Native Mac confirmation and required remote checks remain pending.
+
+[CI 388](https://github.com/fardavide/granita/actions/runs/40757911022), at `287a651`, subsequently
+passes the complete Mac snapshot suite and package tests. The original readiness fixture and
+assertions are retained. Its remaining iOS motion failures are a separate investigation.

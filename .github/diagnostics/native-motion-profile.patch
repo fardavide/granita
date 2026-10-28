@@ -106,7 +106,7 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +    let data = try JSONEncoder().encode(metadata)
 +    try data.write(to: readyUrl, options: .atomic)
 +    Attachment.record(Array(data), named: "native-cpu-ready-" + profile.rawValue + ".json")
-+    let deadline = ContinuousClock.now.advanced(by: .seconds(120))
++    let deadline = ContinuousClock.now.advanced(by: .seconds(240))
 +    while FileManager.default.fileExists(atPath: armedPath) == false {
 +        try #require(ContinuousClock.now < deadline, "CPU recorder did not start before the setup deadline")
 +        try await Task.sleep(for: .milliseconds(10))
