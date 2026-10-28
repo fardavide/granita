@@ -2,8 +2,60 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 28 October: required CI
-remains red; the complete repair and TestFlight delivery are not verified.**
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 28 October: the 0.23.1
+repair remains under verification; TestFlight delivery is unverified.**
+[CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0 with native input coverage.
+Group 1 fails four original collapse cases. Coverage stops at that prerequisite without a
+numeric verdict.
+
+The retained candidate preserves complete native text and adds identity content transitions to
+its two rendering branches. The synchronized dense replay passes its original assertions with
+452 ms of sampled main-thread work, compared with 996 ms in the earlier full-text control. The
+visible-text-window experiment is removed after the complete-text control supplies the same
+benefit. [0250](decisions/0250-keep-text-content-updates-out-of-file-layout-animation.md) records
+the controls and provenance.
+
+Four transaction modifiers now control contextual offset adjustment. User-positioned reading
+disables adjustment; initial seeded positions retain it, while changed file entries, code point
+size or split mode restore automatic adjustment. The existing typed position and native
+animation remain. A clean `71c50ff` control
+without either Text modifier also reproduces the original 450pt reset, so that reset is not
+attributed to the rendering optimization.
+[0251](decisions/0251-control-contextual-offset-adjustment-during-reading.md) records the policy,
+rejected alternatives and limitations.
+
+The candidate passes ten complete repetitions of the original later-file case, including its
+horizontal motion and image assertions; the new selector guard passes actual native animation
+and exact selected-header arrival. The complete interaction class passes all66 executions
+across18 functions; all56 existing reader snapshots also pass. Original65 assertions, physical travel guards, baselines, deadlines,
+animation curves and coverage gates remain unchanged. Temporary diagnostic probes and fixture
+seams are removed. Source digest is
+`0b4f700d2274896fcd4b18c89b70f4f593db7cd41375cb2fa366c62db25299d2`.
+
+Paired font, stale-comment removal and split-width controls match ordinary behavior; their
+existing reading-line changes are neither repaired nor reported as candidate regressions.
+The image-caption Dynamic Type control is unexercised because it produces no measured growth
+above the live reader. It supplies no layout-policy evidence. The optional-ID request controls
+are removed after the selector guard catches instantaneous movement and wrong-header arrival.
+
+The preceding unconditional policy passes587 group0 executions but fails two preselected-file
+iPad snapshots. The ordinary-policy comparison passes all56 reader snapshots. Restricting the
+disabled default to user-positioned state repairs those failures without changing their images.
+
+The corrected source passes package tests, both unsigned Debug and Release apps, generated-file
+verification, 1,169 instrumented iOS cases and22 native UI cases. Unit, both iOS groups and Ui
+receipts share the source digest above. There are no iOS failures or skips; structured runtime
+warnings are empty, while existing console warnings remain. Release returns zero but still
+emits the exit-code0 SwiftCompile diagnostic, so clean compiler diagnostics are not claimed.
+
+The local Mac run reports the documented image differences and stalls in its reader-menu case.
+It is interrupted, leaving no successful Mac receipt or aggregate coverage verdict. No previous
+Mac profile is substituted. Delivery is tracked by [PR #129](https://github.com/fardavide/granita/pull/129)
+and still requires every required remote check to pass. Version0.23.1 and release notes are
+included; merge and TestFlight delivery remain separate from this verification.
+
+**Previous position-update candidate.**
 [CI 385](https://github.com/fardavide/granita/actions/runs/40531226511), at `be99bcc`, passes both
 builds, generated files, package tests, Mac snapshots and iOS group 0. Group 1 fails the original
 motion bounds and a later-file scrolling setup guard. Coverage stops at that prerequisite with

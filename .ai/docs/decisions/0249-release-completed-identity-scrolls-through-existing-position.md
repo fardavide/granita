@@ -38,3 +38,19 @@ warnings. Their receipts and Unit share source digest
 `7f071b25a8a8e140c7cf37ad229aec2d6d098860eceedf8f7e1f010e9ae3e8a2`.
 The local Mac run remains red on images and is interrupted during its reader menu case, so it
 provides no aggregate coverage verdict. Every required CI check must still pass before delivery.
+
+## Later falsification, 28 October
+
+The ten passing repetitions above do not establish reliable release. Later clean-source runs
+again restore the requested 450 pt movement, including five failures in ten flag-only repeats.
+A failure-only numbered-gutter image confirms the last file remains at line 1; model and
+presentation offsets are both 5762 before and after capture, rather than the requested 6212.
+This does not establish whether an intervening advanced frame was ever presented.
+
+Moving release to public native idle, replacing the position after both idle and completion,
+refreshing the binding, delaying acknowledgement, disabling targets after completion and
+clearing a local edge command before one assignment each remain insufficient. Disabling
+contextual offset adjustment passes the bounded preparation and native-motion checks, while
+the same modifier with automatic adjustment reproduces the reset. Its broader layout policy
+is not adopted. The existing release implementation remains under investigation; its earlier
+receipts must not be presented as current delivery proof.

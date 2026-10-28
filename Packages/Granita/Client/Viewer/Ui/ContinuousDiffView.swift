@@ -272,6 +272,14 @@ public struct ContinuousDiffView: View {
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
         .scrollPosition($scrolledTo, anchor: .top)
+        .transaction(value: entries) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction(value: pointSize) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction(value: isSplit) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction { transaction in
+            if scrolledTo.isPositionedByUser {
+                transaction.scrollContentOffsetAdjustmentBehavior = .disabled
+            }
+        }
         .scrollDisabled(isSelectingLines)
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)

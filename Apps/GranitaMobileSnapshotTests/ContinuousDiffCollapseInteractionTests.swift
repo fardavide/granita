@@ -834,6 +834,92 @@ struct ContinuousDiffCollapseInteractionTests {
     }
 
     @Test
+    func `given wide files when a later file is selected then the viewport visibly animates to its header`() async throws {
+        // given
+        let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
+        let entries = ["Sources/First.swift", "Sources/Middle.swift", "Sources/Last.swift"]
+            .map { aRenderedFile(path: $0, lineCount: 160, repeatedLine: wideCode) }
+        let expectedLastHeader: Data
+        do {
+            let reference = try Scenario(entries: [entries[2]])
+            defer { reference.close() }
+            reference.settleLayout()
+            try await reference.settleJump()
+            let referenceScroll = try #require(reference.verticalScroll)
+            let headers = try reference.visibleHeaders(in: referenceScroll)
+            try #require(headers.count == 1)
+            let header = try #require(headers.first)
+            expectedLastHeader = try reference.imageData(in: header.frame)
+        }
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialHeaders = try scenario.visibleHeaders(in: scroll)
+        try #require(initialHeaders.count == 1)
+        let initialHeader = try #require(initialHeaders.first)
+        try #require(scenario.model.readingPositions.contains(2) == false)
+        let probe = ViewportMotionProbe(scroll: scroll)
+        probe.start()
+        defer { probe.stop() }
+        let observationReadyDeadline = CACurrentMediaTime() + 1
+        while probe.samples.count < 3, CACurrentMediaTime() < observationReadyDeadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(probe.samples.count >= 3)
+        probe.beginTransition()
+        let first = try #require(probe.samples.first)
+        try #require(abs(first.presentationOffset - scroll.contentOffset.y) < 2)
+
+        // when
+        scenario.model.jumpTarget = entries[2].id
+        try await scenario.settleJump()
+        probe.stop()
+
+        // then
+        let last = try #require(probe.samples.last)
+        let observedTravel = last.presentationOffset - first.presentationOffset
+        let intermediateFrames = probe.samples.filter {
+            $0.presentationOffset > first.presentationOffset + 2
+                && $0.presentationOffset < last.presentationOffset - 2
+        }.count
+        let largestFrameStep = zip(probe.samples, probe.samples.dropFirst())
+            .map { abs($0.presentationOffset - $1.presentationOffset) }
+            .max() ?? 0
+        let observedAnimatedMovement = zip(probe.samples, probe.samples.dropFirst()).contains { previous, current in
+            current.isScrollAnimating && abs(current.presentationOffset - previous.presentationOffset) > 2
+        }
+        let trace = probe.samples.enumerated().map { index, sample in
+            "sample=\(index), time=\(sample.elapsed), callbackTime=\(sample.callbackElapsed), model=\(sample.modelOffset), presentation=\(sample.presentationOffset), isScrollAnimating=\(sample.isScrollAnimating), nativeAnimations=\(sample.nativeClocks.reduce(0) { $0 + $1.timing.animationCount })"
+        }.joined(separator: "\n")
+        let finalHeaders = try scenario.visibleHeaders(in: scroll)
+        let diagnostic = Comment(rawValue: """
+        selectedFile=\(entries[2].id), jumpTarget=\(String(describing: scenario.model.jumpTarget)), readingPositions=\(scenario.model.readingPositions)
+        observedTravel=\(observedTravel), observedAnimatedMovement=\(observedAnimatedMovement), intermediateFrames=\(intermediateFrames), largestFrameStep=\(largestFrameStep)
+        missingPresentationFrames=\(probe.missingPresentationFrames), observedFrames=\(probe.samples.count)
+        initialHeader=\(initialHeader), finalHeaders=\(finalHeaders)
+        \(trace)
+        """)
+        Attachment.record(trace, named: "native-selector-motion.txt")
+        #expect(scenario.model.jumpTarget == nil, diagnostic)
+        #expect(scenario.model.readingPositions.contains(2), diagnostic)
+        #expect(observedTravel > scroll.bounds.height * 2, diagnostic)
+        #expect(probe.missingPresentationFrames == 0, diagnostic)
+        #expect(abs(last.presentationOffset - scroll.contentOffset.y) < 2, diagnostic)
+        #expect(observedAnimatedMovement, diagnostic)
+        let arrivedHeaders = finalHeaders.filter { abs($0.frame.minY - initialHeader.frame.minY) < 2 }
+        try #require(arrivedHeaders.count == 1, diagnostic)
+        let finalHeader = try #require(arrivedHeaders.first, diagnostic)
+        #expect(finalHeader.identity != initialHeader.identity, diagnostic)
+        let arrivedHeaderImage = try scenario.imageData(in: finalHeader.frame)
+        if arrivedHeaderImage != expectedLastHeader {
+            Attachment.record(Array(expectedLastHeader), named: "expected-last-header.png")
+            Attachment.record(Array(arrivedHeaderImage), named: "arrived-header.png")
+        }
+        #expect(arrivedHeaderImage == expectedLastHeader, diagnostic)
+    }
+
+    @Test
     func `given the viewport is inside a later file when its code scrolls horizontally then the vertical reading position stays unchanged`() async throws {
         // given
         let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
@@ -1306,6 +1392,7 @@ private struct ViewportMotionSample {
     let windowIsKey: Bool?
     let modelOffset: CGFloat
     let presentationOffset: CGFloat
+    let isScrollAnimating: Bool
     let headerCandidates: [HeaderCandidate]
     let headerFrames: [HeaderPresentation]
     let nativeClocks: [NativeLayerClock]
@@ -1448,6 +1535,7 @@ private final class ViewportMotionProbe: NSObject {
             windowIsKey: scroll.window?.isKeyWindow,
             modelOffset: scroll.contentOffset.y,
             presentationOffset: presentation.bounds.origin.y,
+            isScrollAnimating: scroll.isScrollAnimating,
             headerCandidates: headerCandidates,
             headerFrames: headerFrames,
             nativeClocks: nativeClocks

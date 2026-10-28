@@ -785,6 +785,7 @@ private struct DiffLineAttributedText: View, Equatable {
             // would be a second, stronger copy of the row tint drawn on top of the row tint.
             return Text(attributed)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
+                .contentTransition(.identity)
         }
         let characters = attributed.characters
         let ranges = backgroundRanges(in: drawn.changed, attributed: attributed)
@@ -798,6 +799,7 @@ private struct DiffLineAttributedText: View, Equatable {
             characterOffset = range.upperBound
         }
         return Text(attributed)
+            .contentTransition(.identity)
     }
 
     private func backgroundRanges(in ranges: [Range<Int>], attributed: AttributedString) -> [Range<Int>] {
