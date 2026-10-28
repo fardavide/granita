@@ -55,6 +55,24 @@ frame-step bound: its 100 ms callback gap contains 84 ms of sampled main-thread 
 61 ms in transaction commit and 58 ms in backing-store work. These inclusive counts overlap.
 The original unprofiled acceptance suite passes all 65 cases. Required CI remains authoritative.
 
+[CI 385](https://github.com/fardavide/granita/actions/runs/40531226511) subsequently fails motion
+bounds, including the plain fixture, and a later-file scrolling setup check. Coverage stops at
+that failed prerequisite and produces no numeric verdict. The native mapping reduction therefore
+does not establish a complete repair.
+
+Two further counterfactuals are not retained. Issuing alignment in the collapse update removes a
+measured request stagger and reaches the final viewport earlier, but does not establish coupled
+native motion; some final header lag increases. Moving the same fade mask from the complete hunk
+to each row passes one profiled replay but does not reduce glyph painting: same-device dense-phase
+samples in `CGSColorMaskCopyARGB8888` rise from 316 ms to 336 ms. The unchanged control fails a
+105.67 pt frame step against the original 99 pt bound. A passing replay alone is not evidence for
+retaining the mask change.
+
+Making only proven offscreen text transparent is also rejected. Glyph-copy samples fall from
+316 ms to 75 ms, but native glyph transparency introduces 553 ms of transparency-layer work.
+The dense replay then fails the original intermediate-frame, frame-step and arrival-lag checks.
+Keeping the complete string while changing its offscreen alpha is not a rendering-cost repair.
+
 A custom text renderer was rejected. Its rasterization introduced small translated-edge color
 differences, and a rounding option also failed original phone snapshots. The added translation
 check uses the repository's existing 0.999 area / 0.87 perceptual image policy, calibrated by a wrong

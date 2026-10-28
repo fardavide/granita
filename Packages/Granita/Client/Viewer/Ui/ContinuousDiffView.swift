@@ -367,7 +367,7 @@ public struct ContinuousDiffView: View {
         } completion: {
             // A completed request must not realign later hunk layout. A newer request owns it.
             if scrolledTo.viewID(type: ScrollDestination.self) == destination {
-                scrolledTo = ScrollPosition()
+                scrolledTo.isPositionedByUser = true
             }
             if let request, pendingAdvance == request {
                 pendingAdvance = nil

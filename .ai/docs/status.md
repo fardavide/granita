@@ -2,9 +2,31 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 27 October: the 0.23.1
-repair is prepared; TestFlight delivery is not verified.** Package tests, both unsigned app builds,
-optimized device Release compilation and generated-file verification pass. The guarded native
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 28 October: required CI
+remains red; the complete repair and TestFlight delivery are not verified.**
+[CI 385](https://github.com/fardavide/granita/actions/runs/40531226511), at `be99bcc`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Group 1 fails the original
+motion bounds and a later-file scrolling setup guard. Coverage stops at that prerequisite with
+no numeric verdict.
+
+The next candidate changes only completion's position update: mark the existing position as
+user-positioned instead of replacing it with an empty value. It passes ten focused repetitions,
+all 65 original interaction executions with runtime diagnostics removed, and real same-file
+reselection after a pan. The production selector/vertical/horizontal touch control also passes.
+[0249](decisions/0249-release-completed-identity-scrolls-through-existing-position.md) records the
+native reset evidence and rejected controls.
+
+The final source passes package tests, both unsigned app builds, generated-file verification,
+optimized device Release compilation, 1,168 instrumented iOS cases and 22 native touch cases.
+There are no iOS skips or runtime warnings. Unit, both iOS groups and Ui receipts share source
+digest `7f071b25a8a8e140c7cf37ad229aec2d6d098860eceedf8f7e1f010e9ae3e8a2`.
+The local Mac run again reports image differences and stops producing output in its reader menu
+case; it is interrupted and provides no successful Mac receipt or aggregate coverage verdict.
+The existing assertions, baselines and gates remain intact. A fresh complete CI attempt is
+required before the repair is considered delivered; no merge or release has been performed.
+
+The preceding guarded-mapping source passed package tests, both unsigned app builds,
+optimized device Release compilation and generated-file verification. The guarded native
 position refinement passes 59 focused cases, all 65 original collapse/scrolling acceptance cases,
 all 1,168 instrumented iOS cases and all 20 native input cases. Unit, both iOS groups and Ui
 receipts share source digest `821005562b2f7bf83fce463ecd5b612fbe1f07fa80efc4ee4cce4d3ebd4fbc58`.

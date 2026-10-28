@@ -171,6 +171,126 @@ final class ContinuousDiffHorizontalSwipeUiTests: XCTestCase {
         try assertHorizontalSwipeKeepsVerticalPosition(in: app)
     }
 
+    func testHorizontalSwipeKeepsVerticalPositionAfterSelectingAndScrollingThirdFile() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["selector-jump"]
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let initialHeaderY = app.buttons["Sources/First.swift"].frame.minY
+        app.buttons["Files"].tap()
+        let filesHeading = app.staticTexts["Files"].firstMatch
+        XCTAssertTrue(filesHeading.waitForExistence(timeout: 15), app.debugDescription)
+        let thirdFileRow = try XCTUnwrap(
+            app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added, Sources/Third.swift,"))
+                .allElementsBoundByIndex.first { $0.isHittable },
+            app.debugDescription
+        )
+        thirdFileRow.tap()
+
+        // Dismiss the real drawer by its native drag affordance, leaving the selected reader visible.
+        let drawerHandle = app.buttons["Sheet Grabber"]
+        XCTAssertTrue(drawerHandle.isHittable, app.debugDescription)
+        drawerHandle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96)))
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: filesHeading)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 15), .completed, app.debugDescription)
+        try waitForStatus("settled", in: app)
+        let thirdHeader = app.buttons["Sources/Third.swift"]
+        XCTAssertTrue(thirdHeader.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(thirdHeader.isHittable, app.debugDescription)
+        XCTAssertLessThan(abs(thirdHeader.frame.minY - initialHeaderY), 2, "Choosing the third file did not bring its header to the reader's viewport")
+        let selectedPosition = try number("verticalPosition", in: app)
+
+        // when
+        let verticalStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
+        let verticalEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
+        verticalStart.press(forDuration: 0.05, thenDragTo: verticalEnd)
+        try waitForStatus("settled", in: app)
+
+        // then
+        XCTAssertGreaterThan(try number("verticalPosition", in: app) - selectedPosition, 100, "A real vertical pan did not advance into the selected third file")
+        XCTAssertTrue(thirdHeader.isHittable, app.debugDescription)
+        XCTAssertLessThan(abs(thirdHeader.frame.minY - initialHeaderY), 2, "The third file's header did not remain pinned while reading its code")
+        try assertHorizontalSwipeKeepsVerticalPosition(in: app)
+    }
+
+    func testReselectingThirdFileReturnsToItsFirstCodeLineAfterVerticalPan() throws {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["selector-jump"]
+        app.launch()
+        defer { app.terminate() }
+        try waitForStatus("settled", in: app)
+        let initialHeaderY = app.buttons["Sources/First.swift"].frame.minY
+        app.buttons["Files"].tap()
+        let filesHeading = app.staticTexts["Files"].firstMatch
+        XCTAssertTrue(filesHeading.waitForExistence(timeout: 15), app.debugDescription)
+        let thirdFileRow = try XCTUnwrap(
+            app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added, Sources/Third.swift,"))
+                .allElementsBoundByIndex.first { $0.isHittable },
+            app.debugDescription
+        )
+        thirdFileRow.tap()
+        let drawerHandle = app.buttons["Sheet Grabber"]
+        XCTAssertTrue(drawerHandle.isHittable, app.debugDescription)
+        drawerHandle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96)))
+        let firstDismissal = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: filesHeading)
+        XCTAssertEqual(XCTWaiter.wait(for: [firstDismissal], timeout: 15), .completed, app.debugDescription)
+        try waitForStatus("settled", in: app)
+        let thirdHeader = app.buttons["Sources/Third.swift"]
+        XCTAssertTrue(thirdHeader.isHittable, app.debugDescription)
+        XCTAssertLessThan(abs(thirdHeader.frame.minY - initialHeaderY), 2)
+        let firstCodeLine = try XCTUnwrap(
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "1"))
+                .allElementsBoundByIndex.first { $0.isHittable && app.frame.contains($0.frame) },
+            "The selected third file's first line is not visible. \(app.debugDescription)"
+        )
+        let firstCodeLineY = firstCodeLine.frame.minY
+        let selectedPosition = try number("verticalPosition", in: app)
+        let verticalStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
+        let verticalEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
+        verticalStart.press(forDuration: 0.05, thenDragTo: verticalEnd)
+        try waitForStatus("settled", in: app)
+        XCTAssertGreaterThan(try number("verticalPosition", in: app) - selectedPosition, 100)
+        XCTAssertFalse(
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "1"))
+                .allElementsBoundByIndex.contains { $0.isHittable && app.frame.contains($0.frame) },
+            "The real vertical pan must leave the third file's first line above the viewport"
+        )
+
+        // when
+        app.buttons["Files"].tap()
+        XCTAssertTrue(filesHeading.waitForExistence(timeout: 15), app.debugDescription)
+        let sameThirdFileRow = try XCTUnwrap(
+            app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Added, Sources/Third.swift,"))
+                .allElementsBoundByIndex.first { $0.isHittable },
+            app.debugDescription
+        )
+        sameThirdFileRow.tap()
+        XCTAssertTrue(drawerHandle.isHittable, app.debugDescription)
+        drawerHandle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.96)))
+        let secondDismissal = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: filesHeading)
+        XCTAssertEqual(XCTWaiter.wait(for: [secondDismissal], timeout: 15), .completed, app.debugDescription)
+        try waitForStatus("settled", in: app)
+
+        // then
+        XCTAssertTrue(thirdHeader.isHittable, app.debugDescription)
+        XCTAssertLessThan(abs(thirdHeader.frame.minY - initialHeaderY), 2, "Reselecting the third file did not return its header to the original top")
+        let returnedFirstCodeLine = try XCTUnwrap(
+            app.staticTexts.matching(NSPredicate(format: "label == %@", "1"))
+                .allElementsBoundByIndex.first { $0.isHittable && app.frame.contains($0.frame) },
+            "Reselecting the same file did not bring its first code line back. \(app.debugDescription)"
+        )
+        XCTAssertLessThan(abs(returnedFirstCodeLine.frame.minY - firstCodeLineY), 2, "The first code line did not return to its original reading position")
+        XCTAssertLessThan(abs(try number("verticalPosition", in: app) - selectedPosition), 2)
+    }
+
     private func assertHorizontalSwipeKeepsVerticalPosition(in app: XCUIApplication) throws {
         let verticalBefore = try number("verticalPosition", in: app)
         app.buttons["Observe swipe"].tap()
