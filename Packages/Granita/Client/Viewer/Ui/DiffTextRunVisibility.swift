@@ -3,16 +3,13 @@ import Foundation
 import SwiftUI
 
 enum DiffTextRunVisibility {
+    private static let nonPrintableAscii = CharacterSet(charactersIn: "\u{20}"..."\u{7E}").inverted
+
     static func supportsCulling(sourceText: String, highlighting: AttributedString?) -> Bool {
-        var source = sourceText
-        guard source.withUTF8({ bytes in
-            bytes.allSatisfy { (0x20...0x7E).contains($0) }
-        }) else { return false }
+        guard sourceText.rangeOfCharacter(from: nonPrintableAscii) == nil else { return false }
         guard let highlighting else { return true }
-        var highlightedText = String(highlighting.characters)
-        guard highlightedText.withUTF8({ bytes in
-            bytes.allSatisfy { (0x20...0x7E).contains($0) }
-        }) else { return false }
+        let highlightedText = String(highlighting.characters)
+        guard highlightedText.rangeOfCharacter(from: nonPrintableAscii) == nil else { return false }
         return highlighting.runs.allSatisfy { run in
             var foregroundOnly = AttributeContainer()
             foregroundOnly.foregroundColor = run.foregroundColor

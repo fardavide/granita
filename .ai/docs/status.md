@@ -4,10 +4,10 @@ Where the project is. Update this when a slice lands.
 
 **Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 29 October: the 0.23.1
 repair remains under verification; TestFlight delivery is unverified.**
-[CI 389](https://github.com/fardavide/granita/actions/runs/40771650438), at `4ee62e0`, passes both
+[CI 390](https://github.com/fardavide/granita/actions/runs/40831796614), at `1a16e49`, passes both
 builds, generated files, package tests, Mac snapshots and iOS group 0, including native input
-coverage. Group 1 records four collapse-motion failures and one selector failure. The preceding
-run failed two collapse cases while passing the selector, so the failing cases vary without a
+coverage. Group 1 records collapse-motion and selector failures. Earlier runs fail different
+collapse cases and sometimes pass the selector, so the failing cases vary without a
 production motion change. Coverage stops at the failed suite
 without a numeric verdict. The complete local iOS results below do not establish a CI repair.
 
@@ -20,21 +20,35 @@ the ownership boundary; the snapshot setup and assertions are unchanged.
 Both unsigned Debug apps also pass. Fresh unsigned Release builds return zero, again with the
 exit-code0 SwiftCompile diagnostic; clean compiler diagnostics are not claimed.
 
-Local validation used Xcode27.1 (`27A9275`), whereas CI uses Xcode27.0 (`27A266a`). A separate
-CI-native motion recording is prepared to measure the failing environment. Its separate workflow
-leaves required suites and collectors unchanged. The first remote recording fails before the
-motion: simulator readiness exceeds its setup budget, then the recorder never confirms startup.
-It supplies no CPU trace. It confirms the earlier CI compiler and enabled UIKit animations.
-The next diagnostic explicitly boots and waits for the simulator, enumerates Instruments devices,
-and allows longer diagnostic-only setup waits. Both revised one-case local smoke recordings
-pass and restore the original source fingerprint. The revised remote run completes boot and
-captures a valid selector trace with its exact PID and paired phase markers. The first recorder
-still fails its startup handshake, so dense motion remains unmeasured. The next control reverses
-the diagnostic case order to test first-start dependence; both local captures pass in that order.
-Original motion deadlines remain unchanged.
-These are recorder checks on the local toolchain, not CI motion evidence. No new
-renderer experiment or conclusion about the remaining motion cause is accepted from this
-toolchain difference alone.
+Local validation uses Xcode 27.1 (`27A9275`), whereas CI uses Xcode 27.0 (`27A266a`). The
+[third separate native recording](https://github.com/fardavide/granita/actions/runs/40831796653)
+captures both original failures with exact PIDs, paired phase markers and active app, scene and
+key window. UIKit animations are enabled and UIKit Reduce Motion is false. Dense motion has a
+frame gap of one second containing 846 ms of sampled main-thread work; overlapping inclusive
+costs include 338 ms preparing backgrounds and 182 ms preparing glyph positions. The selector
+also fails with a valid trace. Both recordings restore the original source fingerprint. The 23
+downloaded files used for analysis, including exported samples, markers and matching binaries,
+match the artifact's checksum manifest. Earlier recorder-start failures provide no CPU evidence;
+reversing case order supplies usable traces but does not establish startup-order causality.
+Original motion deadlines and the required workflow and collectors remain unchanged.
+
+The current candidate batches nominal glyph and advance comparisons, retains validated native
+points, and uses immutable Foundation membership for the same printable-ASCII eligibility.
+The matched local dense profile lowers background preparation from 128 to 76 ms and total
+sampled main work from 460 to 417 ms. This is local evidence requiring remote confirmation.
+All 45 geometry/eligibility cases, 66 original interaction executions, 56 reader snapshots,
+the complete package suite, both unsigned Debug apps and generated-file verification pass.
+Fresh unsigned Mac and device Release builds return zero with the existing SwiftCompile
+exit-code-zero diagnostic. Fresh Unit, 1,169 iOS and 22 native touch/adapter executions pass;
+their receipts share source digest
+`eb848a572da095638cf56d6f1fe6844f70e2f8df4dbd09f806736ba2c4018225`.
+The local Mac run records image mismatches and is interrupted at the user's request because
+its windows repeatedly take focus. No successful Mac receipt or aggregate verdict is produced.
+Required remote checks remain pending; the existing Mac CI job runs on a separate GitHub-hosted
+MacCloud machine.
+[0253](decisions/0253-batch-native-background-validation-and-ascii-membership.md)
+records the measured and rejected controls; rendering, native fallbacks and all original gates
+remain intact. Temporary profiling infrastructure still needs removal before final delivery.
 
 **Previous candidate and local verification.**
 [CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both

@@ -5,7 +5,7 @@ import Foundation
 struct DiffTextBackgroundLayout {
     private let line: CTLine
     private let fontGlyphBounds: CGRect
-    private let glyphPositions: [CGFloat]
+    private let glyphPositions: [CGPoint]
 
     init(text: String, font: CTFont) {
         line = CTLineCreateWithAttributedString(NSAttributedString(
@@ -62,12 +62,12 @@ struct DiffTextBackgroundLayout {
 
     private func offset(at index: Int) -> CGFloat {
         if glyphPositions.indices.contains(index) {
-            return glyphPositions[index]
+            return glyphPositions[index].x
         }
         return CTLineGetOffsetForStringIndex(line, index, nil)
     }
 
-    private static func glyphPositions(in line: CTLine, text: String, font: CTFont) -> [CGFloat] {
+    private static func glyphPositions(in line: CTLine, text: String, font: CTFont) -> [CGPoint] {
         guard CTFontGetSymbolicTraits(font).contains(.traitMonoSpace),
               DiffTextRunVisibility.supportsCulling(sourceText: text, highlighting: nil),
               let runs = CTLineGetGlyphRuns(line) as? [CTRun],
@@ -94,12 +94,12 @@ struct DiffTextBackgroundLayout {
         _ = CTFontGetAdvancesForGlyphs(font, .horizontal, nominalGlyphs, &nominalAdvances, count)
 
         // Kerning can separate glyph origins from carets even with one glyph per character.
-        guard positions.first == CGPoint.zero else { return [] }
+        guard glyphs == nominalGlyphs, advances == nominalAdvances,
+              positions.first == CGPoint.zero else { return [] }
         for index in positions.indices {
-            guard indices[index] == index, glyphs[index] == nominalGlyphs[index],
+            guard indices[index] == index,
                   positions[index].x.isFinite, positions[index].y.isFinite,
-                  advances[index].width.isFinite, advances[index].height.isFinite,
-                  advances[index] == nominalAdvances[index] else { return [] }
+                  advances[index].width.isFinite, advances[index].height.isFinite else { return [] }
             if index > 0 {
                 let previous = positions[index - 1]
                 let advance = advances[index - 1]
@@ -107,6 +107,6 @@ struct DiffTextBackgroundLayout {
                       positions[index].y == previous.y + advance.height else { return [] }
             }
         }
-        return positions.map(\.x)
+        return positions
     }
 }
