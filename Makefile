@@ -184,18 +184,6 @@ coverage-ios-pack: ## Archive instrumented iOS products without stale counters
 coverage-ios-restore: ## Restore products from this revision, run attempt and toolchain
 	bash .github/scripts/ios-test-products.sh restore
 
-.PHONY: profile-ios-motion profile-ios-motion-test
-profile-ios-motion: ## Record the two temporary CI-only native motion diagnostics
-	bash .github/scripts/profile-ios-motion.sh all '$(IOS_SIM_NAME)'
-
-profile-ios-motion-test: ## Execute one diagnostic from fresh, verified instrumented products
-	bash .github/scripts/profile-ios-motion.sh verify
-	xcodebuild test-without-building -xctestrun '$(IOS_PROFILE_XCTESTRUN)' \
-		-destination '$(IOS_SIM)' -parallel-testing-enabled NO \
-		-only-testing:GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests/$(IOS_PROFILE_TEST) \
-		-resultBundlePath '$(IOS_PROFILE_RESULT)' -collect-test-diagnostics never \
-		-enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO
-
 .PHONY: coverage-duplicate-check
 coverage-duplicate-check: ## Prove duplicate shard mappings do not alter the merged export
 	bash .github/scripts/compare-ios-mappings.sh

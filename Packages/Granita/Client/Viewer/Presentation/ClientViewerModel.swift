@@ -746,8 +746,9 @@ public final class ClientViewerModel {
     /// the device afternoon's list, which is where it can be seen.
     public func expand(_ direction: ContextDirection, hunk index: Int, in file: FileID) async {
         guard let position = entries.firstIndex(where: { $0.id == file }),
-              case .ready(let diff) = entries[position].content,
-              let hunkPosition = diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+              case .ready(let prepared) = entries[position].content,
+              let hunkPosition = prepared.diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+        let diff = prepared.diff
         let hunk = diff.hunks[hunkPosition]
         let window = switch direction {
         case .above:
@@ -774,8 +775,9 @@ public final class ClientViewerModel {
             // Found again rather than reused: a batch may have replaced this file while the lines
             // were in flight, and splicing into the copy taken before the request would drop it.
             guard let now = entries.firstIndex(where: { $0.id == file }),
-                  case .ready(let diff) = entries[now].content,
-                  let hunkPosition = diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+                  case .ready(let prepared) = entries[now].content,
+                  let hunkPosition = prepared.diff.hunks.firstIndex(where: { $0.index == index }) else { return }
+            let diff = prepared.diff
             var hunks = diff.hunks
             hunks[hunkPosition] = switch direction {
             case .above: ContextExpansion.expanded(hunks[hunkPosition], above: read.lines)
@@ -891,8 +893,8 @@ public final class ClientViewerModel {
     /// wrong line and finds out on the Mac.
     public var composerExcerpt: [ExcerptLine] {
         guard let pending = draft.pending,
-              case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
-              let rows = CommentSelection.rows(of: diff, from: pending.from, to: pending.to) else {
+              case .ready(let prepared)? = entries.first(where: { $0.id == pending.file })?.content,
+              let rows = CommentSelection.rows(of: prepared.diff, from: pending.from, to: pending.to) else {
             return []
         }
         // The same spelling the export uses, which is the whole claim the excerpt makes: what the
@@ -942,8 +944,8 @@ public final class ClientViewerModel {
     /// **Only a file whose diff is in hand can carry one**, which costs nothing: the ends came from
     /// rows the screen drew, and a file that is awaiting or shut has drawn none.
     public func comment(on file: FileID, from: DiffLinePosition, to: DiffLinePosition, saying text: String) {
-        guard case .ready(let diff)? = entries.first(where: { $0.id == file })?.content,
-              let written = CommentSelection.comment(on: diff, from: from, to: to, saying: text) else {
+        guard case .ready(let prepared)? = entries.first(where: { $0.id == file })?.content,
+              let written = CommentSelection.comment(on: prepared.diff, from: from, to: to, saying: text) else {
             commentFailure = true
             return
         }
@@ -1085,13 +1087,14 @@ public final class ClientViewerModel {
                 refuse(wanted, with: error)
                 return
             }
+            let preparedDiffs = await Self.prepare(diffs)
             isRetryingDiffs = false
-            for diff in diffs {
-                guard let position = entries.firstIndex(where: { $0.id == diff.file.id }) else { continue }
+            for prepared in preparedDiffs {
+                guard let position = entries.firstIndex(where: { $0.id == prepared.diff.file.id }) else { continue }
                 // The mark and the chevron are the phone's, and a diff arriving is the Mac answering a
                 // question that was asked before either was touched. Keeping what is on screen stops a
                 // mark the reader has just set being taken back off by a batch already in flight.
-                entries[position] = entries[position].arrived(diff)
+                entries[position] = entries[position].arrived(prepared)
             }
             // **The bar goes when the last blank card does, not when one batch answers.** Two batches can
             // fail and one of them recover, and a bar that cleared on the first answer would leave the
@@ -1110,6 +1113,11 @@ public final class ClientViewerModel {
         }
         await highlight()
         await fetchImages(of: wanted)
+    }
+
+    @concurrent
+    private nonisolated static func prepare(_ diffs: [FileDiff]) async -> [PreparedFileDiff] {
+        diffs.map { PreparedFileDiff(diff: $0) }
     }
 
     /// The pictures among a batch, one side at a time, with each card filling in as its side lands.
@@ -1212,9 +1220,9 @@ public final class ClientViewerModel {
         // Taken as values before the first await rather than walked by index, so a batch landing
         // partway through cannot leave this indexing a list that has since become shorter.
         for entry in Array(entries[first...]) + Array(entries[..<first]) {
-            guard entry.collapse.isCollapsed == false, case .ready(let diff) = entry.content else { continue }
+            guard entry.collapse.isCollapsed == false, case .ready(let prepared) = entry.content else { continue }
             for side in DiffSide.allCases {
-                await highlight(diff, side: side)
+                await highlight(prepared.diff, side: side)
             }
         }
     }
@@ -1258,12 +1266,12 @@ public final class ClientViewerModel {
     /// The name rather than the path, because the reader is looking at the file: the full path is
     /// what the exported document carries, where the audience is a shell.
     private func label(of pending: PendingComment) -> String {
-        guard case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
-              let rows = CommentSelection.rows(of: diff, from: pending.from, to: pending.to),
+        guard case .ready(let prepared)? = entries.first(where: { $0.id == pending.file })?.content,
+              let rows = CommentSelection.rows(of: prepared.diff, from: pending.from, to: pending.to),
               let lines = CommentedLines.of(rows) else {
             return ""
         }
-        let name = DiffFilePath.name(of: diff.file.path)
+        let name = DiffFilePath.name(of: prepared.diff.file.path)
         return lines.first == lines.last
             ? "\(name):\(lines.first)"
             : "\(name):\(lines.first)-\(lines.last)"
@@ -1272,8 +1280,8 @@ public final class ClientViewerModel {
     /// The draft's run as an address, in the order the diff draws it.
     private var anchorOfTheDraft: CommentAnchor? {
         guard let pending = draft.pending,
-              case .ready(let diff)? = entries.first(where: { $0.id == pending.file })?.content,
-              let ends = CommentSelection.ends(of: diff, from: pending.from, to: pending.to) else {
+              case .ready(let prepared)? = entries.first(where: { $0.id == pending.file })?.content,
+              let ends = CommentSelection.ends(of: prepared.diff, from: pending.from, to: pending.to) else {
             return nil
         }
         return CommentAnchor(file: pending.file, first: ends.first, last: ends.last)

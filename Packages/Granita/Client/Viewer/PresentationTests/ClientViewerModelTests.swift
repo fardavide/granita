@@ -311,11 +311,12 @@ struct ClientViewerModelTests {
         await scenario.sut.load(trigger: .pullToRefresh)
 
         // then
-        guard case .reading(let entries) = scenario.sut.state else {
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let prepared) = entries[3].content else {
             Issue.record("A successful refresh must keep the changed files on screen.")
             return
         }
-        #expect(entries[3].content == .ready(expectedDiff))
+        #expect(prepared.diff == expectedDiff)
         #expect(await scenario.repository.batchesAskedFor == [
             Array(scenario.fileIds[3..<8]),
             Array(scenario.fileIds[3..<8])
@@ -390,12 +391,12 @@ struct ClientViewerModelTests {
             Array(scenario.fileIds[3..<6])
         ])
         guard case .reading(let entries) = scenario.sut.state,
-              case .ready(let diff) = entries[3].content else {
+              case .ready(let prepared) = entries[3].content else {
             Issue.record("An awaiting visible file must receive its diff when its content changes.")
             return
         }
-        #expect(diff.file.id == scenario.fileIds[3])
-        #expect(diff.hunks == [aHunk])
+        #expect(prepared.diff.file.id == scenario.fileIds[3])
+        #expect(prepared.diff.hunks == [aHunk])
         #expect(entries[..<3].allSatisfy { $0.isAwaitingForTests })
     }
 
@@ -1254,13 +1255,13 @@ struct ClientViewerModelTests {
         // then — **into the hunk rather than beside it**, which is what makes "is there anything
         // left above this" answerable from what is drawn.
         guard case .reading(let entries) = scenario.sut.state,
-              case .ready(let diff) = entries[0].content else {
+              case .ready(let prepared) = entries[0].content else {
             Issue.record("an expanded file has to have a diff to have expanded")
             return
         }
-        #expect(diff.hunks[0].lines.count == 4)
-        #expect(diff.hunks[0].lines.first?.text == "    let a = 1")
-        #expect(diff.hunks[0].newStart == 3)
+        #expect(prepared.diff.hunks[0].lines.count == 4)
+        #expect(prepared.diff.hunks[0].lines.first?.text == "    let a = 1")
+        #expect(prepared.diff.hunks[0].newStart == 3)
     }
 
     @Test
@@ -1327,13 +1328,13 @@ struct ClientViewerModelTests {
         // then
         #expect(scenario.sut.expansionFailure == .fileGone)
         guard case .reading(let entries) = scenario.sut.state,
-              case .ready(let diff) = entries[0].content else {
+              case .ready(let prepared) = entries[0].content else {
             Issue.record("a fetched file has to have a diff")
             return
         }
         // The hunk is exactly the two lines it arrived with, which is the half that makes this a
         // control that did nothing without the alert above.
-        #expect(diff.hunks[0].lines.count == 2)
+        #expect(prepared.diff.hunks[0].lines.count == 2)
     }
 
     @Test
@@ -1375,12 +1376,12 @@ struct ClientViewerModelTests {
         // hunk to the end of the file rather than a whole step past it.
         #expect(await scenario.repository.windowsAskedFor == [LineWindow(side: .new, start: 7, count: 4)])
         guard case .reading(let entries) = scenario.sut.state,
-              case .ready(let diff) = entries[0].content else {
+              case .ready(let prepared) = entries[0].content else {
             Issue.record("an expanded file has to have a diff to have expanded")
             return
         }
-        #expect(diff.hunks[0].lines.last?.text == "    let c = 3")
-        #expect(diff.hunks[0].lines.last?.newNumber == 7)
+        #expect(prepared.diff.hunks[0].lines.last?.text == "    let c = 3")
+        #expect(prepared.diff.hunks[0].lines.last?.newNumber == 7)
     }
 }
 
@@ -1469,7 +1470,7 @@ private extension ContinuousDiffEntry {
     var hunkCountForTests: Int {
         switch content {
         case .awaiting, .failed: 0
-        case .ready(let diff): diff.hunks.count
+        case .ready(let prepared): prepared.diff.hunks.count
         }
     }
 }

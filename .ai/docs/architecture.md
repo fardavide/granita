@@ -80,6 +80,14 @@ owning no view model and no state beyond a view's own. A `Presentation` module o
 and composes screens out of those views, so it is the outer of the two and the one that changes when
 a screen changes.
 
+Ready reader content owns immutable line and ruler preparation derived together from the same
+source. This pure, font-independent value belongs in Domain; initial fetched batches prepare it
+away from the main actor before Presentation publishes them, preserving current reader choices.
+Core diff values and their wire representation remain unchanged. Ui owns native font measurement
+and rendering, including the validated visible-text window; full source still supplies width and
+accessibility. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
+records the measured boundary.
+
 The payoff is reuse in the direction that matters. A view that imported its view model could only
 ever serve the one screen that view model belonged to; a view that takes values and closures serves
 any screen that has them. It also puts everything worth asserting one layer up: a `Ui` module has no

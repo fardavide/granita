@@ -4,9 +4,29 @@ Where the project is. Update this when a slice lands.
 
 **Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 29 October: the 0.23.1
 repair remains under verification; TestFlight delivery is unverified.**
-[CI 390](https://github.com/fardavide/granita/actions/runs/40831796614), at `1a16e49`, passes both
+
+The uncommitted repair now has a controlled local failing-before/passing-after result. The same
+16× dense workload, retaining original row geometry and assertions, moves from a 2.139s first
+callback to 0.529s and reaches the successor at 1.141s, inside the original 1.2s observation.
+All 66 original interaction executions and all 76 saved-image executions pass locally. Immutable
+line preparation moves initial batch work off the main actor; a native-validated ASCII window
+bounds painted ink while full source preserves width and accessibility. The temporary recording
+tools and diagnostic-only overload are removed. The complete package suite, both unsigned Debug
+apps, fresh unsigned Mac and device Release builds, generated files, all 140 coverage-tooling
+tests, 1,169 instrumented iOS executions and 22 native touch/adapter executions pass. Structured
+iOS runtime warnings are empty; existing console/compiler diagnostics remain. Unit, both iOS
+groups and Ui have complete receipts with source digest
+`c73893829fc0e10c1f31d61ef40eac80bd03725d737c320aa7c4d48d0c75d49d`.
+The aggregate gate stops at the missing Mac manifest, before any numeric verdict; no old profile
+is substituted. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
+records the controls, retained rendering contract and limits. No new commit or push is authorized
+before the concrete result is reviewed and approved. Local Mac tests that take desktop focus
+require confirmation; none are being run.
+
+**Last pushed candidate.**
+[CI 391](https://github.com/fardavide/granita/actions/runs/40853704216), at `381b8b2`, passes both
 builds, generated files, package tests, Mac snapshots and iOS group 0, including native input
-coverage. Group 1 records collapse-motion and selector failures. Earlier runs fail different
+coverage. Group 1 records collapse-motion failures. Earlier runs fail different
 collapse cases and sometimes pass the selector, so the failing cases vary without a
 production motion change. Coverage stops at the failed suite
 without a numeric verdict. The complete local iOS results below do not establish a CI repair.
@@ -32,7 +52,7 @@ match the artifact's checksum manifest. Earlier recorder-start failures provide 
 reversing case order supplies usable traces but does not establish startup-order causality.
 Original motion deadlines and the required workflow and collectors remain unchanged.
 
-The current candidate batches nominal glyph and advance comparisons, retains validated native
+That candidate batches nominal glyph and advance comparisons, retains validated native
 points, and uses immutable Foundation membership for the same printable-ASCII eligibility.
 The matched local dense profile lowers background preparation from 128 to 76 ms and total
 sampled main work from 460 to 417 ms. This is local evidence requiring remote confirmation.
@@ -48,7 +68,7 @@ Required remote checks remain pending; the existing Mac CI job runs on a separat
 MacCloud machine.
 [0253](decisions/0253-batch-native-background-validation-and-ascii-membership.md)
 records the measured and rejected controls; rendering, native fallbacks and all original gates
-remain intact. Temporary profiling infrastructure still needs removal before final delivery.
+remain intact. Its temporary profiling infrastructure has since been removed from the working tree.
 
 **Previous candidate and local verification.**
 [CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both

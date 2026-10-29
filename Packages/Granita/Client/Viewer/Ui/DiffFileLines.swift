@@ -62,6 +62,7 @@ public struct DiffFileLines: View {
     static let shortestIndicator: CGFloat = 24
 
     private let lines: [DiffLine]
+    private let prepared: PreparedDiffLines
     private let highestNumber: Int
     private let pointSize: CGFloat
 
@@ -129,7 +130,32 @@ public struct DiffFileLines: View {
         onTap: @escaping (DiffLinePosition) -> Void = { _ in },
         onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
     ) {
-        self.lines = lines
+        self.init(
+            prepared: PreparedDiffLines(lines: lines),
+            highestNumber: highestNumber,
+            pointSize: pointSize,
+            isSplit: isSplit,
+            runs: runs,
+            highlighted: highlighted,
+            acceptsTargeting: acceptsTargeting,
+            onTap: onTap,
+            onLongPress: onLongPress
+        )
+    }
+
+    public init(
+        prepared: PreparedDiffLines,
+        highestNumber: Int,
+        pointSize: CGFloat,
+        isSplit: Bool = false,
+        runs: [CommentRun] = [],
+        highlighted: HighlightedFile = .none,
+        acceptsTargeting: Bool = true,
+        onTap: @escaping (DiffLinePosition) -> Void = { _ in },
+        onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
+    ) {
+        lines = prepared.lines
+        self.prepared = prepared
         self.highestNumber = highestNumber
         self.pointSize = pointSize
         self.isSplit = isSplit
@@ -343,7 +369,7 @@ public struct DiffFileLines: View {
             // Unicode still measures every line, including long lines below the viewport.
             ZStack(alignment: .topLeading) {
                 Color.clear.frame(width: blockTravel, height: rowHeight)
-                DiffCodeRuler(rows: rows, highlighted: highlighted)
+                DiffCodeRuler(rows: rows, highlighted: highlighted, ruler: prepared.ruler, isSplit: drawsBlocks)
                     .equatable()
             }
             .hidden()
@@ -367,27 +393,30 @@ public struct DiffFileLines: View {
         // The horizontal scroll's viewport is the full hunk height, so rows inside it all mount.
         // Paint outside it to inherit the vertical viewport, as the split cells already do.
         .overlay(alignment: .topLeading) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(indexedRows, id: \.offset) { _, row in
-                    switch row {
-                    case .full(let line):
-                        DiffLineText(
-                            line: line,
-                            highlighted: highlighted.text(of: line),
-                            segmentTint: segmentTint(of: line),
-                            viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight)
-                        )
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .offset(x: -scrolledBy)
-                            .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
-                            .clipped()
-                    case .block:
-                        Color.clear.frame(width: visibleWidth, height: rowHeight)
+            if visibleWidth > 0 {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(indexedRows, id: \.offset) { offset, row in
+                        switch row {
+                        case .full(let line):
+                            DiffLineText(
+                                line: line,
+                                drawn: drawsBlocks ? DrawnDiffLine.of(line) : prepared.drawn[offset],
+                                highlighted: highlighted.text(of: line),
+                                segmentTint: segmentTint(of: line),
+                                viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight)
+                            )
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .offset(x: -scrolledBy)
+                                .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
+                                .clipped()
+                        case .block:
+                            Color.clear.frame(width: visibleWidth, height: rowHeight)
+                        }
                     }
                 }
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
         }
         // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
         // scroll, so a gradient painted in the background colour would have to composite the tint
@@ -449,6 +478,7 @@ public struct DiffFileLines: View {
                 figure(of: line, isPending: isPending(row: row, side: side))
                 DiffLineText(
                     line: line,
+                    drawn: DrawnDiffLine.of(line),
                     highlighted: highlighted.text(of: line),
                     segmentTint: segmentTint(of: line),
                     viewport: CGRect(x: scrolledBy, y: 0, width: cellCodeWidth, height: rowHeight)
@@ -748,6 +778,7 @@ private func clamped(_ fraction: CGFloat) -> CGFloat {
 /// 22-character cell the background is the only thing left saying *this part*.
 private struct DiffLineText: View {
     let line: DiffLine
+    let drawn: DrawnDiffLine
     let highlighted: AttributedString?
     let segmentTint: Color
     let viewport: CGRect
@@ -758,6 +789,7 @@ private struct DiffLineText: View {
     var body: some View {
         DiffLineAttributedText(
             line: line,
+            drawn: drawn,
             highlighted: highlighted,
             segmentTint: segmentTint,
             viewport: viewport,
@@ -770,6 +802,7 @@ private struct DiffLineText: View {
 
 private struct DiffLineAttributedText: View, Equatable {
     let line: DiffLine
+    let drawn: DrawnDiffLine
     let highlighted: AttributedString?
     let segmentTint: Color
     let viewport: CGRect
@@ -777,7 +810,6 @@ private struct DiffLineAttributedText: View, Equatable {
     let fontResolutionContext: Font.Context
 
     var body: some View {
-        let drawn = DrawnDiffLine.of(line)
         var attributed = lexed(drawn.text, highlighted: highlighted) ?? AttributedString(drawn.text)
         guard drawn.changed.isEmpty == false else {
             // A line the parser paired with nothing, or paired as one whole run — either way there
@@ -786,9 +818,14 @@ private struct DiffLineAttributedText: View, Equatable {
             return Text(attributed)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
                 .contentTransition(.identity)
+                .accessibilityLabel(drawn.text)
         }
         let characters = attributed.characters
-        let ranges = backgroundRanges(in: drawn.changed, attributed: attributed)
+        let preparation = preparation(for: attributed)
+        let ranges = switch preparation {
+        case .original: drawn.changed
+        case .measured(let layout): layout.visibleRanges(in: drawn.changed, viewport: viewport)
+        }
         var cursor = characters.startIndex
         var characterOffset = 0
         for range in ranges {
@@ -798,45 +835,62 @@ private struct DiffLineAttributedText: View, Equatable {
             cursor = end
             characterOffset = range.upperBound
         }
-        return Text(attributed)
+        let visible = switch preparation {
+        case .original: attributed
+        case .measured(let layout): layout.visibleText(in: attributed, viewport: viewport)
+        }
+        return Text(visible)
             .contentTransition(.identity)
+            .accessibilityLabel(drawn.text)
     }
 
-    private func backgroundRanges(in ranges: [Range<Int>], attributed: AttributedString) -> [Range<Int>] {
+    private func preparation(for attributed: AttributedString) -> DiffLineTextPreparation {
         guard line.kind == .addition || line.kind == .deletion,
               let segments = line.segments, segments.count > 1,
               DiffTextRunVisibility.supportsCulling(sourceText: line.text, highlighting: attributed),
               segments.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }),
               let font else {
-            return ranges
+            return .original
         }
         let nativeFont = font.resolve(in: fontResolutionContext).ctFont
         let characters = Array(UInt16(0x20)...UInt16(0x7E))
         var glyphs = [CGGlyph](repeating: 0, count: characters.count)
         guard CTFontGetGlyphsForCharacters(nativeFont, characters, &glyphs, characters.count) else {
-            return ranges
+            return .original
         }
-        let layout = DiffTextBackgroundLayout(text: String(attributed.characters), font: nativeFont)
-        return layout.visibleRanges(in: ranges, viewport: viewport)
+        return .measured(DiffTextBackgroundLayout(text: String(attributed.characters), font: nativeFont))
     }
+}
+
+private enum DiffLineTextPreparation {
+    case original
+    case measured(DiffTextBackgroundLayout)
 }
 
 private struct DiffCodeRuler: View, Equatable {
     let rows: [SplitDiffRow]
     let highlighted: HighlightedFile
+    let ruler: [DiffRulerLine]
+    let isSplit: Bool
 
     var body: some View {
-        let fullLines = rows.compactMap { row -> DiffRulerLine? in
-            switch row {
-            case .full(let line):
-                let drawnText = DrawnDiffLine.text(of: line)
-                let text = lexed(drawnText, highlighted: highlighted.text(of: line)).map { String($0.characters) } ?? drawnText
-                return DiffRulerLine(text: text, kind: line.kind)
-            case .block:
-                return nil
+        let representatives: [DiffRulerLine]
+        if isSplit == false, highlighted == .none {
+            representatives = ruler
+        } else {
+            let fullLines = rows.compactMap { row -> DiffRulerLine? in
+                switch row {
+                case .full(let line):
+                    let drawnText = DrawnDiffLine.text(of: line)
+                    let text = lexed(drawnText, highlighted: highlighted.text(of: line)).map { String($0.characters) } ?? drawnText
+                    return DiffRulerLine(text: text, kind: line.kind)
+                case .block:
+                    return nil
+                }
             }
+            representatives = DiffRulerLine.representatives(in: fullLines)
         }
-        ForEach(Array(DiffRulerLine.representatives(in: fullLines).enumerated()), id: \.offset) { _, line in
+        return ForEach(Array(representatives.enumerated()), id: \.offset) { _, line in
             Text(verbatim: line.text)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
                 .lineLimit(1)

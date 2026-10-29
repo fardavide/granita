@@ -1,3 +1,5 @@
+import Foundation
+
 import CoreDiffDomain
 
 /// One diff line as it is drawn: the text on the grid, and where the word diff changed something.
@@ -26,8 +28,8 @@ public struct DrawnDiffLine: Hashable, Sendable {
         guard let segments = line.segments, segments.count > 1 else {
             return of(line).text
         }
-        var text = segments.map(\.text).joined()
-        if text.withUTF8({ $0.contains(0x09) }) {
+        let text = segments.map(\.text).joined()
+        if text.range(of: "\t", options: .literal) != nil {
             return of(line).text
         }
         return text

@@ -46,10 +46,10 @@ public struct ReviewedComment: Hashable, Sendable, Identifiable {
             guard let entry = entries.first(where: { $0.id == comment.anchor.file }) else {
                 return ReviewedComment(comment: comment, isStale: true)
             }
-            guard case .ready(let diff) = entry.content else {
+            guard case .ready(let prepared) = entry.content else {
                 return ReviewedComment(comment: comment, isStale: false)
             }
-            let rows = CommentSelection.rows(of: diff, from: comment.anchor.first, to: comment.anchor.last)
+            let rows = CommentSelection.rows(of: prepared.diff, from: comment.anchor.first, to: comment.anchor.last)
             return ReviewedComment(comment: comment, isStale: rows == nil)
         }
     }
@@ -84,8 +84,8 @@ public struct ReviewedComment: Hashable, Sendable, Identifiable {
         files: [FileID]
     ) -> (Int, Int, Int) {
         let file = files.firstIndex(of: comment.anchor.file) ?? files.count
-        guard case .ready(let diff)? = entries.first(where: { $0.id == comment.anchor.file })?.content,
-              let row = diff.hunks.flatMap(\.lines)
+        guard case .ready(let prepared)? = entries.first(where: { $0.id == comment.anchor.file })?.content,
+              let row = prepared.diff.hunks.flatMap(\.lines)
                   .firstIndex(where: { DiffLinePosition.of($0) == comment.anchor.first }) else {
             // No rows to be placed among. Last within its file, and stably among its own kind — the
             // reported span is the only thing left to tell two of them apart, and both are on the

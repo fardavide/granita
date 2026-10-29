@@ -507,7 +507,7 @@ public struct ContinuousDiffView: View {
                         rows: entry.reservedRows,
                         pointSize: pointSize
                     )
-                case .ready(let diff):
+                case .ready(let prepared):
                     // **A picture draws pictures where a file draws hunks, and it has none to draw.**
                     // Git answers `Binary files … differ` for a PNG, so this card's `FileDiff` is a real
                     // answer with an empty body — before this existed the whole file was a collapsed bar
@@ -517,7 +517,7 @@ public struct ContinuousDiffView: View {
                     // case on the content.
                     if let image = images[entry.id] {
                         DiffImageBody(
-                            file: diff.file,
+                            file: prepared.diff.file,
                             image: image,
                             onOpen: onOpenImage,
                             onRetry: onRetryImage
@@ -525,7 +525,7 @@ public struct ContinuousDiffView: View {
                         .transition(.opacity)
                     } else {
                         DiffFileContent(
-                            diff: diff,
+                            prepared: prepared,
                             pointSize: pointSize,
                             isSplit: isSplit,
                             // The rails are drawn from the comments that still resolve; a stale one has

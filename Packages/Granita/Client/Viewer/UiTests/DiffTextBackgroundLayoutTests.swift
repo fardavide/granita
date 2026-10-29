@@ -10,6 +10,41 @@ import Testing
 @Suite(.serialized)
 struct DiffTextBackgroundLayoutTests {
 
+    @Test
+    func `given a monospaced ASCII line with a distant suffix when selecting visible text then its visible prefix keeps native caret positions without the suffix`() throws {
+        // given
+        let text = "VISIBLE " + String(repeating: "value, ", count: 64) + "DISTANT"
+        let font = Font.system(size: 8, design: .monospaced)
+            .resolve(in: EnvironmentValues().fontResolutionContext).ctFont
+        try #require(CTFontGetSymbolicTraits(font).contains(.traitMonoSpace))
+        let viewport = CGRect(x: 0, y: 0, width: 50, height: 18)
+        let nativeText = NSAttributedString(
+            string: text,
+            attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        )
+        let nativeLine = CTLineCreateWithAttributedString(nativeText)
+        try #require(CTLineGetOffsetForStringIndex(nativeLine, 8, nil) < viewport.maxX)
+        let layout = DiffTextBackgroundLayout(text: text, font: font)
+
+        // when
+        let visible = layout.visibleText(in: AttributedString(text), viewport: viewport)
+
+        // then
+        let visibleText = String(visible.characters)
+        #expect(visibleText.hasPrefix("VISIBLE "))
+        #expect(visibleText.contains("DISTANT") == false)
+        let visibleNativeText = NSAttributedString(
+            string: visibleText,
+            attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font]
+        )
+        let visibleNativeLine = CTLineCreateWithAttributedString(visibleNativeText)
+        for index in 0...8 {
+            let originalCaret = CTLineGetOffsetForStringIndex(nativeLine, index, nil)
+            let visibleCaret = CTLineGetOffsetForStringIndex(visibleNativeLine, index, nil)
+            #expect(abs(visibleCaret - originalCaret) < 1.0 / 1_024)
+        }
+    }
+
     @Test(arguments: [
         (0..<1, true, true),
         (0..<1, true, false),
