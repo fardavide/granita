@@ -16,6 +16,76 @@ import CoreDiffDomain
 struct DrawnDiffLineTests {
 
     @Test
+    func `given segments differing from raw text when projecting displayed text then the segment text is used`() {
+        // given
+        let line = aLine(text: "raw text that is not displayed", segments: [
+            WordSegment(text: "let ", isChanged: false),
+            WordSegment(text: "displayed", isChanged: true),
+            WordSegment(text: " = 42", isChanged: false)
+        ])
+
+        // when
+        let text = DrawnDiffLine.text(of: line)
+
+        // then
+        #expect(text == "let displayed = 42")
+    }
+
+    @Test
+    func `given a tab in a later segment when projecting displayed text then its stop follows the preceding segment`() {
+        // given
+        let line = aLine(text: "raw text that is not displayed", segments: [
+            WordSegment(text: "if", isChanged: false),
+            WordSegment(text: "\ttrue", isChanged: true)
+        ])
+
+        // when
+        let text = DrawnDiffLine.text(of: line)
+
+        // then
+        #expect(text == "if  true")
+    }
+
+    @Test(arguments: [
+        ("e", "\u{0301}", [UInt8(0x65), 0xCC, 0x81]),
+        ("\r", "\n", [UInt8(0x0D), 0x0A])
+    ])
+    func `given a character split across segments when projecting displayed text then its original bytes are preserved`(
+        prefix: String,
+        suffix: String,
+        expectedUtf8: [UInt8]
+    ) {
+        // given
+        let line = aLine(text: "raw text that is not displayed", segments: [
+            WordSegment(text: prefix, isChanged: false),
+            WordSegment(text: suffix, isChanged: true)
+        ])
+
+        // when
+        let text = DrawnDiffLine.text(of: line)
+
+        // then
+        #expect(Array(text.utf8) == expectedUtf8)
+    }
+
+    @Test(arguments: [
+        nil,
+        [WordSegment(text: "a whole run that is not displayed", isChanged: true)]
+    ] as [[WordSegment]?])
+    func `given no segmented pair when projecting displayed text then the expanded raw text is used`(
+        segments: [WordSegment]?
+    ) {
+        // given
+        let line = aLine(text: "if\ttrue", segments: segments)
+
+        // when
+        let text = DrawnDiffLine.text(of: line)
+
+        // then
+        #expect(text == "if  true")
+    }
+
+    @Test
     func `given a line the parser paired when it is drawn then the changed run is the only range`() {
         // given
         let line = aLine(text: "let store = Store()", segments: [

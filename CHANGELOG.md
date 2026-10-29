@@ -7,6 +7,12 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.23.1 — 2026-10-23
+- **Restore delivery of the iPhone and iPad update.** Fix a release-build failure that prevented
+  the whole-row line-selection update from reaching TestFlight.
+- **Keep large word diffs moving when a file closes.** Coordinate the next header and viewport
+  while avoiding repeated text work during layout.
+
 ### 0.23.0 — 2026-10-21
 - **Select lines anywhere on the row on iPhone and iPad.** Tap a code line to comment, or hold and
   drag across lines to select a range. Holding one line and tapping another still works.

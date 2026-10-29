@@ -1,8 +1,13 @@
-import ClientViewerDomain
 import Foundation
-import SnapshotTesting
+import QuartzCore
 import SwiftUI
 import Testing
+import UIKit
+
+import SnapshotTesting
+
+import ClientViewerDomain
+import CoreBrandingDomain
 
 /// Shared configuration for every snapshot test.
 ///
@@ -256,6 +261,13 @@ func assertScreenSnapshot(
     // while sixteen suites were unserialised took 22 unrelated baselines down.
     drainTheKeyboard()
 
+    do {
+        _ = try prepareSnapshotScene()
+    } catch {
+        Issue.record(Comment(rawValue: "Snapshot scene setup failed for \(name)-\(layout.name): \(error)"))
+        return
+    }
+
     if freezesActivity {
         // Accessibility sizes enlarge the native spinner enough for its changing phase to exceed
         // the image drift budget. Capture its first native animation frame at the reader's actual
@@ -311,6 +323,68 @@ func assertScreenSnapshot(
     )
 
     drainTheKeyboard()
+}
+
+/// Native materials resolve differently while the test host is inactive. Activation alone left
+/// the Done material inactive; the next native display callback matched the unchanged baseline.
+@MainActor
+func prepareSnapshotScene() throws(SnapshotScenePreparationError) -> UIWindowScene {
+    let application = UIApplication.shared
+    guard let scene = application.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first(where: { $0.windows.contains(where: \.isKeyWindow) }) else {
+        throw .missingKeyWindowScene
+    }
+    let receiver = SnapshotSceneFrameReceiver(scene: scene)
+    let displayLink = CADisplayLink(target: receiver, selector: #selector(SnapshotSceneFrameReceiver.observeFrame(_:)))
+    displayLink.add(to: .main, forMode: .common)
+    defer { displayLink.invalidate() }
+    let deadline = ProcessInfo.processInfo.systemUptime + 10
+
+    if application.applicationState != .active || scene.activationState != .foregroundActive {
+        guard let url = URL(string: "\(Branding.urlScheme)://snapshot-activation") else {
+            throw .activationRejected
+        }
+        application.open(url, options: [:]) { accepted in
+            receiver.activationWasRejected = accepted == false
+        }
+    }
+
+    while ProcessInfo.processInfo.systemUptime < deadline {
+        if receiver.observedActiveFrame,
+           application.applicationState == .active,
+           scene.activationState == .foregroundActive {
+            return scene
+        }
+        if receiver.activationWasRejected {
+            throw .activationRejected
+        }
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+    }
+    throw .timedOut(application: application.applicationState, scene: scene.activationState)
+}
+
+enum SnapshotScenePreparationError: Error {
+    case missingKeyWindowScene
+    case activationRejected
+    case timedOut(application: UIApplication.State, scene: UIScene.ActivationState)
+}
+
+@MainActor
+private final class SnapshotSceneFrameReceiver: NSObject {
+    var activationWasRejected = false
+    private(set) var observedActiveFrame = false
+    private let scene: UIWindowScene
+
+    init(scene: UIWindowScene) {
+        self.scene = scene
+        super.init()
+    }
+
+    @objc func observeFrame(_ displayLink: CADisplayLink) {
+        observedActiveFrame = UIApplication.shared.applicationState == .active
+            && scene.activationState == .foregroundActive
+    }
 }
 
 @MainActor

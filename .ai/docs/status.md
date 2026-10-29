@@ -2,36 +2,315 @@
 
 Where the project is. Update this when a slice lands.
 
-**Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
-Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
-including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an
-endpoint remains available. Ordinary vertical and horizontal swipes remain usable before the hold
-is recognized. All six actual-touch simulator tests, the full package suite and both unsigned app
-builds pass. This prototype does not automatically scroll at the viewport edge. The interaction
-contract and verification are in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md).
-The first CI run passed the six touch tests, package tests, app builds, generated files and Mac
-snapshots, but failed the later-file jump setup and two collapse-motion assertions; coverage then
-stopped. The exact base passed all 27 native cases locally. Narrowing the scrolling-pause callback
-to capture only its selection binding repaired the blank reader after a file jump: all 27 native
-cases now pass with the feature enabled. Repeated coverage passed package instrumentation and
-both iOS shards (21 and 57 tests), then stopped at Mac image mismatches on this host; no aggregate
-local coverage verdict exists. A fresh package test run, both unsigned app builds and all six
-actual-touch tests passed with the callback fix. The next CI run passed every functional job,
-including both iOS shards, but failed four coverage ratchets. Coverage repair is in progress:
-transient touch decisions move into a Foundation-only value with direct tests, and the native
-adapter exposes configuration and event dispatch independently of SwiftUI's opaque context.
-Keeping frame reads at input time preserves collapse motion: the 27 focused native cases, full
-package suite, both unsigned app builds and instrumented iOS shards (23 and 58 tests) pass after
-extraction. The next CI run passed every functional check and Unit/All-tests coverage, leaving two
-Snapshot ratchets red. Davide approved collecting the required behavioral Ui profiles and separating
-input-only wiring from Snapshot's rendering scope; implementation and verification are in progress.
-Snapshot will establish a new scope baseline and Ui its first baseline on main. The approved
-measurement boundary and unchanged Unit/All-tests comparisons are recorded in 0243. The tooling
-suite passes 128 checks; package tests, both unsigned app builds, both iOS shards (21 and 58
-functions), and all six touch tests plus eleven native adapter cases pass. Ui profiles execute all
-five previously unexecuted input bridges. Full local coverage stops at Mac image mismatches and a
-stalled menu test, interrupted after more than six minutes without progress. The test processes
-have stopped; no aggregate local verdict is claimed. CI verification remains pending.
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 29 October: the 0.23.1
+repair remains under verification; TestFlight delivery is unverified.**
+
+The uncommitted repair now has a controlled local failing-before/passing-after result. The same
+16× dense workload, retaining original row geometry and assertions, moves from a 2.139s first
+callback to 0.529s and reaches the successor at 1.141s, inside the original 1.2s observation.
+All 66 original interaction executions and all 76 saved-image executions pass locally. Immutable
+line preparation moves initial batch work off the main actor; a native-validated ASCII window
+bounds painted ink while full source preserves width and accessibility. The temporary recording
+tools and diagnostic-only overload are removed. The complete package suite, both unsigned Debug
+apps, fresh unsigned Mac and device Release builds, generated files, all 140 coverage-tooling
+tests, 1,169 instrumented iOS executions and 22 native touch/adapter executions pass. Structured
+iOS runtime warnings are empty; existing console/compiler diagnostics remain. Unit, both iOS
+groups and Ui have complete receipts with source digest
+`c73893829fc0e10c1f31d61ef40eac80bd03725d737c320aa7c4d48d0c75d49d`.
+The aggregate gate stops at the missing Mac manifest, before any numeric verdict; no old profile
+is substituted. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
+records the controls, retained rendering contract and limits. No new commit or push is authorized
+before the concrete result is reviewed and approved. Local Mac tests that take desktop focus
+require confirmation; none are being run.
+
+**Last pushed candidate.**
+[CI 391](https://github.com/fardavide/granita/actions/runs/40853704216), at `381b8b2`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0, including native input
+coverage. Group 1 records collapse-motion failures. Earlier runs fail different
+collapse cases and sometimes pass the selector, so the failing cases vary without a
+production motion change. Coverage stops at the failed suite
+without a numeric verdict. The complete local iOS results below do not establish a CI repair.
+
+The Mac failure has a deterministic controlled reproduction: a reload during post-ready syntax
+highlighting resets entries while the previous fetch still owns their in-flight IDs. The repair
+ends fetch ownership before awaiting highlighting or images. Both controlled cases, all157
+related model tests and the complete package suite pass locally. The original Mac snapshot now
+passes in CI. [0252](decisions/0252-release-content-fetch-ownership-before-decoration.md) records
+the ownership boundary; the snapshot setup and assertions are unchanged.
+Both unsigned Debug apps also pass. Fresh unsigned Release builds return zero, again with the
+exit-code0 SwiftCompile diagnostic; clean compiler diagnostics are not claimed.
+
+Local validation uses Xcode 27.1 (`27A9275`), whereas CI uses Xcode 27.0 (`27A266a`). The
+[third separate native recording](https://github.com/fardavide/granita/actions/runs/40831796653)
+captures both original failures with exact PIDs, paired phase markers and active app, scene and
+key window. UIKit animations are enabled and UIKit Reduce Motion is false. Dense motion has a
+frame gap of one second containing 846 ms of sampled main-thread work; overlapping inclusive
+costs include 338 ms preparing backgrounds and 182 ms preparing glyph positions. The selector
+also fails with a valid trace. Both recordings restore the original source fingerprint. The 23
+downloaded files used for analysis, including exported samples, markers and matching binaries,
+match the artifact's checksum manifest. Earlier recorder-start failures provide no CPU evidence;
+reversing case order supplies usable traces but does not establish startup-order causality.
+Original motion deadlines and the required workflow and collectors remain unchanged.
+
+That candidate batches nominal glyph and advance comparisons, retains validated native
+points, and uses immutable Foundation membership for the same printable-ASCII eligibility.
+The matched local dense profile lowers background preparation from 128 to 76 ms and total
+sampled main work from 460 to 417 ms. This is local evidence requiring remote confirmation.
+All 45 geometry/eligibility cases, 66 original interaction executions, 56 reader snapshots,
+the complete package suite, both unsigned Debug apps and generated-file verification pass.
+Fresh unsigned Mac and device Release builds return zero with the existing SwiftCompile
+exit-code-zero diagnostic. Fresh Unit, 1,169 iOS and 22 native touch/adapter executions pass;
+their receipts share source digest
+`eb848a572da095638cf56d6f1fe6844f70e2f8df4dbd09f806736ba2c4018225`.
+The local Mac run records image mismatches and is interrupted at the user's request because
+its windows repeatedly take focus. No successful Mac receipt or aggregate verdict is produced.
+Required remote checks remain pending; the existing Mac CI job runs on a separate GitHub-hosted
+MacCloud machine.
+[0253](decisions/0253-batch-native-background-validation-and-ascii-membership.md)
+records the measured and rejected controls; rendering, native fallbacks and all original gates
+remain intact. Its temporary profiling infrastructure has since been removed from the working tree.
+
+**Previous candidate and local verification.**
+[CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0 with native input coverage.
+Group 1 fails four original collapse cases. Coverage stops at that prerequisite without a
+numeric verdict.
+
+The retained candidate preserves complete native text and adds identity content transitions to
+its two rendering branches. The synchronized dense replay passes its original assertions with
+452 ms of sampled main-thread work, compared with 996 ms in the earlier full-text control. The
+visible-text-window experiment is removed after the complete-text control supplies the same
+benefit. [0250](decisions/0250-keep-text-content-updates-out-of-file-layout-animation.md) records
+the controls and provenance.
+
+Four transaction modifiers now control contextual offset adjustment. User-positioned reading
+disables adjustment; initial seeded positions retain it, while changed file entries, code point
+size or split mode restore automatic adjustment. The existing typed position and native
+animation remain. A clean `71c50ff` control
+without either Text modifier also reproduces the original 450pt reset, so that reset is not
+attributed to the rendering optimization.
+[0251](decisions/0251-control-contextual-offset-adjustment-during-reading.md) records the policy,
+rejected alternatives and limitations.
+
+The candidate passes ten complete repetitions of the original later-file case, including its
+horizontal motion and image assertions; the new selector guard passes actual native animation
+and exact selected-header arrival. The complete interaction class passes all66 executions
+across18 functions; all56 existing reader snapshots also pass. Original65 assertions, physical travel guards, baselines, deadlines,
+animation curves and coverage gates remain unchanged. Temporary diagnostic probes and fixture
+seams are removed. Source digest is
+`0b4f700d2274896fcd4b18c89b70f4f593db7cd41375cb2fa366c62db25299d2`.
+
+Paired font, stale-comment removal and split-width controls match ordinary behavior; their
+existing reading-line changes are neither repaired nor reported as candidate regressions.
+The image-caption Dynamic Type control is unexercised because it produces no measured growth
+above the live reader. It supplies no layout-policy evidence. The optional-ID request controls
+are removed after the selector guard catches instantaneous movement and wrong-header arrival.
+
+The preceding unconditional policy passes587 group0 executions but fails two preselected-file
+iPad snapshots. The ordinary-policy comparison passes all56 reader snapshots. Restricting the
+disabled default to user-positioned state repairs those failures without changing their images.
+
+The corrected source passes package tests, both unsigned Debug and Release apps, generated-file
+verification, 1,169 instrumented iOS cases and22 native UI cases. Unit, both iOS groups and Ui
+receipts share the source digest above. There are no iOS failures or skips; structured runtime
+warnings are empty, while existing console warnings remain. Release returns zero but still
+emits the exit-code0 SwiftCompile diagnostic, so clean compiler diagnostics are not claimed.
+
+The local Mac run reports the documented image differences and stalls in its reader-menu case.
+It is interrupted, leaving no successful Mac receipt or aggregate coverage verdict. No previous
+Mac profile is substituted. Delivery is tracked by [PR #129](https://github.com/fardavide/granita/pull/129)
+and still requires every required remote check to pass. Version0.23.1 and release notes are
+included; merge and TestFlight delivery remain separate from this verification.
+
+**Previous position-update candidate.**
+[CI 385](https://github.com/fardavide/granita/actions/runs/40531226511), at `be99bcc`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Group 1 fails the original
+motion bounds and a later-file scrolling setup guard. Coverage stops at that prerequisite with
+no numeric verdict.
+
+The next candidate changes only completion's position update: mark the existing position as
+user-positioned instead of replacing it with an empty value. It passes ten focused repetitions,
+all 65 original interaction executions with runtime diagnostics removed, and real same-file
+reselection after a pan. The production selector/vertical/horizontal touch control also passes.
+[0249](decisions/0249-release-completed-identity-scrolls-through-existing-position.md) records the
+native reset evidence and rejected controls.
+
+The final source passes package tests, both unsigned app builds, generated-file verification,
+optimized device Release compilation, 1,168 instrumented iOS cases and 22 native touch cases.
+There are no iOS skips or runtime warnings. Unit, both iOS groups and Ui receipts share source
+digest `7f071b25a8a8e140c7cf37ad229aec2d6d098860eceedf8f7e1f010e9ae3e8a2`.
+The local Mac run again reports image differences and stops producing output in its reader menu
+case; it is interrupted and provides no successful Mac receipt or aggregate coverage verdict.
+The existing assertions, baselines and gates remain intact. A fresh complete CI attempt is
+required before the repair is considered delivered; no merge or release has been performed.
+
+The preceding guarded-mapping source passed package tests, both unsigned app builds,
+optimized device Release compilation and generated-file verification. The guarded native
+position refinement passes 59 focused cases, all 65 original collapse/scrolling acceptance cases,
+all 1,168 instrumented iOS cases and all 20 native input cases. Unit, both iOS groups and Ui
+receipts share source digest `821005562b2f7bf83fce463ecd5b612fbe1f07fa80efc4ee4cce4d3ebd4fbc58`.
+
+[CI 384](https://github.com/fardavide/granita/actions/runs/40468956878), at `fc00d84`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Required group 1 fails
+motion checks, so coverage stops at its prerequisite without a numeric verdict. Its separate
+exact-process recording attributes the dense replay's initial 633 ms callback gap to 620 ms of
+sampled main-thread work, including 284 ms in native caret queries. App, scene and key window
+remain active. Primary receipts and the modified diagnostic source provenance stay separate.
+
+The refinement reuses measured native glyph positions only for a complete unadjusted monospaced
+ASCII mapping. Substitutions, kerning, ligatures and unknown geometry keep native caret queries.
+Native Text, syntax colours, widths and the original range predicates remain unchanged. A
+same-device diagnostic pair reduces sampled layout-helper work from 195 ms to 88 ms. The profiled
+replay still fails a later frame-step bound during native painting; the original unprofiled and
+complete instrumented iOS suites pass. The temporary recording fixture and CI tools are removed.
+
+[0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records the measured
+costs, rejected alternatives and retained contracts. The current local Mac run reports the
+documented image differences, then is interrupted after its reader menu case stops producing
+output. It provides no successful Mac receipt or aggregate coverage verdict. No
+image baseline, original assertion, animation bound, coverage scope or numeric gate changes.
+Delivery requires a fresh complete CI attempt with every required check green. The approved
+replacement PR wording stays held until then. No merge or release has been performed.
+
+The native test harness also requires an active actual key-window scene plus a native frame
+before rendering. The swipe probe excludes candidates hidden, transparent or clipped by an
+ancestor. Their focused tests and the complete final-source native touch run pass.
+An interrupted local snapshot run was killed by another worktree installing the same app on its
+shared simulator, confirmed by the simulator's install/termination log. Subsequent focused runs
+use an existing idle iPhone 18 Pro Max on the same iOS version; snapshot dimensions stay fixed.
+
+Earlier investigation and CI evidence follows.
+
+**The 0.23.1 archive repair is prepared locally; delivery is not yet verified.** Xcode Cloud build
+178 started automatically after [PR #128](https://github.com/fardavide/granita/pull/128) merged, but
+Swift 6.4 crashed during optimized iOS compilation and TestFlight distribution was skipped. The
+same unsigned device Release compile failed locally, then passed with an explicit CoreGraphics
+geometry import in Viewer Domain. Davide approved that narrow exception and chose no Release CI
+check. [0244](decisions/0244-explicit-geometry-overlay-for-release-compilation.md) records the
+failure and repair. Package tests, both unsigned app builds, resolver validation and a second
+unsigned physical-device Release compile pass on the final 0.23.1 sources. The repair is ready
+for review; Cloud archiving and TestFlight delivery remain unverified.
+
+Required CI for [PR #129](https://github.com/fardavide/granita/pull/129) also exposed four existing
+collapse-motion cases; coverage stopped on their failed suite verdict before comparing percentages.
+The same CI-built products pass those motion cases locally. A candidate now reduces the hunk's
+hidden measurement views while retaining exact native text widths. All 59 focused native cases
+pass, including 32 independent width checks at four code sizes. Full package tests, both unsigned
+apps, an unsigned device Release build and generated-file verification pass. Instrumented iOS
+shards pass 21 and 59 functions with no failures or skips; all six touch tests and eleven native
+adapter cases pass. Full local coverage stops at the documented Mac snapshot mismatches followed
+by the menu-test stall; that run was interrupted and has no aggregate verdict. The original
+assertions, baselines and coverage gates remain unchanged. CI verification is pending.
+[0245](decisions/0245-native-widths-with-fewer-ruler-views.md) records the measurement evidence and
+the deliberately narrow rendering change.
+
+The next CI run, [39958096134](https://github.com/fardavide/granita/actions/runs/39958096134),
+passed both builds, package tests, generated files and Mac snapshots, but both iOS shards failed
+simulator selection before tests started. Coverage again stopped on the failed suite prerequisite.
+The selector erased a valid numbered iPhone when a later runtime contained only iPhone Duo.
+All four selector copies now retain the last valid selection, and `make coverage-tests` passes
+140 cases, including twelve selector cases that execute the production expressions;
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md) records the
+policy. CI motion and aggregate coverage remain unverified on the ruler repair.
+
+CI run [40011176859](https://github.com/fardavide/granita/actions/runs/40011176859) confirms the
+simulator-selection repair: both shards render on iPhone 18 Pro, iOS 27.0. Both builds, package
+tests, generated files and Mac snapshots pass. Four collapse-motion cases still fail, with five
+issues; one trace shows 551 pt of successor travel remaining when the viewport arrives. A touch
+case also times out before its horizontal swipe, with the native probe reporting two horizontal
+scroll candidates at the gesture point. Coverage stops on those suite verdicts, without a numeric
+comparison. A candidate starts the typed header request in the collapse update and retires its
+pending pair on completion and removes the obsolete Timeline background. Full package tests,
+both unsigned app builds, the focused 59 native executions and all six actual-touch tests pass on
+the final sources. Resolver validation passes with no lockfile change. CI confirmation is pending.
+Gesture timeout messages now include the full native scroll candidate list, without changing their
+predicate or timeout. No release has been merged or distributed.
+
+CI run [40060044107](https://github.com/fardavide/granita/actions/runs/40060044107) is terminal red.
+Both builds, package tests, generated files, Mac snapshots, the other iOS shard, TLS and all
+seventeen input cases pass. Five collapse-motion cases still report eight issues, including up
+to 621 pt of successor lag. Synchronous header initiation did not resolve that defect. Coverage
+stops before numeric comparison. The next diagnostic records native layer/animation clocks and
+first-movement milestones without changing assertions; a separately recorded replay runs after
+the required shard fails and preserves its original verdict and coverage artifacts.
+
+CI run [40133024145](https://github.com/fardavide/granita/actions/runs/40133024145) reproduced the
+failure with native model and presentation geometry agreeing on the delayed header; its replay
+video also shows the misalignment. A narrow candidate replaces only the header's geometry group
+with a compositing group. All 59 original focused executions pass locally with the coherence,
+motion and position assertions unchanged. CI still needs to judge this candidate.
+
+CI run [40171825933](https://github.com/fardavide/granita/actions/runs/40171825933) rejects that
+header-only candidate: seven motion cases fail, while both builds, package tests, generated files,
+Mac snapshots, the other iOS shard and all seventeen input cases pass. Coverage stops at the failed
+motion suite before numeric comparison. The header's original geometry group is restored. A new
+local long-word-diff successor fixture reproduces a 159 pt frame step against the unchanged 99 pt
+limit. Skipping unused display-column calculation for tab-free segmented lines passes that fixture
+in isolation, but full focused runs still reject its frame step with either header grouping. All
+59 original executions and the existing tab and Unicode unit tests pass. A second optimization
+reuses cumulative character counts, adding byte counts only for ASCII without CR/LF and preserving
+the original concatenated-string count for all other text. Neither optimization alone resolves the
+stall. Native geometry tracing identifies the successor's first upward layout movement; a one-shot
+waiting/scrolling phase now starts the typed header request from that observation. The combined
+candidate passes all 60 focused executions, including the long-line regression and existing
+reopening, explicit-selection and horizontal-scroll cases. Removing the text optimizations, or
+keeping only the tab optimization, restores a 120 pt frame-step failure. Original motion assertions,
+baselines and coverage gates remain unchanged. The instrumented shard passes every original case
+but still rejects a 101.3 pt step in the long-line fixture. A profile identifies repeated character
+indexing during word highlighting; ranges now advance from the previous endpoint. All 62 focused
+executions pass, including two short-successor cases. The rebuilt instrumented motion shard
+passes all 61 functions in 17 suites with no failures or skips. The other shard passes 21 functions,
+and all six actual-touch and eleven native-input cases pass. Complete unit, both iOS shard and
+behavioral Ui receipts share one source digest. Full package tests, both unsigned app builds,
+resolver validation and a fresh unsigned device Release compile pass on these sources. Local Mac
+snapshot differences and the documented menu-test stall still prevent a local aggregate coverage
+verdict; required CI confirmation remains pending. Version 0.23.1 is retained, with no new Release
+CI check, baseline recording or coverage-gate change. TestFlight delivery remains unverified.
+
+CI run [40233647872](https://github.com/fardavide/granita/actions/runs/40233647872) rejects that
+candidate too. Both builds, unit tests, generated files and Mac snapshots pass. The iOS failures
+include collapse frame steps, the image comparison's dark Done material, and an input probe that
+finds two horizontal candidates before its swipe. Coverage stops at the failed suite prerequisite;
+it has no numeric verdict. The prior local coverage receipts do not validate subsequent edits.
+
+A denser word-diff successor now reproduces a 356 pt frame step locally against the unchanged
+99 pt limit while the app and scene remain active. Stable child views reduce repeated text
+preparation but do not repair that stall. Native layout timing and an animation-inheritance A/B
+also leave it red; these diagnostic wrappers and flags are removed. Separately, native input
+regressions demonstrate that raw scroll rectangles include descendants of hidden, clipped and
+transparent ancestors. Filtering only those demonstrably invisible candidates passes all fourteen
+native input cases. The original CI ambiguity has no media or ancestor visibility evidence, so
+those regressions do not establish its exact cause. The repair remains uncommitted and incomplete.
+
+All six actual-touch tests now pass with the observer repair, including the CI timeout case. Two
+immutable image diagnostics reproduce the exact dark material mismatch while inactive and match
+after activation plus one native frame, preserving the same mounted host. The snapshot helper now
+requires that observed readiness before rendering; the original sixteen image cases pass without
+baseline or tolerance changes. [0247](decisions/0247-snapshot-materials-require-an-active-native-frame.md)
+records the evidence and its limits. Collapse and full CI verification remain incomplete.
+
+An approved, synchronized CPU profile captures the dense collapse's 516.8 ms callback gap with
+the app and scene active. Of 515 ms main-thread sampled weight inside the two native frame
+markers, 417 ms occurs under backing-store display and 315 ms includes Core Graphics rectangle
+painting/blending. Omitting only word-background assignments removes the stall, but changes the
+rendering and is rejected as a fix. Resolving colors once and a clipped drawing group also remain
+red and are removed. Native motion setup now uses the same active-scene preparation before its
+unchanged observation window. A render-preserving clipping repair is still under investigation;
+no new candidate is committed or published.
+
+**Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
+All seven required checks passed before merge, including both iOS shards, all six touch tests,
+eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases
+passed with unchanged assertions on the successful retry. Main's subsequent GitHub CI failed
+simulator availability checks, independently of the Cloud archive failure.
+
+Tapping or holding anywhere on a code row targets that line; holding and dragging selects across
+lines and hunk gaps. Releasing opens the composer, and hold-release-tap remains available. Ordinary
+swipes work before hold recognition; edge auto-scrolling is outside the feature. The interaction
+contract is in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md). The approved
+behavioral Ui and rendering Snapshot measurement boundary is in
+[0243](decisions/0243-native-input-is-measured-by-behavioral-coverage.md); Unit/All-tests scopes and
+numeric ratchets remain unchanged.
 
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a

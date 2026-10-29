@@ -69,11 +69,24 @@ The layer rules are declared once, in the package manifest, and enforced by the 
 | `Presentation` | its feature's `Ui`, `Domain` targets | any `Data` target |
 | `Main` | anything — it is a composition root | being depended on by anything |
 
+The viewer's Domain has one geometry-only exception: an explicit CoreGraphics import makes its
+existing Foundation geometry types agree with SwiftUI during Release optimization. It adds no
+drawing or I/O; [0244](decisions/0244-explicit-geometry-overlay-for-release-compilation.md) records
+the compiler failure and the approved boundary.
+
 **`Presentation` depends on `Ui`**, which inverts what most SwiftUI projects do and is deliberate. A
 `Ui` module is a vocabulary of stateless views: each takes what it renders and reports what happened,
 owning no view model and no state beyond a view's own. A `Presentation` module owns the view models
 and composes screens out of those views, so it is the outer of the two and the one that changes when
 a screen changes.
+
+Ready reader content owns immutable line and ruler preparation derived together from the same
+source. This pure, font-independent value belongs in Domain; initial fetched batches prepare it
+away from the main actor before Presentation publishes them, preserving current reader choices.
+Core diff values and their wire representation remain unchanged. Ui owns native font measurement
+and rendering, including the validated visible-text window; full source still supplies width and
+accessibility. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
+records the measured boundary.
 
 The payoff is reuse in the direction that matters. A view that imported its view model could only
 ever serve the one screen that view model belonged to; a view that takes values and closures serves

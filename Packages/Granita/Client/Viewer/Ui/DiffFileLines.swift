@@ -1,3 +1,4 @@
+import CoreText
 import SwiftUI
 
 import ClientViewerDomain
@@ -61,6 +62,7 @@ public struct DiffFileLines: View {
     static let shortestIndicator: CGFloat = 24
 
     private let lines: [DiffLine]
+    private let prepared: PreparedDiffLines
     private let highestNumber: Int
     private let pointSize: CGFloat
 
@@ -128,7 +130,32 @@ public struct DiffFileLines: View {
         onTap: @escaping (DiffLinePosition) -> Void = { _ in },
         onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
     ) {
-        self.lines = lines
+        self.init(
+            prepared: PreparedDiffLines(lines: lines),
+            highestNumber: highestNumber,
+            pointSize: pointSize,
+            isSplit: isSplit,
+            runs: runs,
+            highlighted: highlighted,
+            acceptsTargeting: acceptsTargeting,
+            onTap: onTap,
+            onLongPress: onLongPress
+        )
+    }
+
+    public init(
+        prepared: PreparedDiffLines,
+        highestNumber: Int,
+        pointSize: CGFloat,
+        isSplit: Bool = false,
+        runs: [CommentRun] = [],
+        highlighted: HighlightedFile = .none,
+        acceptsTargeting: Bool = true,
+        onTap: @escaping (DiffLinePosition) -> Void = { _ in },
+        onLongPress: @escaping (DiffLinePosition) -> Void = { _ in }
+    ) {
+        lines = prepared.lines
+        self.prepared = prepared
         self.highestNumber = highestNumber
         self.pointSize = pointSize
         self.isSplit = isSplit
@@ -330,21 +357,20 @@ public struct DiffFileLines: View {
     /// them.
     private var code: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            // A lazy column only measures mounted rows. Measure plain glyphs separately so a
-            // long offscreen line still sets travel without drawing every word-diff background.
-            ZStack(alignment: .topLeading) {
-                ForEach(indexedRows, id: \.offset) { _, row in
-                    switch row {
-                    case .full(let line):
-                        let drawn = DrawnDiffLine.of(line)
-                        let text = lexed(drawn, of: line).map { String($0.characters) } ?? drawn.text
-                        Text(verbatim: text)
-                            .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
-                            .lineLimit(1)
-                    case .block(let old, let new):
-                        Color.clear.frame(width: travelNeeded(old, new), height: rowHeight)
-                    }
+            let blockTravel = rows.reduce(CGFloat.zero) { width, row in
+                switch row {
+                case .full:
+                    return width
+                case .block(let old, let new):
+                    return max(width, travelNeeded(old, new))
                 }
+            }
+            // Keep native glyph measurement without laying out every equivalent ASCII line.
+            // Unicode still measures every line, including long lines below the viewport.
+            ZStack(alignment: .topLeading) {
+                Color.clear.frame(width: blockTravel, height: rowHeight)
+                DiffCodeRuler(rows: rows, highlighted: highlighted, ruler: prepared.ruler, isSplit: drawsBlocks)
+                    .equatable()
             }
             .hidden()
             .frame(height: contentHeight, alignment: .topLeading)
@@ -367,22 +393,30 @@ public struct DiffFileLines: View {
         // The horizontal scroll's viewport is the full hunk height, so rows inside it all mount.
         // Paint outside it to inherit the vertical viewport, as the split cells already do.
         .overlay(alignment: .topLeading) {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(indexedRows, id: \.offset) { _, row in
-                    switch row {
-                    case .full(let line):
-                        segmented(line)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .offset(x: -scrolledBy)
-                            .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
-                            .clipped()
-                    case .block:
-                        Color.clear.frame(width: visibleWidth, height: rowHeight)
+            if visibleWidth > 0 {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(indexedRows, id: \.offset) { offset, row in
+                        switch row {
+                        case .full(let line):
+                            DiffLineText(
+                                line: line,
+                                drawn: drawsBlocks ? DrawnDiffLine.of(line) : prepared.drawn[offset],
+                                highlighted: highlighted.text(of: line),
+                                segmentTint: segmentTint(of: line),
+                                viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight)
+                            )
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .offset(x: -scrolledBy)
+                                .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
+                                .clipped()
+                        case .block:
+                            Color.clear.frame(width: visibleWidth, height: rowHeight)
+                        }
                     }
                 }
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
         }
         // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
         // scroll, so a gradient painted in the background colour would have to composite the tint
@@ -442,7 +476,13 @@ public struct DiffFileLines: View {
         if let line {
             HStack(spacing: 0) {
                 figure(of: line, isPending: isPending(row: row, side: side))
-                segmented(line)
+                DiffLineText(
+                    line: line,
+                    drawn: DrawnDiffLine.of(line),
+                    highlighted: highlighted.text(of: line),
+                    segmentTint: segmentTint(of: line),
+                    viewport: CGRect(x: scrolledBy, y: 0, width: cellCodeWidth, height: rowHeight)
+                )
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                     .offset(x: -scrolledBy)
@@ -607,62 +647,6 @@ public struct DiffFileLines: View {
         }
     }
 
-    /// The changed run carried by a **background**, over the row's own tint.
-    ///
-    /// **This is `SPEC.md` §10's own treatment, and design §4 had replaced it.** The review found
-    /// that two nested backgrounds do not survive dark mode — the row already needs 16% to be
-    /// visible against black, leaving no headroom above it — and inverted the emphasis into the text
-    /// instead, taking the unchanged runs down to secondary. That reads well and it spends the one
-    /// property the syntax highlighter needs: a lexer colours text, and a line whose text colour
-    /// already means *this part changed* has nothing left to say `keyword` with. Davide settled it
-    /// back to the specification on 28 August 2026. In `.ai/docs/decisions.md`.
-    ///
-    /// **So the alpha is derived rather than drawn.** §4's argument that "stronger" is a ratio still
-    /// holds, and it is the thing that survives: the changed run reads at three times the row's own
-    /// tint in both appearances, and what the segment's own alpha has to be for that is arithmetic
-    /// over what it composites onto rather than a number picked per appearance.
-    ///
-    /// **It matters more inside a block than anywhere else**, which is design §4.3's note: in a
-    /// 22-character cell the background is the only thing left saying *this part*.
-    private func segmented(_ line: DiffLine) -> Text {
-        let drawn = DrawnDiffLine.of(line)
-        var attributed = lexed(drawn, of: line) ?? AttributedString(drawn.text)
-        guard drawn.changed.isEmpty == false else {
-            // A line the parser paired with nothing, or paired as one whole run — either way there
-            // is no *unchanged* part to tell it apart from, and a background over the whole line
-            // would be a second, stronger copy of the row tint drawn on top of the row tint.
-            return Text(attributed)
-                .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
-        }
-        let characters = attributed.characters
-        for range in drawn.changed {
-            let start = characters.index(characters.startIndex, offsetBy: range.lowerBound)
-            let end = characters.index(characters.startIndex, offsetBy: range.upperBound)
-            attributed[start..<end].backgroundColor = segmentTint(of: line)
-        }
-        return Text(attributed)
-    }
-
-    /// The row's code as the lexer coloured it, or nothing when it is to be drawn plain.
-    ///
-    /// **The two treatments compose because they use different properties**, which is the whole of
-    /// why design §4's word diff was reverted to `SPEC.md` §10's background on 28 August 2026: a lexer
-    /// owns the text colour, so the changed run has to be a background or the two cannot both be on
-    /// screen. The order here is that order — colours first, the word-diff background over them.
-    ///
-    /// **The lengths are checked, and that is a guard on a JavaScript engine behind a bridge.** The
-    /// lexer is handed the same expansion `DrawnDiffLine` produces, so the two agree by construction
-    /// — except where highlight.js's own HTML round trip decodes something that was literal text in
-    /// the file, which shortens the line. Applying a background at an offset into a shorter string
-    /// either traps or paints the wrong word, and neither is worth a colour: this row draws plain and
-    /// the rest of the file keeps its highlighting.
-    private func lexed(_ drawn: DrawnDiffLine, of line: DiffLine) -> AttributedString? {
-        guard let text = highlighted.text(of: line), text.characters.count == drawn.text.count else {
-            return nil
-        }
-        return text
-    }
-
     /// The changed run's own background, chosen so that what lands on screen is three times the row
     /// tint it sits on.
     ///
@@ -773,4 +757,163 @@ public struct DiffFileLines: View {
 
 private func clamped(_ fraction: CGFloat) -> CGFloat {
     min(1, max(0, fraction))
+}
+
+/// The changed run carried by a **background**, over the row's own tint.
+///
+/// **This is `SPEC.md` §10's own treatment, and design §4 had replaced it.** The review found
+/// that two nested backgrounds do not survive dark mode — the row already needs 16% to be
+/// visible against black, leaving no headroom above it — and inverted the emphasis into the text
+/// instead, taking the unchanged runs down to secondary. That reads well and it spends the one
+/// property the syntax highlighter needs: a lexer colours text, and a line whose text colour
+/// already means *this part changed* has nothing left to say `keyword` with. Davide settled it
+/// back to the specification on 28 August 2026. In `.ai/docs/decisions.md`.
+///
+/// **So the alpha is derived rather than drawn.** §4's argument that "stronger" is a ratio still
+/// holds, and it is the thing that survives: the changed run reads at three times the row's own
+/// tint in both appearances, and what the segment's own alpha has to be for that is arithmetic
+/// over what it composites onto rather than a number picked per appearance.
+///
+/// **It matters more inside a block than anywhere else**, which is design §4.3's note: in a
+/// 22-character cell the background is the only thing left saying *this part*.
+private struct DiffLineText: View {
+    let line: DiffLine
+    let drawn: DrawnDiffLine
+    let highlighted: AttributedString?
+    let segmentTint: Color
+    let viewport: CGRect
+
+    @Environment(\.font) private var font
+    @Environment(\.fontResolutionContext) private var fontResolutionContext
+
+    var body: some View {
+        DiffLineAttributedText(
+            line: line,
+            drawn: drawn,
+            highlighted: highlighted,
+            segmentTint: segmentTint,
+            viewport: viewport,
+            font: font,
+            fontResolutionContext: fontResolutionContext
+        )
+        .equatable()
+    }
+}
+
+private struct DiffLineAttributedText: View, Equatable {
+    let line: DiffLine
+    let drawn: DrawnDiffLine
+    let highlighted: AttributedString?
+    let segmentTint: Color
+    let viewport: CGRect
+    let font: Font?
+    let fontResolutionContext: Font.Context
+
+    var body: some View {
+        var attributed = lexed(drawn.text, highlighted: highlighted) ?? AttributedString(drawn.text)
+        guard drawn.changed.isEmpty == false else {
+            // A line the parser paired with nothing, or paired as one whole run — either way there
+            // is no *unchanged* part to tell it apart from, and a background over the whole line
+            // would be a second, stronger copy of the row tint drawn on top of the row tint.
+            return Text(attributed)
+                .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
+                .contentTransition(.identity)
+                .accessibilityLabel(drawn.text)
+        }
+        let characters = attributed.characters
+        let preparation = preparation(for: attributed)
+        let ranges = switch preparation {
+        case .original: drawn.changed
+        case .measured(let layout): layout.visibleRanges(in: drawn.changed, viewport: viewport)
+        }
+        var cursor = characters.startIndex
+        var characterOffset = 0
+        for range in ranges {
+            let start = characters.index(cursor, offsetBy: range.lowerBound - characterOffset)
+            let end = characters.index(start, offsetBy: range.count)
+            attributed[start..<end].backgroundColor = segmentTint
+            cursor = end
+            characterOffset = range.upperBound
+        }
+        let visible = switch preparation {
+        case .original: attributed
+        case .measured(let layout): layout.visibleText(in: attributed, viewport: viewport)
+        }
+        return Text(visible)
+            .contentTransition(.identity)
+            .accessibilityLabel(drawn.text)
+    }
+
+    private func preparation(for attributed: AttributedString) -> DiffLineTextPreparation {
+        guard line.kind == .addition || line.kind == .deletion,
+              let segments = line.segments, segments.count > 1,
+              DiffTextRunVisibility.supportsCulling(sourceText: line.text, highlighting: attributed),
+              segments.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }),
+              let font else {
+            return .original
+        }
+        let nativeFont = font.resolve(in: fontResolutionContext).ctFont
+        let characters = Array(UInt16(0x20)...UInt16(0x7E))
+        var glyphs = [CGGlyph](repeating: 0, count: characters.count)
+        guard CTFontGetGlyphsForCharacters(nativeFont, characters, &glyphs, characters.count) else {
+            return .original
+        }
+        return .measured(DiffTextBackgroundLayout(text: String(attributed.characters), font: nativeFont))
+    }
+}
+
+private enum DiffLineTextPreparation {
+    case original
+    case measured(DiffTextBackgroundLayout)
+}
+
+private struct DiffCodeRuler: View, Equatable {
+    let rows: [SplitDiffRow]
+    let highlighted: HighlightedFile
+    let ruler: [DiffRulerLine]
+    let isSplit: Bool
+
+    var body: some View {
+        let representatives: [DiffRulerLine]
+        if isSplit == false, highlighted == .none {
+            representatives = ruler
+        } else {
+            let fullLines = rows.compactMap { row -> DiffRulerLine? in
+                switch row {
+                case .full(let line):
+                    let drawnText = DrawnDiffLine.text(of: line)
+                    let text = lexed(drawnText, highlighted: highlighted.text(of: line)).map { String($0.characters) } ?? drawnText
+                    return DiffRulerLine(text: text, kind: line.kind)
+                case .block:
+                    return nil
+                }
+            }
+            representatives = DiffRulerLine.representatives(in: fullLines)
+        }
+        return ForEach(Array(representatives.enumerated()), id: \.offset) { _, line in
+            Text(verbatim: line.text)
+                .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
+                .lineLimit(1)
+        }
+    }
+}
+
+/// The row's code as the lexer coloured it, or nothing when it is to be drawn plain.
+///
+/// **The two treatments compose because they use different properties**, which is the whole of
+/// why design §4's word diff was reverted to `SPEC.md` §10's background on 28 August 2026: a lexer
+/// owns the text colour, so the changed run has to be a background or the two cannot both be on
+/// screen. The order here is that order — colours first, the word-diff background over them.
+///
+/// **The lengths are checked, and that is a guard on a JavaScript engine behind a bridge.** The
+/// lexer is handed the same expansion `DrawnDiffLine` produces, so the two agree by construction
+/// — except where highlight.js's own HTML round trip decodes something that was literal text in
+/// the file, which shortens the line. Applying a background at an offset into a shorter string
+/// either traps or paints the wrong word, and neither is worth a colour: this row draws plain and
+/// the rest of the file keeps its highlighting.
+private func lexed(_ drawnText: String, highlighted: AttributedString?) -> AttributedString? {
+    guard let text = highlighted, text.characters.count == drawnText.count else {
+        return nil
+    }
+    return text
 }

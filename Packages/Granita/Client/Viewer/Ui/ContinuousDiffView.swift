@@ -220,27 +220,6 @@ public struct ContinuousDiffView: View {
                             } action: { isPinned in
                                 recordPinnedFile(entry, isPinned: isPinned)
                             }
-                            .background {
-                                if let request = pendingAdvance,
-                                   request.target == entry.id {
-                                    // Let the laid-out successor receive an animation update before
-                                    // starting viewport motion; its first draw can be expensive.
-                                    GeometryReader { geometry in
-                                        TimelineView(.animation) { context in
-                                            Color.clear.onChange(of: context.date) { _, _ in
-                                                if geometry.size.width > 0, geometry.size.height > 0,
-                                                   pendingAdvance == request {
-                                                    pendingAdvance = nil
-                                                    scroll(to: .header(request.target), animation: collapseAnimation)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .transition(.identity)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                                }
-                            }
                             // **The position is reported on appearance rather than from a scroll
                             // offset.** `SPEC.md` §10 says to track this with visibility and never
                             // with `contentOffset`, and the reason is the same one the whole screen
@@ -251,6 +230,11 @@ public struct ContinuousDiffView: View {
                             .onChange(of: entry.isReady) { _, _ in onRereading(position) }
                     } header: {
                         header(of: entry)
+                            .onGeometryChange(for: CGFloat.self) { proxy in
+                                proxy.frame(in: .scrollView(axis: .vertical)).minY
+                            } action: { oldY, newY in
+                                advanceAfterHeaderMovement(from: oldY, to: newY, in: entry.id)
+                            }
                             // Move the header's rendering as one unit when its natural slot moves.
                             .geometryGroup()
                             // Collapse targets the header itself; a section also contains a body.
@@ -288,6 +272,14 @@ public struct ContinuousDiffView: View {
         // they tapped either way, and closing the last 120pt is a question for a real scroll under a
         // real thumb. See `.ai/docs/status.md`.
         .scrollPosition($scrolledTo, anchor: .top)
+        .transaction(value: entries) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction(value: pointSize) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction(value: isSplit) { $0.scrollContentOffsetAdjustmentBehavior = .automatic }
+        .transaction { transaction in
+            if scrolledTo.isPositionedByUser {
+                transaction.scrollContentOffsetAdjustmentBehavior = .disabled
+            }
+        }
         .scrollDisabled(isSelectingLines)
         .onChange(of: entries) { previous, current in
             advanceAfterCollapse(from: previous, to: current)
@@ -363,17 +355,30 @@ public struct ContinuousDiffView: View {
         guard current.indices.contains(position + 1) else { return }
         pendingAdvance = AdvanceRequest(
             source: current[position].id,
-            target: current[position + 1].id
+            target: current[position + 1].id,
+            phase: .waiting
         )
     }
 
+    private func advanceAfterHeaderMovement(from oldY: CGFloat, to newY: CGFloat, in file: FileID) {
+        guard var request = pendingAdvance, request.target == file, request.phase == .waiting,
+              newY < oldY || newY <= 0 else { return }
+        request.phase = .scrolling
+        pendingAdvance = request
+        scroll(to: .header(file), animation: collapseAnimation)
+    }
+
     private func scroll(to destination: ScrollDestination, animation: Animation) {
+        let request = pendingAdvance
         withAnimation(animation) {
             scrolledTo.scrollTo(id: destination, anchor: .top)
         } completion: {
             // A completed request must not realign later hunk layout. A newer request owns it.
             if scrolledTo.viewID(type: ScrollDestination.self) == destination {
-                scrolledTo = ScrollPosition()
+                scrolledTo.isPositionedByUser = true
+            }
+            if let request, pendingAdvance == request {
+                pendingAdvance = nil
             }
         }
     }
@@ -386,6 +391,12 @@ public struct ContinuousDiffView: View {
     nonisolated private struct AdvanceRequest: Equatable, Sendable {
         let source: FileID
         let target: FileID
+        var phase: Phase
+
+        enum Phase: Sendable {
+            case waiting
+            case scrolling
+        }
     }
 
     /// **A shut file is a bar in the header's slot with nothing under it**, rather than a header
@@ -496,7 +507,7 @@ public struct ContinuousDiffView: View {
                         rows: entry.reservedRows,
                         pointSize: pointSize
                     )
-                case .ready(let diff):
+                case .ready(let prepared):
                     // **A picture draws pictures where a file draws hunks, and it has none to draw.**
                     // Git answers `Binary files … differ` for a PNG, so this card's `FileDiff` is a real
                     // answer with an empty body — before this existed the whole file was a collapsed bar
@@ -506,7 +517,7 @@ public struct ContinuousDiffView: View {
                     // case on the content.
                     if let image = images[entry.id] {
                         DiffImageBody(
-                            file: diff.file,
+                            file: prepared.diff.file,
                             image: image,
                             onOpen: onOpenImage,
                             onRetry: onRetryImage
@@ -514,7 +525,7 @@ public struct ContinuousDiffView: View {
                         .transition(.opacity)
                     } else {
                         DiffFileContent(
-                            diff: diff,
+                            prepared: prepared,
                             pointSize: pointSize,
                             isSplit: isSplit,
                             // The rails are drawn from the comments that still resolve; a stale one has

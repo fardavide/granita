@@ -21,7 +21,7 @@ import CoreReviewDomain
 /// row disappears the moment the gap it was drawn across is closed.
 public struct DiffFileContent: View {
 
-    private let diff: FileDiff
+    private let owner: PreparedFileDiff
     private let pointSize: CGFloat
 
     /// Whether the reader has asked for a paired run to open into two columns. Whether any actually
@@ -72,7 +72,39 @@ public struct DiffFileContent: View {
         onEndGutterDrag: @escaping () -> Void = {},
         onPressingChanged: @escaping (Bool) -> Void = { _ in }
     ) {
-        self.diff = diff
+        self.init(
+            prepared: PreparedFileDiff(diff: diff),
+            pointSize: pointSize,
+            isSplit: isSplit,
+            comments: comments,
+            pending: pending,
+            highlighted: highlighted,
+            acceptsTargeting: acceptsTargeting,
+            onExpand: onExpand,
+            onTapGutter: onTapGutter,
+            onLongPressGutter: onLongPressGutter,
+            onDragGutter: onDragGutter,
+            onEndGutterDrag: onEndGutterDrag,
+            onPressingChanged: onPressingChanged
+        )
+    }
+
+    public init(
+        prepared: PreparedFileDiff,
+        pointSize: CGFloat,
+        isSplit: Bool = false,
+        comments: [ReviewComment] = [],
+        pending: PendingComment? = nil,
+        highlighted: HighlightedFile = .none,
+        acceptsTargeting: Bool = true,
+        onExpand: @escaping (ContextDirection, Int, FileID) -> Void,
+        onTapGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onLongPressGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onDragGutter: @escaping (DiffLinePosition, FileID) -> Void = { _, _ in },
+        onEndGutterDrag: @escaping () -> Void = {},
+        onPressingChanged: @escaping (Bool) -> Void = { _ in }
+    ) {
+        owner = prepared
         self.pointSize = pointSize
         self.isSplit = isSplit
         self.comments = comments
@@ -88,6 +120,7 @@ public struct DiffFileContent: View {
     }
 
     public var body: some View {
+        let diff = owner.diff
         VStack(alignment: .leading, spacing: 0) {
             ForEach(DiffFileRow.rows(of: diff)) { row in
                 switch row {
@@ -103,7 +136,7 @@ public struct DiffFileContent: View {
                     let targetsHunk = acceptsTargeting
                     #endif
                     DiffFileLines(
-                        lines: hunk.lines,
+                        prepared: owner.linesByHunk[hunk.index]!, // The file and hunk map come from the same PreparedFileDiff constructor.
                         highestNumber: highestNumber,
                         pointSize: pointSize,
                         isSplit: isSplit,
@@ -169,7 +202,7 @@ public struct DiffFileContent: View {
     /// runs past its new one — a deletion of a hundred lines from the end — would otherwise size its
     /// gutter on the new maximum and then draw four-figure old numbers into a three-figure column.
     private var highestNumber: Int {
-        let lines = diff.hunks.flatMap(\.lines)
+        let lines = owner.diff.hunks.flatMap(\.lines)
         let highestOld = lines.compactMap(\.oldNumber).max() ?? 0
         let highestNew = lines.compactMap(\.newNumber).max() ?? 0
         return max(highestOld, highestNew)
