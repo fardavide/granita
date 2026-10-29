@@ -2,12 +2,13 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 28 October: the 0.23.1
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 29 October: the 0.23.1
 repair remains under verification; TestFlight delivery is unverified.**
-[CI 388](https://github.com/fardavide/granita/actions/runs/40757911022), at `287a651`, passes both
+[CI 389](https://github.com/fardavide/granita/actions/runs/40771650438), at `4ee62e0`, passes both
 builds, generated files, package tests, Mac snapshots and iOS group 0, including native input
-coverage. Group 1 fails two original frame-step bounds: manual collapse into word-diff and dense
-word-diff successors. Its selector guard passes this time. Coverage stops at the failed suite
+coverage. Group 1 records four collapse-motion failures and one selector failure. The preceding
+run failed two collapse cases while passing the selector, so the failing cases vary without a
+production motion change. Coverage stops at the failed suite
 without a numeric verdict. The complete local iOS results below do not establish a CI repair.
 
 The Mac failure has a deterministic controlled reproduction: a reload during post-ready syntax
@@ -26,7 +27,11 @@ motion: simulator readiness exceeds its setup budget, then the recorder never co
 It supplies no CPU trace. It confirms the earlier CI compiler and enabled UIKit animations.
 The next diagnostic explicitly boots and waits for the simulator, enumerates Instruments devices,
 and allows longer diagnostic-only setup waits. Both revised one-case local smoke recordings
-pass and restore the original source fingerprint. Original motion deadlines remain unchanged.
+pass and restore the original source fingerprint. The revised remote run completes boot and
+captures a valid selector trace with its exact PID and paired phase markers. The first recorder
+still fails its startup handshake, so dense motion remains unmeasured. The next control reverses
+the diagnostic case order to test first-start dependence; both local captures pass in that order.
+Original motion deadlines remain unchanged.
 These are recorder checks on the local toolchain, not CI motion evidence. No new
 renderer experiment or conclusion about the remaining motion cause is accepted from this
 toolchain difference alone.

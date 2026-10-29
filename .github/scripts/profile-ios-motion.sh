@@ -121,7 +121,7 @@ all)
     xcrun simctl bootstatus "$simulator" -b > "$OUT/simulator-boot.txt"
     xcrun xctrace list devices > "$OUT/instruments-devices.txt"
     overall_status=0
-    for scenario in dense selector; do
+    for scenario in selector dense; do
         bash "$SCRIPT" capture "$scenario" "$simulator" &
         CAPTURE_PID=$!
         capture_status=0
