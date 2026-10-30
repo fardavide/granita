@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - uses: ./.github/actions/select-xcode
       - name: Require unchanged product and test sources
         run: |
