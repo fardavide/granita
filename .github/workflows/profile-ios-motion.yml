@@ -1,0 +1,33 @@
+name: Temporary selector CPU profile
+
+on:
+  push:
+    branches: [codex/selector-ci-profile]
+
+permissions:
+  contents: read
+
+jobs:
+  selector-cpu-profile:
+    name: Original selector in iOS shard 1
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/select-xcode
+      - name: Require unchanged product and test sources
+        run: |
+          git cat-file -e '4324c953db64b4596988ab4d3dd3d21f593c5734^{commit}'
+          git diff --exit-code 4324c953db64b4596988ab4d3dd3d21f593c5734 HEAD -- Apps Packages project.yml
+      - name: Profile the original selector during the complete shard sequence
+        run: make profile-ios-motion IOS_PROFILE_FULL_SHARD=YES
+      - name: Upload bounded CPU trace and diagnostic provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selector-ci-cpu-profile
+          path: build/native-motion-profile
+          retention-days: 7
+          if-no-files-found: error

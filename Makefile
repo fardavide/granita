@@ -185,6 +185,19 @@ coverage-ios-restore: ## Restore products from this revision, run attempt and to
 	bash .github/scripts/ios-test-products.sh restore
 
 .PHONY: coverage-duplicate-check
+.PHONY: profile-ios-motion profile-ios-motion-test
+IOS_PROFILE_FULL_SHARD ?= NO
+profile-ios-motion:
+	bash .github/scripts/profile-ios-motion.sh all '$(IOS_SIM_NAME)' '$(IOS_PROFILE_FULL_SHARD)'
+
+profile-ios-motion-test:
+	bash .github/scripts/profile-ios-motion.sh verify
+	xcodebuild test-without-building -xctestrun '$(IOS_PROFILE_XCTESTRUN)' \
+		-destination '$(IOS_SIM)' -parallel-testing-enabled NO \
+		$(if $(filter YES,$(IOS_PROFILE_FULL_SHARD)),-only-testing '@$(abspath build/ios-shards/shard-1.txt)',-only-testing:GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests/'`given wide files when a later file is selected then the viewport visibly animates to its header`()') \
+		-resultBundlePath '$(IOS_PROFILE_RESULT)' -collect-test-diagnostics never \
+		-enableCodeCoverage YES ENABLE_CODE_COVERAGE=YES CLANG_COVERAGE_MAPPING=YES CODE_SIGNING_ALLOWED=NO
+
 coverage-duplicate-check: ## Prove duplicate shard mappings do not alter the merged export
 	bash .github/scripts/compare-ios-mappings.sh
 
