@@ -217,7 +217,7 @@ capture)
     mkfifo "$pipe"
     notifyutil -1 "$notice" > "$pipe" &
     notice_pid=$!
-    xcrun xctrace record --template 'Time Profiler' --device "$simulator" --attach "$app_pid" \
+    xcrun xctrace record --no-prompt --template 'Time Profiler' --device "$simulator" --attach "$app_pid" \
         --time-limit "$duration" --notify-tracing-started "$notice" --output "$CASE_OUT/cpu.trace" &
     recorder_pid=$!
     if read -r -t 120 notification < "$pipe"; then
