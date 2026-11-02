@@ -5,6 +5,7 @@ cd "$(dirname "$0")/../.."
 ROOT="$(pwd)"
 SCRIPT="$ROOT/.github/scripts/profile-ios-motion.sh"
 PATCH="$ROOT/.github/diagnostics/native-motion-profile.patch"
+RECORDING_OPTIONS="$ROOT/.github/diagnostics/native-motion-recording-options.json"
 SOURCE=Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTests.swift
 VIEW=Packages/Granita/Client/Viewer/Ui/ContinuousDiffView.swift
 OUT="$ROOT/build/native-motion-profile"
@@ -50,12 +51,19 @@ verify)
     ;;
 all)
     test ! -e "$OUT"
+    available_kib=$(df -k "$ROOT" | tail -1 | tr -s ' ' | cut -d ' ' -f 4)
+    if [[ ! "$available_kib" =~ ^[0-9]+$ ]] || (( available_kib < 8388608 )); then
+        printf 'At least 8 GiB of free space is required before profiling.\n' >&2
+        exit 1
+    fi
     mkdir -p "$OUT"
     git diff --exit-code -- "$SOURCE" "$VIEW"
     python3 .github/scripts/source_digest.py > "$OUT/source-before.txt"
     git rev-parse HEAD > "$OUT/checkout-revision.txt"
     shasum -a 256 "$PATCH" > "$OUT/instrumentation.sha256"
     cp "$PATCH" "$OUT/instrumentation.patch"
+    cp "$RECORDING_OPTIONS" "$OUT/recording-options.json"
+    shasum -a 256 "$RECORDING_OPTIONS" > "$OUT/recording-options.sha256"
     cp Packages/Granita/Package.resolved "$OUT/Package.resolved"
     xcodebuild -version > "$OUT/xcode.txt"
     xcrun swift --version > "$OUT/compiler.txt"
@@ -67,6 +75,8 @@ all)
     jq -n --arg revision "$REVISION" --arg run "$RUN" --arg toolchain "$TOOLCHAIN" --arg root "$ROOT" --arg full_shard "$FULL_SHARD" \
         '{diagnostic_only:true,source_revision:$revision,run:$run,toolchain:$toolchain,source_root:$root,full_shard_1:($full_shard == "YES")}' > "$OUT/provenance.json"
     PATCH_APPLIED=false
+    cp -p "$SOURCE" "$OUT/original-interaction-source.swift"
+    cp -p "$VIEW" "$OUT/original-view-source.swift"
     CAPTURE_PID=
     cleanup_all() {
         local status=$?
@@ -76,14 +86,16 @@ all)
             wait "$CAPTURE_PID" 2>/dev/null || true
         fi
         if [[ "$PATCH_APPLIED" == true ]]; then
-            if git apply --recount --reverse --check "$PATCH" && git apply --recount --reverse "$PATCH"; then
+            if cmp -s "$SOURCE" "$OUT/instrumented-interaction-source.swift" && cmp -s "$VIEW" "$OUT/instrumented-view-source.swift"; then
+                mv -f "$OUT/original-interaction-source.swift" "$SOURCE"
+                mv -f "$OUT/original-view-source.swift" "$VIEW"
                 python3 .github/scripts/source_digest.py > "$OUT/source-restored.txt"
                 if ! cmp -s "$OUT/source-before.txt" "$OUT/source-restored.txt"; then
                     printf 'Diagnostic cleanup did not restore the original source fingerprint.\n' >&2
                     status=1
                 fi
             else
-                printf 'Diagnostic instrumentation could not be removed cleanly.\n' >&2
+                printf 'Instrumented sources changed unexpectedly; original copies are retained for recovery.\n' >&2
                 status=1
             fi
         fi
@@ -97,6 +109,8 @@ all)
     git apply --recount --check "$PATCH"
     git apply --recount "$PATCH"
     PATCH_APPLIED=true
+    cp -p "$SOURCE" "$OUT/instrumented-interaction-source.swift"
+    cp -p "$VIEW" "$OUT/instrumented-view-source.swift"
     python3 .github/scripts/source_digest.py > "$OUT/source-instrumented.txt"
     git diff --binary -- "$SOURCE" "$VIEW" > "$OUT/applied-instrumentation.patch"
 
@@ -147,9 +161,9 @@ all)
 capture)
     scenario=selector
     marker=SelectorCapture
+    if [[ "$FULL_SHARD" == YES ]]; then marker=CollapseCapture; fi
     simulator="${2:?Expected simulator UDID}"
     duration=10s
-    if [[ "$FULL_SHARD" == YES ]]; then duration=180s; fi
     CASE_OUT="$OUT/$scenario"
     mkdir "$CASE_OUT"
     base="/private/tmp/granita-ci-native-motion-$scenario"
@@ -173,9 +187,9 @@ capture)
                 wait "$owned_pid" 2>/dev/null || true
             fi
         done
-        if [[ -f "$ready" ]]; then cp -p "$ready" "$CASE_OUT/ready.json"; fi
-        if [[ -f "$armed" ]]; then cp -p "$armed" "$CASE_OUT/armed"; fi
-        rm -f "$ready" "$armed" "$pipe"
+        if [[ -f "$ready" ]]; then cp -p "$ready" "$CASE_OUT/ready.json" || status=1; fi
+        if [[ -f "$armed" ]]; then cp -p "$armed" "$CASE_OUT/armed" || status=1; fi
+        rm -f "$ready" "$armed" "$pipe" || status=1
         printf '%s\n' "$status" > "$CASE_OUT/capture-exit-status.txt"
         exit "$status"
     }
@@ -213,11 +227,11 @@ capture)
     esac
     printf '%s\n' "$app_command" > "$CASE_OUT/verified-app-command.txt"
     jq -n --argjson pid "$app_pid" --arg simulator "$simulator" --arg marker "$marker" --arg duration "$duration" \
-        '{process_id:$pid,simulator:$simulator,marker:$marker,template:"Time Profiler",time_limit:$duration}' > "$CASE_OUT/recording.json"
+        '{process_id:$pid,simulator:$simulator,marker:$marker,template:"Time Profiler",record_waiting_threads:true,time_limit:$duration}' > "$CASE_OUT/recording.json"
     mkfifo "$pipe"
     notifyutil -1 "$notice" > "$pipe" &
     notice_pid=$!
-    xcrun xctrace record --no-prompt --template 'Time Profiler' --device "$simulator" --attach "$app_pid" \
+    xcrun xctrace record --no-prompt --template 'Time Profiler' --recording-options "$RECORDING_OPTIONS" --device "$simulator" --attach "$app_pid" \
         --time-limit "$duration" --notify-tracing-started "$notice" --output "$CASE_OUT/cpu.trace" &
     recorder_pid=$!
     if read -r -t 120 notification < "$pipe"; then
@@ -245,6 +259,8 @@ capture)
     xcrun xctrace export --input "$CASE_OUT/cpu.trace" \
         --xpath '/trace-toc/run[@number="1"]/data/table[@schema="os-signpost"]' --output "$CASE_OUT/signposts.xml"
     # Refuse an empty recording. Phase begin/end and exact sample correlation remain inspectable.
+    test "$(xmllint --nonet --xpath 'count(//table[@schema="time-profile" and @record-waiting-threads="1"])' "$CASE_OUT/toc.xml")" -gt 0
+    test "$(xmllint --nonet --xpath 'count(//table[@schema="time-sample" and @all-thread-states="YES"])' "$CASE_OUT/toc.xml")" -gt 0
     test "$(xmllint --nonet --xpath 'count(//row)' "$CASE_OUT/time-profile.xml")" -gt 0
     marker_id=$(xmllint --nonet --xpath "string((//signpost-name[@fmt='$marker']/@id)[1])" "$CASE_OUT/signposts.xml")
     begin_id=$(xmllint --nonet --xpath 'string((//event-type[@fmt="Begin"]/@id)[1])' "$CASE_OUT/signposts.xml")

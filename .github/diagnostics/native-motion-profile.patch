@@ -12,6 +12,36 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
      ) async throws {
 +        try await waitForNativeCpuRecorder()
          // given
+@@ -227,19 +229,32 @@
+         let originalHeader = try #require(first.headerFrames.first)
+
+         // when
++        let cpuProfileBegan = NativeCpuPhaseClock()
++        os_signpost(.begin, log: nativeCpuProfileLog, name: "CollapseCapture")
++        var cpuProfilePhaseOpen = true
++        defer {
++            if cpuProfilePhaseOpen {
++                os_signpost(.end, log: nativeCpuProfileLog, name: "CollapseCapture")
++            }
++        }
+         switch collapse {
+         case .viewed:
+             scenario.model.setViewed(true, fileId: entries[0].id)
+         case .manual:
+             scenario.model.setOpen(false, fileId: entries[0].id)
+         }
+         // Sample actual display frames rather than counting run-loop turns or observing only the
+         // model offset, which can already hold the destination while the screen is still moving.
+         // Suspension lets queued MainActor work and UIKit's outer event loop run between frames.
+         try await Task.sleep(for: .seconds(1.2))
+         probe.stop()
++        os_signpost(.end, log: nativeCpuProfileLog, name: "CollapseCapture")
++        cpuProfilePhaseOpen = false
++        let cpuProfileEnded = NativeCpuPhaseClock()
++        let cpuPhaseData = try JSONEncoder().encode(NativeCpuPhaseInterval(started: cpuProfileBegan, ended: cpuProfileEnded))
++        Attachment.record(Array(cpuPhaseData), named: "native-collapse-phase-\(collapse)-\(fixture).json")
+
+         // then
 @@ -836,4 +837,5 @@
      @Test
      func `given wide files when a later file is selected then the viewport visibly animates to its header`() async throws {
@@ -20,6 +50,7 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
          let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
 @@ -874,5 +876,15 @@
          // when
++        let cpuProfileBegan = NativeCpuPhaseClock()
 +        os_signpost(.begin, log: nativeCpuProfileLog, name: "SelectorCapture")
 +        var cpuProfilePhaseOpen = true
 +        defer {
@@ -32,6 +63,9 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
          probe.stop()
 +        os_signpost(.end, log: nativeCpuProfileLog, name: "SelectorCapture")
 +        cpuProfilePhaseOpen = false
++        let cpuProfileEnded = NativeCpuPhaseClock()
++        let cpuPhaseData = try JSONEncoder().encode(NativeCpuPhaseInterval(started: cpuProfileBegan, ended: cpuProfileEnded))
++        Attachment.record(Array(cpuPhaseData), named: "native-selector-phase.json")
 -
 +
          // then
@@ -40,6 +74,23 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +
 +@MainActor
 +private var nativeCpuRecorderArmed = false
++
++private struct NativeCpuPhaseClock: Encodable {
++    let monotonic: Double
++    let uptime: Double
++    let wallTime: Double
++
++    init() {
++        monotonic = CACurrentMediaTime()
++        uptime = ProcessInfo.processInfo.systemUptime
++        wallTime = Date().timeIntervalSince1970
++    }
++}
++
++private struct NativeCpuPhaseInterval: Encodable {
++    let started: NativeCpuPhaseClock
++    let ended: NativeCpuPhaseClock
++}
 +
 +private struct NativeCpuProfileMetadata: Encodable {
 +    let processId: Int32
