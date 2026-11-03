@@ -13,9 +13,14 @@ REVISION="${GITHUB_SHA:-$(git rev-parse HEAD)}"
 RUN="${GITHUB_RUN_ID:-local}:${GITHUB_RUN_ATTEMPT:-1}"
 TOOLCHAIN="$(xcodebuild -version) $(uname -m)"
 FULL_SHARD="${3:-NO}"
+RECORDER="${4:-CPU}"
 case "$FULL_SHARD" in
     NO|YES) ;;
     *) printf 'IOS_PROFILE_FULL_SHARD must be NO or YES.\n' >&2; exit 1 ;;
+esac
+case "$RECORDER" in
+    CPU|VIDEO) ;;
+    *) printf 'IOS_PROFILE_RECORDER must be CPU or VIDEO.\n' >&2; exit 1 ;;
 esac
 
 verify_build() {
@@ -72,8 +77,8 @@ all)
     uname -m > "$OUT/host-architecture.txt"
     xcrun simctl list devices available --json > "$OUT/devices.json"
     xcrun simctl list runtimes --json > "$OUT/runtimes.json"
-    jq -n --arg revision "$REVISION" --arg run "$RUN" --arg toolchain "$TOOLCHAIN" --arg root "$ROOT" --arg full_shard "$FULL_SHARD" \
-        '{diagnostic_only:true,source_revision:$revision,run:$run,toolchain:$toolchain,source_root:$root,full_shard_1:($full_shard == "YES")}' > "$OUT/provenance.json"
+    jq -n --arg revision "$REVISION" --arg run "$RUN" --arg toolchain "$TOOLCHAIN" --arg root "$ROOT" --arg full_shard "$FULL_SHARD" --arg recorder "$RECORDER" \
+        '{diagnostic_only:true,source_revision:$revision,run:$run,toolchain:$toolchain,source_root:$root,full_shard_1:($full_shard == "YES"),recorder:$recorder}' > "$OUT/provenance.json"
     PATCH_APPLIED=false
     cp -p "$SOURCE" "$OUT/original-interaction-source.swift"
     cp -p "$VIEW" "$OUT/original-view-source.swift"
@@ -150,7 +155,7 @@ all)
             'index($selector) != null and all(.[]; (contains("temporaryDenseCollapseCpuProfile") or contains("temporarySelectorCpuProfile")) | not)' \
             "$OUT/shards/shard-1.json"
     fi
-    bash "$SCRIPT" capture "$simulator" "$FULL_SHARD" &
+    bash "$SCRIPT" capture "$simulator" "$FULL_SHARD" "$RECORDER" &
     CAPTURE_PID=$!
     capture_status=0
     wait "$CAPTURE_PID" || capture_status=$?
@@ -161,7 +166,8 @@ all)
 capture)
     scenario=selector
     marker=SelectorCapture
-    if [[ "$FULL_SHARD" == YES ]]; then marker=CollapseCapture; fi
+    capture_case=selector
+    if [[ "$FULL_SHARD" == YES ]]; then marker=CollapseCapture; capture_case=viewedWordDiff; fi
     simulator="${2:?Expected simulator UDID}"
     duration=10s
     CASE_OUT="$OUT/$scenario"
@@ -169,9 +175,10 @@ capture)
     base="/private/tmp/granita-ci-native-motion-$scenario"
     ready="$base.ready.json"
     armed="$base.armed"
+    requested="$base.requested.json"
     pipe="$base.notification"
     notice="dev.fardavide.granita.native-cpu-profile-$scenario"
-    for fresh in "$ready" "$armed" "$pipe"; do
+    for fresh in "$ready" "$armed" "$pipe" "$requested"; do
         if [[ -e "$fresh" ]]; then
             printf 'Diagnostic path is not fresh: %s\n' "$fresh" >&2
             exit 1
@@ -189,13 +196,15 @@ capture)
         done
         if [[ -f "$ready" ]]; then cp -p "$ready" "$CASE_OUT/ready.json" || status=1; fi
         if [[ -f "$armed" ]]; then cp -p "$armed" "$CASE_OUT/armed" || status=1; fi
-        rm -f "$ready" "$armed" "$pipe" || status=1
+        rm -f "$ready" "$armed" "$pipe" "$requested" || status=1
         printf '%s\n' "$status" > "$CASE_OUT/capture-exit-status.txt"
         exit "$status"
     }
     trap cleanup_capture EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    jq -n --arg name "$capture_case" '$name' > "$requested"
+    cp -p "$requested" "$CASE_OUT/requested.json"
     runs=(build/derived/ios/Build/Products/*.xctestrun)
     test "${#runs[@]}" -eq 1
     test -f "${runs[0]}"
@@ -216,8 +225,8 @@ capture)
         fi
         sleep 0.1
     done
-    app_pid=$(jq -er --arg scenario "$scenario" '
-        select(.bundleId == "dev.fardavide.granita.mobile" and .caseName == $scenario) |
+    app_pid=$(jq -er --arg capture_case "$capture_case" '
+        select(.bundleId == "dev.fardavide.granita.mobile" and .caseName == $capture_case) |
         .processId | select(type == "number" and . > 0 and floor == .)
     ' "$ready")
     app_command=$(ps -p "$app_pid" -o comm=)
@@ -226,6 +235,13 @@ capture)
         *) printf 'Ready PID is not the expected simulator app: %s\n' "$app_command" >&2; exit 1 ;;
     esac
     printf '%s\n' "$app_command" > "$CASE_OUT/verified-app-command.txt"
+    recorder_status=0
+    if [[ "$RECORDER" == VIDEO ]]; then
+        jq -n --argjson pid "$app_pid" --arg simulator "$simulator" \
+            '{process_id:$pid,simulator:$simulator,template:"simctl recordVideo",codec:"h264",capture_seconds:10,armed_after:"first native video frame processed",cpu_profiler:false}' > "$CASE_OUT/recording.json"
+        python3 .github/scripts/record_ios_video.py "$armed" "$CASE_OUT/motion.mp4" "$simulator" &
+        recorder_pid=$!
+    else
     jq -n --argjson pid "$app_pid" --arg simulator "$simulator" --arg marker "$marker" --arg duration "$duration" \
         '{process_id:$pid,simulator:$simulator,marker:$marker,template:"Time Profiler",record_waiting_threads:true,time_limit:$duration}' > "$CASE_OUT/recording.json"
     mkfifo "$pipe"
@@ -243,7 +259,7 @@ capture)
         printf 'CPU recorder did not confirm it had started.\n' >&2
         exit 1
     fi
-    recorder_status=0
+    fi
     wait "$recorder_pid" || recorder_status=$?
     recorder_pid=
     test_status=0
@@ -253,6 +269,29 @@ capture)
         '{recorder_exit_status:$recorder,test_exit_status:$test}' > "$CASE_OUT/status.json"
     xcrun xcresulttool get test-results summary --path "$CASE_OUT/tests.xcresult" > "$CASE_OUT/test-summary.json"
     xcrun xcresulttool get test-results tests --path "$CASE_OUT/tests.xcresult" > "$CASE_OUT/test-inventory.json"
+    if [[ "$RECORDER" == VIDEO ]]; then
+        test -s "$CASE_OUT/motion.mp4"
+        if [[ "$FULL_SHARD" == YES ]]; then
+            xcrun xcresulttool export attachments --path "$CASE_OUT/tests.xcresult" \
+                --output-path "$CASE_OUT/video-phases" --filter 'native-collapse-phase-viewed-wordDiff*'
+            phase=$(jq -er '[.[].attachments[] | select(.arguments == [".viewed", ".wordDiff"]) | .exportedFileName] |
+                if length == 1 then .[0] else error("Expected exactly one viewed/wordDiff phase") end' "$CASE_OUT/video-phases/manifest.json")
+            cp -p "$CASE_OUT/video-phases/$phase" "$CASE_OUT/video-phase.json"
+        else
+            xcrun xcresulttool export attachments --path "$CASE_OUT/tests.xcresult" \
+                --output-path "$CASE_OUT/video-phases" --filter 'native-selector-phase*'
+            phase=$(jq -er '[.[].attachments[] | .exportedFileName] |
+                if length == 1 then .[0] else error("Expected exactly one selector phase") end' "$CASE_OUT/video-phases/manifest.json")
+            cp -p "$CASE_OUT/video-phases/$phase" "$CASE_OUT/video-phase.json"
+        fi
+        jq -e --slurpfile phase "$CASE_OUT/video-phase.json" '
+            .clock_implementation == "mach_absolute_time()" and
+            .first_frame_reported <= $phase[0].started.monotonic and
+            $phase[0].started.monotonic < $phase[0].ended.monotonic and
+            $phase[0].ended.monotonic <= .stop_requested and
+            .stop_requested <= .finalized
+        ' "$CASE_OUT/motion.recording.json"
+    else
     xcrun xctrace export --input "$CASE_OUT/cpu.trace" --toc --output "$CASE_OUT/toc.xml"
     xcrun xctrace export --input "$CASE_OUT/cpu.trace" \
         --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' --output "$CASE_OUT/time-profile.xml"
@@ -270,6 +309,7 @@ capture)
     test -n "$end_id"
     test "$(xmllint --nonet --xpath "count(//row[(signpost-name[@id='$marker_id'] or signpost-name[@ref='$marker_id']) and (event-type[@id='$begin_id'] or event-type[@ref='$begin_id'])])" "$CASE_OUT/signposts.xml")" -gt 0
     test "$(xmllint --nonet --xpath "count(//row[(signpost-name[@id='$marker_id'] or signpost-name[@ref='$marker_id']) and (event-type[@id='$end_id'] or event-type[@ref='$end_id'])])" "$CASE_OUT/signposts.xml")" -gt 0
+    fi
     if [[ "$FULL_SHARD" == YES ]]; then
         jq -e '.totalTestCount > 0 and .totalTestCount == (.passedTests + .failedTests) and .skippedTests == 0' "$CASE_OUT/test-summary.json"
         jq 'map(split("/")[1:] | join("/")) | sort' "$OUT/shards/shard-1.json" > "$CASE_OUT/expected-case-ids.json"

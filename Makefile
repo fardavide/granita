@@ -187,8 +187,9 @@ coverage-ios-restore: ## Restore products from this revision, run attempt and to
 .PHONY: coverage-duplicate-check
 .PHONY: profile-ios-motion profile-ios-motion-test
 IOS_PROFILE_FULL_SHARD ?= NO
+IOS_PROFILE_RECORDER ?= CPU
 profile-ios-motion:
-	bash .github/scripts/profile-ios-motion.sh all '$(IOS_SIM_NAME)' '$(IOS_PROFILE_FULL_SHARD)'
+	bash .github/scripts/profile-ios-motion.sh all '$(IOS_SIM_NAME)' '$(IOS_PROFILE_FULL_SHARD)' '$(IOS_PROFILE_RECORDER)'
 
 profile-ios-motion-test:
 	bash .github/scripts/profile-ios-motion.sh verify

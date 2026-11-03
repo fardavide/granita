@@ -10,7 +10,9 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
          collapse: PinnedFileCollapse,
          fixture: DiffMotionFixture
      ) async throws {
-+        try await waitForNativeCpuRecorder()
++        if case .viewed = collapse, case .wordDiff = fixture {
++            try await waitForNativeCpuRecorder(for: .viewedWordDiff)
++        }
          // given
 @@ -227,19 +229,32 @@
          let originalHeader = try #require(first.headerFrames.first)
@@ -45,7 +47,7 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 @@ -836,4 +837,5 @@
      @Test
      func `given wide files when a later file is selected then the viewport visibly animates to its header`() async throws {
-+        try await waitForNativeCpuRecorder()
++        try await waitForNativeCpuRecorder(for: .selector)
          // given
          let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
 @@ -874,5 +876,15 @@
@@ -74,6 +76,11 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +
 +@MainActor
 +private var nativeCpuRecorderArmed = false
++
++private enum NativeRecordingCase: String, Codable, Equatable {
++    case selector
++    case viewedWordDiff
++}
 +
 +private struct NativeCpuPhaseClock: Encodable {
 +    let monotonic: Double
@@ -107,9 +114,14 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +}
 +
 +@MainActor
-+private func waitForNativeCpuRecorder() async throws {
-+    if nativeCpuRecorderArmed { return }
++private func waitForNativeCpuRecorder(for captureCase: NativeRecordingCase) async throws {
 +    let base = "/private/tmp/granita-ci-native-motion-selector"
++    let requested = try JSONDecoder().decode(
++        NativeRecordingCase.self,
++        from: Data(contentsOf: URL(filePath: base + ".requested.json"))
++    )
++    guard requested == captureCase else { return }
++    if nativeCpuRecorderArmed { return }
 +    let readyUrl = URL(filePath: base + ".ready.json")
 +    let armedPath = base + ".armed"
 +    try #require(FileManager.default.fileExists(atPath: readyUrl.path) == false)
@@ -117,7 +129,7 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +    let metadata = NativeCpuProfileMetadata(
 +        processId: ProcessInfo.processInfo.processIdentifier,
 +        bundleId: try #require(Bundle.main.bundleIdentifier),
-+        caseName: "selector",
++        caseName: captureCase.rawValue,
 +        uptime: ProcessInfo.processInfo.systemUptime,
 +        monotonic: CACurrentMediaTime(),
 +        wallTime: Date().timeIntervalSince1970,
@@ -129,7 +141,7 @@ diff --git a/Apps/GranitaMobileSnapshotTests/ContinuousDiffCollapseInteractionTe
 +    )
 +    let data = try JSONEncoder().encode(metadata)
 +    try data.write(to: readyUrl, options: .atomic)
-+    Attachment.record(Array(data), named: "native-cpu-ready-selector.json")
++    Attachment.record(Array(data), named: "native-cpu-ready-\(captureCase.rawValue).json")
 +    let deadline = ContinuousClock.now.advanced(by: .seconds(240))
 +    while FileManager.default.fileExists(atPath: armedPath) == false {
 +        try #require(ContinuousClock.now < deadline, "CPU recorder did not start before the setup deadline")

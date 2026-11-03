@@ -21,9 +21,11 @@ jobs:
         run: |
           git cat-file -e '4324c953db64b4596988ab4d3dd3d21f593c5734^{commit}'
           git diff --exit-code 4324c953db64b4596988ab4d3dd3d21f593c5734 HEAD -- Apps Packages project.yml
-      - name: Profile original motion and thread scheduling during the complete shard sequence
-        run: make profile-ios-motion IOS_PROFILE_FULL_SHARD=YES
-      - name: Upload bounded CPU trace and diagnostic provenance
+      - name: Verify recorder tooling
+        run: make coverage-tests
+      - name: Record original word-diff motion without CPU profiling
+        run: make profile-ios-motion IOS_PROFILE_FULL_SHARD=YES IOS_PROFILE_RECORDER=VIDEO
+      - name: Upload bounded simulator video and diagnostic provenance
         if: always()
         uses: actions/upload-artifact@v4
         with:
