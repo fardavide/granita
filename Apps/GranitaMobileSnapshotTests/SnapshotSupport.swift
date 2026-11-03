@@ -244,6 +244,7 @@ func assertScreenSnapshot(
     layout: SnapshotLayout,
     named name: String,
     freezesActivity: Bool = false,
+    waitsForMountedFrame: Bool = false,
     fileID: StaticString = #fileID,
     file: StaticString = #filePath,
     testName: String = #function,
@@ -261,21 +262,28 @@ func assertScreenSnapshot(
     // while sixteen suites were unserialised took 22 unrelated baselines down.
     drainTheKeyboard()
 
+    let scene: UIWindowScene
     do {
-        _ = try prepareSnapshotScene()
+        scene = try prepareSnapshotScene()
     } catch {
         Issue.record(Comment(rawValue: "Snapshot scene setup failed for \(name)-\(layout.name): \(error)"))
         return
     }
 
-    if freezesActivity {
-        // Accessibility sizes enlarge the native spinner enough for its changing phase to exceed
-        // the image drift budget. Capture its first native animation frame at the reader's actual
-        // text size, while keeping the host window's normal rendering and safe area.
-        let controller = ActivitySnapshotHostingController(rootView: AnyView(probingSafeArea(
-            of: view.environment(\.locale, Locale(identifier: "en_US")),
-            named: "\(name)-\(layout.name)"
-        )))
+    if freezesActivity || waitsForMountedFrame {
+        // Native image materials need a display callback after mounting with their requested traits.
+        // Accessibility-sized spinners separately retain their first-animation-frame freeze.
+        // Both keep the host window's normal rendering and safe area.
+        let controller = ScreenSnapshotHostingController(
+            rootView: AnyView(probingSafeArea(
+                of: view.environment(\.locale, Locale(identifier: "en_US")),
+                named: "\(name)-\(layout.name)"
+            )),
+            expectedScene: scene,
+            expectedStyle: layout.style,
+            freezesActivity: freezesActivity,
+            waitsForMountedFrame: waitsForMountedFrame
+        )
         assertSnapshot(
             of: controller as UIViewController,
             as: .image(
@@ -292,6 +300,9 @@ func assertScreenSnapshot(
             line: line,
             column: column
         )
+        if waitsForMountedFrame, controller.mountedFrameState != .observed {
+            Issue.record(Comment(rawValue: "Snapshot \(name)-\(layout.name) did not observe a mounted native frame before capture: \(controller.mountedFrameState)"))
+        }
         drainTheKeyboard()
         return
     }
@@ -388,25 +399,96 @@ private final class SnapshotSceneFrameReceiver: NSObject {
 }
 
 @MainActor
-private final class ActivitySnapshotHostingController: UIHostingController<AnyView> {
+private final class ScreenSnapshotHostingController: UIHostingController<AnyView> {
+    private(set) var mountedFrameState: MountedFrameState
+
+    private let expectedScene: UIWindowScene
+    private let expectedStyle: UIUserInterfaceStyle
+    private let freezesActivity: Bool
+
+    init(
+        rootView: AnyView,
+        expectedScene: UIWindowScene,
+        expectedStyle: UIUserInterfaceStyle,
+        freezesActivity: Bool,
+        waitsForMountedFrame: Bool
+    ) {
+        self.expectedScene = expectedScene
+        self.expectedStyle = expectedStyle
+        self.freezesActivity = freezesActivity
+        mountedFrameState = waitsForMountedFrame ? .awaitingLayout : .notRequested
+        super.init(rootView: rootView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        return nil
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         guard let root = view else { return }
-        var remaining = [root]
-        while let current = remaining.popLast() {
-            if let indicator = current as? UIActivityIndicatorView {
-                for subview in indicator.subviews {
-                    guard let image = subview as? UIImageView else { continue }
-                    let frames = image.animationImages ?? image.image?.images
-                    guard let frame = frames?.first else { continue }
-                    image.stopAnimating()
-                    image.image = frame
-                    image.layer.speed = 0
-                    image.layer.timeOffset = 0
-                }
-            }
-            remaining.append(contentsOf: current.subviews)
+        let observesMountedFrame = mountedFrameState == .awaitingLayout && isMountedAsRequested
+        if observesMountedFrame {
+            // Select this layout before any reentrant layout or native callback can arm another wait.
+            mountedFrameState = .observing
         }
+        if freezesActivity {
+            var remaining = [root]
+            while let current = remaining.popLast() {
+                if let indicator = current as? UIActivityIndicatorView {
+                    for subview in indicator.subviews {
+                        guard let image = subview as? UIImageView else { continue }
+                        let frames = image.animationImages ?? image.image?.images
+                        guard let frame = frames?.first else { continue }
+                        image.stopAnimating()
+                        image.image = frame
+                        image.layer.speed = 0
+                        image.layer.timeOffset = 0
+                    }
+                }
+                remaining.append(contentsOf: current.subviews)
+            }
+        }
+        guard observesMountedFrame else { return }
+
+        let displayLink = CADisplayLink(target: self, selector: #selector(observeMountedFrame(_:)))
+        displayLink.add(to: .main, forMode: .common)
+        defer { displayLink.invalidate() }
+        let deadline = CACurrentMediaTime() + 3
+        let runLoopDeadline = Date().addingTimeInterval(3)
+        while mountedFrameState == .observing, CACurrentMediaTime() < deadline {
+            RunLoop.current.run(mode: .default, before: runLoopDeadline)
+        }
+        if mountedFrameState == .observing {
+            mountedFrameState = .timedOut
+        }
+    }
+
+    private var isMountedAsRequested: Bool {
+        guard let root = viewIfLoaded, let window = root.window else { return false }
+        return window.windowScene === expectedScene
+            && window.isKeyWindow
+            && UIApplication.shared.applicationState == .active
+            && expectedScene.activationState == .foregroundActive
+            && traitCollection.userInterfaceStyle == expectedStyle
+            && root.traitCollection.userInterfaceStyle == expectedStyle
+    }
+
+    @objc private func observeMountedFrame(_ displayLink: CADisplayLink) {
+        guard mountedFrameState == .observing, isMountedAsRequested else { return }
+        mountedFrameState = .observed
+        displayLink.invalidate()
+        // A display callback need not return from RunLoop.run; stop only this nested activation.
+        CFRunLoopStop(CFRunLoopGetCurrent())
+    }
+
+    enum MountedFrameState: Equatable {
+        case notRequested
+        case awaitingLayout
+        case observing
+        case observed
+        case timedOut
     }
 }
 

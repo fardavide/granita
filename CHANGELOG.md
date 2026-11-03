@@ -12,6 +12,8 @@ app also runs locally with `make run-mac`.
   the whole-row line-selection update from reaching TestFlight.
 - **Keep large word diffs moving when a file closes.** Coordinate the next header and viewport
   while avoiding repeated text work during layout.
+- **Keep file selection moving through very long lines.** Reduce pauses when jumping to another
+  file in a large diff.
 
 ### 0.23.0 — 2026-10-21
 - **Select lines anywhere on the row on iPhone and iPad.** Tap a code line to comment, or hold and

@@ -86,7 +86,9 @@ away from the main actor before Presentation publishes them, preserving current 
 Core diff values and their wire representation remain unchanged. Ui owns native font measurement
 and rendering, including the validated visible-text window; full source still supplies width and
 accessibility. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
-records the measured boundary.
+records the measured boundary. [0257](decisions/0257-window-plain-changed-lines-and-reuse-one-exact-native-layout.md)
+extends validated windows to plain changed lines and permits one exact text-and-font native layout
+entry per hunk, owned entirely by Ui.
 
 The payoff is reuse in the direction that matters. A view that imported its view model could only
 ever serve the one screen that view model belonged to; a view that takes values and closures serves

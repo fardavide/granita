@@ -833,10 +833,10 @@ struct ContinuousDiffCollapseInteractionTests {
         }, diagnostic)
     }
 
-    @Test
-    func `given wide files when a later file is selected then the viewport visibly animates to its header`() async throws {
+    @Test(arguments: [20, 4096])
+    func `given wide files when a later file is selected then the viewport visibly animates to its header`(repetitions: Int) async throws {
         // given
-        let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
+        let wideCode = "let leadingValue = [" + String(repeating: "12345, ", count: repetitions) + "] // trailingValue"
         let entries = ["Sources/First.swift", "Sources/Middle.swift", "Sources/Last.swift"]
             .map { aRenderedFile(path: $0, lineCount: 160, repeatedLine: wideCode) }
         let expectedLastHeader: Data

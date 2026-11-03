@@ -94,6 +94,7 @@ public struct DiffFileLines: View {
     @State private var visibleWidth: CGFloat = 0
     @State private var contentWidth: CGFloat = 0
     @State private var scrolledBy: CGFloat = 0
+    @State private var textLayout = DiffLineTextLayoutMemoizer()
 
     /// The whole row's width, which is what decides whether a block fits in it.
     ///
@@ -403,7 +404,8 @@ public struct DiffFileLines: View {
                                 drawn: drawsBlocks ? DrawnDiffLine.of(line) : prepared.drawn[offset],
                                 highlighted: highlighted.text(of: line),
                                 segmentTint: segmentTint(of: line),
-                                viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight)
+                                viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight),
+                                textLayout: textLayout
                             )
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
@@ -481,7 +483,8 @@ public struct DiffFileLines: View {
                     drawn: DrawnDiffLine.of(line),
                     highlighted: highlighted.text(of: line),
                     segmentTint: segmentTint(of: line),
-                    viewport: CGRect(x: scrolledBy, y: 0, width: cellCodeWidth, height: rowHeight)
+                    viewport: CGRect(x: scrolledBy, y: 0, width: cellCodeWidth, height: rowHeight),
+                    textLayout: textLayout
                 )
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -782,6 +785,7 @@ private struct DiffLineText: View {
     let highlighted: AttributedString?
     let segmentTint: Color
     let viewport: CGRect
+    let textLayout: DiffLineTextLayoutMemoizer
 
     @Environment(\.font) private var font
     @Environment(\.fontResolutionContext) private var fontResolutionContext
@@ -794,7 +798,8 @@ private struct DiffLineText: View {
             segmentTint: segmentTint,
             viewport: viewport,
             font: font,
-            fontResolutionContext: fontResolutionContext
+            fontResolutionContext: fontResolutionContext,
+            textLayout: textLayout
         )
         .equatable()
     }
@@ -808,20 +813,25 @@ private struct DiffLineAttributedText: View, Equatable {
     let viewport: CGRect
     let font: Font?
     let fontResolutionContext: Font.Context
+    let textLayout: DiffLineTextLayoutMemoizer
 
     var body: some View {
         var attributed = lexed(drawn.text, highlighted: highlighted) ?? AttributedString(drawn.text)
+        let preparation = preparation(for: attributed)
         guard drawn.changed.isEmpty == false else {
             // A line the parser paired with nothing, or paired as one whole run — either way there
             // is no *unchanged* part to tell it apart from, and a background over the whole line
             // would be a second, stronger copy of the row tint drawn on top of the row tint.
-            return Text(attributed)
+            let visible = switch preparation {
+            case .original: attributed
+            case .measured(let layout): layout.visibleText(in: attributed, viewport: viewport)
+            }
+            return Text(visible)
                 .fontWeight(line.kind == .conflictMarker ? .semibold : .regular)
                 .contentTransition(.identity)
                 .accessibilityLabel(drawn.text)
         }
         let characters = attributed.characters
-        let preparation = preparation(for: attributed)
         let ranges = switch preparation {
         case .original: drawn.changed
         case .measured(let layout): layout.visibleRanges(in: drawn.changed, viewport: viewport)
@@ -846,9 +856,8 @@ private struct DiffLineAttributedText: View, Equatable {
 
     private func preparation(for attributed: AttributedString) -> DiffLineTextPreparation {
         guard line.kind == .addition || line.kind == .deletion,
-              let segments = line.segments, segments.count > 1,
               DiffTextRunVisibility.supportsCulling(sourceText: line.text, highlighting: attributed),
-              segments.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }),
+              line.segments?.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }) != false,
               let font else {
             return .original
         }
@@ -858,7 +867,35 @@ private struct DiffLineAttributedText: View, Equatable {
         guard CTFontGetGlyphsForCharacters(nativeFont, characters, &glyphs, characters.count) else {
             return .original
         }
-        return .measured(DiffTextBackgroundLayout(text: String(attributed.characters), font: nativeFont))
+        return .measured(textLayout.layout(for: String(attributed.characters), font: nativeFont))
+    }
+}
+
+/// One immutable native layout per hunk; mutations do not publish view updates.
+private final class DiffLineTextLayoutMemoizer: Equatable {
+    private var state: State = .empty
+
+    func layout(for text: String, font: CTFont) -> DiffTextBackgroundLayout {
+        switch state {
+        case .empty:
+            break
+        case .prepared(let previousText, let previousFont, let layout):
+            if previousText == text, CFEqual(previousFont, font) {
+                return layout
+            }
+        }
+        let layout = DiffTextBackgroundLayout(text: text, font: font)
+        state = .prepared(text: text, font: font, layout: layout)
+        return layout
+    }
+
+    nonisolated static func == (lhs: DiffLineTextLayoutMemoizer, rhs: DiffLineTextLayoutMemoizer) -> Bool {
+        lhs === rhs
+    }
+
+    private enum State {
+        case empty
+        case prepared(text: String, font: CTFont, layout: DiffTextBackgroundLayout)
     }
 }
 
