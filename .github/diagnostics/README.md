@@ -1,7 +1,12 @@
 # Temporary native motion recording
 
 This branch records the original iOS motion checks without changing their assertions, fixtures,
-baselines or deadlines. It does not provide a required coverage receipt or repair the reader.
+baselines or deadlines. It does not provide a required coverage receipt or establish a reader repair.
+
+The current local candidate moves the existing trailing code fade onto each clipped row and keeps
+rectangular clipping on the full code scroll. Split cells and every other product source remain
+unchanged. The workflow permits only this exact candidate file hash; its existing source check
+still rejects changes to all other app/package sources, tests, baselines and project configuration.
 
 The CI workflow runs the complete original iOS group 1 with simulator video and no CPU profiler.
 The recorder explicitly requests viewed/wordDiff in a complete-group run, or the selector in a
@@ -54,3 +59,11 @@ temporal coverage pass, source fingerprints match after restoration, and a short
 negative control is rejected. The finalized 9.99-second movie contains 281 frames; a decoded frame
 confirms the actual word-diff transition. Independent review finds no remaining blockers.
 These are local diagnostic results, not evidence that required CI is repaired.
+
+The [original CI video](https://github.com/fardavide/granita/actions/runs/41599192275) confirms a
+visible successor-header pause/jump and fails the original viewed/wordDiff check (579/580 pass).
+Two alternating local controls and two code-fade candidates each pass all 580 original executions,
+including 76 line snapshots. Matching motion phases measure 255/225ms versus 185/170ms main-thread
+sample weight outside Mach waits; maximum callback gaps remain approximately 33ms in every run.
+This is a measured work reduction, not proof of the remote repair. Source fingerprints match after
+every run. The proposed next CI recording requires approval before committing or pushing it.

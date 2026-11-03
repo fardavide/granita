@@ -410,6 +410,12 @@ public struct DiffFileLines: View {
                                 .offset(x: -scrolledBy)
                                 .frame(width: visibleWidth, height: rowHeight, alignment: .leading)
                                 .clipped()
+                                // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
+                                // scroll, so a gradient painted in the background colour would have to composite the tint
+                                // back on top of itself to avoid a grey notch on every added and removed row. Fading the
+                                // code away instead reveals whatever is behind it, which is already the right colour in both
+                                // appearances and over every tint.
+                                .mask(alignment: .leading) { fade }
                         case .block:
                             Color.clear.frame(width: visibleWidth, height: rowHeight)
                         }
@@ -418,12 +424,7 @@ public struct DiffFileLines: View {
                 .allowsHitTesting(false)
             }
         }
-        // **Masked rather than overlaid with a colour.** The row tints are drawn *behind* this
-        // scroll, so a gradient painted in the background colour would have to composite the tint
-        // back on top of itself to avoid a grey notch on every added and removed row. Fading the
-        // code away instead reveals whatever is behind it, which is already the right colour in both
-        // appearances and over every tint.
-        .mask(alignment: .leading) { fade }
+        .clipped()
         .onScrollGeometryChange(for: CGFloat.self) { geometry in
             geometry.contentOffset.x
         } action: { _, offset in

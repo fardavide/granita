@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   selector-cpu-profile:
-    name: Original motion in iOS shard 1
+    name: Code fade candidate in iOS shard 1
     runs-on: xcode-27
     timeout-minutes: 40
     steps:
@@ -17,13 +17,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/select-xcode
-      - name: Require unchanged product and test sources
+      - name: Require original sources and the exact code fade candidate
         run: |
           git cat-file -e '4324c953db64b4596988ab4d3dd3d21f593c5734^{commit}'
-          git diff --exit-code 4324c953db64b4596988ab4d3dd3d21f593c5734 HEAD -- Apps Packages project.yml
+          git diff --exit-code 4324c953db64b4596988ab4d3dd3d21f593c5734 HEAD -- Apps Packages project.yml ':(exclude)Packages/Granita/Client/Viewer/Ui/DiffFileLines.swift'
+          test "$(git hash-object Packages/Granita/Client/Viewer/Ui/DiffFileLines.swift)" = '278cf7f9a25da17718fcae5a63792d61a30544ec'
       - name: Verify recorder tooling
         run: make coverage-tests
-      - name: Record original word-diff motion without CPU profiling
+      - name: Record candidate word-diff motion without CPU profiling
         run: make profile-ios-motion IOS_PROFILE_FULL_SHARD=YES IOS_PROFILE_RECORDER=VIDEO
       - name: Upload bounded simulator video and diagnostic provenance
         if: always()
