@@ -1163,6 +1163,69 @@ struct ContinuousDiffCollapseInteractionTests {
         )
     }
 
+    // MARK: - Source reopen completion
+
+    @Test
+    func `given a reopened source with delayed native presentation when settling completes then its header is visible`() async throws {
+        // given
+        let entries = ["Sources/First.swift", "Sources/Next.swift", "Sources/Last.swift"]
+            .map { aRenderedFile(path: $0, lineCount: 160) }
+        let scenario = try Scenario(entries: entries)
+        defer { scenario.close() }
+        scenario.settleLayout()
+        let scroll = try #require(scenario.verticalScroll)
+        let initialOffset = scroll.contentOffset.y
+        scroll.setContentOffset(CGPoint(x: 0, y: initialOffset + 450), animated: false)
+        scenario.settleLayout()
+        try #require(abs(scroll.contentOffset.y - initialOffset - 450) < 2)
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        let initialHeaders = try scenario.visibleHeaders(in: scroll)
+        try #require(initialHeaders.count == 1)
+        let sourceHeader = try #require(initialHeaders.first)
+        let root = try #require(scenario.controller.viewIfLoaded)
+        let scene = try #require(scenario.window.windowScene)
+        try #require(UIApplication.shared.applicationState == .active)
+        try #require(scene.activationState == .foregroundActive)
+        try #require(scenario.window.isKeyWindow)
+        try #require(UIView.areAnimationsEnabled)
+        try #require(scenario.model.readingPositions.contains(1) == false)
+        scenario.model.sourceReopenOnRead = SourceReopenOnRead(
+            position: 1,
+            sourceId: entries[0].id,
+            collapse: .viewed,
+            scroll: scroll
+        )
+        // A native host reveal can still be pending after all scroll geometry is quiet.
+        // It finishes inside the existing three-second source-reopen budget.
+        root.alpha = 0
+        let reveal = UIViewPropertyAnimator(duration: 2, curve: .linear) {
+            root.alpha = 1
+        }
+        defer { reveal.stopAnimation(true) }
+        reveal.startAnimation()
+        let offsetBeforeCollapse = scroll.contentOffset.y
+
+        // when
+        scenario.model.setViewed(true, fileId: entries[0].id)
+        try await scenario.settleSourceReopen()
+
+        // then
+        let reopened = try #require(scenario.model.sourceReopenObservation)
+        try #require(reopened.sourceWasCollapsed)
+        try #require(scenario.model.entries[0].collapse.isCollapsed == false)
+        try #require(abs(reopened.modelOffset - offsetBeforeCollapse) < 2)
+        let presentationOffset = try #require(reopened.presentationOffset)
+        try #require(abs(presentationOffset - offsetBeforeCollapse) < 2)
+        try #require(UIApplication.shared.applicationState == .active)
+        try #require(scene.activationState == .foregroundActive)
+        try #require(scenario.window.isKeyWindow)
+        let finalHeaders = try scenario.visibleHeaders(in: scroll)
+        #expect(
+            finalHeaders.count == 1,
+            "Source reopen completed before its header was visible: initial=\(sourceHeader), final=\(finalHeaders), hostOpacity=\(String(describing: root.layer.presentation()?.opacity)), modelOffset=\(scroll.contentOffset.y), presentationOffset=\(String(describing: scroll.layer.presentation()?.bounds.minY))"
+        )
+    }
+
     // MARK: - Scenario
 
     @MainActor
@@ -1258,15 +1321,19 @@ struct ContinuousDiffCollapseInteractionTests {
 
         func settleSourceReopen() async throws {
             let root = try #require(controller.viewIfLoaded)
+            let scroll = try #require(verticalScroll)
             let observation = RenderSettlementProbe(root: root)
             observation.start()
             defer { observation.stop() }
             let deadline = CACurrentMediaTime() + 3
-            while (model.sourceReopenObservation == nil || observation.quietFrames < 5), CACurrentMediaTime() < deadline {
+            var headers = try visibleHeaders(in: scroll)
+            while (model.sourceReopenObservation == nil || observation.quietFrames < 5 || headers.count != 1), CACurrentMediaTime() < deadline {
                 try await Task.sleep(for: .milliseconds(10))
+                headers = try visibleHeaders(in: scroll)
             }
             try #require(model.sourceReopenObservation != nil, "Successor reading did not expose the reopen phase")
             try #require(observation.quietFrames >= 5, "Native source reopen did not settle")
+            try #require(headers.count == 1, "Reopened source header did not become visible")
         }
 
         func settleLayout() {

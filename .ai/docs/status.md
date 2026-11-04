@@ -15,7 +15,38 @@ contract; it does not claim a stutter repair. The separate profiling-publication
 superseded. Davide then approves the reviewed `Keep reader animation cadence diagnostic` commit
 and one push, with the replacement PR wording conditional on all seven required checks passing.
 Merge approval remains separate.
-Local verification passes `make test`, `make build`, `make resolve` and all 67 expanded iOS
+That approval is used: commit `4de7b33` is published. [CI 395](https://github.com/fardavide/granita/actions/runs/41836381909)
+passes both builds, package tests, generated files, Mac snapshots and iOS group 0, including TLS
+and touch checks. Group 1 passes 580 of 581 expanded executions, with no skips or structured
+runtime warnings. Its only failure is the retained source-reopen `.viewed` correctness case:
+after the helper reports settlement, `finalHeaders.count` is zero rather than one. The removed
+cadence assertions no longer fail. Coverage stops at its failed-suite prerequisite before any
+numeric verdict. The native result is `/private/tmp/granita-ci395-ios1`. Conditional PR wording
+is not applied; no additional publication or rerun is approved.
+
+A local delayed-presentation control now reproduces premature completion of the source-reopen
+helper: the scroll geometry is quiet but native host opacity is 0.37028176 and no header satisfies
+the unchanged visibility predicate. All 67 original executions pass; only the added control fails
+in `/private/tmp/granita-header-readiness-red-20261104-b.xcresult`. A prior zero-case filter is not
+counted as RED. The helper candidate waits for one visible native header within the same three
+seconds, retaining reopen observation, five quiet frames and every position/image assertion.
+All 68 interaction executions across 19 functions pass, with no skips or structured runtime
+warnings, in `/private/tmp/granita-header-readiness-green-20261104-a.xcresult`. Console warnings
+remain. This confirms a local helper-readiness defect, not the cause of the remote header absence.
+Fresh broader verification passes both instrumented iOS groups (589 + 582 executions), all
+22 touch/native-input executions, the package suite with coverage, both unsigned apps and the
+resolver. All native summaries have zero failures, skips or structured runtime warnings. The
+four input manifests and current working copy share source digest
+`3726ac8993491737938826c20ceab4e3c2d174714b06c17d50aded752564db0b` on parent `4de7b33`.
+`make coverage-report` stops at the missing fresh Mac manifest before calculating a numerical
+verdict. No Mac desktop tests run. All 30 dependency pins remain unchanged. Only the test file,
+this status and decision 0259 differ from the published head; fresh source review finds no blocker.
+Remote validation, aggregate coverage and TestFlight delivery remain unverified for this candidate.
+Davide approves one commit, `Wait for reopened headers before checking snapshots`, and one push
+of the three reviewed files to run all seven required checks. Another publication requires a new
+review; merge remains separate.
+
+Before publication, verification of `4de7b33` passed `make test`, `make build`, `make resolve` and all 67 expanded iOS
 interaction executions across 18 functions, with zero skips or structured runtime warnings.
 The result is `/private/tmp/granita-cadence-diagnostic-interactions-20261104-a.xcresult`.
 The source digest is `5d5636ee396ed1909579abf16260f68a81739760d4927f301b8c5dfe3dd9eb98`.
