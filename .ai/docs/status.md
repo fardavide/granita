@@ -2,65 +2,1082 @@
 
 Where the project is. Update this when a slice lands.
 
-**Remembered-connection cancellation is fixed locally for 0.23.1.** Two deterministic regressions
-reproduce a cancelled lookup opening a saved fallback and a late successful lookup populating the
-connection cache. Both were observed failing before their fixes; all 37 remembered-connection tests,
-the full 1,943-test package suite, and both unsigned app builds pass. The project was regenerated
-and `make resolve` verified the 30-pin Xcode union graph; dependency revisions are unchanged.
-Coverage collection passed package instrumentation, both iOS snapshot shards and the required
-interaction suite. The second iOS shard passed on retry after a killed test host. Local Mac snapshot
-image mismatches and a stalled View-menu test prevented an aggregate coverage verdict. Release is
-pending. The original phone-side Bonjour delay remains unexplained. The scope and evidence are in
-[0247](decisions/0247-cancelled-resolution-cannot-publish-a-remembered-connection.md).
+**The reconnection fix in [PR #130](https://github.com/fardavide/granita/pull/130) is being updated
+to 0.23.2 after [PR #129](https://github.com/fardavide/granita/pull/129) merged on 4 November.**
+The update retains main's reader-refresh repair and its controlled regressions. Two separate
+remembered-connection regressions cover cancellation before fallback selection and late successful
+resolution before caching. The original phone-side Bonjour delay remains unexplained. Main has
+reached 0.23.1, so the marketing version, server fallback, changelog, README and generated project
+advance together. The full package suite, coverage-instrumented package suite, 140 tooling tests
+and both unsigned app builds pass. `make resolve` restores the 30-pin Xcode union graph without
+changing dependency revisions. Fresh CI and its aggregate coverage verdict are pending; this update
+does not authorize a merge or release. See [0260](decisions/0260-cancelled-resolution-cannot-publish-a-remembered-connection.md)
+and [0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md).
 
-The first [PR #130](https://github.com/fardavide/granita/pull/130) CI run passed unit tests, both app
-builds, generated files and Mac snapshots, but both iOS shards stopped at simulator selection;
-coverage had no iOS profiles to aggregate. The selector-only correction from
-[PR #129](https://github.com/fardavide/granita/pull/129) is applied here with its regression tests.
-All four production selectors reproduced the empty-name failure before the fix; the tooling suite
-now passes all 140 tests. The policy is recorded in
-[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md). The next run
-passed simulator selection and the first iOS shard. The second shard failed collapse-motion and
-image assertions. Motion work remains separate in [PR #129](https://github.com/fardavide/granita/pull/129).
-After it merges, this branch must update from `main` and reconcile its release version.
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 4 November: the 0.23.1
+repair still fails required CI; TestFlight delivery is unverified.**
 
-The same run exposed a reader reload race in the Mac snapshots. Suspending highlighting after a
-diff arrives, then reloading metadata, deterministically reproduced a visible file staying awaiting.
-Diff request tracking now ends before derived work suspends; the new regression passed after
-failing against the original implementation. All 1,944 package tests and both unsigned app builds
-pass. Fresh CI verification is pending. The request lifetime is recorded in
-[0248](decisions/0248-diff-request-tracking-ends-before-derived-work.md).
+Davide now asks to remove the animation test. The new local candidate removes three cadence
+assertions: minimum intermediate-frame count, maximum sampled viewport step, and observed movement
+while the native scroll-animation flag is active. Measurements remain diagnostic. All fixtures,
+final positions, requested-file identity, header geometry/coherence, exact images and existing
+completion deadlines remain checked. The selector test is renamed to describe reaching its header.
+[0259](decisions/0259-animation-cadence-is-diagnostic.md) records this explicit change of test
+contract; it does not claim a stutter repair. The separate profiling-publication proposal is
+superseded. Davide then approves the reviewed `Keep reader animation cadence diagnostic` commit
+and one push, with the replacement PR wording conditional on all seven required checks passing.
+Merge approval remains separate.
+That approval is used: commit `4de7b33` is published. [CI 395](https://github.com/fardavide/granita/actions/runs/41836381909)
+passes both builds, package tests, generated files, Mac snapshots and iOS group 0, including TLS
+and touch checks. Group 1 passes 580 of 581 expanded executions, with no skips or structured
+runtime warnings. Its only failure is the retained source-reopen `.viewed` correctness case:
+after the helper reports settlement, `finalHeaders.count` is zero rather than one. The removed
+cadence assertions no longer fail. Coverage stops at its failed-suite prerequisite before any
+numeric verdict. The native result is `/private/tmp/granita-ci395-ios1`. Conditional PR wording
+is not applied; no additional publication or rerun is approved.
 
-**Whole-line selection and version 0.23.0 are in [PR #128](https://github.com/fardavide/granita/pull/128).**
-Tapping or holding anywhere on a code row targets that line. Holding and dragging selects a range,
-including across hunk gaps, and releasing opens the composer; holding, releasing and tapping an
-endpoint remains available. Ordinary vertical and horizontal swipes remain usable before the hold
-is recognized. All six actual-touch simulator tests, the full package suite and both unsigned app
-builds pass. This prototype does not automatically scroll at the viewport edge. The interaction
-contract and verification are in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md).
-The first CI run passed the six touch tests, package tests, app builds, generated files and Mac
-snapshots, but failed the later-file jump setup and two collapse-motion assertions; coverage then
-stopped. The exact base passed all 27 native cases locally. Narrowing the scrolling-pause callback
-to capture only its selection binding repaired the blank reader after a file jump: all 27 native
-cases now pass with the feature enabled. Repeated coverage passed package instrumentation and
-both iOS shards (21 and 57 tests), then stopped at Mac image mismatches on this host; no aggregate
-local coverage verdict exists. A fresh package test run, both unsigned app builds and all six
-actual-touch tests passed with the callback fix. The next CI run passed every functional job,
-including both iOS shards, but failed four coverage ratchets. Coverage repair is in progress:
-transient touch decisions move into a Foundation-only value with direct tests, and the native
-adapter exposes configuration and event dispatch independently of SwiftUI's opaque context.
-Keeping frame reads at input time preserves collapse motion: the 27 focused native cases, full
-package suite, both unsigned app builds and instrumented iOS shards (23 and 58 tests) pass after
-extraction. The next CI run passed every functional check and Unit/All-tests coverage, leaving two
-Snapshot ratchets red. Davide approved collecting the required behavioral Ui profiles and separating
-input-only wiring from Snapshot's rendering scope; implementation and verification are in progress.
-Snapshot will establish a new scope baseline and Ui its first baseline on main. The approved
-measurement boundary and unchanged Unit/All-tests comparisons are recorded in 0243. The tooling
-suite passes 128 checks; package tests, both unsigned app builds, both iOS shards (21 and 58
-functions), and all six touch tests plus eleven native adapter cases pass. Ui profiles execute all
-five previously unexecuted input bridges. Full local coverage stops at Mac image mismatches and a
-stalled menu test, interrupted after more than six minutes without progress. The test processes
-have stopped; no aggregate local verdict is claimed. CI verification remains pending.
+A local delayed-presentation control now reproduces premature completion of the source-reopen
+helper: the scroll geometry is quiet but native host opacity is 0.37028176 and no header satisfies
+the unchanged visibility predicate. All 67 original executions pass; only the added control fails
+in `/private/tmp/granita-header-readiness-red-20261104-b.xcresult`. A prior zero-case filter is not
+counted as RED. The helper candidate waits for one visible native header within the same three
+seconds, retaining reopen observation, five quiet frames and every position/image assertion.
+All 68 interaction executions across 19 functions pass, with no skips or structured runtime
+warnings, in `/private/tmp/granita-header-readiness-green-20261104-a.xcresult`. Console warnings
+remain. This confirms a local helper-readiness defect, not the cause of the remote header absence.
+Fresh broader verification passes both instrumented iOS groups (589 + 582 executions), all
+22 touch/native-input executions, the package suite with coverage, both unsigned apps and the
+resolver. All native summaries have zero failures, skips or structured runtime warnings. The
+four input manifests and current working copy share source digest
+`3726ac8993491737938826c20ceab4e3c2d174714b06c17d50aded752564db0b` on parent `4de7b33`.
+`make coverage-report` stops at the missing fresh Mac manifest before calculating a numerical
+verdict. No Mac desktop tests run. All 30 dependency pins remain unchanged. Only the test file,
+this status and decision 0259 differ from the published head; fresh source review finds no blocker.
+Remote validation, aggregate coverage and TestFlight delivery remain unverified for this candidate.
+Davide approves one commit, `Wait for reopened headers before checking snapshots`, and one push
+of the three reviewed files to run all seven required checks. Another publication requires a new
+review; merge remains separate.
+
+Before publication, verification of `4de7b33` passed `make test`, `make build`, `make resolve` and all 67 expanded iOS
+interaction executions across 18 functions, with zero skips or structured runtime warnings.
+The result is `/private/tmp/granita-cadence-diagnostic-interactions-20261104-a.xcresult`.
+The source digest is `5d5636ee396ed1909579abf16260f68a81739760d4927f301b8c5dfe3dd9eb98`.
+All package/production source, generated project files and dependency lockfiles match the
+published head; only the test contract and explanatory/release documentation change. Version
+0.23.1 remains. The changelog now explicitly records that large diff transitions can still
+stutter. Full remote verification and aggregate coverage remain pending; older input manifests
+belong to the prior source digest and are not presented as validation of this candidate.
+
+The latest published candidate prepares source-and-segment character facts before rendering,
+uses scoped typed-buffer iteration for unchanged native checks, and avoids constructing full
+attributed text before selecting plain-line windows. The fixed larger word reproduction and all
+67 published interaction executions pass. Fresh full verification passes the complete package
+suite, both iOS groups (589 + 581 executions), all 22 touch/native-input executions, both unsigned
+Debug apps, unsigned Mac/device Release builds, dependency resolution and generated files. No
+skips or structured runtime warnings occur in the iOS results. All four coverage inputs share
+source digest `59d00546a26cdb919ed75db975354ec27a504d1c4be1aa8322b939a55a580c70`.
+The aggregate report validates Unit and both iOS manifests, then stops at the missing Mac manifest
+before calculating a verdict. Davide approved one additional commit and push on 4 November:
+`Prepare source facts and streamline native text validation`. That approval is used: commit
+`9357704` is published, and [CI 394](https://github.com/fardavide/granita/actions/runs/41778328235)
+still fails three original motion cases. Five of seven required checks pass, including Mac
+snapshots, both builds, package tests and generated files. iOS group 0 passes; group 1 passes
+578 of 581 expanded executions. Manual word-diff outgoing and long-successor cases record
+111.33pt and 157pt steps against the unchanged 99pt bound. The original short selector observes
+no animated movement across a 416.61ms callback gap; the wide selector passes. Final header
+alignment and image comparisons pass. Coverage stops at its failed iOS prerequisite, before a
+numeric verdict. No skips or structured runtime warnings occur. The local text improvements
+therefore do not establish a repair of the shared CI stalls. Mac desktop tests and merge remain
+outside this approval; another commit or push requires another concrete review.
+[0258](decisions/0258-prepare-source-classification-before-native-text-layout.md) records the
+new boundary, measurements and limits. The approved conditional PR wording remains gated on all
+seven required checks passing and has not been applied.
+
+A temporary 480-row short-line selector control passes locally, preserving every original
+assertion, but does not reproduce the CI failure. Its result is
+`/private/tmp/granita-ci394-selector-rows480-red-20261104-a.xcresult`. No workload escalation or
+renderer trial follows that passing control. The subsequent app-only profile measures body
+evaluations, geometry publications and native preparation during the original 20-repetition
+selector. Both original selector executions pass locally, with no skips or structured runtime
+warnings: `/private/tmp/granita-ci394935-selector-profile-20261104-c.xcresult`.
+
+The short selector still has a 183.34ms callback gap. Its whole transition evaluates four file
+bodies and 313 text bodies; content width, viewport width and horizontal offset each publish
+twice. File bodies take 2.27ms, text bodies 22.27ms, preparation 4.39ms, two exact-layout misses
+0.14ms and candidate-window validation 15.27ms. These synchronous totals overlap. Repeated
+geometry feedback and preparation do not dominate this local captured transition.
+
+The paired `SelectorCapture` phase spans 0.885925166–1.252085041 seconds in the native recording.
+It contains 64 main-thread samples and 374.085ms of inclusive sample weight, including waiting
+and boundary weights, not exact CPU duration. A 1.000–1.140s interior interval contains 27
+main-thread samples, 135ms weight: graph transaction flushing accounts for 100ms, native lazy
+placement/traversal 75ms and native layer transaction work 40ms, overlapping. This attributes
+most of the sampled interior work to native rendering/layout, but does not establish which
+application structure causes the longer CI gaps. The 2.742685s recording ends when its app exits,
+within the ten-second cap, and covers the entire marked phase. Its path is
+`/private/tmp/granita-ci394935-selector-profile-20261104-c.trace`.
+
+The first filtered diagnostic executes zero tests and is not a pass. The next attempt times out
+before the phase while command approval delays attachment; it yields no valid profile. A single
+bounded local orchestration command, approved before starting the test, then produces the valid
+capture above. Every temporary counter, gate and the 480-row case is subsequently removed.
+All three source files match `9357704` byte for byte, and the original source digest is restored.
+Only these status/decision updates remain uncommitted. A separate current-source CI diagnostic
+is prepared for review at `/private/tmp/granita-ci394-diagnostic-review/proposal.md`. Its four
+reviewable files run the complete original group 1 with bounded selector-only counters and an
+app-only profile. The full-group recorder now executes locally: its plan matches the original
+byte for byte, and all 581 expanded executions across 64 functions pass, with zero skips or
+structured runtime warnings. Recorder and collector exit zero. The native bundle is
+`/private/tmp/granita-ci394-full-group-20261104-d/ios-1/tests.xcresult`; the complete marked phase
+at 0.917103208–1.253674083s is inside
+`/private/tmp/granita-ci394935-selector-profile-20261104-d.trace`. The native recorder reaches its
+configured ten-second limit and reports 10.878688s including overhead. The short selector still
+passes with a 150.08ms callback gap. Four file bodies, 237 text bodies, two publications per
+geometry field, 3.26ms preparation and 11.53ms candidate validation again do not show a repeated
+geometry loop. Native lazy placement/traversal remains prominent in its sampled stacks.
+
+All temporary hooks and the copied recorder options are removed. Original coverage inputs are
+restored; diagnostic input `cfa391ef...` is retained separately. A fresh test build of the restored
+source succeeds, so its stamp and all four original input manifests again share `59d00546...`.
+Patch applicability, Bash syntax and recording-option identity also pass. Its proposed branch
+is `codex/ci394-selector-profile`, based on exact `9357704`. No new publication or rerun is
+authorized. The repair branch is still open and unmerged at `9357704`, freshly verified remotely.
+
+The previously published candidate extends native-validated text windows to plain changed lines and retains
+one exact text-and-font layout per hunk. The controlled wide selector reproduction, all 66
+unchanged original interaction executions and the resulting 67-case parameterized suite pass.
+Both complete instrumented iOS groups pass: 589 plus 581 executions, with zero failures, skips or
+structured runtime warnings. Package tests, both unsigned Debug apps, unsigned Mac and device
+Release builds, resolver validation and generated-file checks also pass.
+[0257](decisions/0257-window-plain-changed-lines-and-reuse-one-exact-native-layout.md) records the
+local evidence and its limits. All 22 touch/native-input executions also pass, with no failures,
+skips or structured runtime warnings. The aggregate coverage command stops at the missing Mac
+manifest before any numeric verdict; no Mac desktop tests were run. Davide approved one repair
+commit and push on 3 November. Commit `1a846f8` is published, but
+[CI 393](https://github.com/fardavide/granita/actions/runs/41696305308) still fails iOS motion:
+575 of 581 group-1 executions pass, with five word-diff frame-step failures and the new wide
+selector case failing observed animation. Group 0, touch/native input, Mac snapshots, both builds,
+package tests and generated files pass. Coverage stops on the failed iOS prerequisite before
+producing numbers. The conditional PR wording is not applied. This approval is used; further
+commits and pushes need another concrete review. Merge approval remains separate.
+
+The failed remote steps are 101.67pt for viewed/wordDiff, 101.67pt for viewed/wordDiffOutgoing,
+119.67pt for viewed/wordDiffSuccessor, 212.67pt for manual/wordDiff and 127.33pt for the dense
+successor, against the unchanged 99pt limit. The original 20-repetition selector and image
+comparisons pass. The 4,096-repetition selector observes no animated movement across callbacks
+0.0226725→0.9893771s, despite correct final header alignment and exact image equality. Its native
+bundle is `/private/tmp/granita-ci393-ios1`; no skips or structured runtime warnings are reported.
+
+One local diagnostic increases only that selector's width to 8,192 repetitions, preserving the
+original setup, settlement, motion, header and image contracts. It fails only observed animation:
+one execution, one failure, no skips/runtime warnings; callbacks jump from -116 at 0.040142s to
+4507.67 at 0.537388s, then reach the correctly aligned header with an exact image. Result:
+`/private/tmp/granita-ci393-selector-red-20261103-8192-a.xcresult`. This is a valid local motion RED,
+not proof of the remote cause. A focused plain-string window trial is under local TDD verification;
+all original rendering and coverage gates remain intact.
+
+The plain-string path passes that fixed selector diagnostic, including final alignment and exact
+image comparison, but it does not establish a word-motion repair. A separate fixed 8,192-value
+word diagnostic misses the unchanged successor-arrival contract. Avoiding redundant plain-text
+copies still fails; a resolved-font boundary trial also fails and is reverted. The fixed test
+source remains `d08cc24aee74d58b28876c2258882354fc4c3576e27698d2aca18f1e4fee3a08`.
+An app-only native recording covers the complete marked word phase, 25.348743791–26.665702375s:
+`/private/tmp/granita-ci393-word-profile-20261103-a.trace`. Its 259 main-thread samples carry
+1,334.675ms of inclusive sample weight, including waiting and boundary weights, rather than exact
+CPU duration. Overlapping costs include 950ms in preparation, 695ms in glyph-position preparation
+and 440ms in its validation loop. Visible-text windowing accounts for 10ms. This identifies a
+local oversized-word bottleneck; it does not establish the cause of the remote frame-step failures.
+All temporary recording gates and signposts are removed. Local focused investigation continues;
+there is no further commit, push, CI retry or merge approval.
+
+A fixed package diagnostic measures 32 distinct 8pt native word layouts with 8,192 values per line.
+Fixture preparation and independent native correctness checks are outside its timing. Changing
+only range iteration and buffer access to a counted loop over scoped typed pointers lowers its
+total from 478.383ms to 196.165ms; all 48 expanded focused executions pass. Independent review
+finds no semantic or pointer-lifetime issue. The unchanged word acceptance still fails in
+`/private/tmp/granita-ci393-word-scoped-pointers-20261103-a.xcresult`: one execution, no skips or
+runtime warnings, first callback 0.660940s, last presentation -47pt versus target -62pt. Its final
+successor-header requirement passes, but viewport arrival fails; the computed largest step is
+157.667pt against 99pt, and that later assertion is not reached. This is a measured inner-layer
+improvement, not a completed motion repair. The next focused RED covers preparing immutable
+source-character facts before rendering, retaining original segment eligibility and native checks.
+
+That new source-fact RED becomes GREEN for 18 fixtures and the existing coherence test. Unified rows
+reuse immutable original-source-and-segment facts; split rows retain their original checks. The
+fixed word acceptance now passes all contracts: one execution, 33 intermediate offsets, maximum
+step 18.667pt, viewport arrival within 2pt at 1.121894s and exact -62pt at 1.138573s, successor y116
+and lag 0.000764pt. No skips or structured runtime warnings occur. Its result is
+`/private/tmp/granita-ci393-word-prepared-ascii-20261103-a.xcresult`.
+[0258](decisions/0258-prepare-source-classification-before-native-text-layout.md) records the
+boundary and measurements. Independent source review finds no blocker. The justified nonempty
+pointer refactor also passes focused checks. Temporary stress functions and the benchmark are
+removed; original interaction-test source matches the published head exactly. Original regression
+verification subsequently passes all 67 expanded executions, with zero failures, skips or structured
+runtime warnings, in `/private/tmp/granita-ci393-original-interactions-20261103-b.xcresult`.
+Remote CI, aggregate coverage and TestFlight delivery remain unverified.
+
+The approved repair is now published as `4324c95`.
+[CI 392](https://github.com/fardavide/granita/actions/runs/40971849516) passes both builds,
+package tests, generated files and Mac snapshots. All original collapse-motion cases pass.
+iOS group 1 fails two cases: the file-selector jump records a 449.8ms callback gap spanning its
+entire 5,878pt movement, and the held-image iPhone-dark comparison differs only at the Done
+button's native material. Its image precision is 0.99739075 against 0.999; perceptual precision
+is 0.67562497 against 0.87. Coverage stops at the failed suite, without a numeric verdict.
+The raw result and native attachments are retained under `/private/tmp/granita-ci392-ios1`
+and `/private/tmp/granita-ci392-attachments`. Four-times and sixteen-times-wide selector controls
+pass locally. The latter still records a 333ms callback gap after one moving frame. Increasing
+the row count instead fails native settlement before the transition, so it is not the CI selector
+reproduction. The valid four-times-wide CPU recording attributes 247ms to the main thread during
+capture, including 47ms drawing glyphs; it is a passing local workload, not a CI attribution.
+
+The held-image failure now has an exact local control: a fresh mounted dark host captured
+immediately reproduces both CI precision values and the Done-only material difference. A fresh
+host waiting for one counted post-mount native frame matches the unchanged baseline. Both arms
+observe the same active application, foreground scene, key window and dark host/navigation traits.
+The receipt is `/private/tmp/granita-image-mounted-frame-control-20261030-c.xcresult`. Reversing
+the order passes both arms, so prior rendering state matters; the counted-frame arm also succeeds
+as the first capture. An earlier appearance-hook attempt failed feasibility because that callback
+was never delivered. The narrow opt-in host repair passes all 16 original image executions with
+zero failures, skips or structured runtime warnings. All 192 original sidebar executions also
+pass, including frozen spinners, and independent review finds no actionable issue.
+[0255](decisions/0255-wait-for-image-materials-after-mounting.md) records its limits.
+The separate plain-ASCII experiment reduces glyph drawing but increases total
+measured main-thread work from 247ms to 290ms; it is discarded and all shipping source matches
+`4324c95` again. The exact CI-built selector binary also passes locally on the same iOS runtime,
+so no compiler or SDK cause is established. A separate runner-profile proposal is ready: the
+focused protocol and complete original group 1 both pass locally. The latter executes all 580
+cases, records the complete selector phase with a bounded app-only CPU trace, verifies its
+inventory and restores the source fingerprint. This is diagnostic evidence, not an aggregate
+coverage verdict or a CI reproduction. The separately approved diagnostic is published as
+`1987cbd` on `codex/selector-ci-profile`. [Its recording job](https://github.com/fardavide/granita/actions/runs/41045009283)
+verifies that product and test sources match `4324c95`, but Instruments never confirms startup
+within 120 seconds. Cleanup cancels the waiting earlier collapse case before the selector runs.
+The uploaded trace cannot be exported (`Document Missing Template Error`); its issue database
+is empty and it contains no CPU samples. Source restoration succeeds. This is a diagnostic
+startup failure, not a selector reproduction. Adding the documented `--no-prompt` flag passes
+the focused local protocol with one original selector execution and source restoration; an
+interactive prompt causing the CI stall remains unverified. The approved one-line retry is
+published as `af10651`; [its recording job](https://github.com/fardavide/granita/actions/runs/41073310774)
+fails before recording because the depth-two checkout omits baseline commit `4324c95` after the
+second diagnostic commit. A fresh local shallow clone reproduces the exact missing-object failure;
+fetching full history makes both unchanged provenance commands pass. The approved diagnostic-only
+checkout fix (`fetch-depth: 0`) is published as `093305e`. [Its run](https://github.com/fardavide/granita/actions/runs/41073922391)
+passes unchanged source verification and recorder startup. All 580 original cases complete:
+579 pass and viewed/plain coherent collapse fails its original frame-step bound (157.67pt versus
+99pt); selector and image comparison pass on this attempt. This does not reproduce CI 392's
+selector failure. Source restoration and ten downloaded sample/provenance/binary checksums match.
+The trace contains 133,652 CPU samples for app PID 15328, but no phase signposts: the diagnostic
+validity guard rejects it before its final inventory check. Independent inventory comparison
+still confirms the complete original shard. Native metadata ties the trace zero to Mach ticks
+20,460,302,463 at 125/3 ns per tick (852.512602625s); its wall-clock bridge agrees with the app's
+ready metadata within 0.24 microseconds. The failing test's recorded native clock places its
+150.012ms callback gap at trace 2.087960167–2.237972333s. It contains 50ms sampled main-thread
+work, including overlapping 38ms SwiftUICore, 32ms QuartzCore and 24ms AttributeGraph, with 5ms
+CoreGraphics. This does not account for the entire gap or establish its cause. The run-loop
+export contains events but does not identify what accounts for the remaining time. Instruments'
+issue database reports a Time Mapping configuration with one table missing an input source;
+that warning does not establish why phase markers are absent. No further production change is
+justified by these measurements yet. The image repair remains local and the repair branch stays
+at `4324c95`. Temporary diagnostic
+tools now live only on their dedicated branch; the local repair tree retains the image repair
+and its documentation. Assertions, baselines and deadlines remain unchanged.
+
+On 2026-10-31 the next unchanged local interaction-suite control stops before test execution:
+Xcode is now 27.2 (`27B52`), while the installed CoreSimulator framework is 1174.9.2 and Xcode
+requires 1174.21.0. `xcodebuild -checkFirstLaunchStatus` returns 69. The sanctioned Make run
+ends with `make: *** [snapshots-ios] Error 70` because its dedicated simulator cannot be loaded;
+it supplies no new motion verdict. The owned test process has exited. Davide approved
+`xcodebuild -runFirstLaunch`; its sampled installer worker waited in PackageKit's administrator
+authorization (`AuthorizationCopyRights`). On 2026-11-01 that process has ended, the first-launch
+check still returns 69 and CoreSimulator remains 1174.9.2. The approved setup was also attempted
+with noninteractive administrator authorization (`sudo -n`), which exits with `sudo: a password
+is required`. No setup process remains active. Component setup requires Davide to authenticate
+in his own Terminal; no further simulator test has run.
+No shared simulator services have been restarted. Earlier local results were obtained with
+Xcode 27.1 and must not be presented as fresh validation on 27.2.
+
+Davide completed setup on 2026-11-01. The first-launch check now returns zero and CoreSimulator
+is 1174.21. Xcode refreshes its stale simulator service during the next sanctioned test run.
+The unchanged motion suite passes all 66 executions across 18 functions on the dedicated
+iPhone 18 Pro / iOS 27.0 (`24A434`), with no skipped cases or structured runtime warnings;
+existing console diagnostics remain. The result is `/private/tmp/granita-motion-red-control-20261101-a.xcresult`.
+The fresh Xcode 27.2 instrumented build also passes. Old 27.1 test-run metadata and the previous
+group-1 receipt are preserved under `/private/tmp/granita-pre-20261101-*`; enumeration is rerun
+explicitly against the new 27.2 metadata. The planned group matches all 64 original CI group-1
+function identities. Its complete unprofiled local execution passes all 580 parameter executions
+across 64 functions, with no skipped cases or structured runtime warnings, and produces its
+coverage receipt. This is a reproduction control, not an aggregate coverage verdict or confirmation
+that the remote failure has been repaired.
+
+Two further unchanged-assertion interaction controls each pass all 66 executions. Temporary
+reader-body logging does not identify pin tracking as an independent body-update trigger. Buffered
+settlement timing measures at most 1.25ms in the selector helper's callback, including its forced
+layout and hierarchy walk; that does not account for its observed 150ms gap. Both diagnostics are
+removed, and the interaction-test and shipping-view files match the published repair again.
+
+The bundled SwiftUI template cannot record this simulator because its Hitches instrument is
+unsupported. Adding the SwiftUI instrument separately records no SwiftUI data and yields unusable
+frame attribution. A subsequent Time Profiler-only capture succeeds, preserves paired selector
+markers and restores the source fingerprint. The original selector passes while still recording a
+150ms callback gap. About 140ms of that gap is sampled main-thread work, including overlapping
+SwiftUICore, AttributeGraph and QuartzCore work. This establishes active reader update/layout work
+for this local stall; it does not establish the cause of the earlier remote failure. Its artifacts
+are `/private/tmp/granita-selector-time-profiler-control-20261101`. Omitting the empty split-cell
+layer changes sampled selector-phase main-thread work only from 206ms to 200ms. A context-only
+tint gate does not exercise the selector's all-addition fixture. Replacing its uniform row tints
+with one full-height tint measures 203ms. All three trials pass the original selector but are
+discarded: none establishes a meaningful repair. The source review finds no semantic defect in
+the uniform-kind trial, but does not substitute for a performance result.
+
+A subsequent temporary row-construction recording passes the original selector and counts 590
+figure, marker, tint and split-layer factory invocations each during one 166.7ms callback gap,
+plus 204 attributed-code body evaluations. These are invocation counts, not distinct source rows.
+Its artifacts are `/private/tmp/granita-selector-row-construction-20261101`. A fixed outer number-row
+container changes the instrumented phase from 230ms to 212ms, but all four factory counts move
+together from 664 to 650 across the phase; it does not selectively suppress number construction.
+That trial is also discarded. Its artifacts are
+`/private/tmp/granita-selector-fixed-number-rows-20261101`. All temporary row markers are removed,
+and the diagnostic checkout matches its committed source again. No shipping change or passing
+remote result is claimed. The next proposed scope is an explicitly measured vertical row window,
+retaining full source, file height, native horizontal measurement and original assertions. It has
+not been implemented or approved.
+
+On 2 November, the compiler-setting hypothesis is checked without changing a setting. The actual
+ARM64 row object has 528 undefined-symbol lines and no debug-replacement or AnyView references.
+The app's recorded settings show Debug `-Onone`; the static build manifest does not expose the
+relevant frontend flag. A native attachment reflects the compiled `DiffFileLines.Body` as its
+concrete nested SwiftUI tree rather than a debug-replacement wrapper. These observations do not
+support a compiler-setting workaround. The unchanged motion assertions pass all 66 executions
+across 18 functions, with no skipped cases or structured runtime warnings. The receipt is
+`/private/tmp/granita-reader-body-type-20261102-a.xcresult`; the type attachment is retained under
+`/private/tmp/granita-reader-body-type-20261102-a-attachments`. The temporary attachment line is
+removed, and both the interaction test and row renderer match their committed source. The broader
+row-window prototype remains awaiting Davide's answer. No new commit, push or CI rerun occurs.
+
+A second 2 November probe checks input-frame feedback in the original selector case. During the
+transition, two new file/row views mount. File content reports frame state only with initial
+identity, never as a frame-only body update; each row view then reports its measured horizontal
+widths. The one original case passes with no skips or structured runtime warnings. Its receipt is
+`/private/tmp/granita-input-frame-updates-20261102-a.xcresult`. The temporary logging is removed.
+
+A private, equivalent number-column extraction is then tested without changing row loading,
+geometry, native text, source data or assertions. Its explicit equality inputs are the rows,
+rail segments, row height and number-column width; split figures retain their side-specific
+pending selection. Independent source review finds no behavior blocker. All 66 original motion
+executions pass, and the number column evaluates once per mounted file in the selector rather
+than again for horizontal-width settlement. This is not a performance repair: matched app-only
+Time Profiler captures measure 200ms sampled main-thread work for the unchanged control and 204ms
+for the candidate, with 161/162ms overlapping SwiftUICore and 141/142ms AttributeGraph. Both original
+selector executions pass. The extraction is discarded in both checkouts, including every temporary
+print. Artifacts are `/private/tmp/granita-number-column-control-20261102` and
+`/private/tmp/granita-number-column-candidate-20261102`; the candidate's instrumentation restores
+its recorded source fingerprint before the experimental source itself is reverted.
+
+Fresh remote diagnostics still report head `4324c95` and the same failed iOS prerequisite. The
+Coverage job logs explicitly contain `IOS: failure` and exit before producing any coverage exports
+or summary. No numeric ratchet failure is established. No new commit or push is authorized or
+performed.
+
+The measured-row-window prototype is tested locally and discarded. Its pure policy is driven from
+a missing-API RED to one passing unit test; the first renderer keeps native width measurement and
+full hunk height while drawing the visible range with one viewport of buffer on either side. All
+66 original motion/width executions pass, and independent source review finds no behavior blocker.
+This still does not make it a performance repair: app-only selector captures measure 268ms sampled
+main-thread work, against the earlier unchanged 200ms control. The attached native trace contains a
+217ms callback gap. A temporary geometry probe confirms correct local viewport ranges but repeated
+view construction. Updating only a measured range through geometry observation, retaining native
+lazy columns, also regresses to 285ms. Both recordings pass the original selector and restore their
+instrumented source fingerprints. The complete prototype, pure policy, temporary test and logging
+are removed from both checkouts. Captures are under
+`/private/tmp/granita-row-window-candidate-20261102-a`,
+`/private/tmp/granita-row-window-geometry-probe-20261102-a` and
+`/private/tmp/granita-row-window-observer-candidate-20261102-a`. A separate five-line trial gives the
+existing lazy columns their already-known full hunk height: 208ms main, 165ms overlapping
+SwiftUICore and 145ms AttributeGraph, so it is discarded. Fixed concrete containers around every
+row in all five layers measure 236ms main, 189ms SwiftUICore and 174ms AttributeGraph and are also
+discarded. Each original selector passes; all instrumentation restores its source fingerprint.
+These captures are `/private/tmp/granita-explicit-column-height-20261102-a` and
+`/private/tmp/granita-concrete-row-containers-20261102-a`. Package source again matches `4324c95`
+exactly in both checkouts. The diagnostic source is clean before a local Thread Activity
+capability trial; current Time Profiler input explicitly omits waiting threads, leaving the
+unsampled part of the earlier CI gap unexplained.
+
+The first Thread Activity capability run has real scheduling intervals and context-switch stacks.
+Extending it to the complete group is an error: all 580 executions pass, but a roughly 38GiB
+recording exhausts disk during export. The old reverse-patch cleanup then leaves two instrumented
+source files absent. Both are recovered exactly from the diagnostic branch's tracked content;
+`git diff --exit-code -- Apps Packages project.yml` is clean. After explicit cleanup approval,
+the generated trace is removed, and the profiling service holding its separate temporary kernel
+recording is stopped and that exact file removed. Free space recovers to 39GiB, subsequently above
+40GiB. The simulator's separate shared service is untouched. This is an invalid diagnostic run,
+not a passing recorder or a CI repair. Its complete test result remains at
+`/private/tmp/granita-thread-activity-full-invalid-20261102-a/selector/tests.xcresult`.
+
+A short additional Sampler trial is also discarded: its selector fails the original animation
+assertion while its actual input still records running states only. It is not a faithful CI
+reproduction. The supported Xcode 27 recording-options interface instead enables waiting-thread
+sampling in the standard Time Profiler. The focused original selector passes; the actual trace
+declares `record-waiting-threads="1"` and `all-thread-states="YES"`, includes main-thread Mach waits,
+and occupies 6.9MiB. With waiting sampling enabled, sample weights include waiting and must not be
+reported as CPU time. Source fingerprint restoration matches. Its artifacts are
+`/private/tmp/granita-waiting-threads-focused-20261102-a`.
+
+The local diagnostic now limits either mode to 10 seconds, checks for 8GiB of free space before
+instrumenting, preserves original source copies for rename-based restoration, and continues
+protocol cleanup even if copying metadata fails. Explicit collapse markers and per-parameter clock
+attachments cover the earlier failing case; the complete group requires its collapse marker,
+while focused mode still requires the selector marker. Both retain the original test inventory and
+assertions. Final complete-group validation with this recorder passes all 580 executions across
+64 functions, with no skips or structured runtime warnings. Its trace is 8.3MiB, the original
+inventory matches, waiting sampling is enabled in the recorded input, and source fingerprints
+match after restoration. Independent source review finds no blocker; whitespace and patch checks
+pass. Free space is 64GiB after recovery. No new commit or push has been made. The next proposed
+publication is one diagnostic commit on `codex/selector-ci-profile`, retaining the repair branch
+at `4324c95`. Davide delegates the renderer choice to the cleanest maintainable solution; the
+existing renderer is retained after the measured row-window regressions.
+
+A receipt audit confirms the new complete-group recording covers the viewed/plain collapse
+parameter that failed in the earlier diagnostic. Its first collapse interval is
+1.083706333–2.285814291s in the trace. The independently attached native-clock duration agrees
+within 6 microseconds. There are 165 directly timestamped main-thread samples inside that
+interval, from 1.084420541s through 2.285792875s. This verifies useful phase coverage, not the
+cause of the remote failure. The repair pull request remains open at `4324c95`; the new diagnostic
+commit and push were approved by Davide's subsequent Go. The five diagnostic files are committed
+and pushed as `6e207f51616a2b33244d5d3bdc054898661c9b30` on `codex/selector-ci-profile`.
+[The recording job](https://github.com/fardavide/granita/actions/runs/41461596836) is running and
+has passed checkout, Xcode selection and unchanged-product/test-source verification. The repair
+branch and its local image fix remain unchanged. No further publication is authorized by this Go.
+
+The recording job completes with 577 of 580 executions passing, no skips or structured runtime
+warnings, and three original frame-step failures: viewed and manual word-diff collapse, and the
+dense manual successor. The unchanged selector and image comparisons pass in this attempt.
+The recorder exits successfully; the original source fingerprint is restored. Its 16MB artifact
+is retained at `/private/tmp/granita-ci-waiting41461596836`, with native timing attachments beside
+it. The requested waiting-thread setting is present in the actual trace input.
+
+The trace includes both native phase markers for the failing viewed word-diff case, at
+11.076005541s and 12.289862291s. Its native clock agrees within microseconds. The frame-step
+failure is 138.33pt against the unchanged 99pt limit. Between callbacks at 0.362194417s and
+0.512256583s, the prior capture itself costs 0.655ms; the remaining interval contains 30
+main-thread samples with 150ms of sampled weight in layout/rendering stacks. AttributeGraph,
+SwiftUI and transaction/layout work overlap in those stacks. This identifies work during this
+specific failed interval, not an application-level cause or a successful repair. Whole-phase
+weights include waiting and must not be reported as CPU time. Native re-symbolication reports no
+matching dSYMs; local recordings use the exact same framework UUIDs but also lack the private
+SwiftUICore names. The first exact-address cross-reference adds only public caller names and
+leaves the measured counts unchanged. The fresh waiting-thread control subsequently supplies
+more framework names for the identical UUIDs: exact-address joins identify 75ms inclusively in
+lazy-subview placement, 65ms in lazy-stack placement and 70ms in ForEach traversal during the
+same failed gap. These overlap and do not identify which stack owns all the work. No further
+code is published.
+
+A local counterfactual coalesces the three pinned row stacks into one, preserving tint, pending
+selection and figure ordering. Native code painting, the ruler, mask and block cells remain in
+their existing subtrees. This tests whether fewer parallel lazy layouts reduce the measured work;
+it is not a claimed repair. The fresh unmodified control passes all 580 executions with no skips
+or structured runtime warnings and restores its source fingerprint. Its artifact is
+`/private/tmp/granita-pinned-rows-control-20261102-a`. The candidate is running the identical
+64-function shard inventory with the same recorder; no original test or assertion is changed.
+
+The pinned-row candidate also passes all 580 executions with no skips or structured runtime
+warnings and restores its fingerprint. It preserves the original 76 line snapshots. Its
+artifact is `/private/tmp/granita-pinned-rows-candidate-20261102-a`, including `candidate.patch`.
+For the matched viewed-word-diff phase, sample weight outside `mach_msg2_trap` is 185ms for the
+control and 215ms for the candidate; initial native callbacks are 40.8ms and 43.3ms respectively.
+These are sample classifications, not exact CPU durations. The first change supplies no measured
+benefit and is not accepted as a repair. One small post-green follow-up puts the pinned row behind
+a private value-view boundary to test static child identification; the layout change will be
+discarded if that too supplies no benefit. No additional publication is authorized or performed.
+
+The private-row extraction also passes all 580 executions with no skips or structured runtime
+warnings. Its matched phase has 235ms of identified sample weight outside `mach_msg2_trap`, plus
+3.75ms unattributed, against the control's 185ms. This supplies no benefit either. Both variants
+are removed from both checkouts; production diffs are empty again. The follow-up recording and
+exact patch are at `/private/tmp/granita-pinned-rows-boundary-20261102-a`.
+
+Apple's current ForEach documentation confirms a ZStack already supplies a constant root count,
+so extracting a value view does not establish a count correction. A fresh original build is now
+running the original group with the documented `-LogForEachSlowPath YES` launch argument. Only
+the generated test-run launch array changes, with its original saved separately; tracked code,
+schemes, fixtures, assertions and gates remain unchanged. This diagnostic has no CPU recording
+and supplies no required coverage receipt. Its result is
+`/private/tmp/granita-foreach-original-full-20261102-a.xcresult`; all 580 executions pass, with
+no skips or structured runtime warnings. The original launch input is restored byte-for-byte.
+
+The diagnostic flags the actual file-entry and hunk-row collections, not the five inner row
+layers. A minimal candidate wraps each existing hunk-row switch in a zero-spacing leading VStack;
+the original switch, geometry attachment and callbacks remain unchanged. With the documented flag
+enabled, the unchanged selector case passes and the hunk-row warning disappears; the file-entry
+warning remains. This result is `/private/tmp/granita-foreach-hunk-wrapper-selector-20261102-a.xcresult`.
+Its launch input is also restored exactly. The matched full-group recording without that flag
+passes all 580 executions, but the viewed-word-diff phase has 265ms of identified sample weight
+outside `mach_msg2_trap`, plus 7.458ms unattributed, against the control's 185ms. Removing the
+warning has not reduced this measured work. Its artifacts and exact patch are at
+`/private/tmp/granita-hunk-unary-boundary-20261102-a`; the candidate is discarded.
+
+A separate file-identity trial preserves the original selector behavior but leaves its slow-path
+warning present. Its focused result is
+`/private/tmp/granita-foreach-file-identity-selector-20261102-a.xcresult`. Both trials are removed
+from both checkouts, and every temporary test-launch argument is restored byte-for-byte. The
+diagnostic checkout is clean. Neither trial is accepted as a repair or published.
+
+The already-approved row-window prototype is then evaluated against the actual viewed-word-diff
+collapse; the earlier discarded window trials measured the selector instead. A fresh isolated test
+first fails because the numeric policy is missing, then passes after the framework-free policy is
+added. The renderer keeps one viewport of buffer on either side, full height, native horizontal
+width, original offsets and the existing lazy fallback when geometry is unavailable. Its complete
+original group passes all 580 executions, but the matched phase increases sample weight outside
+`mach_msg2_trap` from 185ms to 405ms. It delivers 66 callbacks against the control's 70; first
+callback offsets from the phase marker increase from 40.6ms to 69.1ms. Preparing rows, indices and
+height once outside the geometry closure removes repeated row construction/equality from the
+sampled stacks, but still measures 360ms, 67 callbacks and an 83.3ms initial offset. All 580
+executions pass again. Neither candidate supplies a measured repair, and both are discarded,
+including the temporary policy and test. Exact patches, recordings and comparison reports remain
+at `/private/tmp/granita-row-window-collapse-candidate-20261102-a` and
+`/private/tmp/granita-row-window-hoisted-collapse-candidate-20261102-a`. These are sample
+classifications, not exact CPU durations or aggregate coverage verdicts. Original source
+fingerprints and the complete 64-function inventory match after both recordings.
+
+The small section-count trial keeps native row loading. It combines the previously assessed typed
+file-identity lift with one concrete header container; the existing body already has one. The
+actual header geometry, pinning, header identity and parent animation remain attached as before.
+Compilation and the focused original selector pass, but the same outer collection warning remains.
+The hypothesis is refuted and the candidate removed from both checkouts. Its result is
+`/private/tmp/granita-foreach-section-boundary-selector-20261102-a.xcresult`; the console is retained
+beside it, and its generated launch input is restored byte-for-byte. No recording or publication
+is made for this candidate.
+
+The minimal counterfactual states the existing exact content height on all five native lazy row
+stacks. The complete 580 executions pass, with the original 64-function inventory and restored
+source fingerprint. Viewed-word-diff sample weight outside `mach_msg2_trap` is 240ms against 185ms;
+both deliver 70 callbacks, with first offsets of 40.1ms and 40.6ms, and maximum later gaps near
+33ms. No meaningful pacing improvement is established, so all five frames are removed from both
+checkouts. The capture, exact patch and reports are at
+`/private/tmp/granita-explicit-column-height-collapse-20261102-a`.
+
+A separate export of the failed CI recording's raw time-sample table confirms all 30 main-thread
+samples in the 149.4ms failing callback interval are marked Running. The recorded thermal-state
+interval is Nominal throughout the 16.11s capture. Neither observation identifies the owning view
+stack. The derived time-profile table labels even waiting-stack samples Running, so the earlier
+outside-wait classifications remain qualified rather than asserted as exact CPU durations.
+
+An isolated test writer adds one temporary diagnostic test reusing the original coherent-collapse
+assertions, with 640 real word-diff pairs per file instead of 160; all original calls still default
+to 160. The focused run fails initial native settlement (176 callbacks, zero quiet frames), then
+cannot find a vertical scroll. It never reaches the 450pt offset or collapse action and therefore
+does not reproduce the CI frame-step failure. The result is
+`/private/tmp/granita-word-pairs-repro640-20261102-b.xcresult`. The probe's quiet criterion requires
+five consecutive equal nonempty scroll-geometry dictionaries without animation; it records no
+reset reason, so these failures do not distinguish absent geometry from changing geometry.
+
+A narrow mask counterfactual moves the existing horizontal fade from the full-height code scroll
+to each clipped code row, retaining a plain rectangular hunk clip. It reaches the same setup
+failure and is removed; it supplies no motion or image-equivalence result. The patch is retained
+at `/private/tmp/granita-word-pairs-row-mask-20261102-c.patch`.
+
+Bounded setup diagnostics identify the fixture mistake: all three large entries automatically
+start collapsed under the existing 500-diff-line policy. The active, key, visible fixture window
+has one stable scroll with content height 162pt, exactly the three closed headers and gaps, so no
+scroll qualifies as overflowing. This is not a rendering stall. The extra diagnostic fixture now
+uses the existing `opened(true)` operation; original fixtures keep their original defaults. The
+temporary setup diagnostics are removed. The corrected focused case passes with zero failures,
+skips or structured runtime warnings; it does not reproduce the CI motion failure. Its receipt and
+exact diagnostic patch are `/private/tmp/granita-word-pairs-open-repro640-20261102-e.xcresult`
+and `/private/tmp/granita-word-pairs-open-repro640-20261102-e.patch`. The temporary test and factory
+parameter are removed, restoring the original acceptance source exactly. The policy,
+native-settlement criteria, deadline and all original motion assertions remain unchanged.
+Production package source matches `4324c95` again. No new publication occurs.
+
+A local recorder capability trial adds the SwiftUI instrument with `enableLayoutTracing: true`.
+The recording reports Layout Updates Included, but both exported `swiftui-layout-updates` and
+`swiftui-updates` tables contain zero rows. It supplies no owning-view attribution. All 580 original
+executions pass, with zero skips or structured runtime warnings, and the source fingerprints match
+before and after instrumentation. The trace, empty exports, receipts and exact two-file trial patch
+are retained at `/private/tmp/granita-swiftui-layout-capability-20261102-a`. Both diagnostic-only
+changes are removed; the diagnostic checkout is restored to its published head. No further
+capture using this empty result is justified, and CI motion remains unresolved.
+
+An isolated acceptance-test audit finds no demonstrated fixture or coordinate error in the failed
+viewed/wordDiff case, but identifies a sampling limit: the 138.33pt maximum displacement spans
+150.23ms between display timestamps, approximately nine nominal refresh periods. Adjacent probe
+observations are not necessarily adjacent rendered frames. The selected layers show no recorded
+animations and model/presentation offsets agree at the observed endpoints, but those samples cannot
+establish what was displayed between them. No assertion or bound is changed. Independent simulator
+video, paired with the original probe and without CPU profiling, is the next discriminator; a
+local static-screen capability capture successfully finalizes an H.264 movie. It is not a motion
+reproduction or evidence that CI is repaired.
+
+The separate diagnostic checkout now has a local video mode. A typed requested-case handshake
+prevents the selector from starting the viewed/wordDiff recording. It releases the existing setup
+gate only after simctl reports its first processed video frame, then captures ten seconds without
+CPU profiling and finalizes its owned recorder. A Mach-absolute-clock receipt must bracket the
+entire original native phase; wrong-case or incomplete temporal evidence is rejected. The readiness,
+CLI and receipt checks are failing-before/passing-after, and all 143 tooling tests pass.
+
+The 3 November complete-group verification passes all 580 original executions across 64 functions,
+with zero skips or structured runtime warnings. Exact source fingerprints are restored and app,
+package and project sources still match `4324c95`. The intended phase occupies 0.426–1.631 seconds
+after first-frame readiness, inside the 10.002-second capture window. A deliberately shortened
+window fails the unchanged validity predicate. The finalized movie is 9.993 seconds with 281 frames;
+a decoded frame confirms native word-diff motion. Independent review reports no remaining blocker.
+Artifacts are `/private/tmp/granita-word-video-validated-20261103-a`; the earlier full passing video
+run before stricter case/window validation is `/private/tmp/granita-native-video-first-local-20261103-a`.
+Video can itself miss refreshes, so intermediate pixels can challenge an apparent probe jump while
+their absence alone cannot establish a visible freeze. Davide approves the exact diagnostic commit
+and one push-triggered video run. It is published as
+[`4f304ea`](https://github.com/fardavide/granita/commit/4f304ea052284b154df5aff84a4460ce08050ece)
+on `codex/selector-ci-profile`; [the video job](https://github.com/fardavide/granita/actions/runs/41599192275)
+finishes red with 579/580 original executions passing: viewed/wordDiff fails the unchanged viewport
+step bound at 127.33pt versus 99pt. The selector and image checks pass this attempt. Recorder startup,
+explicit case selection, complete phase coverage and exact source restoration succeed; structured
+runtime warnings are empty. The recorder exits zero and the test wrapper exits two. Artifacts are
+at `/private/tmp/granita-ci-video41599192275`; six critical downloaded hashes match the producer's
+manifest. The diagnostic checkout is clean. The repair branch remains at `4324c95`, and its retained
+image-host repair stays local. No additional diagnostic retry or repair publication is authorized.
+
+Independent pixel inspection confirms a real successor-header discontinuity. In the original movie,
+the same Next.swift gold marker stays at y1906–1977 over PTS 1.148333–1.228333, then appears at
+y606–676 at 1.245000: approximately 433.3pt movement across 16.667ms at the simulator's 3× scale.
+The separate translucent First.swift header moves in the intervening recorded frames, so the whole
+recording is not frozen. A second reader independently reproduces the stripe and frame hashes and
+identifies both titles in the pixels. This validates a visible pause/jump without assuming that movie
+PTS zero equals the recorder's first-frame-report clock. It does not equate that header movement
+with the test's 127.33pt viewport-offset step or establish which rendering layer causes the work.
+
+The next local counterfactual relocates the existing full-code fade to each already-clipped row and
+keeps a rectangular clip at the former whole-height mask site. Split masks and every other layer
+stay unchanged. The earlier mask trial supplied no valid performance evidence because its oversized
+fixture started collapsed. This two-modifier trial uses the original 160-pair viewed/wordDiff case,
+with fresh paired phase recordings and unchanged snapshots; no improvement means discard.
+
+Two alternating controls and two row-mask candidates each pass all 580 executions, including the
+original 76 line snapshots, and restore their temporary instrumentation exactly. The matching
+viewed/wordDiff phase has 255/225ms control versus 185/170ms candidate main-thread sample weight
+outside Mach waits; this is a sampling metric, not an exact CPU duration. First callbacks are
+52.63/46.56ms versus 41.93/39.94ms; maximum subsequent gaps remain approximately 33ms in every run.
+The candidate reduces this measured work, but these locally passing tests do not establish that it
+fixes the remote hitch. A fresh source review finds no actionable clipping, scrolling, accessibility
+or indicator regression; fractional moving-edge rasterization remains a runtime limit. The fade
+remains at the trailing edge, despite the mask container's leading alignment. Artifacts are
+`/private/tmp/granita-fade-word-{control,candidate}-20261103-{a,b}`. Package and unsigned build
+verification now passes through `make test` and `make build`; diagnostic tooling checks pass too.
+`make resolve` regenerates all 30 Xcode pins without a lockfile change. [0256](decisions/0256-apply-code-fade-to-clipped-rows.md)
+records the candidate and remaining limits. A three-file diagnostic proposal is prepared at
+`/private/tmp/granita-code-fade-ci-proposal-20261103.md`: the exact renderer candidate, a guard
+allowing only that file hash while preserving all other source controls, and diagnostic evidence.
+Davide then approved that proposal: commit `7f15f68709f579e3dff3526aa4f5a37441590304` is pushed
+to the diagnostic branch and [its video job](https://github.com/fardavide/granita/actions/runs/41636763527)
+fails after 20m26s: 576/580 executions pass. Original motion failures are viewed/wordDiff
+(210.67pt against 99pt), viewed/unsegmentedWordDiff (176pt), manual/wordDiffSuccessor (119.33pt),
+and file selection (5,878pt with no observed animation). Images and all 143 tooling cases pass.
+The recorder succeeds, its phase fits the capture window, source restoration is exact, and six
+critical artifact hashes match the producer manifest. The native video independently shows
+Next.swift holding for approximately 102ms while First.swift moves, then moving approximately
+685.3pt across 30ms between recorded frames. This does not identify the responsible layout layer.
+Artifacts are `/private/tmp/granita-ci-video41636763527`. The two-modifier fade trial is rejected
+as a repair and removed from this workspace, verified against its original product source.
+The diagnostic checkout stays clean at the approved experiment. The approval is used; no further
+push is authorized. The repair branch remains at `4324c953`, and its CI repair is unresolved.
+
+The next local discriminator keeps the original 450pt start, 396pt travel, 1.2s observation and
+99pt step bound in one temporary stress test with explicit-open/native setup guards. Row-volume
+controls (1,280 and 5,120 delete/add pairs, 256 values per line) each execute one test and pass.
+The original 160 pairs with 8,192 values per line execute one test and fail arrival: setup passes,
+the first callback arrives at 1.045s, and the successor is still at y1506 instead of y116 at 1.178s.
+The last presentation offset is 310pt against a target of -62pt; there are six observations and
+no missing native layers. This establishes local late arrival, not the same cause or pixel hitch
+as CI. Result: `/private/tmp/granita-stress-collapse-20261103-d.xcresult`; the temporary test remains
+unchanged while a separate GREEN worker owns local Make/simulator execution.
+
+Diagnostic-only timing attributes approximately 17–18ms per long row to native preparation out
+of 20ms total, across about 50 newly painted rows. Eligibility costs about 4ms, shaping about
+0.7–0.8ms, buffer acquisition about 2.6–2.9ms, and the validation/equality interval about 9.6–9.9ms.
+The validation-pass fusion and scalar-access trials remain red without instrumentation (first
+callback about 0.943/0.946s, no final successor). A bounded-loop trial improves the first callback
+to 0.692s but still misses arrival and observes a 157.67pt step against 99pt. All three production
+trials are reverted byte-for-byte. Plain selector and unsegmented cases bypass this helper, so
+these timings do not identify a common CI cause.
+
+A separate temporary plain-text selector case retains three 160-row files and the original
+motion/header/image/settlement contracts. Width 16,384 repetitions fails the original 3s/five-frame
+settlement guard. Width 4,096 settles but observes a single 4,638.67pt move across a 1.55s callback
+gap. Its initially added hardcoded 5,878pt requirement is an unsupported assumption: the original
+test never asserts that number, and SPEC permits below-fold lazy estimates. The width 20 control
+passes the original contracts and travels 5,878pt, but proves no width-invariant offset contract.
+The extra raw-distance guard is removed and the original movement-assertion order restored.
+The corrected case executes one test and fails the original observed-animation expectation, with
+zero skips or structured runtime warnings: no intermediate displacement across callbacks
+0.026089→1.576064s, target header at y119 against initial y116. Result:
+`/private/tmp/granita-selector-original-contracts-red-20261103-a.xcresult`. This supplies a local
+motion RED under the original contracts, not proof of a common cause with the remote collapse.
+
+Actual geometry-only measurements confirm all three mounted hunks retain 160×18pt rows. Hunk
+height is 2,880pt then 2,883pt with the independently measured horizontal indicator; file-body height
+including its separate gap is 2,890→2,893pt. Source width is 195,234.6667pt. These do not support
+hunk/body height corruption. The one-line exact-row-container frame is insufficient and reverted;
+all geometry probes are removed. Diagnostic result:
+`/private/tmp/granita-selector-geometry-probe-20261103-b.xcresult`. Raw content-size/offset drift
+alone is not treated as a product defect. Original arrival, image and animation gates remain intact.
+
+A single-request, diagnostic-only navigation counterfactual uses the existing header identity
+instead of the enclosing section for explicit selection and removes whole-section registration.
+The original curves, geometry and fixed test stay unchanged. Its source is restored after the run
+regardless of outcome. Adoption is not authorized: [0241](decisions/0241-header-alignment-ends-with-its-animation.md)
+deliberately distinguishes destinations, and a shared target would need separate stale-completion
+protection plus complete original behavior/snapshot verification. The counterfactual tests a
+destination-shape hypothesis; source inspection alone supplies no lookup-cost diagnosis.
+
+That counterfactual fails the same original motion and alignment checks: one execution, no skips
+or runtime warnings, no intermediate displacement across callbacks 0.025632→1.558950s, and target
+header y119 against initial y116. `ContinuousDiffView.swift` is restored exactly to HEAD. Its result
+is `/private/tmp/granita-selector-header-target-counterfactual-20261103-a.xcresult`.
+
+A complete app-only local CPU recording covers the selector phase from 8.786035333 to
+10.682890375s, with samples extending beyond both markers. It attributes approximately 1,200ms
+exclusive sampled main-thread weight to Core Graphics glyph-mask painting. Inclusive layout and
+framework weights overlap and are not added. This identifies the oversized local plain-text
+workload's dominant cost; it does not establish the remote word-diff cause. Trace:
+`/private/tmp/granita-local-selector-profile-20261103-c.trace`. Earlier captures either miss the
+phase or end before it completes and are not treated as full recordings. All temporary recorder
+gates and signposts are removed; the uninstrumented test fingerprint is restored.
+
+Extending the existing validated native text window to eligible unsegmented addition/deletion
+lines reduces the local selector callback gap from about 1.55s to 0.8s. Exact header alignment and
+its reference image pass, but observed animation remains red. One bounded, private, per-hunk
+layout entry then reuses only an exactly equal full string and native font; misses run the original
+native validation. The unchanged local reproduction passes all its original motion, arrival and
+image assertions: one executed, zero failures/skips/runtime warnings, two intermediate offsets,
+arrival at 0.396211s and header y116. Result:
+`/private/tmp/granita-selector-plain-window-cache-green-20261103-a.xcresult`. A delivered callback
+gap remains about 250ms, so this is not uniformly smooth-frame evidence. All 66 original interaction
+executions subsequently pass with their source identical to HEAD. The existing selector test then
+adds 4,096 repetitions alongside its unchanged 20-repetition input; only its annotation, parameter
+and width expression change. All 67 resulting interaction executions pass, with zero failures,
+skips or structured runtime warnings, in
+`/private/tmp/granita-collapse-window-cache-regression-20261103-a.xcresult`. Remaining full iOS
+verification is pending, and no new push or remote repair is claimed.
+
+Both complete instrumented iOS groups subsequently pass on Xcode 27.2 (`27B52`), on the iOS 27.0
+simulator: 589 and 581 actual executions, no failures, skips or structured runtime warnings.
+Their complete receipts and the complete package receipt share source digest
+`622fe58dae8196597b6d853ca454466079a77e7f40ff735b707a04569c97b6c8`.
+Unsigned Debug builds, unsigned Mac and physical-device Release compilation, resolver validation
+and generated files also pass. The existing console/compiler diagnostics are not claimed absent.
+Results are under `build/coverage-inputs/ios-{0,1}/tests.xcresult`. This is fresh local evidence,
+not a new CI verdict or aggregate coverage result.
+
+The fresh Ui collector also passes: eight actual-touch cases and fourteen native-input parameter
+runs, no failures, skips or structured runtime warnings. Its complete receipt shares the same
+source digest. `make coverage-report` validates the Unit and both iOS inputs, then stops at the
+missing `build/coverage-inputs/mac/manifest.json` before calculating numbers. No old Mac artifact
+is substituted, no numeric coverage verdict is claimed, and no host desktop test is started.
+
+The published rendering repair has a controlled local failing-before/passing-after result. The same
+16× dense workload, retaining original row geometry and assertions, moves from a 2.139s first
+callback to 0.529s and reaches the successor at 1.141s, inside the original 1.2s observation.
+All 66 original interaction executions and all 76 saved-image executions pass locally. Immutable
+line preparation moves initial batch work off the main actor; a native-validated ASCII window
+bounds painted ink while full source preserves width and accessibility. The temporary recording
+tools and diagnostic-only overload are removed. The complete package suite, both unsigned Debug
+apps, fresh unsigned Mac and device Release builds, generated files, all 140 coverage-tooling
+tests, 1,169 instrumented iOS executions and 22 native touch/adapter executions pass. Structured
+iOS runtime warnings are empty; existing console/compiler diagnostics remain. Unit, both iOS
+groups and Ui have complete receipts with source digest
+`c73893829fc0e10c1f31d61ef40eac80bd03725d737c320aa7c4d48d0c75d49d`.
+The aggregate gate stops at the missing Mac manifest, before any numeric verdict; no old profile
+is substituted. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
+records the controls, retained rendering contract and limits. No new commit or push is authorized
+before the concrete result is reviewed and approved. Local Mac tests that take desktop focus
+require confirmation; none are being run.
+
+**Previous pushed candidate.**
+[CI 391](https://github.com/fardavide/granita/actions/runs/40853704216), at `381b8b2`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0, including native input
+coverage. Group 1 records collapse-motion failures. Earlier runs fail different
+collapse cases and sometimes pass the selector, so the failing cases vary without a
+production motion change. Coverage stops at the failed suite
+without a numeric verdict. The complete local iOS results below do not establish a CI repair.
+
+The Mac failure has a deterministic controlled reproduction: a reload during post-ready syntax
+highlighting resets entries while the previous fetch still owns their in-flight IDs. The repair
+ends fetch ownership before awaiting highlighting or images. Both controlled cases, all157
+related model tests and the complete package suite pass locally. The original Mac snapshot now
+passes in CI. [0252](decisions/0252-release-content-fetch-ownership-before-decoration.md) records
+the ownership boundary; the snapshot setup and assertions are unchanged.
+Both unsigned Debug apps also pass. Fresh unsigned Release builds return zero, again with the
+exit-code0 SwiftCompile diagnostic; clean compiler diagnostics are not claimed.
+
+Local validation uses Xcode 27.1 (`27A9275`), whereas CI uses Xcode 27.0 (`27A266a`). The
+[third separate native recording](https://github.com/fardavide/granita/actions/runs/40831796653)
+captures both original failures with exact PIDs, paired phase markers and active app, scene and
+key window. UIKit animations are enabled and UIKit Reduce Motion is false. Dense motion has a
+frame gap of one second containing 846 ms of sampled main-thread work; overlapping inclusive
+costs include 338 ms preparing backgrounds and 182 ms preparing glyph positions. The selector
+also fails with a valid trace. Both recordings restore the original source fingerprint. The 23
+downloaded files used for analysis, including exported samples, markers and matching binaries,
+match the artifact's checksum manifest. Earlier recorder-start failures provide no CPU evidence;
+reversing case order supplies usable traces but does not establish startup-order causality.
+Original motion deadlines and the required workflow and collectors remain unchanged.
+
+That candidate batches nominal glyph and advance comparisons, retains validated native
+points, and uses immutable Foundation membership for the same printable-ASCII eligibility.
+The matched local dense profile lowers background preparation from 128 to 76 ms and total
+sampled main work from 460 to 417 ms. This is local evidence requiring remote confirmation.
+All 45 geometry/eligibility cases, 66 original interaction executions, 56 reader snapshots,
+the complete package suite, both unsigned Debug apps and generated-file verification pass.
+Fresh unsigned Mac and device Release builds return zero with the existing SwiftCompile
+exit-code-zero diagnostic. Fresh Unit, 1,169 iOS and 22 native touch/adapter executions pass;
+their receipts share source digest
+`eb848a572da095638cf56d6f1fe6844f70e2f8df4dbd09f806736ba2c4018225`.
+The local Mac run records image mismatches and is interrupted at the user's request because
+its windows repeatedly take focus. No successful Mac receipt or aggregate verdict is produced.
+Required remote checks remain pending; the existing Mac CI job runs on a separate GitHub-hosted
+MacCloud machine.
+[0253](decisions/0253-batch-native-background-validation-and-ascii-membership.md)
+records the measured and rejected controls; rendering, native fallbacks and all original gates
+remain intact. Its temporary profiling infrastructure has since been removed from the working tree.
+
+**Previous candidate and local verification.**
+[CI 386](https://github.com/fardavide/granita/actions/runs/40643806135), at `71c50ff`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0 with native input coverage.
+Group 1 fails four original collapse cases. Coverage stops at that prerequisite without a
+numeric verdict.
+
+The retained candidate preserves complete native text and adds identity content transitions to
+its two rendering branches. The synchronized dense replay passes its original assertions with
+452 ms of sampled main-thread work, compared with 996 ms in the earlier full-text control. The
+visible-text-window experiment is removed after the complete-text control supplies the same
+benefit. [0250](decisions/0250-keep-text-content-updates-out-of-file-layout-animation.md) records
+the controls and provenance.
+
+Four transaction modifiers now control contextual offset adjustment. User-positioned reading
+disables adjustment; initial seeded positions retain it, while changed file entries, code point
+size or split mode restore automatic adjustment. The existing typed position and native
+animation remain. A clean `71c50ff` control
+without either Text modifier also reproduces the original 450pt reset, so that reset is not
+attributed to the rendering optimization.
+[0251](decisions/0251-control-contextual-offset-adjustment-during-reading.md) records the policy,
+rejected alternatives and limitations.
+
+The candidate passes ten complete repetitions of the original later-file case, including its
+horizontal motion and image assertions; the new selector guard passes actual native animation
+and exact selected-header arrival. The complete interaction class passes all66 executions
+across18 functions; all56 existing reader snapshots also pass. Original65 assertions, physical travel guards, baselines, deadlines,
+animation curves and coverage gates remain unchanged. Temporary diagnostic probes and fixture
+seams are removed. Source digest is
+`0b4f700d2274896fcd4b18c89b70f4f593db7cd41375cb2fa366c62db25299d2`.
+
+Paired font, stale-comment removal and split-width controls match ordinary behavior; their
+existing reading-line changes are neither repaired nor reported as candidate regressions.
+The image-caption Dynamic Type control is unexercised because it produces no measured growth
+above the live reader. It supplies no layout-policy evidence. The optional-ID request controls
+are removed after the selector guard catches instantaneous movement and wrong-header arrival.
+
+The preceding unconditional policy passes587 group0 executions but fails two preselected-file
+iPad snapshots. The ordinary-policy comparison passes all56 reader snapshots. Restricting the
+disabled default to user-positioned state repairs those failures without changing their images.
+
+The corrected source passes package tests, both unsigned Debug and Release apps, generated-file
+verification, 1,169 instrumented iOS cases and22 native UI cases. Unit, both iOS groups and Ui
+receipts share the source digest above. There are no iOS failures or skips; structured runtime
+warnings are empty, while existing console warnings remain. Release returns zero but still
+emits the exit-code0 SwiftCompile diagnostic, so clean compiler diagnostics are not claimed.
+
+The local Mac run reports the documented image differences and stalls in its reader-menu case.
+It is interrupted, leaving no successful Mac receipt or aggregate coverage verdict. No previous
+Mac profile is substituted. Delivery is tracked by [PR #129](https://github.com/fardavide/granita/pull/129)
+and still requires every required remote check to pass. Version0.23.1 and release notes are
+included; merge and TestFlight delivery remain separate from this verification.
+
+**Previous position-update candidate.**
+[CI 385](https://github.com/fardavide/granita/actions/runs/40531226511), at `be99bcc`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Group 1 fails the original
+motion bounds and a later-file scrolling setup guard. Coverage stops at that prerequisite with
+no numeric verdict.
+
+The next candidate changes only completion's position update: mark the existing position as
+user-positioned instead of replacing it with an empty value. It passes ten focused repetitions,
+all 65 original interaction executions with runtime diagnostics removed, and real same-file
+reselection after a pan. The production selector/vertical/horizontal touch control also passes.
+[0249](decisions/0249-release-completed-identity-scrolls-through-existing-position.md) records the
+native reset evidence and rejected controls.
+
+The final source passes package tests, both unsigned app builds, generated-file verification,
+optimized device Release compilation, 1,168 instrumented iOS cases and 22 native touch cases.
+There are no iOS skips or runtime warnings. Unit, both iOS groups and Ui receipts share source
+digest `7f071b25a8a8e140c7cf37ad229aec2d6d098860eceedf8f7e1f010e9ae3e8a2`.
+The local Mac run again reports image differences and stops producing output in its reader menu
+case; it is interrupted and provides no successful Mac receipt or aggregate coverage verdict.
+The existing assertions, baselines and gates remain intact. A fresh complete CI attempt is
+required before the repair is considered delivered; no merge or release has been performed.
+
+The preceding guarded-mapping source passed package tests, both unsigned app builds,
+optimized device Release compilation and generated-file verification. The guarded native
+position refinement passes 59 focused cases, all 65 original collapse/scrolling acceptance cases,
+all 1,168 instrumented iOS cases and all 20 native input cases. Unit, both iOS groups and Ui
+receipts share source digest `821005562b2f7bf83fce463ecd5b612fbe1f07fa80efc4ee4cce4d3ebd4fbc58`.
+
+[CI 384](https://github.com/fardavide/granita/actions/runs/40468956878), at `fc00d84`, passes both
+builds, generated files, package tests, Mac snapshots and iOS group 0. Required group 1 fails
+motion checks, so coverage stops at its prerequisite without a numeric verdict. Its separate
+exact-process recording attributes the dense replay's initial 633 ms callback gap to 620 ms of
+sampled main-thread work, including 284 ms in native caret queries. App, scene and key window
+remain active. Primary receipts and the modified diagnostic source provenance stay separate.
+
+The refinement reuses measured native glyph positions only for a complete unadjusted monospaced
+ASCII mapping. Substitutions, kerning, ligatures and unknown geometry keep native caret queries.
+Native Text, syntax colours, widths and the original range predicates remain unchanged. A
+same-device diagnostic pair reduces sampled layout-helper work from 195 ms to 88 ms. The profiled
+replay still fails a later frame-step bound during native painting; the original unprofiled and
+complete instrumented iOS suites pass. The temporary recording fixture and CI tools are removed.
+
+[0248](decisions/0248-measure-visible-word-backgrounds-before-native-text.md) records the measured
+costs, rejected alternatives and retained contracts. The current local Mac run reports the
+documented image differences, then is interrupted after its reader menu case stops producing
+output. It provides no successful Mac receipt or aggregate coverage verdict. No
+image baseline, original assertion, animation bound, coverage scope or numeric gate changes.
+Delivery requires a fresh complete CI attempt with every required check green. The approved
+replacement PR wording stays held until then. No merge or release has been performed.
+
+The native test harness also requires an active actual key-window scene plus a native frame
+before rendering. The swipe probe excludes candidates hidden, transparent or clipped by an
+ancestor. Their focused tests and the complete final-source native touch run pass.
+An interrupted local snapshot run was killed by another worktree installing the same app on its
+shared simulator, confirmed by the simulator's install/termination log. Subsequent focused runs
+use an existing idle iPhone 18 Pro Max on the same iOS version; snapshot dimensions stay fixed.
+
+Earlier investigation and CI evidence follows.
+
+**The 0.23.1 archive repair is prepared locally; delivery is not yet verified.** Xcode Cloud build
+178 started automatically after [PR #128](https://github.com/fardavide/granita/pull/128) merged, but
+Swift 6.4 crashed during optimized iOS compilation and TestFlight distribution was skipped. The
+same unsigned device Release compile failed locally, then passed with an explicit CoreGraphics
+geometry import in Viewer Domain. Davide approved that narrow exception and chose no Release CI
+check. [0244](decisions/0244-explicit-geometry-overlay-for-release-compilation.md) records the
+failure and repair. Package tests, both unsigned app builds, resolver validation and a second
+unsigned physical-device Release compile pass on the final 0.23.1 sources. The repair is ready
+for review; Cloud archiving and TestFlight delivery remain unverified.
+
+Required CI for [PR #129](https://github.com/fardavide/granita/pull/129) also exposed four existing
+collapse-motion cases; coverage stopped on their failed suite verdict before comparing percentages.
+The same CI-built products pass those motion cases locally. A candidate now reduces the hunk's
+hidden measurement views while retaining exact native text widths. All 59 focused native cases
+pass, including 32 independent width checks at four code sizes. Full package tests, both unsigned
+apps, an unsigned device Release build and generated-file verification pass. Instrumented iOS
+shards pass 21 and 59 functions with no failures or skips; all six touch tests and eleven native
+adapter cases pass. Full local coverage stops at the documented Mac snapshot mismatches followed
+by the menu-test stall; that run was interrupted and has no aggregate verdict. The original
+assertions, baselines and coverage gates remain unchanged. CI verification is pending.
+[0245](decisions/0245-native-widths-with-fewer-ruler-views.md) records the measurement evidence and
+the deliberately narrow rendering change.
+
+The next CI run, [39958096134](https://github.com/fardavide/granita/actions/runs/39958096134),
+passed both builds, package tests, generated files and Mac snapshots, but both iOS shards failed
+simulator selection before tests started. Coverage again stopped on the failed suite prerequisite.
+The selector erased a valid numbered iPhone when a later runtime contained only iPhone Duo.
+All four selector copies now retain the last valid selection, and `make coverage-tests` passes
+140 cases, including twelve selector cases that execute the production expressions;
+[0246](decisions/0246-simulator-selection-retains-the-newest-supported-runtime.md) records the
+policy. CI motion and aggregate coverage remain unverified on the ruler repair.
+
+CI run [40011176859](https://github.com/fardavide/granita/actions/runs/40011176859) confirms the
+simulator-selection repair: both shards render on iPhone 18 Pro, iOS 27.0. Both builds, package
+tests, generated files and Mac snapshots pass. Four collapse-motion cases still fail, with five
+issues; one trace shows 551 pt of successor travel remaining when the viewport arrives. A touch
+case also times out before its horizontal swipe, with the native probe reporting two horizontal
+scroll candidates at the gesture point. Coverage stops on those suite verdicts, without a numeric
+comparison. A candidate starts the typed header request in the collapse update and retires its
+pending pair on completion and removes the obsolete Timeline background. Full package tests,
+both unsigned app builds, the focused 59 native executions and all six actual-touch tests pass on
+the final sources. Resolver validation passes with no lockfile change. CI confirmation is pending.
+Gesture timeout messages now include the full native scroll candidate list, without changing their
+predicate or timeout. No release has been merged or distributed.
+
+CI run [40060044107](https://github.com/fardavide/granita/actions/runs/40060044107) is terminal red.
+Both builds, package tests, generated files, Mac snapshots, the other iOS shard, TLS and all
+seventeen input cases pass. Five collapse-motion cases still report eight issues, including up
+to 621 pt of successor lag. Synchronous header initiation did not resolve that defect. Coverage
+stops before numeric comparison. The next diagnostic records native layer/animation clocks and
+first-movement milestones without changing assertions; a separately recorded replay runs after
+the required shard fails and preserves its original verdict and coverage artifacts.
+
+CI run [40133024145](https://github.com/fardavide/granita/actions/runs/40133024145) reproduced the
+failure with native model and presentation geometry agreeing on the delayed header; its replay
+video also shows the misalignment. A narrow candidate replaces only the header's geometry group
+with a compositing group. All 59 original focused executions pass locally with the coherence,
+motion and position assertions unchanged. CI still needs to judge this candidate.
+
+CI run [40171825933](https://github.com/fardavide/granita/actions/runs/40171825933) rejects that
+header-only candidate: seven motion cases fail, while both builds, package tests, generated files,
+Mac snapshots, the other iOS shard and all seventeen input cases pass. Coverage stops at the failed
+motion suite before numeric comparison. The header's original geometry group is restored. A new
+local long-word-diff successor fixture reproduces a 159 pt frame step against the unchanged 99 pt
+limit. Skipping unused display-column calculation for tab-free segmented lines passes that fixture
+in isolation, but full focused runs still reject its frame step with either header grouping. All
+59 original executions and the existing tab and Unicode unit tests pass. A second optimization
+reuses cumulative character counts, adding byte counts only for ASCII without CR/LF and preserving
+the original concatenated-string count for all other text. Neither optimization alone resolves the
+stall. Native geometry tracing identifies the successor's first upward layout movement; a one-shot
+waiting/scrolling phase now starts the typed header request from that observation. The combined
+candidate passes all 60 focused executions, including the long-line regression and existing
+reopening, explicit-selection and horizontal-scroll cases. Removing the text optimizations, or
+keeping only the tab optimization, restores a 120 pt frame-step failure. Original motion assertions,
+baselines and coverage gates remain unchanged. The instrumented shard passes every original case
+but still rejects a 101.3 pt step in the long-line fixture. A profile identifies repeated character
+indexing during word highlighting; ranges now advance from the previous endpoint. All 62 focused
+executions pass, including two short-successor cases. The rebuilt instrumented motion shard
+passes all 61 functions in 17 suites with no failures or skips. The other shard passes 21 functions,
+and all six actual-touch and eleven native-input cases pass. Complete unit, both iOS shard and
+behavioral Ui receipts share one source digest. Full package tests, both unsigned app builds,
+resolver validation and a fresh unsigned device Release compile pass on these sources. Local Mac
+snapshot differences and the documented menu-test stall still prevent a local aggregate coverage
+verdict; required CI confirmation remains pending. Version 0.23.1 is retained, with no new Release
+CI check, baseline recording or coverage-gate change. TestFlight delivery remains unverified.
+
+CI run [40233647872](https://github.com/fardavide/granita/actions/runs/40233647872) rejects that
+candidate too. Both builds, unit tests, generated files and Mac snapshots pass. The iOS failures
+include collapse frame steps, the image comparison's dark Done material, and an input probe that
+finds two horizontal candidates before its swipe. Coverage stops at the failed suite prerequisite;
+it has no numeric verdict. The prior local coverage receipts do not validate subsequent edits.
+
+A denser word-diff successor now reproduces a 356 pt frame step locally against the unchanged
+99 pt limit while the app and scene remain active. Stable child views reduce repeated text
+preparation but do not repair that stall. Native layout timing and an animation-inheritance A/B
+also leave it red; these diagnostic wrappers and flags are removed. Separately, native input
+regressions demonstrate that raw scroll rectangles include descendants of hidden, clipped and
+transparent ancestors. Filtering only those demonstrably invisible candidates passes all fourteen
+native input cases. The original CI ambiguity has no media or ancestor visibility evidence, so
+those regressions do not establish its exact cause. The repair remains uncommitted and incomplete.
+
+All six actual-touch tests now pass with the observer repair, including the CI timeout case. Two
+immutable image diagnostics reproduce the exact dark material mismatch while inactive and match
+after activation plus one native frame, preserving the same mounted host. The snapshot helper now
+requires that observed readiness before rendering; the original sixteen image cases pass without
+baseline or tolerance changes. [0247](decisions/0247-snapshot-materials-require-an-active-native-frame.md)
+records the evidence and its limits. Collapse and full CI verification remain incomplete.
+
+An approved, synchronized CPU profile captures the dense collapse's 516.8 ms callback gap with
+the app and scene active. Of 515 ms main-thread sampled weight inside the two native frame
+markers, 417 ms occurs under backing-store display and 315 ms includes Core Graphics rectangle
+painting/blending. Omitting only word-background assignments removes the stall, but changes the
+rendering and is rejected as a fix. Resolving colors once and a clipped drawing group also remain
+red and are removed. Native motion setup now uses the same active-scene preparation before its
+unchanged observation window. A render-preserving clipping repair is still under investigation;
+no new candidate is committed or published.
+
+**Whole-line selection and 0.23.0 merged in [PR #128](https://github.com/fardavide/granita/pull/128).**
+All seven required checks passed before merge, including both iOS shards, all six touch tests,
+eleven native adapter cases, Mac snapshots and the coverage gate. All ten coherent-collapse cases
+passed with unchanged assertions on the successful retry. Main's subsequent GitHub CI failed
+simulator availability checks, independently of the Cloud archive failure.
+
+Tapping or holding anywhere on a code row targets that line; holding and dragging selects across
+lines and hunk gaps. Releasing opens the composer, and hold-release-tap remains available. Ordinary
+swipes work before hold recognition; edge auto-scrolling is outside the feature. The interaction
+contract is in [0242](decisions/0242-whole-row-selection-follows-measured-hunks.md). The approved
+behavioral Ui and rendering Snapshot measurement boundary is in
+[0243](decisions/0243-native-input-is-measured-by-behavioral-coverage.md); Unit/All-tests scopes and
+numeric ratchets remain unchanged.
 
 **The horizontal-scroll regression has actual-touch reproductions; 0.22.4 verification is in progress.**
 The tests reproduced a 918pt vertical jump after reviewing a pinned file and a 2,095pt jump in a

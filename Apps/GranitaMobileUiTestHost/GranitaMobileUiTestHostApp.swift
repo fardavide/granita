@@ -14,11 +14,15 @@ struct GranitaMobileUiTestHostApp: App {
 
 @MainActor
 private struct HorizontalSwipeFixture: View {
-    @State private var entries = ["Sources/First.swift", "Sources/Middle.swift", "Sources/Last.swift"]
-        .enumerated().map { index, path in
+    @State private var entries: [ContinuousDiffEntry] = {
+        let selectsLaterFile = ProcessInfo.processInfo.arguments.contains("selector-jump")
+        let paths = selectsLaterFile
+            ? ["Sources/First.swift", "Sources/Middle.swift", "Sources/Third.swift"]
+            : ["Sources/First.swift", "Sources/Middle.swift", "Sources/Last.swift"]
+        return paths.enumerated().map { index, path in
             let text = "let leadingValue = [" + String(repeating: "12345, ", count: 20) + "] // trailingValue"
             let hasGap = index == 0 && ProcessInfo.processInfo.arguments.contains("selection-gap")
-            let lineNumbers = hasGap ? Array(1...10) + Array(15...24) : Array(1...(index == 0 ? 20 : 160))
+            let lineNumbers = hasGap ? Array(1...10) + Array(15...24) : Array(1...(index == 0 && selectsLaterFile == false ? 20 : 160))
             let lines = lineNumbers.map { number in
                 DiffLine(kind: .addition, oldNumber: nil, newNumber: number, text: text, displayColumns: text.count, segments: nil)
             }
@@ -39,15 +43,21 @@ private struct HorizontalSwipeFixture: View {
                 oldLineCount: 0, newLineCount: lineCount, isTruncated: false, truncationReason: nil
             ))
         }
+    }()
     @State private var probe = HorizontalSwipeProbe()
     @State private var draft = CommentDraft.idle
+    @State private var jumpTarget: FileID?
+    @State private var showsFiles = false
+    @State private var drawerDetent = PresentationDetent.medium
+    @State private var selectorMode = FileSelectorMode.flat
+    @State private var collapsedDirectories: Set<String> = []
 
     var body: some View {
         NavigationStack {
             ContinuousDiffView(
                 state: .reading(entries), logCopyState: .ready, pointSize: 11,
-                jumpTarget: nil, pending: draft.held ?? draft.pending, isWaitingLong: false,
-                onReading: { _ in }, onRereading: { _ in }, onJumped: {},
+                jumpTarget: jumpTarget, pending: draft.held ?? draft.pending, isWaitingLong: false,
+                onReading: { _ in }, onRereading: { _ in }, onJumped: { jumpTarget = nil },
                 onSetViewed: { value, id in entries = entries.map { $0.id == id ? $0.viewed(value) : $0 } },
                 onSetOpen: { value, id in entries = entries.map { $0.id == id ? $0.opened(value) : $0 } },
                 onExpand: { _, _, _ in },
@@ -62,8 +72,29 @@ private struct HorizontalSwipeFixture: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    if ProcessInfo.processInfo.arguments.contains("selector-jump") {
+                        Button("Files") { showsFiles = true }
+                    }
                     Button("Observe swipe") { probe.arm() }
                 }
+            }
+            .sheet(isPresented: $showsFiles) {
+                FileSelectorView(
+                    listing: FileSelector.listing(
+                        of: entries.map(\.file), mode: selectorMode,
+                        collapsed: collapsedDirectories, isTruncated: false
+                    ),
+                    onChoose: { file in
+                        jumpTarget = file
+                        drawerDetent = .medium
+                    },
+                    onToggleDirectory: { path in
+                        if collapsedDirectories.remove(path) == nil { collapsedDirectories.insert(path) }
+                    },
+                    onChooseMode: { selectorMode = $0 }
+                )
+                .presentationDetents([.medium, .large], selection: $drawerDetent)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 SwipeProbeView(probe: probe).frame(height: 120)

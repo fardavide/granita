@@ -151,7 +151,7 @@ echo "::group::Coverage — snapshot"
 
 # The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
 # "iPhone 17", and that has already changed once between releases.
-# The first supported iPhone of the newest matching iOS runtime, as explained in the Makefile.
+# The first supported iPhone of the newest matching runtime, as in the Makefile.
 SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH); found=1} END{sub(/ +$/, "", name); print name}')"
 if [ -z "$SIMULATOR" ]; then
     echo "::error::No recent iPhone simulator on this machine"

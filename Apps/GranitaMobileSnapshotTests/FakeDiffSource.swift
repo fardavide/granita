@@ -802,8 +802,8 @@ final class FakeDiffRepository: GranitaRepository {
         self.readsAnsweringAtAll = readsAnsweringAtAll
         diffs = Dictionary(
             uniqueKeysWithValues: entries.compactMap { entry in
-                guard case .ready(let diff) = entry.content else { return nil }
-                return (entry.id, diff)
+                guard case .ready(let prepared) = entry.content else { return nil }
+                return (entry.id, prepared.diff)
             }
         )
     }

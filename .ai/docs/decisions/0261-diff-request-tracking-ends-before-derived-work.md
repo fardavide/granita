@@ -1,5 +1,10 @@
 # Diff request tracking ends before derived work
 
+After updating from main on 4 November, this branch retains main's equivalent ownership repair
+and its two controlled regressions, recorded in
+[0252](0252-release-content-fetch-ownership-before-decoration.md). The account below preserves
+the separate reproduction on the reconnection branch; it introduces no additional viewer change.
+
 The Mac snapshot run on 26 October 2026 left all five reader files awaiting after a metadata
 reload, and another render could not open an existing comment. A deterministic package regression
 reproduces the awaiting state by suspending highlighting after the first diff has arrived, reloading

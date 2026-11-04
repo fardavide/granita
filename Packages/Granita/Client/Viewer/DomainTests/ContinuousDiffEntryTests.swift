@@ -65,6 +65,73 @@ struct ContinuousDiffEntryTests {
     }
 
     @Test
+    func `given a diff with gapped hunk indices when its entry becomes ready then it retains the diff and prepared lines by hunk`() throws {
+        // given
+        let firstLine = DiffLine(
+            kind: .addition,
+            oldNumber: nil,
+            newNumber: 1,
+            text: "\tfirst",
+            displayColumns: 9,
+            segments: nil
+        )
+        let secondLine = DiffLine(
+            kind: .context,
+            oldNumber: 20,
+            newNumber: 20,
+            text: "図",
+            displayColumns: 2,
+            segments: nil
+        )
+        let diff = FileDiff(
+            file: aChangedFile(estimatedLineCount: 2),
+            hunks: [
+                Hunk(
+                    index: 3,
+                    oldStart: 0,
+                    oldCount: 0,
+                    newStart: 1,
+                    newCount: 1,
+                    sectionHeading: nil,
+                    lines: [firstLine]
+                ),
+                Hunk(
+                    index: 11,
+                    oldStart: 20,
+                    oldCount: 1,
+                    newStart: 20,
+                    newCount: 1,
+                    sectionHeading: nil,
+                    lines: [secondLine]
+                )
+            ],
+            oldLineCount: 20,
+            newLineCount: 21,
+            isTruncated: false,
+            truncationReason: nil
+        )
+
+        // when
+        let entry = ContinuousDiffEntry.ready(diff)
+
+        // then
+        guard case .ready(let prepared) = entry.content else {
+            Issue.record("The entry must retain ready content")
+            return
+        }
+        #expect(prepared.diff == diff)
+        #expect(prepared.linesByHunk.keys.sorted() == [3, 11])
+        let firstHunk = try #require(prepared.linesByHunk[3])
+        let secondHunk = try #require(prepared.linesByHunk[11])
+        #expect(firstHunk.lines == [firstLine])
+        #expect(firstHunk.drawn == [DrawnDiffLine(text: "    first", changed: [])])
+        #expect(firstHunk.ruler == [DiffRulerLine(text: "    first", kind: .addition)])
+        #expect(secondHunk.lines == [secondLine])
+        #expect(secondHunk.drawn == [DrawnDiffLine(text: "図", changed: [])])
+        #expect(secondHunk.ruler == [DiffRulerLine(text: "図", kind: .context)])
+    }
+
+    @Test
     func `given a file whose batch was refused when it reserves space then it holds the estimate it always had`() {
         // given — design §9's one hard requirement of the third case: the box a failed file draws
         // into is the box it was already drawing into. A failure that answered differently here
@@ -163,6 +230,37 @@ struct ContinuousDiffEntryTests {
         #expect(arrived.isReady)
         #expect(arrived.isFailed == false)
         #expect(arrived.reservedRows == 4)
+    }
+
+    @Test
+    func `given a waiting entry marked viewed and opened by the reader when prepared content arrives then reader choices and prepared lines are retained`() throws {
+        // given
+        let file = aChangedFile(estimatedLineCount: 1)
+        let prepared = PreparedFileDiff(diff: FileDiff(
+            file: file,
+            hunks: [aHunk(lines: 1)],
+            oldLineCount: 1,
+            newLineCount: 1,
+            isTruncated: false,
+            truncationReason: nil
+        ))
+        let entry = ContinuousDiffEntry.awaiting(file).viewed(true).opened(true)
+
+        // when
+        let arrived = entry.arrived(prepared)
+
+        // then
+        #expect(arrived.file.isViewed)
+        #expect(arrived.openedByTheReader == true)
+        guard case .ready(let retained) = arrived.content else {
+            Issue.record("The prepared content must arrive ready")
+            return
+        }
+        #expect(retained.diff.hunks == prepared.diff.hunks)
+        #expect(retained.linesByHunk == prepared.linesByHunk)
+        let hunk = try #require(retained.linesByHunk[0])
+        #expect(hunk.drawn == [DrawnDiffLine(text: "let line = 0", changed: [])])
+        #expect(hunk.ruler == [DiffRulerLine(text: "let line = 0", kind: .context)])
     }
 
     @Test
