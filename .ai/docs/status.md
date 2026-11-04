@@ -3,9 +3,29 @@
 Where the project is. Update this when a slice lands.
 
 **Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 4 November: the 0.23.1
-repair remains under verification; TestFlight delivery is unverified.**
+repair still fails required CI; TestFlight delivery is unverified.**
 
-The latest uncommitted candidate prepares source-and-segment character facts before rendering,
+Davide now asks to remove the animation test. The new local candidate removes three cadence
+assertions: minimum intermediate-frame count, maximum sampled viewport step, and observed movement
+while the native scroll-animation flag is active. Measurements remain diagnostic. All fixtures,
+final positions, requested-file identity, header geometry/coherence, exact images and existing
+completion deadlines remain checked. The selector test is renamed to describe reaching its header.
+[0259](decisions/0259-animation-cadence-is-diagnostic.md) records this explicit change of test
+contract; it does not claim a stutter repair. The separate profiling-publication proposal is
+superseded. Davide then approves the reviewed `Keep reader animation cadence diagnostic` commit
+and one push, with the replacement PR wording conditional on all seven required checks passing.
+Merge approval remains separate.
+Local verification passes `make test`, `make build`, `make resolve` and all 67 expanded iOS
+interaction executions across 18 functions, with zero skips or structured runtime warnings.
+The result is `/private/tmp/granita-cadence-diagnostic-interactions-20261104-a.xcresult`.
+The source digest is `5d5636ee396ed1909579abf16260f68a81739760d4927f301b8c5dfe3dd9eb98`.
+All package/production source, generated project files and dependency lockfiles match the
+published head; only the test contract and explanatory/release documentation change. Version
+0.23.1 remains. The changelog now explicitly records that large diff transitions can still
+stutter. Full remote verification and aggregate coverage remain pending; older input manifests
+belong to the prior source digest and are not presented as validation of this candidate.
+
+The latest published candidate prepares source-and-segment character facts before rendering,
 uses scoped typed-buffer iteration for unchanged native checks, and avoids constructing full
 attributed text before selecting plain-line windows. The fixed larger word reproduction and all
 67 published interaction executions pass. Fresh full verification passes the complete package
@@ -15,11 +35,70 @@ skips or structured runtime warnings occur in the iOS results. All four coverage
 source digest `59d00546a26cdb919ed75db975354ec27a504d1c4be1aa8322b939a55a580c70`.
 The aggregate report validates Unit and both iOS manifests, then stops at the missing Mac manifest
 before calculating a verdict. Davide approved one additional commit and push on 4 November:
-`Prepare source facts and streamline native text validation`. Required remote verification is
-pending that publication. Mac desktop tests and merge remain outside this approval.
+`Prepare source facts and streamline native text validation`. That approval is used: commit
+`9357704` is published, and [CI 394](https://github.com/fardavide/granita/actions/runs/41778328235)
+still fails three original motion cases. Five of seven required checks pass, including Mac
+snapshots, both builds, package tests and generated files. iOS group 0 passes; group 1 passes
+578 of 581 expanded executions. Manual word-diff outgoing and long-successor cases record
+111.33pt and 157pt steps against the unchanged 99pt bound. The original short selector observes
+no animated movement across a 416.61ms callback gap; the wide selector passes. Final header
+alignment and image comparisons pass. Coverage stops at its failed iOS prerequisite, before a
+numeric verdict. No skips or structured runtime warnings occur. The local text improvements
+therefore do not establish a repair of the shared CI stalls. Mac desktop tests and merge remain
+outside this approval; another commit or push requires another concrete review.
 [0258](decisions/0258-prepare-source-classification-before-native-text-layout.md) records the
-new boundary, measurements and limits. At approval, the published head is `1a846f8`; its required
-CI is red. The approved conditional PR wording remains gated on all seven required checks passing.
+new boundary, measurements and limits. The approved conditional PR wording remains gated on all
+seven required checks passing and has not been applied.
+
+A temporary 480-row short-line selector control passes locally, preserving every original
+assertion, but does not reproduce the CI failure. Its result is
+`/private/tmp/granita-ci394-selector-rows480-red-20261104-a.xcresult`. No workload escalation or
+renderer trial follows that passing control. The subsequent app-only profile measures body
+evaluations, geometry publications and native preparation during the original 20-repetition
+selector. Both original selector executions pass locally, with no skips or structured runtime
+warnings: `/private/tmp/granita-ci394935-selector-profile-20261104-c.xcresult`.
+
+The short selector still has a 183.34ms callback gap. Its whole transition evaluates four file
+bodies and 313 text bodies; content width, viewport width and horizontal offset each publish
+twice. File bodies take 2.27ms, text bodies 22.27ms, preparation 4.39ms, two exact-layout misses
+0.14ms and candidate-window validation 15.27ms. These synchronous totals overlap. Repeated
+geometry feedback and preparation do not dominate this local captured transition.
+
+The paired `SelectorCapture` phase spans 0.885925166–1.252085041 seconds in the native recording.
+It contains 64 main-thread samples and 374.085ms of inclusive sample weight, including waiting
+and boundary weights, not exact CPU duration. A 1.000–1.140s interior interval contains 27
+main-thread samples, 135ms weight: graph transaction flushing accounts for 100ms, native lazy
+placement/traversal 75ms and native layer transaction work 40ms, overlapping. This attributes
+most of the sampled interior work to native rendering/layout, but does not establish which
+application structure causes the longer CI gaps. The 2.742685s recording ends when its app exits,
+within the ten-second cap, and covers the entire marked phase. Its path is
+`/private/tmp/granita-ci394935-selector-profile-20261104-c.trace`.
+
+The first filtered diagnostic executes zero tests and is not a pass. The next attempt times out
+before the phase while command approval delays attachment; it yields no valid profile. A single
+bounded local orchestration command, approved before starting the test, then produces the valid
+capture above. Every temporary counter, gate and the 480-row case is subsequently removed.
+All three source files match `9357704` byte for byte, and the original source digest is restored.
+Only these status/decision updates remain uncommitted. A separate current-source CI diagnostic
+is prepared for review at `/private/tmp/granita-ci394-diagnostic-review/proposal.md`. Its four
+reviewable files run the complete original group 1 with bounded selector-only counters and an
+app-only profile. The full-group recorder now executes locally: its plan matches the original
+byte for byte, and all 581 expanded executions across 64 functions pass, with zero skips or
+structured runtime warnings. Recorder and collector exit zero. The native bundle is
+`/private/tmp/granita-ci394-full-group-20261104-d/ios-1/tests.xcresult`; the complete marked phase
+at 0.917103208–1.253674083s is inside
+`/private/tmp/granita-ci394935-selector-profile-20261104-d.trace`. The native recorder reaches its
+configured ten-second limit and reports 10.878688s including overhead. The short selector still
+passes with a 150.08ms callback gap. Four file bodies, 237 text bodies, two publications per
+geometry field, 3.26ms preparation and 11.53ms candidate validation again do not show a repeated
+geometry loop. Native lazy placement/traversal remains prominent in its sampled stacks.
+
+All temporary hooks and the copied recorder options are removed. Original coverage inputs are
+restored; diagnostic input `cfa391ef...` is retained separately. A fresh test build of the restored
+source succeeds, so its stamp and all four original input manifests again share `59d00546...`.
+Patch applicability, Bash syntax and recording-option identity also pass. Its proposed branch
+is `codex/ci394-selector-profile`, based on exact `9357704`. No new publication or rerun is
+authorized. The repair branch is still open and unmerged at `9357704`, freshly verified remotely.
 
 The previously published candidate extends native-validated text windows to plain changed lines and retains
 one exact text-and-font layout per hunk. The controlled wide selector reproduction, all 66

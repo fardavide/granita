@@ -88,5 +88,36 @@ The standard aggregate command validates Unit and both iOS manifests, then stops
 verdict. No old Mac artifact is substituted and no Mac desktop tests are run. Independent review
 finds no actionable code issue. On 4 November Davide approves one additional commit and push,
 `Prepare source facts and streamline native text validation`, from the reviewed `1a846f8` base.
-Remote checks and TestFlight delivery remain unverified. Merge approval remains separate, and the
-previously approved PR wording may be applied only after all seven required checks pass.
+Commit `9357704` uses that approval. [CI 394](https://github.com/fardavide/granita/actions/runs/41778328235)
+completes with five of seven required checks passing. Both builds, package tests, generated files,
+Mac snapshots and iOS group 0 pass. Group 1 passes 578 of 581 expanded executions: two manual
+word-diff cases exceed the unchanged 99pt step bound at 111.33pt and 157pt, and the original short
+selector observes no animated movement across a 416.61ms callback gap. The wide selector passes;
+final header alignment and image comparisons pass. No skips or structured runtime warnings occur.
+Coverage stops at its failed iOS prerequisite before producing a numerical verdict. The native
+result is `/private/tmp/granita-ci394-ios1`.
+
+The local improvements do not establish the common CI cause or a complete repair. A temporary
+480-row short-line control passes locally and is not a reproduction. A current-source app-only
+profile subsequently covers the complete original short-selector phase; both original selector
+inputs pass. The short case still records a 183.34ms callback gap. Four file bodies, 313 text
+bodies and two publications each of content width, viewport width and horizontal offset do not
+show repeated geometry feedback. Preparation takes 4.39ms, full native layout misses 0.14ms and
+window validation 15.27ms across the whole phase; synchronous categories overlap. Within a 140ms
+interior interval, 27 main-thread samples carry 135ms inclusive weight, predominantly native
+graph transaction flushing and lazy placement/traversal, with overlapping layer transaction work.
+This is local attribution, not proof of the remote cause. The native profile is
+`/private/tmp/granita-ci394935-selector-profile-20261104-c.trace`; its marked phase spans
+0.885925166–1.252085041s. Every temporary hook and stress case is removed, restoring the exact
+published source digest. A separate current-source CI diagnostic is prepared for review rather
+than another renderer trial. Its full-group recorder is then exercised locally: all 581 expanded
+executions across the original 64-function plan pass, recorder and collector exit zero, and the
+marked selector phase fits inside the native recording. That case still passes with a 150.08ms
+callback gap, with 3.26ms preparation and 11.53ms candidate validation. Native lazy placement and
+graph updates remain prominent in sampled work; this remains local attribution. Temporary source
+and coverage inputs are restored, and a fresh test build of the restored source succeeds. The
+full diagnostic receipt and recording remain separate under `/private/tmp/granita-ci394-full-group-20261104-d`
+and `/private/tmp/granita-ci394935-selector-profile-20261104-d.trace`. Further commits or pushes
+require a new concrete review. TestFlight delivery
+remains unverified; merge approval stays separate. The previously approved PR wording has not
+been applied because its condition, all seven required checks passing, remains unmet.
