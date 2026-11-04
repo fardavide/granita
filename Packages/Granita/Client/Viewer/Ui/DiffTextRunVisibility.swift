@@ -7,6 +7,10 @@ enum DiffTextRunVisibility {
 
     static func supportsCulling(sourceText: String, highlighting: AttributedString?) -> Bool {
         guard sourceText.rangeOfCharacter(from: nonPrintableAscii) == nil else { return false }
+        return supportsCulling(highlighting: highlighting)
+    }
+
+    static func supportsCulling(highlighting: AttributedString?) -> Bool {
         guard let highlighting else { return true }
         let highlightedText = String(highlighting.characters)
         guard highlightedText.rangeOfCharacter(from: nonPrintableAscii) == nil else { return false }

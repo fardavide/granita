@@ -48,3 +48,19 @@ The fresh Ui collector then passes all 22 executions: eight actual-touch cases a
 native-input parameter runs, with no failures, skips or structured runtime warnings. Its receipt
 shares the same source digest. The aggregate command validates Unit and both iOS inputs, then
 stops at the missing Mac manifest before any numeric verdict; no prior Mac artifact is substituted.
+
+## Remote verification
+
+Davide approved one commit and push after reviewing the full candidate. Commit `1a846f8` starts
+[CI 393](https://github.com/fardavide/granita/actions/runs/41696305308). Both builds, package tests,
+generated files, Mac snapshots and iOS group 0 with touch/native input pass. Group 1 completes all
+581 executions: 575 pass and six fail, with no skips or structured runtime warnings. Five original
+word-diff cases exceed the unchanged 99pt frame-step bound (101.67, 101.67, 119.67, 212.67 and
+127.33pt); the added 4,096-repetition selector case observes no animated movement. Its callbacks
+jump from 0.0226725 to 0.9893771s while the viewport traverses all 5,878pt. Final header alignment
+and exact header-image comparison pass. The original selector input and image comparisons pass.
+
+Coverage stops at its failed iOS prerequisite, before any numerical comparison. The local cache
+result therefore does not repair the CI motion failures. The approved PR wording remains unapplied
+because its condition is unmet; another commit or push needs a new review. Native results are
+retained at `/private/tmp/granita-ci393-ios1`.

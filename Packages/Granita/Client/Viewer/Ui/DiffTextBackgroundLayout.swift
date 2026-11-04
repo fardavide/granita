@@ -64,11 +64,35 @@ struct DiffTextBackgroundLayout {
         return ranges[first..<lower].filter { shouldApplyBackground(in: $0, viewport: viewport) }
     }
 
+    func visibleText(in text: String, viewport: CGRect) -> String {
+        switch visibleWindow(in: text, viewport: viewport) {
+        case .original:
+            return text
+        case .window(_, let visible):
+            return visible
+        }
+    }
+
     func visibleText(in attributed: AttributedString, viewport: CGRect) -> AttributedString {
-        guard glyphPositions.isEmpty == false, String(attributed.characters) == text,
+        guard glyphPositions.isEmpty == false else { return attributed }
+        switch visibleWindow(in: String(attributed.characters), viewport: viewport) {
+        case .original:
+            return attributed
+        case .window(let range, _):
+            let characters = attributed.characters
+            let start = characters.index(characters.startIndex, offsetBy: range.lowerBound)
+            let end = characters.index(start, offsetBy: range.count)
+            var visible = AttributedString(String(repeating: " ", count: range.lowerBound))
+            visible += AttributedString(attributed[start..<end])
+            return visible
+        }
+    }
+
+    private func visibleWindow(in sourceText: String, viewport: CGRect) -> VisibleTextWindow {
+        guard glyphPositions.isEmpty == false, sourceText == text,
               [viewport, fontGlyphBounds].allSatisfy({
                   $0.isNull == false && $0.isInfinite == false && $0.minX.isFinite && $0.maxX.isFinite
-              }) else { return attributed }
+              }) else { return .original }
         let overhang = max(abs(fontGlyphBounds.minX), abs(fontGlyphBounds.maxX))
         var lower = 0
         var upper = glyphPositions.count
@@ -90,17 +114,15 @@ struct DiffTextBackgroundLayout {
                 lower = middle + 1
             }
         }
-        guard first < lower, first > 0 || lower < glyphPositions.count else { return attributed }
-        let characters = attributed.characters
-        let start = characters.index(characters.startIndex, offsetBy: first)
-        let end = characters.index(start, offsetBy: lower - first)
-        var visible = AttributedString(String(repeating: " ", count: first))
-        visible += AttributedString(attributed[start..<end])
-        let measured = DiffTextBackgroundLayout(text: String(visible.characters), font: font)
+        guard first < lower, first > 0 || lower < glyphPositions.count else { return .original }
+        let start = sourceText.index(sourceText.startIndex, offsetBy: first)
+        let end = sourceText.index(start, offsetBy: lower - first)
+        let visible = String(repeating: " ", count: first) + sourceText[start..<end]
+        let measured = DiffTextBackgroundLayout(text: visible, font: font)
         guard measured.glyphPositions.count == lower,
               measured.glyphPositions.elementsEqual(glyphPositions.prefix(lower)),
-              measured.offset(at: lower) == offset(at: lower) else { return attributed }
-        return visible
+              measured.offset(at: lower) == offset(at: lower) else { return .original }
+        return .window(range: first..<lower, text: visible)
     }
 
     private func offset(at index: Int) -> CGFloat {
@@ -142,12 +164,16 @@ struct DiffTextBackgroundLayout {
         let isValid = indices.withUnsafeBufferPointer { indexBuffer in
             positions.withUnsafeBufferPointer { positionBuffer in
                 advances.withUnsafeBufferPointer { advanceBuffer in
+                    let indexPointer = indexBuffer.baseAddress! // count > 0; indices has exactly count elements.
+                    let positionPointer = positionBuffer.baseAddress! // count > 0; positions has exactly count elements.
+                    let advancePointer = advanceBuffer.baseAddress! // count > 0; advances has exactly count elements.
                     var previousPosition = CGPoint.zero
                     var previousAdvance = CGSize.zero
-                    for index in 0..<count {
-                        let stringIndex = indexBuffer[index]
-                        let position = positionBuffer[index]
-                        let advance = advanceBuffer[index]
+                    var index = 0
+                    while index < count {
+                        let stringIndex = indexPointer[index]
+                        let position = positionPointer[index]
+                        let advance = advancePointer[index]
                         guard stringIndex == index,
                               position.x.isFinite, position.y.isFinite,
                               advance.width.isFinite, advance.width > 0,
@@ -158,6 +184,7 @@ struct DiffTextBackgroundLayout {
                         }
                         previousPosition = position
                         previousAdvance = advance
+                        index += 1
                     }
                     return true
                 }
@@ -165,5 +192,10 @@ struct DiffTextBackgroundLayout {
         }
         guard isValid else { return [] }
         return positions
+    }
+
+    private enum VisibleTextWindow {
+        case original
+        case window(range: Range<Int>, text: String)
     }
 }

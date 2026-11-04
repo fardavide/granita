@@ -88,7 +88,9 @@ and rendering, including the validated visible-text window; full source still su
 accessibility. [0254](decisions/0254-prepare-reader-values-before-layout-and-bound-native-text-ink.md)
 records the measured boundary. [0257](decisions/0257-window-plain-changed-lines-and-reuse-one-exact-native-layout.md)
 extends validated windows to plain changed lines and permits one exact text-and-font native layout
-entry per hunk, owned entirely by Ui.
+entry per hunk, owned entirely by Ui. [0258](decisions/0258-prepare-source-classification-before-native-text-layout.md)
+adds immutable source-and-segment character facts to the existing Domain preparation. Ui still owns
+highlight attributes, native font and glyph validation, geometry and unsupported rendering fallbacks.
 
 The payoff is reuse in the direction that matters. A view that imported its view model could only
 ever serve the one screen that view model belonged to; a view that takes values and closures serves

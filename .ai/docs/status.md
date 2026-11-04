@@ -2,10 +2,26 @@
 
 Where the project is. Update this when a slice lands.
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 3 November: the 0.23.1
+**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 4 November: the 0.23.1
 repair remains under verification; TestFlight delivery is unverified.**
 
-The newest local candidate extends native-validated text windows to plain changed lines and retains
+The latest uncommitted candidate prepares source-and-segment character facts before rendering,
+uses scoped typed-buffer iteration for unchanged native checks, and avoids constructing full
+attributed text before selecting plain-line windows. The fixed larger word reproduction and all
+67 published interaction executions pass. Fresh full verification passes the complete package
+suite, both iOS groups (589 + 581 executions), all 22 touch/native-input executions, both unsigned
+Debug apps, unsigned Mac/device Release builds, dependency resolution and generated files. No
+skips or structured runtime warnings occur in the iOS results. All four coverage inputs share
+source digest `59d00546a26cdb919ed75db975354ec27a504d1c4be1aa8322b939a55a580c70`.
+The aggregate report validates Unit and both iOS manifests, then stops at the missing Mac manifest
+before calculating a verdict. Davide approved one additional commit and push on 4 November:
+`Prepare source facts and streamline native text validation`. Required remote verification is
+pending that publication. Mac desktop tests and merge remain outside this approval.
+[0258](decisions/0258-prepare-source-classification-before-native-text-layout.md) records the
+new boundary, measurements and limits. At approval, the published head is `1a846f8`; its required
+CI is red. The approved conditional PR wording remains gated on all seven required checks passing.
+
+The previously published candidate extends native-validated text windows to plain changed lines and retains
 one exact text-and-font layout per hunk. The controlled wide selector reproduction, all 66
 unchanged original interaction executions and the resulting 67-case parameterized suite pass.
 Both complete instrumented iOS groups pass: 589 plus 581 executions, with zero failures, skips or
@@ -15,8 +31,68 @@ Release builds, resolver validation and generated-file checks also pass.
 local evidence and its limits. All 22 touch/native-input executions also pass, with no failures,
 skips or structured runtime warnings. The aggregate coverage command stops at the missing Mac
 manifest before any numeric verdict; no Mac desktop tests were run. Davide approved one repair
-commit and push on 3 November, with the reviewed PR wording to apply only after every required
-check passes. Remote verification is pending; merge approval remains separate.
+commit and push on 3 November. Commit `1a846f8` is published, but
+[CI 393](https://github.com/fardavide/granita/actions/runs/41696305308) still fails iOS motion:
+575 of 581 group-1 executions pass, with five word-diff frame-step failures and the new wide
+selector case failing observed animation. Group 0, touch/native input, Mac snapshots, both builds,
+package tests and generated files pass. Coverage stops on the failed iOS prerequisite before
+producing numbers. The conditional PR wording is not applied. This approval is used; further
+commits and pushes need another concrete review. Merge approval remains separate.
+
+The failed remote steps are 101.67pt for viewed/wordDiff, 101.67pt for viewed/wordDiffOutgoing,
+119.67pt for viewed/wordDiffSuccessor, 212.67pt for manual/wordDiff and 127.33pt for the dense
+successor, against the unchanged 99pt limit. The original 20-repetition selector and image
+comparisons pass. The 4,096-repetition selector observes no animated movement across callbacks
+0.0226725→0.9893771s, despite correct final header alignment and exact image equality. Its native
+bundle is `/private/tmp/granita-ci393-ios1`; no skips or structured runtime warnings are reported.
+
+One local diagnostic increases only that selector's width to 8,192 repetitions, preserving the
+original setup, settlement, motion, header and image contracts. It fails only observed animation:
+one execution, one failure, no skips/runtime warnings; callbacks jump from -116 at 0.040142s to
+4507.67 at 0.537388s, then reach the correctly aligned header with an exact image. Result:
+`/private/tmp/granita-ci393-selector-red-20261103-8192-a.xcresult`. This is a valid local motion RED,
+not proof of the remote cause. A focused plain-string window trial is under local TDD verification;
+all original rendering and coverage gates remain intact.
+
+The plain-string path passes that fixed selector diagnostic, including final alignment and exact
+image comparison, but it does not establish a word-motion repair. A separate fixed 8,192-value
+word diagnostic misses the unchanged successor-arrival contract. Avoiding redundant plain-text
+copies still fails; a resolved-font boundary trial also fails and is reverted. The fixed test
+source remains `d08cc24aee74d58b28876c2258882354fc4c3576e27698d2aca18f1e4fee3a08`.
+An app-only native recording covers the complete marked word phase, 25.348743791–26.665702375s:
+`/private/tmp/granita-ci393-word-profile-20261103-a.trace`. Its 259 main-thread samples carry
+1,334.675ms of inclusive sample weight, including waiting and boundary weights, rather than exact
+CPU duration. Overlapping costs include 950ms in preparation, 695ms in glyph-position preparation
+and 440ms in its validation loop. Visible-text windowing accounts for 10ms. This identifies a
+local oversized-word bottleneck; it does not establish the cause of the remote frame-step failures.
+All temporary recording gates and signposts are removed. Local focused investigation continues;
+there is no further commit, push, CI retry or merge approval.
+
+A fixed package diagnostic measures 32 distinct 8pt native word layouts with 8,192 values per line.
+Fixture preparation and independent native correctness checks are outside its timing. Changing
+only range iteration and buffer access to a counted loop over scoped typed pointers lowers its
+total from 478.383ms to 196.165ms; all 48 expanded focused executions pass. Independent review
+finds no semantic or pointer-lifetime issue. The unchanged word acceptance still fails in
+`/private/tmp/granita-ci393-word-scoped-pointers-20261103-a.xcresult`: one execution, no skips or
+runtime warnings, first callback 0.660940s, last presentation -47pt versus target -62pt. Its final
+successor-header requirement passes, but viewport arrival fails; the computed largest step is
+157.667pt against 99pt, and that later assertion is not reached. This is a measured inner-layer
+improvement, not a completed motion repair. The next focused RED covers preparing immutable
+source-character facts before rendering, retaining original segment eligibility and native checks.
+
+That new source-fact RED becomes GREEN for 18 fixtures and the existing coherence test. Unified rows
+reuse immutable original-source-and-segment facts; split rows retain their original checks. The
+fixed word acceptance now passes all contracts: one execution, 33 intermediate offsets, maximum
+step 18.667pt, viewport arrival within 2pt at 1.121894s and exact -62pt at 1.138573s, successor y116
+and lag 0.000764pt. No skips or structured runtime warnings occur. Its result is
+`/private/tmp/granita-ci393-word-prepared-ascii-20261103-a.xcresult`.
+[0258](decisions/0258-prepare-source-classification-before-native-text-layout.md) records the
+boundary and measurements. Independent source review finds no blocker. The justified nonempty
+pointer refactor also passes focused checks. Temporary stress functions and the benchmark are
+removed; original interaction-test source matches the published head exactly. Original regression
+verification subsequently passes all 67 expanded executions, with zero failures, skips or structured
+runtime warnings, in `/private/tmp/granita-ci393-original-interactions-20261103-b.xcresult`.
+Remote CI, aggregate coverage and TestFlight delivery remain unverified.
 
 The approved repair is now published as `4324c95`.
 [CI 392](https://github.com/fardavide/granita/actions/runs/40971849516) passes both builds,

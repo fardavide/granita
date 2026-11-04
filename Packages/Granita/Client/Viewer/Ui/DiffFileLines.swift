@@ -402,6 +402,7 @@ public struct DiffFileLines: View {
                             DiffLineText(
                                 line: line,
                                 drawn: drawsBlocks ? DrawnDiffLine.of(line) : prepared.drawn[offset],
+                                sourceClassification: drawsBlocks ? .unprepared : .prepared(isPrintableAscii: prepared.sourceIsPrintableAscii[offset]),
                                 highlighted: highlighted.text(of: line),
                                 segmentTint: segmentTint(of: line),
                                 viewport: CGRect(x: scrolledBy, y: 0, width: visibleWidth, height: rowHeight),
@@ -481,6 +482,7 @@ public struct DiffFileLines: View {
                 DiffLineText(
                     line: line,
                     drawn: DrawnDiffLine.of(line),
+                    sourceClassification: .unprepared,
                     highlighted: highlighted.text(of: line),
                     segmentTint: segmentTint(of: line),
                     viewport: CGRect(x: scrolledBy, y: 0, width: cellCodeWidth, height: rowHeight),
@@ -782,6 +784,7 @@ private func clamped(_ fraction: CGFloat) -> CGFloat {
 private struct DiffLineText: View {
     let line: DiffLine
     let drawn: DrawnDiffLine
+    let sourceClassification: DiffLineSourceClassification
     let highlighted: AttributedString?
     let segmentTint: Color
     let viewport: CGRect
@@ -794,6 +797,7 @@ private struct DiffLineText: View {
         DiffLineAttributedText(
             line: line,
             drawn: drawn,
+            sourceClassification: sourceClassification,
             highlighted: highlighted,
             segmentTint: segmentTint,
             viewport: viewport,
@@ -808,6 +812,7 @@ private struct DiffLineText: View {
 private struct DiffLineAttributedText: View, Equatable {
     let line: DiffLine
     let drawn: DrawnDiffLine
+    let sourceClassification: DiffLineSourceClassification
     let highlighted: AttributedString?
     let segmentTint: Color
     let viewport: CGRect
@@ -816,8 +821,20 @@ private struct DiffLineAttributedText: View, Equatable {
     let textLayout: DiffLineTextLayoutMemoizer
 
     var body: some View {
-        var attributed = lexed(drawn.text, highlighted: highlighted) ?? AttributedString(drawn.text)
-        let preparation = preparation(for: attributed)
+        if drawn.changed.isEmpty, highlighted == nil,
+           line.kind == .addition || line.kind == .deletion {
+            let visible = switch preparation(highlighting: nil) {
+            case .original: drawn.text
+            case .measured(let layout): layout.visibleText(in: drawn.text, viewport: viewport)
+            }
+            return Text(AttributedString(visible))
+                .fontWeight(.regular)
+                .contentTransition(.identity)
+                .accessibilityLabel(drawn.text)
+        }
+        let acceptedHighlight = lexed(drawn.text, highlighted: highlighted)
+        var attributed = acceptedHighlight ?? AttributedString(drawn.text)
+        let preparation = preparation(highlighting: acceptedHighlight)
         guard drawn.changed.isEmpty == false else {
             // A line the parser paired with nothing, or paired as one whole run — either way there
             // is no *unchanged* part to tell it apart from, and a background over the whole line
@@ -854,10 +871,9 @@ private struct DiffLineAttributedText: View, Equatable {
             .accessibilityLabel(drawn.text)
     }
 
-    private func preparation(for attributed: AttributedString) -> DiffLineTextPreparation {
+    private func preparation(highlighting: AttributedString?) -> DiffLineTextPreparation {
         guard line.kind == .addition || line.kind == .deletion,
-              DiffTextRunVisibility.supportsCulling(sourceText: line.text, highlighting: attributed),
-              line.segments?.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }) != false,
+              sourceClassification.supportsCulling(line: line, highlighting: highlighting),
               let font else {
             return .original
         }
@@ -867,7 +883,23 @@ private struct DiffLineAttributedText: View, Equatable {
         guard CTFontGetGlyphsForCharacters(nativeFont, characters, &glyphs, characters.count) else {
             return .original
         }
-        return .measured(textLayout.layout(for: String(attributed.characters), font: nativeFont))
+        let text = highlighting.map { String($0.characters) } ?? drawn.text
+        return .measured(textLayout.layout(for: text, font: nativeFont))
+    }
+}
+
+private enum DiffLineSourceClassification: Equatable {
+    case prepared(isPrintableAscii: Bool)
+    case unprepared
+
+    func supportsCulling(line: DiffLine, highlighting: AttributedString?) -> Bool {
+        switch self {
+        case .prepared(let isPrintableAscii):
+            isPrintableAscii && DiffTextRunVisibility.supportsCulling(highlighting: highlighting)
+        case .unprepared:
+            DiffTextRunVisibility.supportsCulling(sourceText: line.text, highlighting: highlighting)
+                && line.segments?.allSatisfy({ DiffTextRunVisibility.supportsCulling(sourceText: $0.text, highlighting: nil) }) != false
+        }
     }
 }
 
