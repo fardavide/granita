@@ -1,3 +1,5 @@
+import Foundation
+
 import CoreDiffDomain
 
 /// One diff line as it is drawn: the text on the grid, and where the word diff changed something.
@@ -22,6 +24,17 @@ public struct DrawnDiffLine: Hashable, Sendable {
         self.changed = changed
     }
 
+    public static func text(of line: DiffLine) -> String {
+        guard let segments = line.segments, segments.count > 1 else {
+            return of(line).text
+        }
+        let text = segments.map(\.text).joined()
+        if text.range(of: "\t", options: .literal) != nil {
+            return of(line).text
+        }
+        return text
+    }
+
     /// The line, split where the parser paired it and put back together on one grid.
     ///
     /// **The emphasis is a background because the text colour is spoken for.** Design §4 originally
@@ -40,16 +53,34 @@ public struct DrawnDiffLine: Hashable, Sendable {
         var text = ""
         var changed: [Range<Int>] = []
         var columns = 0
+        var characterCount = 0
+        let hasTabs = segments.contains { $0.text.utf8.contains(0x09) }
+        // ASCII characters count independently, except that a CR and LF can form one character.
+        let hasAdditiveCharacterCounts = segments.allSatisfy { segment in
+            segment.text.utf8.allSatisfy { $0 < 128 && $0 != 13 && $0 != 10 }
+        }
         for segment in segments {
             // The column travels between the runs, because a tab stop is a property of the line and
             // not of the piece being drawn. Expanded from zero, a tab in a later run reaches a whole
             // stop and pushes the rest of the line out of the grid the gutter was measured against.
-            let piece = MonospacedGrid.expandingTabs(in: segment.text, startingAtColumn: columns)
-            let start = text.count
-            text += piece.text
-            columns = piece.columns
+            let piece: String
+            if hasTabs {
+                let expanded = MonospacedGrid.expandingTabs(in: segment.text, startingAtColumn: columns)
+                piece = expanded.text
+                columns = expanded.columns
+            } else {
+                // Without a tab anywhere in the line, no later segment needs the column count.
+                piece = segment.text
+            }
+            let start = characterCount
+            text += piece
+            if hasAdditiveCharacterCounts {
+                characterCount += piece.utf8.count
+            } else {
+                characterCount = text.count
+            }
             if segment.isChanged {
-                changed.append(start..<text.count)
+                changed.append(start..<characterCount)
             }
         }
         return DrawnDiffLine(text: text, changed: changed)

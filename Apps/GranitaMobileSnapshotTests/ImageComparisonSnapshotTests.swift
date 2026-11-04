@@ -32,7 +32,8 @@ struct ImageComparisonSnapshotTests {
                 onDone: {}
             ),
             layout: layout,
-            named: subject.name
+            named: subject.name,
+            waitsForMountedFrame: true
         )
     }
 }

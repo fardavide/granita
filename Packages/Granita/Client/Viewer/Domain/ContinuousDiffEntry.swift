@@ -14,7 +14,7 @@ public enum ContinuousDiffContent: Hashable, Sendable {
 
     /// Fetched, and from here its real height is sticky for the session — a file that has been
     /// drawn never reverts to its estimate, so scrolling back up cannot reflow.
-    case ready(FileDiff)
+    case ready(PreparedFileDiff)
 
     /// Asked for, refused, and not coming back until the reader asks again.
     ///
@@ -31,7 +31,7 @@ public enum ContinuousDiffContent: Hashable, Sendable {
     public var file: FileChange {
         switch self {
         case .awaiting(let file): file
-        case .ready(let diff): diff.file
+        case .ready(let prepared): prepared.diff.file
         case .failed(let file): file
         }
     }
@@ -65,7 +65,7 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
 
     /// Fetched, and sticky from here.
     public static func ready(_ diff: FileDiff) -> ContinuousDiffEntry {
-        ContinuousDiffEntry(content: .ready(diff), openedByTheReader: nil)
+        ContinuousDiffEntry(content: .ready(PreparedFileDiff(diff: diff)), openedByTheReader: nil)
     }
 
     /// Asked for and refused.
@@ -133,8 +133,8 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
         switch content {
         case .awaiting(let file), .failed(let file):
             min(max(1, file.estimatedLineCount), Self.skeletonRows)
-        case .ready(let diff):
-            diff.hunks.reduce(0) { $0 + $1.lines.count }
+        case .ready(let prepared):
+            prepared.diff.hunks.reduce(0) { $0 + $1.lines.count }
         }
     }
 
@@ -187,8 +187,12 @@ public struct ContinuousDiffEntry: Hashable, Sendable, Identifiable {
     /// A diff is the Mac answering a question asked before the reader touched anything, so a batch
     /// landing must not take back a mark they set or a file they opened while it was in flight.
     public func arrived(_ diff: FileDiff) -> ContinuousDiffEntry {
+        arrived(PreparedFileDiff(diff: diff))
+    }
+
+    public func arrived(_ prepared: PreparedFileDiff) -> ContinuousDiffEntry {
         ContinuousDiffEntry(
-            content: ContinuousDiffContent.ready(diff).viewed(file.isViewed),
+            content: ContinuousDiffContent.ready(prepared).viewed(file.isViewed),
             openedByTheReader: openedByTheReader
         )
     }
@@ -204,15 +208,8 @@ private extension ContinuousDiffContent {
             .awaiting(file.viewed(isViewed))
         case .failed(let file):
             .failed(file.viewed(isViewed))
-        case .ready(let diff):
-            .ready(FileDiff(
-                file: diff.file.viewed(isViewed),
-                hunks: diff.hunks,
-                oldLineCount: diff.oldLineCount,
-                newLineCount: diff.newLineCount,
-                isTruncated: diff.isTruncated,
-                truncationReason: diff.truncationReason
-            ))
+        case .ready(let prepared):
+            .ready(prepared.viewed(isViewed))
         }
     }
 }

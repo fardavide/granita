@@ -146,6 +146,100 @@ struct ClientViewerHighlightingTests {
     // MARK: - What invalidates it
 
     @Test
+    func `given five ready files when a second appearance load overlaps post-ready highlighting then all five remain ready and highlighted`() async throws {
+        // given
+        let files = aChangeSet(of: 5)
+        let hunks = (0..<5).map { anAdditionSaying("let file = \($0)") }
+        let scenario = Scenario(files: files, hunks: hunks, holdingFirstHighlight: true)
+        let expected = ContinuousDiffState.reading(zip(files, hunks).map { file, hunk in
+            .ready(FileDiff(
+                file: file,
+                hunks: [hunk],
+                oldLineCount: file.estimatedLineCount,
+                newLineCount: file.estimatedLineCount,
+                isTruncated: false,
+                truncationReason: nil
+            ))
+        })
+        await scenario.sut.load()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { await scenario.sut.reading(0) }
+            defer {
+                scenario.highlighter.releaseFirstHighlight()
+                group.cancelAll()
+            }
+            await scenario.highlighter.waitUntilFirstHighlightIsSuspended()
+            try #require(scenario.sut.state == expected)
+            try #require(scenario.highlighter.requests.map(\.text) == ["let file = 0"])
+
+            // when
+            await scenario.sut.load()
+            let stateAfterReload = scenario.sut.state
+            await scenario.sut.reading(0)
+            Attachment.record(
+                "stateAfterReload=\(stateAfterReload), batchesAskedFor=\(scenario.repository.batchesAskedFor)",
+                named: "appearance-reload-during-highlighting.txt"
+            )
+            scenario.highlighter.releaseFirstHighlight()
+            try await group.waitForAll()
+
+            // then
+            #expect(scenario.sut.state == expected)
+            for (file, hunk) in zip(files, hunks) {
+                for line in hunk.lines {
+                    #expect(scenario.sut.highlighted[file.id]?.text(of: line) == AttributedString(line.text))
+                }
+            }
+        }
+    }
+
+    @Test
+    func `given five ready files when reading repeats during post-ready highlighting then all five remain ready and highlighted`() async throws {
+        // given
+        let files = aChangeSet(of: 5)
+        let hunks = (0..<5).map { anAdditionSaying("let file = \($0)") }
+        let scenario = Scenario(files: files, hunks: hunks, holdingFirstHighlight: true)
+        let expected = ContinuousDiffState.reading(zip(files, hunks).map { file, hunk in
+            .ready(FileDiff(
+                file: file,
+                hunks: [hunk],
+                oldLineCount: file.estimatedLineCount,
+                newLineCount: file.estimatedLineCount,
+                isTruncated: false,
+                truncationReason: nil
+            ))
+        })
+        await scenario.sut.load()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { await scenario.sut.reading(0) }
+            defer {
+                scenario.highlighter.releaseFirstHighlight()
+                group.cancelAll()
+            }
+            await scenario.highlighter.waitUntilFirstHighlightIsSuspended()
+            try #require(scenario.sut.state == expected)
+            try #require(scenario.highlighter.requests.map(\.text) == ["let file = 0"])
+
+            // when
+            await scenario.sut.reading(0)
+            Attachment.record(
+                "state=\(scenario.sut.state), batchesAskedFor=\(scenario.repository.batchesAskedFor)",
+                named: "reading-during-highlighting.txt"
+            )
+            scenario.highlighter.releaseFirstHighlight()
+            try await group.waitForAll()
+
+            // then
+            #expect(scenario.sut.state == expected)
+            for (file, hunk) in zip(files, hunks) {
+                for line in hunk.lines {
+                    #expect(scenario.sut.highlighted[file.id]?.text(of: line) == AttributedString(line.text))
+                }
+            }
+        }
+    }
+
+    @Test
     func `given the appearance changing when the screen says so then every side is lexed again for it`() async {
         // given — the colours are baked into the answer rather than applied over it, so a dark screen
         // needs a different answer and not the same one restyled.
@@ -312,7 +406,8 @@ private struct Scenario {
         files: [FileChange],
         hunks: [Hunk],
         lexerRefuses: Bool = false,
-        lexerDropsALine: Bool = false
+        lexerDropsALine: Bool = false,
+        holdingFirstHighlight: Bool = false
     ) {
         fileIds = files.map(\.id)
         let changes = WorktreeChanges(
@@ -327,7 +422,11 @@ private struct Scenario {
                 uniqueKeysWithValues: zip(files.map(\.id), hunks.map { [$0] })
             )
         )
-        highlighter = FakeSyntaxHighlighter(refuses: lexerRefuses, dropsALine: lexerDropsALine)
+        highlighter = FakeSyntaxHighlighter(
+            refuses: lexerRefuses,
+            dropsALine: lexerDropsALine,
+            holdingFirstHighlight: holdingFirstHighlight
+        )
         sut = ClientViewerModel(
             worktree: WorktreeID(rawValue: "b7c1e0a4f2d84391"),
             macName: "MacBook Pro",

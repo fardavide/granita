@@ -1,3 +1,5 @@
+// Match SwiftUI's geometry overlay when Release optimization imports this module's function bodies.
+import CoreGraphics
 import Foundation
 
 import CoreReviewDomain
