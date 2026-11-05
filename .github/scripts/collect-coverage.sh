@@ -32,9 +32,8 @@ case "$SUITE" in
         if [ "$SUITE" != mac ]; then
             SCHEME=GranitaMobile
             TARGET=GranitaMobileSnapshotTests
-            SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH); found=1} END{sub(/ +$/, "", name); print name}')"
-            test -n "$SIMULATOR"
-            DESTINATION="platform=iOS Simulator,name=${SIMULATOR},OS=latest"
+            SIMULATOR="${IOS_SIM_ID:-$(bash .github/scripts/ios-simulator.sh "${IOS_SIM_NAME:-}")}"
+            DESTINATION="platform=iOS Simulator,id=${SIMULATOR}"
             xcrun simctl boot "$SIMULATOR" || true
             PRODUCTS="$DERIVED/Build/Products/Debug-iphonesimulator/Granita.app"
             CANDIDATES=("$PRODUCTS/Granita.debug.dylib" "$PRODUCTS/Granita" "$PRODUCTS/PlugIns/$TARGET.xctest/$TARGET")

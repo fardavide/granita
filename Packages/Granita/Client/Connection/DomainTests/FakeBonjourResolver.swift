@@ -18,15 +18,17 @@ final class FakeBonjourResolver: ServerAddressResolving {
     private let asked = Mutex(0)
     private let cancelled = Mutex(0)
     private let isSuspended: Bool
+    private let ignoresCancellation: Bool
     private let lookupStarted: AsyncStream<Void>
     private let lookupStartedContinuation: AsyncStream<Void>.Continuation
     private let suspendedLookup: AsyncStream<Void>
     private let suspendedLookupContinuation: AsyncStream<Void>.Continuation
 
-    init(answering: Result<ServerAddress, ServerAddressResolutionFailure>, suspendingLookup: Bool = false, reportingStages: [WorktreeReadStage] = []) {
+    init(answering: Result<ServerAddress, ServerAddressResolutionFailure>, suspendingLookup: Bool = false, ignoringCancellation: Bool = false, reportingStages: [WorktreeReadStage] = []) {
         self.answering = answering
         self.reportingStages = reportingStages
         isSuspended = suspendingLookup
+        ignoresCancellation = ignoringCancellation
         let started = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         lookupStarted = started.stream
         lookupStartedContinuation = started.continuation
@@ -50,7 +52,7 @@ final class FakeBonjourResolver: ServerAddressResolving {
         if isSuspended {
             var events = suspendedLookup.makeAsyncIterator()
             _ = await events.next()
-            if Task.isCancelled {
+            if Task.isCancelled && ignoresCancellation == false {
                 cancelled.withLock { $0 += 1 }
                 throw .unreachable(diagnostic: "The losing Bonjour lookup was cancelled")
             }

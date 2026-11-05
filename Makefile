@@ -13,14 +13,10 @@ PROJECT      := Granita.xcodeproj
 # trips on 4 September 2026: nothing reproduced locally, and the device was one of the reasons ruled
 # out by hand each time rather than never being in question.
 #
-# **The first supported iPhone of the newest matching iOS runtime.** `OS=latest` is
-# the newest runtime *that has that name*, and with two runtimes installed the list opens on the
-# older one. On 28 September 2026 that meant `iPhone 17 Pro`, a name iOS 27 does not ship, so every
-# render would have been iOS 26.5 while CI renders on 27. The runtimes are listed oldest first, so
-# each iOS header resets only the per-runtime match flag. A later runtime containing only an
-# unsupported model must not erase the last valid pick.
-IOS_SIM_NAME = $(shell xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($$0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($$0, RSTART, RLENGTH); found=1} END{sub(/ +$$/, "", name); print name}')
-IOS_SIM      = platform=iOS Simulator,name=$(IOS_SIM_NAME),OS=latest
+# Pin the baseline runtime and its exact device. A phone name can exist on multiple runtimes.
+# Discovery remains lazy so package-only checks do not start CoreSimulator.
+IOS_SIM_ID   = $(shell bash .github/scripts/ios-simulator.sh '$(IOS_SIM_NAME)')
+IOS_SIM      = platform=iOS Simulator,id=$(or $(IOS_SIM_ID),$(error No iOS 27.0 baseline simulator available))
 IOS_GENERIC  := generic/platform=iOS Simulator
 MAC_GENERIC  := generic/platform=macOS
 UNSIGNED     := CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO

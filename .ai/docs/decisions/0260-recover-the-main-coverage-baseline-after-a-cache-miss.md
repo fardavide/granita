@@ -48,3 +48,18 @@ merged separately as `0caf8af` while this follow-up was being verified. Its tree
 commit, and needs a new PR. On 5 November, Davide approves the reviewed two commits, one push
 and a new PR with the shown wording. Merge, certificate changes and release retries remain
 outside that approval.
+
+The reconnection branch independently reproduced the same missing-baseline defect after its
+[diagnostic retry](https://github.com/fardavide/granita/actions/runs/41991535563) passed every
+functional suite without enforcing coverage. Its workflow regression additionally covers failed
+artifact retrieval: acquisition must stop before any report or verdict is produced. Both that
+case and the saved-baseline comparison failed before recovery was wired; all 142 tooling tests
+pass after it. The original Snapshot/Ui scope controls remain in the merged fixture.
+
+[The reconnection PR run](https://github.com/fardavide/granita/actions/runs/42013404685) subsequently
+passes all seven required checks and explicitly enforces all four comparable coverage values.
+The original native collapse failures pass on repeat without changes to rendering code, assertions
+or baselines; their cause remains unverified. After
+[PR #131](https://github.com/fardavide/granita/pull/131) merges, the reconnection branch retains
+main's recovery implementation and adds the failed-retrieval regression. Fresh CI is required
+after updating from that main commit.

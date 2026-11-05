@@ -1,7 +1,8 @@
-"""Simulator discovery selects the newest runtime with a supported numbered phone."""
+"""Simulator discovery keeps snapshots on their exact baseline runtime."""
 
+import os
 from pathlib import Path
-import re
+import shutil
 import subprocess
 from textwrap import dedent
 
@@ -10,32 +11,7 @@ import pytest
 
 class TestSimulatorSelection:
     @pytest.mark.parametrize(
-        ("selection_pattern", "source_path"),
-        [
-            pytest.param(
-                r"(?m)^IOS_SIM_NAME = .*?awk '([^']+)'",
-                Path("Makefile"),
-                id="makefile",
-            ),
-            pytest.param(
-                r"(?s)id: simulator\s+run: \|.*?name=\"\$\(awk '([^']+)'",
-                Path(".github/workflows/ci.yml"),
-                id="ci-simulator-step",
-            ),
-            pytest.param(
-                r"(?m)^\s*SIMULATOR=.*?awk '([^']+)'",
-                Path(".github/scripts/collect-coverage.sh"),
-                id="coverage-collector",
-            ),
-            pytest.param(
-                r"(?m)^SIMULATOR=.*?awk '([^']+)'",
-                Path(".github/scripts/measure-coverage-legacy.sh"),
-                id="legacy-coverage",
-            ),
-        ],
-    )
-    @pytest.mark.parametrize(
-        ("devices", "expected_name"),
+        ("devices", "expected_uuid", "phone_name"),
         [
             pytest.param(
                 dedent(
@@ -52,8 +28,9 @@ class TestSimulatorSelection:
                         Apple Watch Series 12 (66666666-6666-6666-6666-666666666666) (Shutdown)
                     """
                 ),
-                "iPhone 18 Pro",
-                id="newest-supported-runtime",
+                "44444444-4444-4444-4444-444444444444",
+                None,
+                id="first-supported-baseline-phone",
             ),
             pytest.param(
                 dedent(
@@ -66,8 +43,9 @@ class TestSimulatorSelection:
                         iPhone Duo (33333333-3333-3333-3333-333333333333) (Shutdown)
                     """
                 ),
-                "iPhone 17 Pro",
-                id="newer-duo-only-runtime",
+                None,
+                None,
+                id="baseline-duo-does-not-fall-back-to-older-runtime",
             ),
             pytest.param(
                 dedent(
@@ -77,34 +55,119 @@ class TestSimulatorSelection:
                         iPhone Duo (11111111-1111-1111-1111-111111111111) (Shutdown)
                     """
                 ),
-                "",
+                None,
+                None,
                 id="no-supported-phone",
+            ),
+            pytest.param(
+                dedent(
+                    """\
+                    == Devices ==
+                    -- iOS 27.0 --
+                        iPhone 18 Pro (11111111-1111-1111-1111-111111111111) (Shutdown)
+                    -- iOS 27.2 --
+                        iPhone 18 Pro (22222222-2222-2222-2222-222222222222) (Shutdown)
+                    """
+                ),
+                "11111111-1111-1111-1111-111111111111",
+                None,
+                id="duplicate-phone-under-newer-runtime",
+            ),
+            pytest.param(
+                dedent(
+                    """\
+                    == Devices ==
+                    -- iOS 26.5 --
+                        iPhone 17 Pro (11111111-1111-1111-1111-111111111111) (Shutdown)
+                    -- iOS 27.2 --
+                        iPhone 18 Pro (22222222-2222-2222-2222-222222222222) (Shutdown)
+                    """
+                ),
+                None,
+                None,
+                id="missing-baseline-runtime",
+            ),
+            pytest.param(
+                dedent(
+                    """\
+                    == Devices ==
+                    -- iOS 27.0 --
+                        iPhone 18 Pro (11111111-1111-1111-1111-111111111111) (Shutdown)
+                        iPhone 18 (22222222-2222-2222-2222-222222222222) (Shutdown)
+                    -- iOS 27.2 --
+                        iPhone 18 (33333333-3333-3333-3333-333333333333) (Shutdown)
+                    """
+                ),
+                "22222222-2222-2222-2222-222222222222",
+                "iPhone 18",
+                id="exact-phone-name-override",
+            ),
+            pytest.param(
+                dedent(
+                    """\
+                    == Devices ==
+                    -- iOS 27.0 --
+                        iPhone 18 Pro (11111111-1111-1111-1111-111111111111) (Shutdown)
+                    -- iOS 27.2 --
+                        iPhone 18 (22222222-2222-2222-2222-222222222222) (Shutdown)
+                    """
+                ),
+                None,
+                "iPhone 18",
+                id="requested-phone-missing-from-baseline-runtime",
             ),
         ],
     )
-    def test_given_runtime_devices_when_selecting_then_uses_first_phone_in_newest_supported_runtime(
+    def test_given_available_devices_when_selecting_then_only_baseline_runtime_is_eligible(
         self: "TestSimulatorSelection",
         devices: str,
-        expected_name: str,
-        selection_pattern: str,
-        source_path: Path,
+        expected_uuid: str | None,
+        phone_name: str | None,
+        tmp_path: Path,
     ) -> None:
         # given
-        root = Path(__file__).resolve().parents[2]
-        source = (root / source_path).read_text()
-        expression_match = re.search(selection_pattern, source)
-        assert expression_match is not None, f"No simulator selector found in {source_path}"
-        expression = expression_match.group(1).replace("$$", "$")
+        scenario = self.Scenario(devices=devices, root=tmp_path)
+        arguments = ["bash", ".github/scripts/ios-simulator.sh"]
+        if phone_name is not None:
+            arguments.append(phone_name)
 
         # when
         result = subprocess.run(
-            ["awk", expression],
+            arguments,
             capture_output=True,
             check=False,
-            input=devices,
+            cwd=scenario.source,
+            env=scenario.environment,
             text=True,
         )
 
         # then
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == expected_name
+        if expected_uuid is None:
+            assert result.returncode != 0, result.stdout + result.stderr
+            assert result.stdout.strip() == ""
+            assert "27.0" in result.stderr
+            assert "phone" in result.stderr.lower()
+            if phone_name is not None:
+                assert phone_name in result.stderr
+        else:
+            assert result.returncode == 0, result.stderr
+            assert result.stdout.strip() == expected_uuid
+
+    class Scenario:
+        def __init__(
+            self: "TestSimulatorSelection.Scenario",
+            devices: str,
+            root: Path,
+        ) -> None:
+            self.source = Path(__file__).resolve().parents[2]
+            inventory = root / "devices.txt"
+            inventory.write_text(devices)
+            tools = root / "tools"
+            tools.mkdir()
+            shutil.copyfile(self.source / ".github/scripts/fake_simulator_discovery.py", tools / "xcrun")
+            (tools / "xcrun").chmod(0o755)
+            self.environment = dict(os.environ)
+            self.environment.update({
+                "FAKE_SIMULATOR_DEVICE_LIST": str(inventory),
+                "PATH": str(tools) + os.pathsep + os.environ.get("PATH", ""),
+            })

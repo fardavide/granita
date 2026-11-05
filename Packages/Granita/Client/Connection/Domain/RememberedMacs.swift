@@ -103,6 +103,7 @@ public actor RememberedMacs {
                 await observation.report(stage)
             })
         } catch {
+            guard Task.isCancelled == false else { throw .cancelled }
             switch error {
             case .unreachable(let diagnostic):
                 guard let fallbackAddress = remembered.fallbackAddress else {
@@ -133,8 +134,10 @@ public actor RememberedMacs {
             fingerprint: remembered.fingerprint,
             wakeAddresses: remembered.wakeAddresses
         )
+        let route = await observation.route
+        guard Task.isCancelled == false else { throw .cancelled }
         let connection = connect(paired)
-        reached[server.id] = ReachedMac(repository: connection, route: await observation.route)
+        reached[server.id] = ReachedMac(repository: connection, route: route)
         await refreshMetadata(of: paired)
         return connection
     }
