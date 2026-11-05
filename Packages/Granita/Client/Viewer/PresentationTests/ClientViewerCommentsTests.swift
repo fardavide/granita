@@ -417,7 +417,7 @@ struct ClientViewerCommentsTests {
         #expect(scenario.sut.reviewSync == .pending(count: 2, of: 2))
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `given a diff on screen when a comment is written then the review is offered to the Mac`() async {
         // given
         let scenario = Scenario()
@@ -436,7 +436,7 @@ struct ClientViewerCommentsTests {
         #expect(scenario.store.pushed.map { $0.map(\.text) } == [["This wants a name."]])
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `given a copied review when it is cleared then the Mac is offered an empty one`() async {
         // given — the flow Davide runs: copy, paste, clear. Without this push the Mac kept the
         // review, and the next open's union put every comment back.
@@ -452,7 +452,7 @@ struct ClientViewerCommentsTests {
         #expect(scenario.store.pushed == [[]])
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `given a push still on its way when a second change is made then the second waits for it`() async {
         // given — two pushes racing could land the older review last, and the Mac would keep it.
         let scenario = Scenario(holding: [aStoredComment(on: "file-0", at: 2, saying: "First.")])
