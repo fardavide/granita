@@ -180,11 +180,29 @@ public struct WorktreeService: Sendable {
             hunks = Self.firstLines(of: hunks, upTo: limits.truncatedDiffLines)
         }
 
+        var oldLineCount = hunks.last.map { max(0, $0.oldStart + $0.oldCount - 1) } ?? 0
+        var newLineCount = hunks.last.map { max(0, $0.newStart + $0.newCount - 1) } ?? 0
+        if truncationReason == nil, hunks.isEmpty == false,
+           file.isBinary == false, file.isSubmodule == false,
+           file.status != .deleted, file.status != .added, file.status != .untracked {
+            // Comparing the working copy against nothing gives a hunk whose header counts the
+            // whole file. The context route needs its body too, so a capped read must not offer
+            // expansion into lines that route cannot serve.
+            let wholeFile = try await git.run(.untrackedFileDiff(path: path, contextLines: 0), in: worktree)
+            if wholeFile.isTruncated {
+                truncationReason = "the file is too large to expand unchanged lines"
+            } else {
+                let wholeText = String(decoding: wholeFile.standardOutput, as: UTF8.self)
+                newLineCount = UnifiedDiffParser.parse(wholeText).first?.hunks.first?.newCount ?? 0
+                oldLineCount = newLineCount + hunks.reduce(0) { $0 + $1.oldCount - $1.newCount }
+            }
+        }
+
         return FileDiff(
             file: file,
             hunks: hunks,
-            oldLineCount: hunks.last.map { $0.oldStart + $0.oldCount - 1 } ?? 0,
-            newLineCount: hunks.last.map { $0.newStart + $0.newCount - 1 } ?? 0,
+            oldLineCount: oldLineCount,
+            newLineCount: newLineCount,
             isTruncated: truncationReason != nil,
             truncationReason: truncationReason
         )

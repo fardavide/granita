@@ -51,6 +51,9 @@ actor FakeGitClient: GitClient {
         if let failure = failures[command] {
             throw failure
         }
+        if let output = outputs[command] {
+            return GitOutput(standardOutput: output, isTruncated: truncated.contains(command))
+        }
         // Answered by kind rather than by value, because the paths this one carries are derived
         // from the change set rather than chosen by a test, and reproducing them in every `given`
         // would assert the derivation twice and the object ids not at all.

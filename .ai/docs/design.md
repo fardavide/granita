@@ -1040,10 +1040,10 @@ has its own section below — *The expander is a tear*.
 > with no heading and no gap either side is not drawn — survived intact and grew into the rule that
 > *every* row is a gap, so a row with nothing missing behind it cannot exist to be suppressed.
 >
-> **What neither fixes, and it is a defect rather than a call:** the last hunk of every file reports
-> no gap below it, because the Mac derives a file's new-side length from that hunk's own end rather
-> than from the file. The *remainder of file* row is therefore built, tested and currently
-> unreachable. In [`decisions.md`](decisions.md); the fix is the Mac's, not this screen's.
+> **Fixed on 5 November 2026:** the Mac now counts the whole working copy for complete tracked text
+> diffs, so the existing *remainder of file* row can reveal lines below the final hunk. Truncated
+> diffs keep their visible bounds to avoid showing omitted changes as unchanged context. See
+> [0264](decisions/0264-count-the-file-beyond-the-final-diff-hunk.md).
 
 **The marker column has six points after it**, so the code clears the `+` and the `−`.
 

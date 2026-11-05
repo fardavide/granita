@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.23.3 — 2026-11-05
+- **Read beyond the last change in a file.** The remainder-of-file control now reveals unchanged
+  lines below the final diff hunk. Update Granita on your Mac to use the fix.
+
 ### 0.23.2 — 2026-11-04
 - **Stop connecting when you leave the worktree list.** A cancelled lookup no longer opens and
   keeps a fallback connection that the next read can inherit.
