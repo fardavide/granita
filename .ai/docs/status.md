@@ -2,26 +2,85 @@
 
 Where the project is. Update this when a slice lands.
 
-**The reconnection fix in [PR #130](https://github.com/fardavide/granita/pull/130) is being updated
-to 0.23.2 after [PR #129](https://github.com/fardavide/granita/pull/129) merged on 4 November.**
-The update retains main's reader-refresh repair and its controlled regressions. Two separate
-remembered-connection regressions cover cancellation before fallback selection and late successful
-resolution before caching. The original phone-side Bonjour delay remains unexplained. Main has
-reached 0.23.1, so the marketing version, server fallback, changelog, README and generated project
-advance together. The full package suite, coverage-instrumented package suite, 140 tooling tests
-and both unsigned app builds pass. `make resolve` restores the 30-pin Xcode union graph without
-changing dependency revisions. The first updated PR run failed two native collapse checks. Both
-passed in 68 focused local executions, all 582 instrumented shard executions and a full diagnostic
-retry on the unchanged commit; their cause remains unverified. That manual run exposed a missing
-coverage baseline and did not replace the PR checks. Baseline recovery now has two failing-before,
-passing-after regressions, and all 142 tooling tests pass. Required PR CI and its numerical coverage
-verdict are pending. No rendering repair, merge or release is claimed. See
-[0262](decisions/0262-recover-the-main-coverage-baseline-after-a-cache-miss.md),
-[0260](decisions/0260-cancelled-resolution-cannot-publish-a-remembered-connection.md)
-and [0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md).
+**The reconnection branch is updated from [PR #131](https://github.com/fardavide/granita/pull/131)
+after all seven required checks passed on its previous head.** Main remains at 0.23.1, so this
+branch retains 0.23.2. It keeps main's coverage recovery and reliable review-test waits, preserves
+the Snapshot/Ui scope controls, and adds failed-retrieval coverage. The cancellation fix and its
+two deterministic regressions remain unchanged. The original Bonjour delay and intermittent
+native collapse failures remain unexplained; no rendering repair is claimed. Merge validation
+and fresh required CI are in progress. See
+[0260](decisions/0260-recover-the-main-coverage-baseline-after-a-cache-miss.md),
+[0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md), and
+[0262](decisions/0262-cancelled-resolution-cannot-publish-a-remembered-connection.md).
 
-**Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 4 November: the 0.23.1
-repair still fails required CI; TestFlight delivery is unverified.**
+**5 November: [PR #129](https://github.com/fardavide/granita/pull/129) merged as `0caf8af`.
+Its iOS Release archive and upload succeed in Cloud build 179, but Mac Developer ID export fails
+and the TestFlight post-action is skipped. Coverage recovery and a package-test wait repair are
+verified locally on `codex/coverage-baseline-recovery`, uncommitted and unpublished.**
+
+The merge occurred outside this agent's actions while the two follow-ups below were being
+verified. They are not included in main. The new branch starts at `0caf8af`, whose tree matches
+the tested `b0f6f6b` tree. The old PR wording proposal is superseded; a new publication requires
+its own approval.
+
+[Cloud build 179](https://appstoreconnect.apple.com/teams/eda2fc58-4dc8-4f98-9df3-b49523602902/apps/6803202182/ci/builds/8130bbfb-6275-4c8f-87fa-b00f72074aae)
+starts automatically with `GIT_REF_CHANGE` for that merge. iOS Archive succeeds, and the uploaded
+build reports `VALID`. This confirms the original optimized-compiler failure is cleared in the
+real archive; it does not establish tester delivery. Mac Archive fails at Developer ID export;
+TestFlight Internal Testing and Mac Notarize both report `SKIPPED`.
+
+The downloaded Mac provisioning log records no usable Developer ID Application certificate,
+an empty lookup for `DEVELOPER_ID_APPLICATION_MANAGED`, then a creation failure with status 409,
+result code 7460: an existing current managed certificate or pending request. This establishes
+the signing-service failure, not whether the underlying record is pending or inaccessible.
+A read-only public certificates query lists one development certificate; the documented public
+API does not expose the managed certificate type, so that result cannot resolve the conflict.
+No certificate, permission or Cloud workflow setting is changed, and no release retry is started.
+The account holder must inspect the managed certificate/request state before a repair is chosen.
+
+[Main CI 397](https://github.com/fardavide/granita/actions/runs/41881967982) is canceled;
+its iOS aggregation and coverage fail after a canceled shard. The cancellation cause is not
+established. [Mac release 8](https://github.com/fardavide/granita/actions/runs/41889902683) is skipped.
+
+The header-readiness approval is used: commit `b0f6f6b` is published in
+[CI 396](https://github.com/fardavide/granita/actions/runs/41875061095). Its native group-1 result
+confirms 582 executions pass, zero failures/skips/structured runtime warnings, including both
+original source-reopen variants and the new delayed-presentation control. All application,
+snapshot, gesture and generated-file jobs pass. The complete workflow exits successfully.
+
+The Coverage job's success is insufficient: the cache restore reports no matching key, and the
+report says no baseline exists and nothing was enforced. The existing local retrieval helper
+successfully downloads the last green main artifact, so the missing comparison is a workflow
+acquisition defect, not evidence of a numeric regression. Exact-count comparison with matching
+Unit/All scopes shows all four existing ratchets pass: Unit lines 97.6095% vs 97.5317%, regions
+95.3008% vs 95.1412%; All lines 98.1381% vs 98.0966%, regions 95.8510% vs 95.7261%. Snapshot's
+changed scope and Ui's first baseline remain deliberately unjudged as previously approved.
+
+A deterministic tooling RED executes the actual workflow acquisition, report and enforcement
+commands with an empty cache and saved main summary. Falling Unit/All counters incorrectly exit
+zero with the skipped-gate message: one failed and 140 passed tooling tests. The narrow recovery
+now passes all 141 tooling tests: a PR-only step calls the existing helper with the built-in token
+and read-only Actions permission. Cache hits and main's first-baseline behavior remain unchanged.
+[0260](decisions/0260-recover-the-main-coverage-baseline-after-a-cache-miss.md) records the evidence,
+scope and real-CI verification still required.
+
+Required local verification also exposes an unchanged package-test synchronization failure. Both
+the full standard suite and the 163-case viewer module find no recorded push after the fake's
+1,000-yield wait, while the exact copied-review test passes alone. A diagnostic explicit sync
+completes the queued clear push and another reconciliation push; its temporary assertions are
+removed. The separate local test-only repair observes buffered push-count events instead of
+counting scheduler turns. All exact behavioral assertions and data remain. Three callers gain the
+existing one-minute test-framework limit so missing events are canceled; the fourth already has
+that limit. Reconciliation/held-push logic, application code and UI deadlines remain unchanged.
+The focused 163 cases and full standard package suite then pass. Both unsigned apps build, the
+resolver retains all 30 pins unchanged, and source review finds no blocker. No further app/UI
+tests are repeated because their source and fixtures match the successful published run.
+
+Both repairs are ready for a new publication review from `codex/coverage-baseline-recovery`.
+Davide approves the reviewed two commits, one push and a new PR with the shown wording on
+5 November. Merge, certificate changes and release retries remain separate. Real Unit/All
+comparisons must be enforced; a successful coverage-step exit alone is insufficient. This
+follow-up changes only CI, test synchronization and documentation; version 0.23.1 remains unchanged.
 
 Davide now asks to remove the animation test. The new local candidate removes three cadence
 assertions: minimum intermediate-frame count, maximum sampled viewport step, and observed movement

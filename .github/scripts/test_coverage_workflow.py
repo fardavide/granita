@@ -137,6 +137,11 @@ class TestCoverageWorkflow:
                         "regions": {"count": 50, "covered": 48},
                         "scope": coverage.HOST_REACHABLE_SCOPE,
                     },
+                    "snapshot": {
+                        "lines": {"count": 100, "covered": 90},
+                        "regions": {"count": 50, "covered": 45},
+                        "scope": "rendering-views-before-input-scope-change",
+                    },
                     "unit": {
                         "lines": {"count": 100, "covered": 90},
                         "regions": {"count": 50, "covered": 45},
@@ -153,6 +158,16 @@ class TestCoverageWorkflow:
                         "lines": {"count": 100, "covered": 85},
                         "regions": {"count": 50, "covered": 43},
                         "scope": coverage.HOST_REACHABLE_SCOPE,
+                    },
+                    "snapshot": {
+                        "lines": {"count": 100, "covered": 20},
+                        "regions": {"count": 50, "covered": 10},
+                        "scope": coverage.VIEWS_SCOPE,
+                    },
+                    "ui": {
+                        "lines": {"count": 100, "covered": 20},
+                        "regions": {"count": 50, "covered": 10},
+                        "scope": coverage.DEFAULT_SCOPE,
                     },
                     "unit": {
                         "lines": {"count": 100, "covered": 80},

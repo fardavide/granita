@@ -222,7 +222,7 @@ jobs:
 
       # The delta's other half. Only `main` writes a baseline, so the most recent cache matching the
       # prefix is always the last green `main` run — and a pull request branch can read the default
-      # branch's caches, which is what makes this work with no token and no external service.
+      # branch's caches. A cache miss recovers the saved main artifact before a pull request is judged.
       # Restored before the measurement, and outside `build/`, which the measurement wipes.
       #
       # v2 because the summary is now keyed by test kind rather than by module. A v1 baseline shares
@@ -235,11 +235,11 @@ jobs:
           key: granita-coverage-v2-${{ github.sha }}
           restore-keys: granita-coverage-v2-
 
-      - name: Recover the main coverage baseline
+      - name: Recover the main coverage baseline for pull requests
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: Scripts/fetch-coverage-baseline.sh
+        run: bash Scripts/fetch-coverage-baseline.sh
 
       - name: Download unit coverage
         uses: actions/download-artifact@v4
