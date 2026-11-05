@@ -10,8 +10,14 @@ resolution before caching. The original phone-side Bonjour delay remains unexpla
 reached 0.23.1, so the marketing version, server fallback, changelog, README and generated project
 advance together. The full package suite, coverage-instrumented package suite, 140 tooling tests
 and both unsigned app builds pass. `make resolve` restores the 30-pin Xcode union graph without
-changing dependency revisions. Fresh CI and its aggregate coverage verdict are pending; this update
-does not authorize a merge or release. See [0260](decisions/0260-cancelled-resolution-cannot-publish-a-remembered-connection.md)
+changing dependency revisions. The first updated PR run failed two native collapse checks. Both
+passed in 68 focused local executions, all 582 instrumented shard executions and a full diagnostic
+retry on the unchanged commit; their cause remains unverified. That manual run exposed a missing
+coverage baseline and did not replace the PR checks. Baseline recovery now has two failing-before,
+passing-after regressions, and all 142 tooling tests pass. Required PR CI and its numerical coverage
+verdict are pending. No rendering repair, merge or release is claimed. See
+[0262](decisions/0262-recover-the-main-coverage-baseline-after-a-cache-miss.md),
+[0260](decisions/0260-cancelled-resolution-cannot-publish-a-remembered-connection.md)
 and [0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md).
 
 **Current work on [PR #129](https://github.com/fardavide/granita/pull/129), 4 November: the 0.23.1

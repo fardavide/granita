@@ -207,6 +207,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 15
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     steps:
@@ -233,6 +234,12 @@ jobs:
           path: .coverage-baseline
           key: granita-coverage-v2-${{ github.sha }}
           restore-keys: granita-coverage-v2-
+
+      - name: Recover the main coverage baseline
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: Scripts/fetch-coverage-baseline.sh
 
       - name: Download unit coverage
         uses: actions/download-artifact@v4
