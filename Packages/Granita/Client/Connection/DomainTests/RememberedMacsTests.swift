@@ -58,6 +58,61 @@ struct RememberedMacsTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func `given a remembered fallback when a worktree read is cancelled during resolution then it throws cancellation without opening a connection`() async {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: RememberedMac(
+                device: aRememberedMac.device,
+                fingerprint: aRememberedMac.fingerprint,
+                fallbackAddress: ServerAddress(host: "100.118.92.64", port: 8_737),
+                wakeAddresses: aRememberedMac.wakeAddresses
+            )],
+            suspendingResolution: true
+        )
+
+        // when
+        let read = Task {
+            try await scenario.sut.worktrees(inProject: nil)
+        }
+        await scenario.addresses.waitUntilAsked()
+        read.cancel()
+        scenario.addresses.resumeLookup()
+
+        // then
+        await #expect(throws: ApiFailure.cancelled) {
+            try await read.value
+        }
+        #expect(scenario.opened.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a resolver returns success after cancellation when worktrees are read again then cancellation opens no connection and the next read resolves afresh`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            suspendingResolution: true,
+            ignoringResolutionCancellation: true
+        )
+
+        // when
+        let read = Task {
+            try await scenario.sut.worktrees(inProject: nil)
+        }
+        await scenario.addresses.waitUntilAsked()
+        read.cancel()
+        scenario.addresses.resumeLookup()
+
+        // then
+        await #expect(throws: ApiFailure.cancelled) {
+            try await read.value
+        }
+        #expect(scenario.opened.isEmpty)
+        #expect(try await scenario.sut.worktrees(inProject: nil) == [aWorktree])
+        #expect(scenario.addresses.lookups == 2)
+        #expect(scenario.opened.count == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func `given resolution fails and a remembered fallback is used when worktrees are still pending then progress reports reading without a verified route`() async throws {
         // given
         let fallback = ServerAddress(host: "100.118.92.64", port: 8_737)
@@ -727,6 +782,8 @@ private struct Scenario {
         keychainRefusing refusal: RememberedMacStoreFailure? = nil,
         resolving: Result<ServerAddress, ServerAddressResolutionFailure> = .success(whereTheMacIsNow),
         reportingResolutionStages: [WorktreeReadStage] = [],
+        suspendingResolution: Bool = false,
+        ignoringResolutionCancellation: Bool = false,
         suspendingWorktreeReads: Bool = false,
         refusing readFailure: ApiFailure? = nil,
         healthUnavailable isHealthUnavailable: Bool = false,
@@ -735,7 +792,12 @@ private struct Scenario {
     ) {
         macs = refusal.map(FakeRememberedMacStore.init(refusing:))
             ?? FakeRememberedMacStore(holding: remembering)
-        addresses = FakeBonjourResolver(answering: resolving, reportingStages: reportingResolutionStages)
+        addresses = FakeBonjourResolver(
+            answering: resolving,
+            suspendingLookup: suspendingResolution,
+            ignoringCancellation: ignoringResolutionCancellation,
+            reportingStages: reportingResolutionStages
+        )
         progress = FakeWorktreeReadProgressRecording()
         let connections = OpenedConnections()
         self.connections = connections

@@ -1,4 +1,4 @@
-"""A runner cache miss must not silently disable the pull request's coverage ratchet."""
+"""An empty runner cache must not silently disable coverage enforcement."""
 
 import json
 import os
@@ -6,11 +6,11 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-import sys
 from textwrap import dedent
 from typing import TypedDict
 
 import coverage
+import pytest
 
 
 class Counter(TypedDict):
@@ -31,12 +31,14 @@ class Summary(TypedDict):
 
 
 class TestCoverageWorkflow:
-    def test_given_empty_cache_and_saved_main_summary_when_reporting_then_unit_and_all_regressions_are_enforced(
+    @pytest.mark.parametrize("download_fails", [False, True], ids=["saved-main-summary", "retrieval-fails"])
+    def test_given_empty_cache_when_reporting_then_saved_main_coverage_is_required(
         self: "TestCoverageWorkflow",
+        download_fails: bool,
         tmp_path: Path,
     ) -> None:
         # given
-        scenario = self.Scenario(tmp_path)
+        scenario = self.Scenario(download_fails=download_fails, root=tmp_path)
 
         # when
         acquisition = subprocess.run(
@@ -47,44 +49,53 @@ class TestCoverageWorkflow:
             env=scenario.environment,
             text=True,
         )
-        assert acquisition.returncode == 0, acquisition.stdout + acquisition.stderr
-        report = subprocess.run(
-            ["bash", "-euo", "pipefail", "-c", scenario.report],
-            capture_output=True,
-            check=False,
-            cwd=tmp_path,
-            env=scenario.environment,
-            text=True,
-        )
-        assert report.returncode == 0, report.stdout + report.stderr
-        enforcement = subprocess.run(
-            ["bash", "-euo", "pipefail", "-c", scenario.enforcement],
-            capture_output=True,
-            check=False,
-            cwd=tmp_path,
-            env=scenario.environment,
-            text=True,
-        )
+        if acquisition.returncode == 0:
+            report = subprocess.run(
+                ["bash", "-euo", "pipefail", "-c", scenario.report],
+                capture_output=True,
+                check=False,
+                cwd=tmp_path,
+                env=scenario.environment,
+                text=True,
+            )
+            assert report.returncode == 0, report.stdout + report.stderr
+            enforcement = subprocess.run(
+                ["bash", "-euo", "pipefail", "-c", scenario.enforcement],
+                capture_output=True,
+                check=False,
+                cwd=tmp_path,
+                env=scenario.environment,
+                text=True,
+            )
 
         # then
-        assert enforcement.returncode == 1, enforcement.stdout + enforcement.stderr
-        verdict: object = json.loads((tmp_path / "build/coverage/verdict.json").read_text())
-        assert isinstance(verdict, dict)
-        assert verdict["status"] == "fail"
-        checks: object = verdict["checks"]
-        assert isinstance(checks, list)
-        assert all(isinstance(check, dict) for check in checks)
-        assert {check["label"] for check in checks if isinstance(check, dict)} == {
-            "All tests lines",
-            "All tests regions",
-            "Unit lines",
-            "Unit regions",
-        }
-        assert all(check["status"] == "fail" for check in checks if isinstance(check, dict))
-        assert json.loads((tmp_path / ".coverage-baseline/summary.json").read_text()) == scenario.baseline
+        if download_fails:
+            assert acquisition.returncode != 0, "Baseline retrieval failure did not stop the coverage workflow"
+            assert not (tmp_path / "build/coverage/verdict.json").exists()
+        else:
+            assert acquisition.returncode == 0, acquisition.stdout + acquisition.stderr
+            assert enforcement.returncode == 1, enforcement.stdout + enforcement.stderr
+            verdict: object = json.loads((tmp_path / "build/coverage/verdict.json").read_text())
+            assert isinstance(verdict, dict)
+            assert verdict["status"] == "fail"
+            checks: object = verdict["checks"]
+            assert isinstance(checks, list)
+            assert all(isinstance(check, dict) for check in checks)
+            assert {check["label"] for check in checks if isinstance(check, dict)} == {
+                "All tests lines",
+                "All tests regions",
+                "Unit lines",
+                "Unit regions",
+            }
+            assert all(check["status"] == "fail" for check in checks if isinstance(check, dict))
+            assert json.loads((tmp_path / ".coverage-baseline/summary.json").read_text()) == scenario.baseline
 
     class Scenario:
-        def __init__(self: "TestCoverageWorkflow.Scenario", root: Path) -> None:
+        def __init__(
+            self: "TestCoverageWorkflow.Scenario",
+            download_fails: bool,
+            root: Path,
+        ) -> None:
             source = Path(__file__).resolve().parents[2]
             workflow = (source / ".github/workflows/ci.yml").read_text()
             acquisition_start = workflow.index("      - name: Restore the main coverage baseline\n")
@@ -119,7 +130,6 @@ class TestCoverageWorkflow:
             shutil.copyfile(source / ".github/scripts/coverage.py", scripts / "coverage.py")
             (root / "Scripts").mkdir()
             shutil.copy2(source / "Scripts/fetch-coverage-baseline.sh", root / "Scripts/fetch-coverage-baseline.sh")
-
             self.baseline: Summary = {
                 "categories": {
                     "all": {
@@ -172,32 +182,14 @@ class TestCoverageWorkflow:
             (root / "build/coverage/summary.json").write_text(json.dumps(current))
             tools = root / "tools"
             tools.mkdir()
-            (tools / "gh").write_text(f"#!{sys.executable}\n" + FAKE_GH)
+            shutil.copyfile(source / ".github/scripts/fake_coverage_github.py", tools / "gh")
             (tools / "gh").chmod(0o755)
             self.environment = dict(os.environ)
             self.environment.update({
+                "FAKE_COVERAGE_DOWNLOAD_FAILS": "1" if download_fails else "0",
+                "GH_TOKEN": "local-workflow-test-token",
                 "GITHUB_EVENT_NAME": "pull_request",
                 "GITHUB_REF": "refs/pull/1/merge",
                 "GITHUB_REPOSITORY": "fardavide/granita",
                 "PATH": str(tools) + os.pathsep + os.environ.get("PATH", ""),
             })
-
-
-FAKE_GH = '''from pathlib import Path
-import shutil
-import sys
-
-arguments = sys.argv[1:]
-assert arguments[arguments.index("--repo") + 1] == "fardavide/granita", arguments
-if arguments[:2] == ["run", "list"]:
-    assert arguments[arguments.index("--branch") + 1] == "main", arguments
-    assert arguments[arguments.index("--status") + 1] == "success", arguments
-    print("123456789")
-elif arguments[:3] == ["run", "download", "123456789"]:
-    assert arguments[arguments.index("-n") + 1] == "coverage-summary", arguments
-    destination = Path(arguments[arguments.index("-D") + 1])
-    destination.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile("saved-main-summary.json", destination / "summary.json")
-else:
-    raise AssertionError(f"Unexpected GitHub command: {arguments}")
-'''

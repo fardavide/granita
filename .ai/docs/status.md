@@ -2,7 +2,7 @@
 
 Where the project is. Update this when a slice lands.
 
-**5 November: 0.23.2 fixes trailing context expansion on `fix/trailing-context-expansion`,
+**5 November: 0.23.3 fixes trailing context expansion on `fix/trailing-context-expansion`,
 prepared locally and unpublished.** Complete tracked text diffs report the whole file length, making the
 existing remainder-of-file control reachable. A capped context read keeps the changed hunks and
 reports its limit without advertising unreadable trailing lines. Both regressions were observed
@@ -35,7 +35,27 @@ the canceled menu test, at `build/coverage-inputs/mac/tests.xcresult`; the stack
 `build/mac-coverage-stall.sample.txt`. `make coverage` exits through `coverage-mac` Error 75 after
 cancellation, without producing a numerical gate verdict. Mac/coverage validation still needs CI
 or a separate harness repair. Nothing has been pushed or published.
-[0261](decisions/0261-count-the-file-beyond-the-final-diff-hunk.md) records the count source and limits.
+[0264](decisions/0264-count-the-file-beyond-the-final-diff-hunk.md) records the count source and limits.
+This branch now includes merged [PR #130](https://github.com/fardavide/granita/pull/130) at
+`a9e8cb16`, including its pinned simulator selection. The detailed validation results above precede
+that integration. Fresh package tests and both unsigned app builds pass after integration; the Xcode
+project is regenerated for 0.23.3. Resolving the lockfile conflict retains main's dependency pins.
+The Mac snapshot blocker is unchanged by the merged source.
+
+**The reconnection branch is updated from [PR #131](https://github.com/fardavide/granita/pull/131)
+after all seven required checks passed on its previous head.** Main remains at 0.23.1, so this
+branch retains 0.23.2. It keeps main's coverage recovery and reliable review-test waits, preserves
+the Snapshot/Ui scope controls, and adds failed-retrieval coverage. The cancellation fix and its
+two deterministic regressions remain unchanged. The original Bonjour delay and intermittent
+native collapse failures remain unexplained; no rendering repair is claimed. Merge validation
+and fresh required CI are in progress. The new runner image moved shard 0 to iOS 27.2 through
+`OS=latest`, causing 96 image mismatches; its native result verifies that runtime, while shard 1
+passed on iOS 27.0. Validation now pins the baseline's iOS 27.0 device UUID through a shared selector;
+baselines and rendering code remain unchanged. See
+[0260](decisions/0260-recover-the-main-coverage-baseline-after-a-cache-miss.md),
+[0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md), and
+[0262](decisions/0262-cancelled-resolution-cannot-publish-a-remembered-connection.md), and
+[0263](decisions/0263-pin-the-snapshot-runtime-and-device.md).
 
 **5 November: [PR #129](https://github.com/fardavide/granita/pull/129) merged as `0caf8af`.
 Its iOS Release archive and upload succeed in Cloud build 179, but Mac Developer ID export fails

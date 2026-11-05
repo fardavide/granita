@@ -1043,7 +1043,7 @@ has its own section below — *The expander is a tear*.
 > **Fixed on 5 November 2026:** the Mac now counts the whole working copy for complete tracked text
 > diffs, so the existing *remainder of file* row can reveal lines below the final hunk. Truncated
 > diffs keep their visible bounds to avoid showing omitted changes as unchanged context. See
-> [0261](decisions/0261-count-the-file-beyond-the-final-diff-hunk.md).
+> [0264](decisions/0264-count-the-file-beyond-the-final-diff-hunk.md).
 
 **The marker column has six points after it**, so the code clears the `+` and the `−`.
 
