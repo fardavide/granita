@@ -149,14 +149,8 @@ echo "::endgroup::"
 
 echo "::group::Coverage — snapshot"
 
-# The name is resolved rather than hardcoded: the runner image ships "iPhone 17 Pro" and not a plain
-# "iPhone 17", and that has already changed once between releases.
-# The first supported iPhone of the newest matching runtime, as in the Makefile.
-SIMULATOR="$(xcrun simctl list devices available | awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH); found=1} END{sub(/ +$/, "", name); print name}')"
-if [ -z "$SIMULATOR" ]; then
-    echo "::error::No recent iPhone simulator on this machine"
-    exit 1
-fi
+# Resolve the baseline runtime's exact device, as in the Makefile and required collectors.
+SIMULATOR="${IOS_SIM_ID:-$(bash .github/scripts/ios-simulator.sh "${IOS_SIM_NAME:-}")}"
 echo "Using ${SIMULATOR}"
 
 # **Booted here rather than earlier, and that boundary was paid for.** A cold boot costs minutes, so
@@ -180,7 +174,7 @@ xcrun simctl boot "$SIMULATOR" || true
 xcodebuild test \
     -project Granita.xcodeproj \
     -scheme GranitaMobile \
-    -destination "platform=iOS Simulator,name=${SIMULATOR},OS=latest" \
+    -destination "platform=iOS Simulator,id=${SIMULATOR}" \
     -derivedDataPath "$DERIVED" \
     -clonedSourcePackagesDirPath SourcePackages \
     -only-testing:GranitaMobileSnapshotTests \

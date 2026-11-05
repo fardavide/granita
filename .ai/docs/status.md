@@ -8,10 +8,14 @@ branch retains 0.23.2. It keeps main's coverage recovery and reliable review-tes
 the Snapshot/Ui scope controls, and adds failed-retrieval coverage. The cancellation fix and its
 two deterministic regressions remain unchanged. The original Bonjour delay and intermittent
 native collapse failures remain unexplained; no rendering repair is claimed. Merge validation
-and fresh required CI are in progress. See
+and fresh required CI are in progress. The new runner image moved shard 0 to iOS 27.2 through
+`OS=latest`, causing 96 image mismatches; its native result verifies that runtime, while shard 1
+passed on iOS 27.0. Validation now pins the baseline's iOS 27.0 device UUID through a shared selector;
+baselines and rendering code remain unchanged. See
 [0260](decisions/0260-recover-the-main-coverage-baseline-after-a-cache-miss.md),
 [0261](decisions/0261-diff-request-tracking-ends-before-derived-work.md), and
-[0262](decisions/0262-cancelled-resolution-cannot-publish-a-remembered-connection.md).
+[0262](decisions/0262-cancelled-resolution-cannot-publish-a-remembered-connection.md), and
+[0263](decisions/0263-pin-the-snapshot-runtime-and-device.md).
 
 **5 November: [PR #129](https://github.com/fardavide/granita/pull/129) merged as `0caf8af`.
 Its iOS Release archive and upload succeed in Cloud build 179, but Mac Developer ID export fails

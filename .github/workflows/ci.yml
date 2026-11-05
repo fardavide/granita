@@ -427,22 +427,9 @@ jobs:
       - name: Verify a simulator is available
         id: simulator
         run: |
-          runtimes="$(xcrun simctl list runtimes available)"
-          devices="$(xcrun simctl list devices available)"
-          if ! grep -q 'iOS 27' <<< "$runtimes"; then
-            echo "::error::No iOS 27 simulator runtime on this runner image"
-            exit 1
-          fi
-          # The name is resolved rather than hardcoded: this image ships "iPhone 17 Pro" and not a
-          # plain "iPhone 17", and that has already changed once between releases.
-          # The first supported iPhone of the newest matching runtime, as in the Makefile.
-          name="$(awk '/^-- iOS /{found=0; inios=1; next} /^-- /{inios=0} inios && !found && match($0, /iPhone 1[6-9][A-Za-z ]*/){name=substr($0, RSTART, RLENGTH); found=1} END{sub(/ +$/, "", name); print name}' <<< "$devices")"
-          if [ -z "$name" ]; then
-            echo "::error::No recent iPhone simulator on this runner image"
-            exit 1
-          fi
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "Using $name"
+          device="$(bash .github/scripts/ios-simulator.sh)"
+          echo "id=$device" >> "$GITHUB_OUTPUT"
+          echo "Using iOS 27.0 baseline device $device"
 
           # **Start the boot here so it overlaps the build below, rather than leaving it to
           # xcodebuild, which boots only once its build has finished and then simply waits.** On the
@@ -456,7 +443,7 @@ jobs:
           # request, and the daemon carries it on across the step boundary. It fails when the device
           # is already booted, which is a success for our purposes — hence the swallow. If the head
           # start does not happen for any other reason, xcodebuild still boots the device itself.
-          xcrun simctl boot "$name" || true
+          xcrun simctl boot "$device" || true
 
       # See the macOS job below for why this one keeps "(iOS)" in its name.
       # Renders 24 baselines: six discovery states across iPhone and iPad, light and dark. The
@@ -464,7 +451,7 @@ jobs:
       # host restarts, and the retry reports "0 tests passed" having rendered nothing.
       - name: Run snapshot tests
         id: snapshots
-        run: make coverage-ios-enumerate coverage-ios-plan coverage-ios-shard SHARD=${{ matrix.shard }} IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
+        run: make coverage-ios-enumerate coverage-ios-plan coverage-ios-shard SHARD=${{ matrix.shard }} IOS_SIM_ID='${{ steps.simulator.outputs.id }}'
       - name: Upload iOS coverage and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -489,11 +476,11 @@ jobs:
       # Native TLS must be judged inside the app host, not by host-only certificate unit tests.
       - name: Run pinned TLS connection tests
         if: matrix.shard == 0
-        run: make tls-tests-ios TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
+        run: make tls-tests-ios IOS_SIM_ID='${{ steps.simulator.outputs.id }}' TLS_PACKAGE_FLAGS="-clonedSourcePackagesDirPath SourcePackages"
 
       - name: Verify horizontal reader gestures
         if: matrix.shard == 0
-        run: make coverage-ui IOS_SIM_NAME='${{ steps.simulator.outputs.name }}'
+        run: make coverage-ui IOS_SIM_ID='${{ steps.simulator.outputs.id }}'
       - name: Upload behavioral Ui coverage
         if: always() && matrix.shard == 0
         uses: actions/upload-artifact@v4
