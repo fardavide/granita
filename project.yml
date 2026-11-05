@@ -33,7 +33,7 @@ packages:
 # .ai/skills/versioning.
 settingGroups:
   shared:
-    MARKETING_VERSION: 0.23.1
+    MARKETING_VERSION: 0.23.2
     # Placeholder only. The shipped build number is Xcode Cloud's own monotonic run number,
     # written into the project by ci_scripts/ci_pre_xcodebuild.sh — App Store Connect refuses a
     # build number that repeats within a release train, so a hardcoded 1 fails on the second
@@ -296,6 +296,11 @@ targets:
     supportedDestinations: [iOS, iPadOS]
     sources:
       - Apps/GranitaMobileUiTestHost
+      - Packages/Granita/Client/Viewer/PresentationTests/FakeDiagnosticLogsCopying.swift
+      - Packages/Granita/Client/Viewer/PresentationTests/FakeDiffReadAnnouncing.swift
+      - Packages/Granita/Client/Viewer/PresentationTests/FakeReviewCommentStore.swift
+      - Packages/Granita/Client/Viewer/PresentationTests/FakeReviewPasteboard.swift
+      - Packages/Granita/Client/Viewer/PresentationTests/FakeSyntaxHighlighter.swift
     dependencies:
       - package: Granita
         product: ClientAppMain

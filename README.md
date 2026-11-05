@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.23.2** — expand unchanged lines below the last change in a file; requires the updated Mac app.
 - **0.23.1** — fix the release-build failure that blocked the iPhone and iPad update from TestFlight.
 - **0.23.0** — tap anywhere on a code line or hold and drag to select a range on iPhone and iPad.
-- **0.22.4** — scrolling code sideways keeps your place inside the file.
 
 [Every release](CHANGELOG.md).
 

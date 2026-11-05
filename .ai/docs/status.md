@@ -2,6 +2,41 @@
 
 Where the project is. Update this when a slice lands.
 
+**5 November: 0.23.2 fixes trailing context expansion on `fix/trailing-context-expansion`,
+prepared locally and unpublished.** Complete tracked text diffs report the whole file length, making the
+existing remainder-of-file control reachable. A capped context read keeps the changed hunks and
+reports its limit without advertising unreadable trailing lines. Both regressions were observed
+failing before their fixes, then passed. All 1,972 reported package tests and unsigned Mac/iOS builds
+pass. The simulator touch test presses the production screen's remainder control, reveals twenty
+lines, then the final three, and asserts the footer disappears at EOF. It confirms UIKit and SwiftUI
+animations are disabled before pressing. The 32 existing file-content snapshot cases pass unchanged;
+both result bundles report no failures, skips or runtime warnings. The new fixture and reused doubles
+are confined to the UI test host.
+The viewer design is unchanged. `make resolve` preserves all 30 pins; only the resolver's origin hash
+changes. Unit coverage collection passes and the main baseline is fetched. Mac-test approval was
+granted. Two initial coverage attempts stopped in the iOS shards: the first reports 527 passing runs
+and one SIGKILL; the retry's first shard passes all
+589 runs, then its second reports 551 passing runs and three SIGKILLs. No snapshot assertions fail.
+Simulator logs show Granita install-coordination termination assertions at 13:42:45 and 14:10:24:
+the app was being reinstalled while its test host was running. The first interrupted result is
+preserved at `build/coverage-interrupted-ios-0.xcresult`; the second interrupted shard is preserved
+at `build/coverage-interrupted-ios-1.xcresult`.
+
+After waiting for the other local run to finish, the third coverage attempt passes both complete iOS
+shards (589 and 582 runs) and behavioral UI collection (23 runs), all with zero failures, skips or
+runtime warnings. The package collection also passes all 1,972 reported tests. Mac snapshots then
+fail image comparisons in unchanged Settings surfaces. An inspected General render preserves text
+and layout but differs in glyph rasterization, consistent with the documented local/CI rendering
+difference; no matched main-control run was performed. Baselines remain unchanged.
+The Mac reader menu's first case then stops progressing. A two-second sample reports the dispatch
+thread soft limit of 80 reached in every sample, with workers blocked in AppKit animation waits.
+The stalled run was stopped and its test host confirmed exited. Its result reports Failed, including
+the canceled menu test, at `build/coverage-inputs/mac/tests.xcresult`; the stack sample is
+`build/mac-coverage-stall.sample.txt`. `make coverage` exits through `coverage-mac` Error 75 after
+cancellation, without producing a numerical gate verdict. Mac/coverage validation still needs CI
+or a separate harness repair. Nothing has been pushed or published.
+[0261](decisions/0261-count-the-file-beyond-the-final-diff-hunk.md) records the count source and limits.
+
 **5 November: [PR #129](https://github.com/fardavide/granita/pull/129) merged as `0caf8af`.
 Its iOS Release archive and upload succeed in Cloud build 179, but Mac Developer ID export fails
 and the TestFlight post-action is skipped. Coverage recovery and a package-test wait repair are

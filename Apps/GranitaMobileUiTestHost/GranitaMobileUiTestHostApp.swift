@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 import ClientViewerDomain
 import ClientViewerUi
@@ -7,8 +8,21 @@ import CoreDiffDomain
 /// Offline composition for touch tests. The reader and its gesture hierarchy are production views.
 @main
 struct GranitaMobileUiTestHostApp: App {
+
+    init() {
+        if ProcessInfo.processInfo.arguments.contains("disable-test-animations") {
+            UIView.setAnimationsEnabled(false)
+        }
+    }
+
     var body: some Scene {
-        WindowGroup { HorizontalSwipeFixture() }
+        WindowGroup {
+            if ProcessInfo.processInfo.arguments.contains("trailing-context") {
+                TrailingContextFixture()
+            } else {
+                HorizontalSwipeFixture()
+            }
+        }
     }
 }
 
