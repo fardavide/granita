@@ -15,6 +15,8 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// Every push the model made, so a test can assert that saving and offering are separate acts.
     private(set) var pushed: [[ReviewComment]] = []
 
+    private let pushCounts = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+
     private(set) var invocations: [Invocation] = []
 
     /// What the Mac is pretending to hold, which `reconcile` unions into what this phone wrote.
@@ -52,11 +54,11 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     /// Returns once `count` pushes have been made, because a change offers the review to the Mac
     /// without the reader waiting on it.
     ///
-    /// **Bounded, so a push that never happens is a failed expectation rather than a hung suite.**
-    /// Everything here runs on one actor, so a push that is coming arrives within a handful of turns.
+    /// The calling test's time limit cancels the stream wait if the push never happens.
     func waitUntilPushed(count: Int) async {
-        for _ in 0..<1_000 where pushed.count < count {
-            await Task.yield()
+        guard pushed.count < count else { return }
+        for await pushedCount in pushCounts.stream where pushedCount >= count {
+            return
         }
     }
 
@@ -70,6 +72,7 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     func push(_ comments: [ReviewComment], in worktree: WorktreeID) async -> ReviewSync {
         pushed.append(comments)
+        pushCounts.continuation.yield(pushed.count)
         while holdsPushes {
             await Task.yield()
         }
