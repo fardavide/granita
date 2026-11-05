@@ -69,3 +69,12 @@ aggregate coverage and TestFlight delivery remain unverified for this candidate.
 one commit, `Wait for reopened headers before checking snapshots`, and one push of these three
 files to run all seven required checks. Another publication requires a new review; merge stays
 separate.
+
+The approved repair is published as `b0f6f6b`. Its complete
+[CI 396](https://github.com/fardavide/granita/actions/runs/41875061095) reports all seven required
+checks successful. Native group 1 confirms 582 executions pass, including both original reopen
+variants and the delayed-presentation control, with no failures, skips or structured runtime
+warnings. The coverage report, however, says no baseline exists and no comparison was enforced
+after the runner cache misses. This is not the required numeric coverage validation. A narrow
+baseline-acquisition repair is verified locally. On 5 November, Davide approves the reviewed
+two-commit follow-up, one branch push and a new PR; merge and release retries remain separate.
