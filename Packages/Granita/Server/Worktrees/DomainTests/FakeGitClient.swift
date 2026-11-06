@@ -9,8 +9,10 @@ import ServerGitDomain
 /// comparison was run at all.
 actor FakeGitClient: GitClient {
 
-    private let outputs: [GitCommand: Data]
-    private let failures: [GitCommand: GitError]
+    private var outputs: [GitCommand: Data]
+    private var outputsByLocation: [RepositoryLocation: [GitCommand: Data]] = [:]
+    private var failures: [GitCommand: GitError]
+    private var failuresByLocation: [RepositoryLocation: GitError]
     private let anyFileDiff: Data
 
     /// Paths this git refuses to hash, which is what a symlink pointing at a directory is.
@@ -30,26 +32,82 @@ actor FakeGitClient: GitClient {
     /// Tracked because removal is the one command whose working directory is a different place from
     /// its argument, and a test that only reads the command cannot tell the two apart.
     private(set) var locations: [RepositoryLocation] = []
+    private var pausedCommands: Set<GitCommand> = []
+    private var pausedCalls: [GitCommand: [CheckedContinuation<Void, Never>]] = [:]
+    private var pauseObservers: [GitCommand: [CheckedContinuation<Void, Never>]] = [:]
 
     init(
         outputs: [GitCommand: Data],
         failures: [GitCommand: GitError],
+        failuresByLocation: [RepositoryLocation: GitError] = [:],
         unhashablePaths: Set<String> = [],
         anyFileDiff: Data = Data(),
         truncated: Set<GitCommand> = []
     ) {
         self.outputs = outputs
         self.failures = failures
+        self.failuresByLocation = failuresByLocation
         self.unhashablePaths = unhashablePaths
         self.anyFileDiff = anyFileDiff
         self.truncated = truncated
     }
 
+    func answer(_ command: GitCommand, with output: Data) {
+        outputs[command] = output
+    }
+
+    func answer(_ command: GitCommand, in location: RepositoryLocation, with output: Data) {
+        outputsByLocation[location, default: [:]][command] = output
+    }
+
+    func refuse(_ command: GitCommand, with failure: GitError) {
+        failures[command] = failure
+    }
+
+    func allowCommands(in location: RepositoryLocation) {
+        failuresByLocation.removeValue(forKey: location)
+    }
+
+    func refuseCommands(in location: RepositoryLocation, with failure: GitError) {
+        failuresByLocation[location] = failure
+    }
+
+    func pause(_ command: GitCommand) {
+        pausedCommands.insert(command)
+    }
+
+    func waitUntilPaused(_ command: GitCommand) async {
+        if pausedCalls[command]?.isEmpty == false { return }
+        await withCheckedContinuation { pauseObservers[command, default: []].append($0) }
+    }
+
+    func resume(_ command: GitCommand) {
+        pausedCommands.remove(command)
+        let calls = pausedCalls.removeValue(forKey: command) ?? []
+        for call in calls { call.resume() }
+    }
+
     func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
         received.append(command)
         locations.append(location)
+        if let failure = failuresByLocation[location] { throw failure }
+        if pausedCommands.contains(command) {
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    pausedCalls[command, default: []].append(continuation)
+                    let observers = pauseObservers.removeValue(forKey: command) ?? []
+                    for observer in observers { observer.resume() }
+                }
+            } onCancel: {
+                Task { await self.resume(command) }
+            }
+        }
+        if Task.isCancelled { throw .gitUnavailable(reason: "cancelled") }
         if let failure = failures[command] {
             throw failure
+        }
+        if let output = outputsByLocation[location]?[command] {
+            return GitOutput(standardOutput: output, isTruncated: truncated.contains(command))
         }
         if let output = outputs[command] {
             return GitOutput(standardOutput: output, isTruncated: truncated.contains(command))

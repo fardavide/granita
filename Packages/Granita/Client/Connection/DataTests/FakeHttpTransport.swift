@@ -26,13 +26,22 @@ actor FakeHttpTransport: HttpTransport {
     private(set) var sent: [HttpRequest] = []
 
     private let answer: Result<HttpResponse, ApiFailure>
+    private var keepsEventsOpen = false
+    private var openEvents: [AsyncThrowingStream<String, any Error>.Continuation] = []
+    private var legacyWorktrees: LegacyWorktrees = .sameAnswer
 
-    init(status: Int, json: String) {
+    init(status: Int, json: String, keepingEventsOpen: Bool = false) {
         answer = .success(HttpResponse(statusCode: status, body: Data(json.utf8)))
+        keepsEventsOpen = keepingEventsOpen
     }
 
     init(status: Int, body: Data) {
         answer = .success(HttpResponse(statusCode: status, body: body))
+    }
+
+    init(legacyWorktrees json: String) {
+        answer = .success(HttpResponse(statusCode: 404, body: Data()))
+        legacyWorktrees = .body(Data(json.utf8))
     }
 
     /// A Mac that cannot be reached at all, which is the one failure a transport produces itself.
@@ -42,9 +51,37 @@ actor FakeHttpTransport: HttpTransport {
 
     func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse {
         sent.append(request)
+        if request.url.path() == "/v1/worktrees", case .body(let body) = legacyWorktrees {
+            return HttpResponse(statusCode: 200, body: body)
+        }
         switch answer {
         case .success(let response): return response
         case .failure(let failure): throw failure
         }
+    }
+
+    func stream(_ request: HttpRequest) async throws(ApiFailure) -> HttpEventResponse {
+        sent.append(request)
+        let response = try answer.get()
+        let pair = AsyncThrowingStream<String, any Error>.makeStream()
+        for line in String(decoding: response.body, as: UTF8.self).split(separator: "\n", omittingEmptySubsequences: false) {
+            pair.continuation.yield(String(line))
+        }
+        if keepsEventsOpen {
+            openEvents.append(pair.continuation)
+        } else {
+            pair.continuation.finish()
+        }
+        return HttpEventResponse(statusCode: response.statusCode, lines: pair.stream)
+    }
+
+    func finishEvents() {
+        for continuation in openEvents { continuation.finish() }
+        openEvents = []
+    }
+
+    private enum LegacyWorktrees {
+        case sameAnswer
+        case body(Data)
     }
 }

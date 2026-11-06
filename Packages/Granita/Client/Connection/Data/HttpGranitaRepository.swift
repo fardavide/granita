@@ -17,9 +17,12 @@ import CoreReviewDomain
 public struct HttpGranitaRepository: GranitaRepository {
 
     private let client: GranitaHttpClient
+    private let liveUpdates: HttpWorktreeUpdates
 
     public init(macAt baseUrl: URL, token: PairingToken, transport: any HttpTransport) {
-        client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .bearer(token))
+        let client = GranitaHttpClient(baseUrl: baseUrl, transport: transport, authorization: .bearer(token))
+        self.client = client
+        liveUpdates = HttpWorktreeUpdates(client: client)
     }
 
     /// Built from the pairing the handshake came back with.
@@ -54,6 +57,38 @@ public struct HttpGranitaRepository: GranitaRepository {
         // this project defines; a query parameter both halves already agree on is not one of them.
         let query = project.map { [URLQueryItem(name: "projectID", value: $0.rawValue)] } ?? []
         return try await client.get("/v1/worktrees", query: query, returning: [Worktree].self)
+    }
+
+    public func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        let query = (project.map { [URLQueryItem(name: "projectID", value: $0.rawValue)] } ?? [])
+            + [URLQueryItem(name: "refresh", value: "true")]
+        return try await client.get("/v1/worktrees", query: query, returning: [Worktree].self)
+    }
+
+    public func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        await progress(.reading(.unknown))
+        var query = project.map { [URLQueryItem(name: "projectID", value: $0.rawValue)] } ?? []
+        if refreshing { query.append(URLQueryItem(name: "refresh", value: "true")) }
+        do {
+            return .prepared(try await client.get("/v1/worktree-snapshot", query: query, returning: WorktreeSnapshot.self))
+        } catch .routeNotServed {
+            if refreshing {
+                return .uncached(try await refreshWorktrees(inProject: project))
+            }
+            return .uncached(try await worktrees(inProject: project))
+        } catch .worktreeGone {
+            // An unavailable enabled folder prevents a complete inventory. Keep healthy projects
+            // usable through a fresh legacy read, without claiming a prepared scan receipt.
+            return .uncached(try await refreshWorktrees(inProject: project))
+        }
+    }
+
+    public func updates() async -> AsyncStream<WorktreeUpdate> {
+        await liveUpdates.stream()
     }
 
     public func update(

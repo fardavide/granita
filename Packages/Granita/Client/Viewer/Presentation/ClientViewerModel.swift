@@ -297,6 +297,10 @@ public final class ClientViewerModel {
     /// fetched ahead of them — `SPEC.md` §10's "highlight the visible file first".
     private var readingPosition = 0
 
+    private var loadedRevision: LoadedRevision = .notRead
+    private var observedRevision: LoadedRevision = .notRead
+    private var generation = UUID()
+
     private let worktree: WorktreeID
 
     private let repository: any GranitaRepository
@@ -375,7 +379,68 @@ public final class ClientViewerModel {
         await load(trigger: .appearance)
     }
 
+    public func receive(_ update: WorktreeUpdate) async {
+        if case .failed(.unauthorized) = update {
+            generation = UUID()
+            inFlight = []
+            isRefreshing = false
+            isWaitingLong = false
+            state = .failed(.unauthorized)
+            return
+        }
+        guard case .snapshot(let snapshot) = update,
+              case .read(let revision) = loadedRevision else { return }
+        guard let row = snapshot.worktrees.first(where: { $0.id == worktree }) else {
+            generation = UUID()
+            inFlight = []
+            isRefreshing = false
+            isWaitingLong = false
+            state = .failed(.worktreeGone)
+            return
+        }
+        let previous: String = switch observedRevision {
+        case .notRead: revision
+        case .read(let previous): previous
+        }
+        observedRevision = .read(row.revision)
+        guard row.revision != previous, row.revision != revision else { return }
+        let checkingGeneration = generation
+        do {
+            // A prepared summary can lag a direct read. Confirm new content before changing
+            // anything visible, including the delayed refresh announcement and reader choices.
+            let changes = try await repository.changes(in: worktree)
+            guard generation == checkingGeneration, !Task.isCancelled,
+                  changes.revision != revision else { return }
+            let reloadGeneration = UUID()
+            await load(trigger: .appearance, changes: changes, generation: reloadGeneration)
+            guard generation == reloadGeneration, !Task.isCancelled else { return }
+            await reading(readingPosition)
+        } catch {
+            guard generation == checkingGeneration, !Task.isCancelled else { return }
+            await receive(.failed(error))
+        }
+    }
+
+    public func followUpdates(active: Bool = true) async {
+        guard active else { return }
+        if case .notRead = loadedRevision { await load() }
+        guard !Task.isCancelled else { return }
+        for await update in await repository.updates() {
+            guard Task.isCancelled == false else { return }
+            await receive(update)
+        }
+    }
+
     public func load(trigger: DiffReadTrigger) async {
+        await load(trigger: trigger, changes: nil, generation: UUID())
+    }
+
+    private func load(
+        trigger: DiffReadTrigger,
+        changes prepared: WorktreeChanges?,
+        generation: UUID
+    ) async {
+        self.generation = generation
         // Only a failure goes back to the spinner — a screen re-runs its `.task` every time it
         // appears, and blanking a diff that is already drawn would restart it under the reader. See
         // `ClientWorktreesModel`, which carries the argument and the baselines that settled it.
@@ -402,17 +467,27 @@ public final class ClientViewerModel {
         case .loading, .failed: false
         case .nothingChanged, .reading: true
         }
-        let announcing = isUnaskedFor && hasReadOnce ? sayingTheRefreshIsWorthShowing() : nil
+        let announcing = isUnaskedFor && hasReadOnce ? sayingTheRefreshIsWorthShowing(generation: generation) : nil
         defer {
             announcing?.cancel()
-            isRefreshing = false
+            if self.generation == generation { isRefreshing = false }
         }
         do {
-            let changes = try await repository.changes(in: worktree)
+            let changes: WorktreeChanges
+            if let prepared {
+                changes = prepared
+            } else {
+                changes = try await repository.changes(in: worktree)
+            }
+            guard self.generation == generation, !Task.isCancelled else { return }
             if loadReviewsAtStart && hasReadOnce == false {
                 await syncReview()
             }
+            guard self.generation == generation, !Task.isCancelled else { return }
+            loadedRevision = .read(changes.revision)
             entries = changes.files.map(ContinuousDiffEntry.awaiting)
+            inFlight = []
+            isWaitingLong = false
             // A new change set is a new set of files, so nothing lexed against the last one addresses
             // anything here. Held rather than dropped, they would be entries under identifiers this
             // screen no longer draws — memory nothing can reach.
@@ -447,8 +522,10 @@ public final class ClientViewerModel {
                 await reading(readingPosition)
             }
         } catch .cancelled {
+            guard self.generation == generation else { return }
             state = entries.isEmpty ? .loading : .reading(entries)
         } catch {
+            guard self.generation == generation, !Task.isCancelled else { return }
             state = .failed(error)
         }
     }
@@ -622,6 +699,7 @@ public final class ClientViewerModel {
     /// makes taking it back honest rather than confusing is that the reader is told — a mark that
     /// silently reverted would be the app disagreeing with them about the one thing it is for.
     public func setViewed(_ isViewed: Bool, on file: FileID) async {
+        let generation = self.generation
         guard let position = entries.firstIndex(where: { $0.id == file }) else { return }
         let before = entries[position]
         entries[position] = before.viewed(isViewed)
@@ -643,6 +721,7 @@ public final class ClientViewerModel {
             // refused would be the app inventing a refusal nobody made.
             return
         } catch {
+            guard self.generation == generation, !Task.isCancelled else { return }
             // Found again rather than reused, because the batch loader may have replaced this entry
             // while the write was in flight — and putting the stale one back would drop a diff.
             if let now = entries.firstIndex(where: { $0.id == file }) {
@@ -745,6 +824,7 @@ public final class ClientViewerModel {
     /// symptom is twenty context lines appearing twice with the gutter numbers saying so. It is on
     /// the device afternoon's list, which is where it can be seen.
     public func expand(_ direction: ContextDirection, hunk index: Int, in file: FileID) async {
+        let generation = generation
         guard let position = entries.firstIndex(where: { $0.id == file }),
               case .ready(let prepared) = entries[position].content,
               let hunkPosition = prepared.diff.hunks.firstIndex(where: { $0.index == index }) else { return }
@@ -772,6 +852,7 @@ public final class ClientViewerModel {
                 start: window.start,
                 count: window.count
             )
+            guard self.generation == generation, !Task.isCancelled else { return }
             // Found again rather than reused: a batch may have replaced this file while the lines
             // were in flight, and splicing into the copy taken before the request would drop it.
             guard let now = entries.firstIndex(where: { $0.id == file }),
@@ -799,6 +880,7 @@ public final class ClientViewerModel {
             // which is what makes an expansion upgrade in place rather than flash back to plain.
             await highlight()
         } catch {
+            guard self.generation == generation, !Task.isCancelled else { return }
             expansionFailure = error
         }
     }
@@ -1062,16 +1144,17 @@ public final class ClientViewerModel {
     /// once for the batch, and the bar at the bottom is the one thing that asks again.
     private func fetch(_ wanted: [FileID]) async {
         guard wanted.isEmpty == false else { return }
+        let generation = generation
         // Content is ready before colouring starts. A reload during colouring must be able to
         // fetch it again, and this request must release ownership before another can acquire it.
         do {
             inFlight.formUnion(wanted)
-            let saying = sayingTheWaitIsLong()
+            let saying = sayingTheWaitIsLong(generation: generation)
             defer {
-                inFlight.subtract(wanted)
                 saying.cancel()
-                if inFlight.isEmpty {
-                    isWaitingLong = false
+                if self.generation == generation {
+                    inFlight.subtract(wanted)
+                    if inFlight.isEmpty { isWaitingLong = false }
                 }
             }
 
@@ -1084,10 +1167,12 @@ public final class ClientViewerModel {
                 // pressed Back is the app blaming the Mac for something the app did.
                 return
             } catch {
+                guard self.generation == generation, !Task.isCancelled else { return }
                 refuse(wanted, with: error)
                 return
             }
             let preparedDiffs = await Self.prepare(diffs)
+            guard self.generation == generation, !Task.isCancelled else { return }
             isRetryingDiffs = false
             for prepared in preparedDiffs {
                 guard let position = entries.firstIndex(where: { $0.id == prepared.diff.file.id }) else { continue }
@@ -1111,7 +1196,9 @@ public final class ClientViewerModel {
             // because a review is a handful of comments.
             comments = ReviewedComment.ordered(comments, against: entries)
         }
+        guard self.generation == generation, !Task.isCancelled else { return }
         await highlight()
+        guard self.generation == generation, !Task.isCancelled else { return }
         await fetchImages(of: wanted)
     }
 
@@ -1147,6 +1234,7 @@ public final class ClientViewerModel {
     }
 
     private func loadImage(_ request: ImageRequest) async {
+        let generation = generation
         let answer: DiffImageSide
         do {
             answer = .arrived(
@@ -1157,7 +1245,7 @@ public final class ClientViewerModel {
             // whenever its view goes away, and a picture reading *couldn’t read this* because the
             // reader pressed Back is the app blaming the Mac for something the app did. Forgetting
             // the question is what lets the next visit ask it again.
-            askedForImages.remove(request)
+            if self.generation == generation { askedForImages.remove(request) }
             return
         } catch {
             answer = .refused(error)
@@ -1165,7 +1253,8 @@ public final class ClientViewerModel {
         // Found again rather than reused: a change set landing while this was in flight empties the
         // whole dictionary, and writing here would put back a picture of a file the scroll no longer
         // draws — under an identifier nothing would ever free.
-        guard let held = images[request.file] else { return }
+        guard self.generation == generation, !Task.isCancelled,
+              let held = images[request.file] else { return }
         images[request.file] = held.replacing(request.side, with: answer)
     }
 
@@ -1191,18 +1280,18 @@ public final class ClientViewerModel {
     ///
     /// **Cancelled by the `defer` that ends the batch**, so a request that answers inside the
     /// threshold never writes anything and the ordinary screen never sees the word at all.
-    private func sayingTheRefreshIsWorthShowing() -> Task<Void, Never> {
+    private func sayingTheRefreshIsWorthShowing(generation: UUID) -> Task<Void, Never> {
         Task { [weak self, refreshAnnouncementDelay] in
             try? await Task.sleep(for: refreshAnnouncementDelay)
-            guard Task.isCancelled == false else { return }
+            guard Task.isCancelled == false, self?.generation == generation else { return }
             self?.isRefreshing = true
         }
     }
 
-    private func sayingTheWaitIsLong() -> Task<Void, Never> {
+    private func sayingTheWaitIsLong(generation: UUID) -> Task<Void, Never> {
         Task { [weak self, longWait] in
             try? await Task.sleep(for: longWait)
-            guard Task.isCancelled == false else { return }
+            guard Task.isCancelled == false, self?.generation == generation else { return }
             self?.isWaitingLong = true
         }
     }
@@ -1216,12 +1305,14 @@ public final class ClientViewerModel {
     /// top means colouring the file they left before the one they are on.
     private func highlight() async {
         guard entries.isEmpty == false else { return }
+        let generation = generation
         let first = min(max(0, readingPosition), entries.count - 1)
         // Taken as values before the first await rather than walked by index, so a batch landing
         // partway through cannot leave this indexing a list that has since become shorter.
         for entry in Array(entries[first...]) + Array(entries[..<first]) {
             guard entry.collapse.isCollapsed == false, case .ready(let prepared) = entry.content else { continue }
             for side in DiffSide.allCases {
+                guard self.generation == generation, !Task.isCancelled else { return }
                 await highlight(prepared.diff, side: side)
             }
         }
@@ -1229,6 +1320,7 @@ public final class ClientViewerModel {
 
     /// One side of one file, asked once and filed under the numbers the gutter draws.
     private func highlight(_ diff: FileDiff, side: DiffSide) async {
+        let generation = generation
         guard let key = SyntaxHighlighting.key(
             for: diff,
             side: side,
@@ -1257,8 +1349,14 @@ public final class ClientViewerModel {
         // came back is the wrong colours rather than late ones. **`indexed` is empty** when the lexer
         // answered with a different number of lines than it was given, which `HighlightSource`
         // discards whole rather than shifting every colour after the gap onto the wrong row.
-        guard asked.contains(key), indexed.isEmpty == false else { return }
+        guard self.generation == generation, !Task.isCancelled,
+              asked.contains(key), indexed.isEmpty == false else { return }
         highlighted[key.fileId] = (highlighted[key.fileId] ?? .none).replacing(side, with: indexed)
+    }
+
+    private enum LoadedRevision {
+        case notRead
+        case read(String)
     }
 
     /// `Turbine.swift:41-44` — the file's name and the span, resolved against the diff.

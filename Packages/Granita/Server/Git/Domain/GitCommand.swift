@@ -20,6 +20,12 @@ public enum GitCommand: Hashable, Sendable {
     /// The absolute path of the checkout's root.
     case repositoryRoot
 
+    /// The absolute metadata directory for this checkout.
+    case gitDirectory
+
+    /// The absolute metadata directory shared by this repository's checkouts.
+    case commonGitDirectory
+
     /// The current branch, or the literal `HEAD` when the checkout is detached.
     case currentBranch
 

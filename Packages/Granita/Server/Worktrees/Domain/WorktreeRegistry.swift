@@ -25,11 +25,16 @@ public enum WorktreeRegistryError: Error, Hashable, Sendable {
     /// No enabled project holds that worktree at all.
     case notFound
 
+    case git(GitError)
+
+    case cancelled
+
     /// How it travels, which is the one thing both boundaries agree on.
     public var code: ApiErrorCode {
         switch self {
         case .projectNotVisible: .projectNotVisible
         case .directoryGone, .notFound: .worktreeGone
+        case .git, .cancelled: .gitFailure
         }
     }
 }
@@ -45,7 +50,7 @@ public enum WorktreeRegistryError: Error, Hashable, Sendable {
 /// the routes that serve a phone, which are `Presentation` and carry Hummingbird, and the repository
 /// that reads this Mac with no socket in the path. Its only filesystem access is behind
 /// ``WorktreeDirectoryReading`` for exactly that reason.
-public struct WorktreeRegistry: Sendable {
+public actor WorktreeRegistry {
 
     /// Somewhere resolvable, with everything needed to describe it.
     public struct Resolved: Sendable {
@@ -65,38 +70,59 @@ public struct WorktreeRegistry: Sendable {
     private let service: WorktreeService
     private let directory: any WorktreeDirectoryReading
     private let suggestedAliases: @Sendable ([(path: String, branch: String?)]) async -> [String: String]
+    private let now: @Sendable () -> Date
+    private var recordsByProject: [ProjectID: [WorktreeRecord]] = [:]
+    private var changesByWorktree: [WorktreeID: WorktreeChangeSet] = [:]
+    private var scanDates: [WorktreeID: Date] = [:]
+    private var refreshFailures: [WorktreeID: WorktreeRegistryError] = [:]
+    private var projectFailures: [ProjectID: WorktreeRegistryError] = [:]
+    private var subscribers: [UUID: AsyncStream<WorktreeSnapshot>.Continuation] = [:]
+    private var scans: [ProjectID: ProjectScan] = [:]
+    private var requestedScans: [ProjectID: UInt64] = [:]
+    private var completedScans: [ProjectID: UInt64] = [:]
+    private var pendingScans: [ProjectID: ScanScope] = [:]
+    private var scanLifetime = UUID()
+    private var cacheVersion: UInt64 = 0
+    private var publicationVersion: UInt64 = 0
 
     public init(
         store: any Store,
         service: WorktreeService,
         directory: any WorktreeDirectoryReading,
-        suggestedAliases: @escaping @Sendable ([(path: String, branch: String?)]) async -> [String: String]
+        suggestedAliases: @escaping @Sendable ([(path: String, branch: String?)]) async -> [String: String],
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
         self.service = service
         self.directory = directory
         self.suggestedAliases = suggestedAliases
+        self.now = now
     }
 
     public func projects() async -> [Project] {
+        let lifetime = scanLifetime
         let state = await store.state()
-        var projects: [Project] = []
         for stored in state.projects where stored.isVisible {
-            let records = (try? await service.worktrees(in: RepositoryLocation(path: stored.path))) ?? []
-            var dirty = 0
-            for record in records {
-                let changes = try? await service.changeSet(in: record.location, viewed: [:])
-                if let changes, changes.files.isEmpty == false { dirty += 1 }
+            do {
+                try await prepare(stored, refreshing: false, invalidating: [], lifetime: lifetime, requirement: .availableProjects)
+                projectFailures.removeValue(forKey: stored.id)
+            } catch {
+                projectFailures[stored.id] = error
             }
-            projects.append(Project(
+        }
+        let current = await store.state()
+        return current.projects.filter(\.isVisible).map { stored in
+            let records = recordsByProject[stored.id] ?? []
+            return Project(
                 id: stored.id,
                 name: stored.name,
                 isVisible: stored.isVisible,
                 worktreeCount: records.count,
-                dirtyWorktreeCount: dirty
-            ))
+                dirtyWorktreeCount: records.count {
+                    changesByWorktree[WorktreeID(canonicalPath: $0.location.path)]?.files.isEmpty == false
+                }
+            )
         }
-        return projects
     }
 
     /// Drops what the store holds for worktrees that no longer exist, and caps the viewed marks.
@@ -127,37 +153,344 @@ public struct WorktreeRegistry: Sendable {
     }
 
     public func worktrees(inProject filter: ProjectID?) async throws(WorktreeRegistryError) -> [Worktree] {
+        try await worktrees(inProject: filter, refreshing: false)
+    }
+
+    public func snapshot(
+        inProject filter: ProjectID?,
+        refreshing: Bool
+    ) async throws(WorktreeRegistryError) -> WorktreeSnapshot {
+        try await preparedSnapshot(inProject: filter, refreshing: refreshing, invalidating: [], requirement: .complete)
+    }
+
+    public func updates() async -> AsyncStream<WorktreeSnapshot> {
+        let updates = AsyncStream.makeStream(of: WorktreeSnapshot.self, bufferingPolicy: .bufferingNewest(1))
+        let subscription = UUID()
+        subscribers[subscription] = updates.continuation
+        updates.continuation.onTermination = { [weak self] _ in
+            Task { await self?.removeSubscriber(subscription) }
+        }
+        let version = publicationVersion
+        do {
+            let snapshot = try await self.snapshot(inProject: nil, refreshing: false)
+            // A broadcast during warming already seeded this registered subscriber. Its newer
+            // buffered value must survive even if the initial read resumes afterward.
+            if subscribers[subscription] != nil, publicationVersion == version {
+                updates.continuation.yield(snapshot)
+            }
+        } catch {
+            switch error {
+            case .git:
+                // Keep the subscription so a later successful reconciliation can seed it.
+                break
+            case .projectNotVisible, .directoryGone, .notFound, .cancelled:
+                subscribers.removeValue(forKey: subscription)
+                updates.continuation.finish()
+            }
+        }
+        return updates.stream
+    }
+
+    public func observationLocations() async -> [RepositoryLocation] {
         let state = await store.state()
+        var locations: [RepositoryLocation] = []
+        for project in state.projects where project.isVisible {
+            for location in [RepositoryLocation(path: project.path)]
+                + (recordsByProject[project.id] ?? []).map(\.location) {
+                if locations.contains(location) == false { locations.append(location) }
+            }
+        }
+        return locations
+    }
+
+    public func storeDidChange() async {
+        let lifetime = scanLifetime
+        let state = await store.state()
+        // A full-inventory event also removes absent rows on the client. Until every enabled
+        // project has a successful inventory, omission means unknown rather than gone.
+        guard state.projects.filter(\.isVisible).allSatisfy({ recordsByProject[$0.id] != nil }) else {
+            return
+        }
+        do {
+            let snapshot = try await renderedSnapshot(inProject: nil, lifetime: lifetime, requirement: .complete)
+            publicationVersion += 1
+            for continuation in subscribers.values { continuation.yield(snapshot) }
+        } catch {
+            for id in changesByWorktree.keys { refreshFailures[id] = error }
+        }
+    }
+
+    public func stop() async {
+        scanLifetime = UUID()
+        let continuations = Array(subscribers.values)
+        subscribers = [:]
+        for continuation in continuations { continuation.finish() }
+        let running = Array(scans.values)
+        scans = [:]
+        pendingScans = [:]
+        for scan in running { scan.task.cancel() }
+    }
+
+    public func refresh(in worktrees: Set<WorktreeID>) async {
+        do {
+            _ = try await preparedSnapshot(inProject: nil, refreshing: false, invalidating: worktrees, requirement: .complete)
+            for id in worktrees { refreshFailures.removeValue(forKey: id) }
+            await storeDidChange()
+        } catch {
+            for id in worktrees { refreshFailures[id] = error }
+            if recordsByProject.isEmpty == false { await storeDidChange() }
+        }
+    }
+
+    public func reconcile() async {
+        do {
+            _ = try await worktrees(inProject: nil, refreshing: true)
+            refreshFailures = [:]
+            await storeDidChange()
+        } catch {
+            for id in changesByWorktree.keys { refreshFailures[id] = error }
+            if recordsByProject.isEmpty == false { await storeDidChange() }
+        }
+    }
+
+    public func didRemove(_ worktree: WorktreeID) async {
+        // An enumeration already in flight can still contain this checkout. Keep the removal
+        // with that attempt so its useful changes for other checkouts can still be committed.
+        for project in Array(scans.keys) {
+            scans[project]?.removedWorktrees.insert(worktree)
+        }
+        for project in Array(recordsByProject.keys) {
+            recordsByProject[project]?.removeAll {
+                WorktreeID(canonicalPath: $0.location.path) == worktree
+            }
+        }
+        changesByWorktree.removeValue(forKey: worktree)
+        scanDates.removeValue(forKey: worktree)
+        refreshFailures.removeValue(forKey: worktree)
+        cacheVersion += 1
+        await storeDidChange()
+    }
+
+    public func worktrees(
+        inProject filter: ProjectID?,
+        refreshing: Bool
+    ) async throws(WorktreeRegistryError) -> [Worktree] {
+        try await preparedSnapshot(inProject: filter, refreshing: refreshing, invalidating: [], requirement: .availableProjects).worktrees
+    }
+
+    private func preparedSnapshot(
+        inProject filter: ProjectID?,
+        refreshing: Bool,
+        invalidating: Set<WorktreeID>,
+        requirement: InventoryRequirement
+    ) async throws(WorktreeRegistryError) -> WorktreeSnapshot {
+        let lifetime = scanLifetime
+        let state = await store.state()
+        guard scanLifetime == lifetime else { throw .cancelled }
         let projects = state.projects.filter { $0.isVisible && (filter == nil || $0.id == filter) }
         if let filter, projects.isEmpty, state.projects.contains(where: { $0.id == filter }) {
             throw .projectNotVisible
         }
-
-        var records: [(StoredProject, WorktreeRecord)] = []
-        for project in projects {
-            let found = (try? await service.worktrees(in: RepositoryLocation(path: project.path))) ?? []
-            records.append(contentsOf: found.map { (project, $0) })
+        let failures = await withTaskGroup(of: Result<Void, WorktreeRegistryError>.self) { group in
+            for project in projects {
+                group.addTask {
+                    do throws(WorktreeRegistryError) {
+                        try await self.prepare(
+                            project, refreshing: refreshing, invalidating: invalidating, lifetime: lifetime,
+                            requirement: requirement
+                        )
+                        return .success(())
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+            var failures: [WorktreeRegistryError] = []
+            for await result in group {
+                if case .failure(let error) = result { failures.append(error) }
+            }
+            return failures
         }
+        guard scanLifetime == lifetime else { throw .cancelled }
+        if let failure = failures.first { throw failure }
+        return try await renderedSnapshot(inProject: filter, lifetime: lifetime, requirement: requirement)
+    }
 
-        let suggestions = await suggestedAliases(records.map {
-            ($0.1.location.path, $0.1.branch.map(Self.shortBranch))
-        })
-
-        var worktrees: [Worktree] = []
-        for (index, entry) in records.enumerated() {
-            let (project, record) = entry
-            worktrees.append(await described(
-                record,
-                of: project,
-                // The primary checkout is the one git lists first, which is the repository root
-                // itself; everything after it is a linked worktree.
-                isPrimary: index == 0 || record.location.path == project.path,
-                suggestedAlias: suggestions[record.location.path],
-                stored: state.worktrees[WorktreeID(canonicalPath: record.location.path)],
-                viewed: state.viewed[WorktreeID(canonicalPath: record.location.path)]?.mapValues(\.contentHash) ?? [:]
-            ))
+    private func renderedSnapshot(
+        inProject filter: ProjectID?,
+        lifetime: UUID,
+        requirement: InventoryRequirement
+    ) async throws(WorktreeRegistryError) -> WorktreeSnapshot {
+        while true {
+            let version = cacheVersion
+            let latest = await store.state()
+            let visible = latest.projects.filter { $0.isVisible && (filter == nil || $0.id == filter) }
+            // Project visibility can change while another project's scan or alias read suspends.
+            // A full snapshot must include a successful inventory for the final visible set.
+            for project in visible where recordsByProject[project.id] == nil {
+                try await prepare(project, refreshing: false, invalidating: [], lifetime: lifetime, requirement: requirement)
+            }
+            guard cacheVersion == version else { continue }
+            let records = visible.flatMap { project in
+                (recordsByProject[project.id] ?? []).map { (project, $0) }
+            }
+            let preparedChanges = changesByWorktree
+            let preparedDates = scanDates
+            let suggestions = await suggestedAliases(records.map {
+                ($0.1.location.path, $0.1.branch.map(Self.shortBranch))
+            })
+            let overlays = await store.state()
+            guard scanLifetime == lifetime else { throw .cancelled }
+            // Alias discovery can suspend while another scan publishes newer content. Render again
+            // from that committed cache rather than letting an older snapshot overtake it.
+            guard cacheVersion == version else { continue }
+            guard overlays.projects.filter({ $0.isVisible && (filter == nil || $0.id == filter) }) == visible else {
+                continue
+            }
+            var worktrees: [Worktree] = []
+            for (project, record) in records {
+                let id = WorktreeID(canonicalPath: record.location.path)
+                if overlays.projects.contains(where: { $0.id == project.id && $0.isVisible }),
+                   let changes = preparedChanges[id] {
+                    worktrees.append(described(
+                        record,
+                        of: project,
+                        changes: changes,
+                        // Git lists each project's primary checkout first.
+                        isPrimary: recordsByProject[project.id]?.first?.location == record.location,
+                        suggestedAlias: suggestions[record.location.path],
+                        stored: overlays.worktrees[id],
+                        viewed: overlays.viewed[id]?.mapValues(\.contentHash) ?? [:]
+                    ))
+                }
+            }
+            return WorktreeSnapshot(
+                worktrees: worktrees,
+                scannedAt: worktrees.compactMap { preparedDates[$0.id] }.min() ?? now()
+            )
         }
-        return worktrees
+    }
+
+    private func prepare(
+        _ project: StoredProject,
+        refreshing: Bool,
+        invalidating: Set<WorktreeID>,
+        lifetime: UUID,
+        requirement: InventoryRequirement
+    ) async throws(WorktreeRegistryError) {
+        guard scanLifetime == lifetime else { throw .cancelled }
+        let cached = recordsByProject[project.id]
+        // Legacy lists tolerate missing enabled folders, but omission is not a successful inventory
+        // and must never seed the complete snapshots that remove rows on connected clients.
+        if case .availableProjects = requirement,
+           cached == nil, directory.exists(at: RepositoryLocation(path: project.path)) == false {
+            return
+        }
+        let requiresRefresh = refreshing || (cached ?? []).contains {
+            invalidating.contains(WorktreeID(canonicalPath: $0.location.path))
+        }
+        if requiresRefresh == false, let cached,
+           cached.allSatisfy({ changesByWorktree[WorktreeID(canonicalPath: $0.location.path)] != nil }) {
+            return
+        }
+        let requested: UInt64
+        if requiresRefresh {
+            requested = (requestedScans[project.id] ?? 0) + 1
+            requestedScans[project.id] = requested
+            let scope: ScanScope = refreshing ? .all : .worktrees(invalidating)
+            pendingScans[project.id] = pendingScans[project.id].map { $0.including(scope) } ?? scope
+        } else {
+            requested = completedScans[project.id] ?? 0
+        }
+        while true {
+            if let running = scans[project.id] {
+                let result = await running.task.value
+                guard scanLifetime == lifetime else { throw .cancelled }
+                if requiresRefresh, (completedScans[project.id] ?? 0) < requested { continue }
+                switch result {
+                case .success: return
+                case .failure(let error): throw .git(error)
+                }
+            }
+            let scope = pendingScans.removeValue(forKey: project.id) ?? .missing
+            let generation = requestedScans[project.id] ?? 0
+            let attempt = UUID()
+            let task = Task { () -> Result<PreparedProject, GitError> in
+                let result: Result<PreparedProject, GitError>
+                do throws(GitError) {
+                    let invalidated: Set<WorktreeID>
+                    let refresh: Bool
+                    switch scope {
+                    case .missing: invalidated = []; refresh = false
+                    case .all: invalidated = []; refresh = true
+                    case .worktrees(let ids): invalidated = ids; refresh = false
+                    }
+                    result = .success(try await self.prepared(project, refreshing: refresh, invalidating: invalidated))
+                } catch {
+                    result = .failure(error)
+                }
+                await self.complete(project, attempt: attempt, generation: generation, result: result)
+                return result
+            }
+            scans[project.id] = ProjectScan(attempt: attempt, task: task, removedWorktrees: [])
+            let result = await task.value
+            guard scanLifetime == lifetime else { throw .cancelled }
+            if requiresRefresh, (completedScans[project.id] ?? 0) < requested { continue }
+            switch result {
+            case .success: return
+            case .failure(let error): throw .git(error)
+            }
+        }
+    }
+
+    private func prepared(
+        _ project: StoredProject,
+        refreshing: Bool,
+        invalidating: Set<WorktreeID>
+    ) async throws(GitError) -> PreparedProject {
+        let records = try await service.worktrees(in: RepositoryLocation(path: project.path))
+        let previous = recordsByProject[project.id] ?? []
+        var changes: [WorktreeID: WorktreeChangeSet] = [:]
+        var dates: [WorktreeID: Date] = [:]
+        for record in records {
+            let id = WorktreeID(canonicalPath: record.location.path)
+            if refreshing == false, invalidating.contains(id) == false,
+               previous.first(where: { $0.location == record.location })?.head == record.head,
+               let cached = changesByWorktree[id] {
+                changes[id] = cached
+                dates[id] = scanDates[id]
+            } else {
+                changes[id] = try await service.changeSet(in: record.location, viewed: [:])
+                dates[id] = now()
+            }
+        }
+        return PreparedProject(records: records, changes: changes, dates: dates)
+    }
+
+    private func complete(
+        _ project: StoredProject,
+        attempt: UUID,
+        generation: UInt64,
+        result: Result<PreparedProject, GitError>
+    ) async {
+        let state = await store.state()
+        guard let scan = scans[project.id], scan.attempt == attempt else { return }
+        scans.removeValue(forKey: project.id)
+        completedScans[project.id] = generation
+        guard state.projects.contains(where: { $0.id == project.id && $0.isVisible }) else { return }
+        if case .success(let prepared) = result {
+            cacheVersion += 1
+            recordsByProject[project.id] = prepared.records.filter {
+                scan.removedWorktrees.contains(WorktreeID(canonicalPath: $0.location.path)) == false
+            }
+            changesByWorktree.merge(prepared.changes) { _, current in current }
+            scanDates.merge(prepared.dates) { _, current in current }
+            let living = Set(recordsByProject.values.flatMap { $0 }.map {
+                WorktreeID(canonicalPath: $0.location.path)
+            })
+            changesByWorktree = changesByWorktree.filter { living.contains($0.key) }
+            scanDates = scanDates.filter { living.contains($0.key) }
+        }
     }
 
     /// One worktree, described the way the list describes every worktree.
@@ -170,18 +503,33 @@ public struct WorktreeRegistry: Sendable {
     ///
     /// It takes the `Resolved` the route already has rather than an identifier, so the enumeration
     /// that resolved it is not run a second time.
-    public func worktree(_ resolved: Resolved) async -> Worktree {
+    public func worktree(_ resolved: Resolved) async throws(WorktreeRegistryError) -> Worktree {
         let state = await store.state()
         let suggestions = await suggestedAliases([
             (resolved.record.location.path, resolved.record.branch.map(Self.shortBranch))
         ])
-        return await described(
+        let id = WorktreeID(canonicalPath: resolved.location.path)
+        let changes: WorktreeChangeSet
+        do {
+            if let cached = changesByWorktree[id] {
+                changes = cached
+            } else {
+                changes = try await service.changeSet(in: resolved.location, viewed: [:])
+                changesByWorktree[id] = changes
+                scanDates[id] = now()
+                cacheVersion += 1
+            }
+        } catch {
+            throw .git(error)
+        }
+        return described(
             resolved.record,
             of: resolved.project,
+            changes: changes,
             isPrimary: resolved.isPrimary,
             suggestedAlias: suggestions[resolved.record.location.path],
-            stored: state.worktrees[WorktreeID(canonicalPath: resolved.record.location.path)],
-            viewed: state.viewed[WorktreeID(canonicalPath: resolved.record.location.path)]?.mapValues(\.contentHash) ?? [:]
+            stored: state.worktrees[id],
+            viewed: state.viewed[id]?.mapValues(\.contentHash) ?? [:]
         )
     }
 
@@ -196,15 +544,14 @@ public struct WorktreeRegistry: Sendable {
     private func described(
         _ record: WorktreeRecord,
         of project: StoredProject,
+        changes: WorktreeChangeSet,
         isPrimary: Bool,
         suggestedAlias suggested: String?,
         stored: StoredWorktree?,
         viewed: [FileID: String]
-    ) async -> Worktree {
+    ) -> Worktree {
         let branch = record.branch.map(Self.shortBranch)
         let directoryName = (record.location.path as NSString).lastPathComponent
-        let changes = try? await service.changeSet(in: record.location, viewed: viewed)
-
         return Worktree(
             id: WorktreeID(canonicalPath: record.location.path),
             projectId: project.id,
@@ -219,10 +566,10 @@ public struct WorktreeRegistry: Sendable {
             displayName: stored?.alias ?? suggested ?? branch ?? directoryName,
             directoryName: directoryName,
             isPinned: stored?.isPinned ?? false,
-            stats: changes?.stats ?? .zero,
+            stats: changes.stats,
             lastModified: directory.lastModified(at: record.location),
-            revision: changes?.revision ?? ""
-        ).withViewedFileCount(changes?.files.count(where: \.isViewed))
+            revision: changes.revision
+        ).withViewedFileCount(changes.files.count { viewed[$0.id] == $0.contentHash })
     }
 
     /// Where a worktree is, or why it cannot be served.
@@ -247,5 +594,41 @@ public struct WorktreeRegistry: Sendable {
 
     private static func shortBranch(_ ref: String) -> String {
         ref.hasPrefix("refs/heads/") ? String(ref.dropFirst("refs/heads/".count)) : ref
+    }
+
+    private func removeSubscriber(_ subscription: UUID) {
+        subscribers.removeValue(forKey: subscription)
+    }
+
+    private struct PreparedProject: Sendable {
+        let records: [WorktreeRecord]
+        let changes: [WorktreeID: WorktreeChangeSet]
+        let dates: [WorktreeID: Date]
+    }
+
+    private enum InventoryRequirement {
+        case complete
+        case availableProjects
+    }
+
+    private struct ProjectScan {
+        let attempt: UUID
+        let task: Task<Result<PreparedProject, GitError>, Never>
+        var removedWorktrees: Set<WorktreeID>
+    }
+
+    private enum ScanScope {
+        case missing
+        case all
+        case worktrees(Set<WorktreeID>)
+
+        func including(_ other: Self) -> Self {
+            switch (self, other) {
+            case (.all, _), (_, .all): .all
+            case (.missing, .missing): .missing
+            case (.worktrees(let ids), .missing), (.missing, .worktrees(let ids)): .worktrees(ids)
+            case (.worktrees(let first), .worktrees(let second)): .worktrees(first.union(second))
+            }
+        }
     }
 }

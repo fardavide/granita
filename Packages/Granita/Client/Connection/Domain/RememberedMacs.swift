@@ -237,10 +237,31 @@ public struct RememberedMacRepository: GranitaRepository {
 
     private let server: DiscoveredServer
     private let macs: RememberedMacs
+    private let liveUpdates: WorktreeUpdates
 
     public init(reading server: DiscoveredServer, through macs: RememberedMacs) {
         self.server = server
         self.macs = macs
+        liveUpdates = WorktreeUpdates { receive throws(ApiFailure) in
+            do throws(ApiFailure) {
+                let repository = try await macs.connection(to: server)
+                guard !Task.isCancelled else { throw .cancelled }
+                for await update in await repository.updates() {
+                    guard !Task.isCancelled else { throw .cancelled }
+                    switch update {
+                    case .snapshot(let snapshot): await receive(snapshot)
+                    case .failed(let failure): throw failure
+                    case .unsupported: throw .routeNotServed
+                    }
+                }
+            } catch {
+                throw await Self.noted(error, server: server, macs: macs)
+            }
+        }
+    }
+
+    public func updates() async -> AsyncStream<WorktreeUpdate> {
+        await liveUpdates.stream()
     }
 
     public func projects() async throws(ApiFailure) -> [Project] {
@@ -259,12 +280,36 @@ public struct RememberedMacRepository: GranitaRepository {
         }
     }
 
+    public func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        do {
+            return try await macs.connection(to: server).refreshWorktrees(inProject: project)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
     public func worktrees(
         inProject project: ProjectID?,
         reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
     ) async throws(ApiFailure) -> [Worktree] {
         do {
             return try await macs.connection(to: server, reporting: progress).worktrees(inProject: project)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        do {
+            return try await macs.connection(to: server, reporting: progress)
+                .readWorktrees(inProject: project, refreshing: refreshing, reporting: { stage in
+                    guard stage != .reading(.unknown) else { return }
+                    await progress(stage)
+                })
         } catch {
             throw await noted(error)
         }
@@ -397,6 +442,10 @@ public struct RememberedMacRepository: GranitaRepository {
     /// ratchet would charge for and no test could ever pay off. Returning the value keeps the
     /// measurement honest, and a rethrow spelled out seven times is visible when one is missing.
     private func noted(_ failure: ApiFailure) async -> ApiFailure {
+        await Self.noted(failure, server: server, macs: macs)
+    }
+
+    private static func noted(_ failure: ApiFailure, server: DiscoveredServer, macs: RememberedMacs) async -> ApiFailure {
         switch failure {
         case .unauthorized:
             // The Mac withdrew this pairing — the Devices tab has a Revoke button and this is what

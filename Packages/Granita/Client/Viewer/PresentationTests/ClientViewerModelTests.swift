@@ -1,7 +1,11 @@
+import Foundation
+import Observation
+import Synchronization
 import Testing
 
 import ClientConnectionDomain
 import ClientViewerDomain
+import CoreApiDomain
 import CoreDiffDomain
 import CoreReviewDomain
 
@@ -15,6 +19,308 @@ import CoreReviewDomain
 @Suite("Client viewer model")
 @MainActor
 struct ClientViewerModelTests {
+
+    @Test
+    func `given a diff batch is suspended when live authorization is revoked then the refusal survives its late answer`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), holdingDiffs: true)
+        await scenario.sut.load()
+        let batch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseDiffs()
+        await batch.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given an old diff batch is suspended when the reviewed worktree disappears then its late answer cannot restore that review`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), holdingDiffs: true)
+        await scenario.sut.load()
+        let batch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [], scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+        scenario.repository.releaseDiffs()
+        await batch.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given a live review reload is suspended when its lifecycle is cancelled then no diff request follows its late answer`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            suspendingReadsAfter: 1,
+            liveUpdates: [.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "agent-finished")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            ))]
+        )
+        await scenario.sut.load()
+        let follower = Task { await scenario.sut.followUpdates() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        follower.cancel()
+        scenario.repository.releaseSuspendedRead()
+        await follower.value
+
+        // then
+        #expect(scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given context expansion is suspended when a newer revision arrives then its late refusal remains absent`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), hunksFor: 0, hunks: [aHunkInTheMiddle], holdingLines: true)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let expansion = Task { await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0]) }
+        while scenario.repository.windowsAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseLines()
+        await expansion.value
+
+        // then
+        #expect(scenario.sut.expansionFailure == nil)
+        #expect(scenario.sut.state == .nothingChanged)
+    }
+
+    @Test
+    func `given an old batch is suspended when a newer revision has no changes then its late refusal cannot replace the newer state`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), diffFailure: .fileGone, holdingDiffs: true)
+        await scenario.sut.load()
+        let oldBatch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseDiffs()
+        await oldBatch.value
+
+        // then
+        #expect(scenario.sut.state == .nothingChanged)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given an inactive review when its lifecycle changes then no read or subscription starts`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.followUpdates(active: false)
+
+        // then
+        #expect(scenario.repository.changeSetReads == 0)
+        #expect(scenario.repository.updateSubscriptions == 0)
+    }
+
+    @Test
+    func `given an unread review when following begins then its initial change set loads once`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
+    @Test
+    func `given an open review when following the source then its changed content reloads`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            liveUpdates: [.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "agent-completed")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            ))]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(scenario.repository.changeSetReads == 2)
+    }
+
+    @Test
+    func `given a fresh loaded review when its first stale summary accompanies another worktree change then the visible review stays untouched`() async throws {
+        // given
+        let picture = FileChange(
+            id: FileID(rawValue: "reviewed-picture"),
+            path: "Art/review.png",
+            oldPath: nil,
+            status: .modified,
+            isBinary: true,
+            isSubmodule: false,
+            stats: .zero,
+            contentHash: String(repeating: "e", count: 64),
+            estimatedLineCount: 0,
+            isViewed: false,
+            isTruncated: false,
+            language: nil
+        )
+        let files = aChangeSet(of: 1) + [picture]
+        let scenario = Scenario(files: files, hunksFor: 0, refreshAnnouncementDelay: .zero)
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "newer-direct-read",
+            stats: ChangeStats(filesChanged: 2, insertions: 12, deletions: 4),
+            files: files,
+            isTruncated: false
+        ))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        await scenario.sut.setOpen(false, on: scenario.fileIds[0])
+        scenario.sut.openImage(.new, of: picture.id)
+        scenario.sut.compareImage(true)
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("The review must be loaded before its first summary arrives")
+            return
+        }
+        #expect(entries[0].hunkCountForTests == 1)
+        #expect(entries[0].collapse.isCollapsed)
+        let images = scenario.sut.images
+        #expect(try #require(images[picture.id]).new == .arrived(Data([0x89, 0x50, 0x4E, 0x47, 0x02])))
+        let openedImage = try #require(scenario.sut.openedImage)
+        #expect(scenario.sut.isComparingImage)
+        let visibleStateChanged = Mutex(false)
+        // Final false flags would hide a transient spinner or content reset during reconciliation.
+        withObservationTracking {
+            _ = scenario.sut.state
+            _ = scenario.sut.isRefreshing
+            _ = scenario.sut.isWaitingLong
+            _ = scenario.sut.images
+            _ = scenario.sut.openedImage
+            _ = scenario.sut.isComparingImage
+        } onChange: {
+            visibleStateChanged.withLock { $0 = true }
+        }
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-after")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(visibleStateChanged.withLock { $0 } == false)
+        #expect(scenario.sut.state == .reading(entries))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+        #expect(scenario.sut.images == images)
+        #expect(scenario.sut.openedImage == openedImage)
+        #expect(scenario.sut.isComparingImage)
+    }
+
+    @Test
+    func `given a stale summary for the open review when only another worktree advances then repeated snapshots do not reload it`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "newer-direct-read",
+            stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+            files: aChangeSet(of: 1),
+            isTruncated: false
+        ))
+        await scenario.sut.load()
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-before")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )))
+        let reads = scenario.repository.changeSetReads
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-after")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == reads)
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given an open review when its own content changes then it reloads automatically`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "finished-agent-content",
+            stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+            files: aChangeSet(of: 1),
+            isTruncated: false
+        ))
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "finished-agent-content")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == 2)
+        #expect(scenario.repository.batchesAskedFor == [[FileID(rawValue: "file-0")]])
+    }
+
+    @Test
+    func `given an open review when another worktree changes then its content and refresh state stay untouched`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let before = scenario.sut.state
+        let reads = scenario.repository.changeSetReads
+        let batches = scenario.repository.batchesAskedFor
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "9d41e0c7"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "new-agent-content")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == reads)
+        #expect(scenario.repository.batchesAskedFor == batches)
+        #expect(scenario.sut.state == before)
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
 
     // MARK: - Copying local diagnostics
 
@@ -1408,9 +1714,11 @@ private struct Scenario {
         isTruncated: Bool = false,
         copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
         holdingDiffs: Bool = false,
+        holdingLines: Bool = false,
         suspendingReadsAfter: Int = .max,
         refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay,
         longWait: Duration = DiffFileWait.longWait,
+        liveUpdates: [WorktreeUpdate] = [],
         alsoAnswering stranger: FileChange? = nil
     ) {
         fileIds = files.map(\.id)
@@ -1428,8 +1736,10 @@ private struct Scenario {
             linesAnswer: linesAnswer,
             refusesTheFirstRead: refusesTheFirstRead,
             holdingDiffs: holdingDiffs,
+            holdingLines: holdingLines,
             suspendingReadsAfter: suspendingReadsAfter,
-            alsoAnswering: stranger
+            alsoAnswering: stranger,
+            liveUpdates: liveUpdates
         )
         copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
         announcing = FakeDiffReadAnnouncing()
@@ -1585,4 +1895,25 @@ private func aChangeSet(of count: Int, viewedAt read: Int? = nil) -> [FileChange
             language: "swift"
         )
     }
+}
+
+private func aLiveWorktree(_ id: WorktreeID, revision: String) -> Worktree {
+    Worktree(
+        id: id,
+        projectId: ProjectID(rawValue: "granita-project"),
+        projectName: "Granita",
+        branch: "live-review",
+        isPrimary: false,
+        isDetached: false,
+        isLocked: false,
+        hasUnbornHead: false,
+        alias: nil,
+        suggestedAlias: nil,
+        displayName: "Live review",
+        directoryName: "live-review",
+        isPinned: false,
+        stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+        lastModified: Date(timeIntervalSince1970: 1_800_000_000),
+        revision: revision
+    )
 }

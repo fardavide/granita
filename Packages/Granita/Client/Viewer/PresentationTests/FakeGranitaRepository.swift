@@ -33,6 +33,7 @@ final class FakeGranitaRepository: GranitaRepository {
     /// read asks the same question of the same worktree — what a test wants to know is whether a
     /// gesture produced one at all.
     var changeSetReads: Int { reads.withLock { $0 } }
+    var updateSubscriptions: Int { subscriptions.withLock { $0 } }
 
     private let changeSet: Mutex<Result<WorktreeChanges, ApiFailure>>
 
@@ -40,6 +41,7 @@ final class FakeGranitaRepository: GranitaRepository {
     private let refusesTheFirstRead: ApiFailure?
 
     private let reads = Mutex<Int>(0)
+    private let subscriptions = Mutex<Int>(0)
     private let hunks: [FileID: [Hunk]]
     private let diffFailure: ApiFailure?
     private let viewedFailure: ApiFailure?
@@ -57,6 +59,10 @@ final class FakeGranitaRepository: GranitaRepository {
     /// means the screen a reader spends the wait looking at is a screen no test had ever seen — and
     /// the second word design §9 adds at ten seconds lives entirely inside that window.
     private let holds: Bool
+    private let holdsLines: Bool
+    private let holdsViewedWrites: Bool
+    private let releasedLines = Mutex<Bool>(false)
+    private let releasedViewedWrites = Mutex<Bool>(false)
     private let released = Mutex<Bool>(false)
 
     /// How many change-set reads answer immediately before the rest wait to be let go.
@@ -78,6 +84,7 @@ final class FakeGranitaRepository: GranitaRepository {
 
     /// What this Mac holds for the shape of every exported review.
     private let settings: ReviewSettings
+    private let liveUpdates: [WorktreeUpdate]
 
     private let batches = Mutex<[[FileID]]>([])
     private let writes = Mutex<[ViewedWrite]>([])
@@ -94,11 +101,15 @@ final class FakeGranitaRepository: GranitaRepository {
         imagesAnsweringBeforeRefusing: Int = .max,
         refusesTheFirstRead: ApiFailure? = nil,
         holdingDiffs holds: Bool = false,
+        holdingLines: Bool = false,
+        holdingViewedWrites: Bool = false,
         suspendingReadsAfter readsAnsweringImmediately: Int = .max,
         alsoAnswering stranger: FileChange? = nil,
-        holdingSettings settings: ReviewSettings = .unset
+        holdingSettings settings: ReviewSettings = .unset,
+        liveUpdates: [WorktreeUpdate] = []
     ) {
         self.settings = settings
+        self.liveUpdates = liveUpdates
         self.readsAnsweringImmediately = readsAnsweringImmediately
         self.changeSet = Mutex(changeSet)
         self.hunks = hunks
@@ -109,12 +120,22 @@ final class FakeGranitaRepository: GranitaRepository {
         self.imagesAnsweringBeforeRefusing = imagesAnsweringBeforeRefusing
         self.refusesTheFirstRead = refusesTheFirstRead
         self.holds = holds
+        holdsLines = holdingLines
+        holdsViewedWrites = holdingViewedWrites
         self.stranger = stranger
     }
 
     /// Lets a held batch answer.
     func releaseDiffs() {
         released.withLock { $0 = true }
+    }
+
+    func releaseLines() {
+        releasedLines.withLock { $0 = true }
+    }
+
+    func releaseViewedWrites() {
+        releasedViewedWrites.withLock { $0 = true }
     }
 
     func replaceChanges(_ changes: WorktreeChanges) {
@@ -185,6 +206,7 @@ final class FakeGranitaRepository: GranitaRepository {
         count: Int
     ) async throws(ApiFailure) -> FileLines {
         windows.withLock { $0.append(LineWindow(side: side, start: start, count: count)) }
+        while holdsLines, releasedLines.withLock({ $0 }) == false { await Task.yield() }
         return try linesAnswer.get()
     }
 
@@ -207,6 +229,14 @@ final class FakeGranitaRepository: GranitaRepository {
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
 
+    func updates() async -> AsyncStream<WorktreeUpdate> {
+        subscriptions.withLock { $0 += 1 }
+        return AsyncStream { continuation in
+            for update in liveUpdates { continuation.yield(update) }
+            continuation.finish()
+        }
+    }
+
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] { [] }
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
@@ -224,6 +254,7 @@ final class FakeGranitaRepository: GranitaRepository {
         in worktree: WorktreeID
     ) async throws(ApiFailure) {
         writes.withLock { $0.append(ViewedWrite(isViewed: viewed, file: file, contentHash: contentHash)) }
+        while holdsViewedWrites, releasedViewedWrites.withLock({ $0 }) == false { await Task.yield() }
         if let viewedFailure { throw viewedFailure }
     }
 

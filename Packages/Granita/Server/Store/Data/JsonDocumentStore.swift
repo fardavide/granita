@@ -21,6 +21,7 @@ public actor JsonDocumentStore: Store {
 
     private let fileUrl: URL
     private var loaded: StoredState?
+    private var observers: [UUID: AsyncStream<StoredState>.Continuation] = [:]
 
     public init(fileUrl: URL) {
         self.fileUrl = fileUrl
@@ -31,6 +32,17 @@ public actor JsonDocumentStore: Store {
         let state = readFromDisk()
         loaded = state
         return state
+    }
+
+    public func updates() async -> AsyncStream<StoredState> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<StoredState>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        observers[id] = continuation
+        continuation.yield(state())
+        continuation.onTermination = { [weak self] _ in
+            Task { await self?.removeObserver(id) }
+        }
+        return stream
     }
 
     public func add(project: StoredProject) throws(StoreError) {
@@ -250,6 +262,10 @@ public actor JsonDocumentStore: Store {
 
     /// Nothing on disk is a first run. Anything else on disk that does not become state is damage or
     /// the future, and the two are told apart before either is acted on.
+    private func removeObserver(_ id: UUID) {
+        observers.removeValue(forKey: id)
+    }
+
     private func readFromDisk() -> StoredState {
         guard let data = try? Data(contentsOf: fileUrl) else { return .empty }
 
@@ -297,6 +313,9 @@ public actor JsonDocumentStore: Store {
             // rename is what makes the swap indivisible.
             try data.write(to: fileUrl, options: .atomic)
             loaded = state
+            for continuation in observers.values {
+                continuation.yield(state)
+            }
         } catch {
             throw .notWritable(reason: "\(error)")
         }

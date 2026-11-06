@@ -3,6 +3,7 @@ import Testing
 
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import CoreApiDomain
 import CoreDiffDomain
 
 @testable import ClientWorktreesPresentation
@@ -14,6 +15,216 @@ import CoreDiffDomain
 @Suite("Client worktrees model")
 @MainActor
 struct ClientWorktreesModelTests {
+
+    @Test
+    func `given a read and deferred snapshot when live authorization is revoked then neither restores the list after review ends`() async {
+        // given
+        let reviewed = aWorktree(named: "reviewed", project: "granita")
+        let scenario = Scenario(worktrees: [reviewed], suspendingSecondRead: true, ignoringReadCancellation: true)
+        await scenario.sut.load()
+        scenario.sut.reviewing(reviewed.id)
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [reviewed, aWorktree(named: "agent", project: "granita")],
+            scannedAt: aMoment.addingTimeInterval(60)
+        )))
+        let read = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        await scenario.repository.releaseHeldRead()
+        await read.value
+        scenario.sut.finishedReview(of: reviewed.id)
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.readResult == .notRead)
+        #expect(scenario.sut.isAutomaticallyRefreshing == false)
+    }
+
+    @Test
+    func `given the initial list is suspended when its lifecycle is cancelled then no live subscription opens afterward`() async {
+        // given
+        let scenario = Scenario(worktrees: [], suspendingReads: true)
+        let follower = Task { await scenario.sut.followUpdates() }
+        await scenario.repository.waitUntilReadStarted()
+
+        // when
+        follower.cancel()
+        await scenario.repository.releaseHeldRead()
+        await follower.value
+
+        // then
+        #expect(await scenario.repository.updateSubscriptions == 0)
+    }
+
+    @Test
+    func `given a list read is in flight when a newer snapshot arrives then its late answer cannot overwrite live rows`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "agent", project: "granita")],
+            suspendingSecondRead: true,
+            ignoringReadCancellation: true
+        )
+        await scenario.sut.load()
+        let read = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aWorktree(named: "agent", project: "granita", alias: "Agent finished")],
+            scannedAt: aMoment.addingTimeInterval(60)
+        )))
+        await scenario.repository.releaseHeldRead()
+        await read.value
+
+        // then
+        #expect(scenario.sut.displayName(of: WorktreeID(rawValue: "w-agent")) == "Agent finished")
+        #expect(scenario.sut.readResult == .read(at: aMoment.addingTimeInterval(60), route: .unknown))
+    }
+
+    @Test
+    func `given a prepared list when it loads then its receipt uses the scan time rather than arrival time`() async {
+        // given
+        let scannedAt = aMoment.addingTimeInterval(-90)
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "agent", project: "granita")],
+            preparedAt: scannedAt
+        )
+
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.readResult == .read(at: scannedAt, route: .unknown))
+    }
+
+    @Test
+    func `given an inactive list when its lifecycle changes then no read or subscription starts`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "agent", project: "granita")])
+
+        // when
+        await scenario.sut.followUpdates(active: false)
+
+        // then
+        #expect(await scenario.repository.reads == 0)
+        #expect(await scenario.repository.updateSubscriptions == 0)
+    }
+
+    @Test
+    func `given an unread list when following begins then the initial list loads once`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "agent", project: "granita")])
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(await scenario.repository.reads == 1)
+        #expect(scenario.sut.displayName(of: WorktreeID(rawValue: "w-agent")) == "agent")
+    }
+
+    @Test
+    func `given a visible list when following the source then live snapshots update its rows`() async {
+        // given
+        let scenario = Scenario(
+            worktrees: [aWorktree(named: "agent", project: "granita")],
+            liveUpdates: [.snapshot(WorktreeSnapshot(
+                worktrees: [aWorktree(named: "agent", project: "granita", alias: "Agent finished")],
+                scannedAt: aMoment.addingTimeInterval(90)
+            ))]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(scenario.sut.displayName(of: WorktreeID(rawValue: "w-agent")) == "Agent finished")
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    @Test
+    func `given a review is open when the app returns to foreground then the sidebar does not start a global refresh`() async {
+        // given
+        let reviewed = aWorktree(named: "reviewed", project: "granita")
+        let scenario = Scenario(worktrees: [reviewed])
+        await scenario.sut.load()
+        scenario.sut.reviewing(reviewed.id)
+        scenario.clock.advance(by: 31)
+
+        // when
+        await scenario.sut.sceneBecame(active: true)
+
+        // then
+        #expect(await scenario.repository.reads == 1)
+        #expect(scenario.sut.isAutomaticallyRefreshing == false)
+    }
+
+    @Test
+    func `given updates were deferred during review when the reader returns then the latest snapshot is shown`() async {
+        // given
+        let reviewed = aWorktree(named: "reviewed", project: "granita")
+        let scenario = Scenario(worktrees: [reviewed, aWorktree(named: "agent", project: "granita")])
+        await scenario.sut.load()
+        scenario.sut.reviewing(reviewed.id)
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [reviewed, aWorktree(named: "agent", project: "granita", alias: "Agent finished")],
+            scannedAt: aMoment.addingTimeInterval(90)
+        )))
+
+        // when
+        scenario.sut.finishedReview(of: reviewed.id)
+
+        // then
+        #expect(scenario.sut.displayName(of: WorktreeID(rawValue: "w-agent")) == "Agent finished")
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    @Test
+    func `given the list is visible when a snapshot arrives then rows update without a new read or spinner`() async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "agent", project: "granita")])
+        await scenario.sut.load()
+        let scannedAt = aMoment.addingTimeInterval(90)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aWorktree(named: "agent", project: "granita", alias: "Agent finished")],
+            scannedAt: scannedAt
+        )))
+
+        // then
+        #expect(scenario.sut.displayName(of: WorktreeID(rawValue: "w-agent")) == "Agent finished")
+        #expect(scenario.sut.readResult == .read(at: scannedAt, route: .unknown))
+        #expect(scenario.sut.isAutomaticallyRefreshing == false)
+        #expect(await scenario.repository.reads == 1)
+    }
+
+    @Test
+    func `given a review is open when another worktree changes then the visible sidebar stays untouched`() async {
+        // given
+        let reviewed = aWorktree(named: "reviewed", project: "granita")
+        let other = aWorktree(named: "agent", project: "granita")
+        let scenario = Scenario(worktrees: [reviewed, other])
+        await scenario.sut.load()
+        scenario.sut.reviewing(reviewed.id)
+        let state = scenario.sut.state
+        let receipt = scenario.sut.readResult
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [reviewed, other.applying(WorktreePatch(alias: .set("Agent finished"), isPinned: nil))],
+            scannedAt: aMoment.addingTimeInterval(90)
+        )))
+
+        // then
+        #expect(scenario.sut.state == state)
+        #expect(scenario.sut.readResult == receipt)
+        #expect(scenario.sut.isAutomaticallyRefreshing == false)
+        #expect(await scenario.repository.reads == 1)
+    }
 
     // MARK: - Copying local diagnostics
 
@@ -1590,6 +1801,8 @@ struct ClientWorktreesModelTests {
             suspendingSecondRead: Bool = false,
             suspendedReadNumbers: Set<Int> = [],
             ignoringReadCancellation: Bool = false,
+            liveUpdates: [WorktreeUpdate] = [],
+            preparedAt: Date? = nil,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences(),
             announcementDelay: Duration = UnaskedForRefresh.announcementDelay
@@ -1606,7 +1819,9 @@ struct ClientWorktreesModelTests {
                 suspendingReads: suspendingReads,
                 suspendingSecondRead: suspendingSecondRead,
                 suspendedReadNumbers: suspendedReadNumbers,
-                ignoringReadCancellation: ignoringReadCancellation
+                ignoringReadCancellation: ignoringReadCancellation,
+                liveUpdates: liveUpdates,
+                preparedAt: preparedAt
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)

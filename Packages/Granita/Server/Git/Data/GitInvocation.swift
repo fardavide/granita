@@ -75,7 +75,7 @@ enum GitInvocation {
             exitCode == 0 || exitCode == 1
         case .headCommit:
             exitCode == 0 || exitCode == 1
-        case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .worktrees,
+        case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory, .currentBranch, .worktrees,
              .untrackedPaths, .worktreeStatus, .hashWorktreeFiles, .removeWorktree:
             exitCode == 0
         }
@@ -92,7 +92,7 @@ enum GitInvocation {
         switch command {
         case .fileContent:
             ProcessGitClient.fileContentLimitBytes
-        case .version, .isInsideWorkTree, .repositoryRoot, .currentBranch, .headCommit, .worktrees,
+        case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory, .currentBranch, .headCommit, .worktrees,
              .untrackedPaths, .worktreeStatus, .trackedChanges, .trackedStats, .fileDiff,
              .untrackedFileDiff, .removeWorktree, .hashWorktreeFiles:
             limit
@@ -109,6 +109,12 @@ enum GitInvocation {
 
         case .repositoryRoot:
             encoded(["rev-parse", "--show-toplevel"])
+
+        case .gitDirectory:
+            encoded(["rev-parse", "--path-format=absolute", "--git-dir"])
+
+        case .commonGitDirectory:
+            encoded(["rev-parse", "--path-format=absolute", "--git-common-dir"])
 
         case .currentBranch:
             encoded(["rev-parse", "--abbrev-ref", "HEAD"])

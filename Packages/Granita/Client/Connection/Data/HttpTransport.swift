@@ -54,6 +54,8 @@ public struct HttpResponse: Hashable, Sendable {
 public protocol HttpTransport: Sendable {
     func send(_ request: HttpRequest) async throws(ApiFailure) -> HttpResponse
 
+    func stream(_ request: HttpRequest) async throws(ApiFailure) -> HttpEventResponse
+
     /// The key the server presented, once a handshake has happened.
     ///
     /// **A pinned transport already knows this and a first-contact one only learns it**, which is
@@ -62,4 +64,20 @@ public protocol HttpTransport: Sendable {
     ///
     /// `nil` before anything has been sent, and never after a request has succeeded.
     func trustedFingerprint() async -> SpkiFingerprint?
+}
+
+public struct HttpEventResponse: Sendable {
+    public let statusCode: Int
+    public let lines: AsyncThrowingStream<String, any Error>
+
+    public init(statusCode: Int, lines: AsyncThrowingStream<String, any Error>) {
+        self.statusCode = statusCode
+        self.lines = lines
+    }
+}
+
+extension HttpTransport {
+    public func stream(_ request: HttpRequest) async throws(ApiFailure) -> HttpEventResponse {
+        throw .routeNotServed
+    }
 }

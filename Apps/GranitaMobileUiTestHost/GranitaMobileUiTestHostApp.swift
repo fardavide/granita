@@ -17,7 +17,11 @@ struct GranitaMobileUiTestHostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("trailing-context") {
+            if ProcessInfo.processInfo.arguments.contains("live-sidebar") {
+                LiveWorktreeSidebarFixture()
+            } else if ProcessInfo.processInfo.arguments.contains("live-worktrees") {
+                LiveWorktreeFixture()
+            } else if ProcessInfo.processInfo.arguments.contains("trailing-context") {
                 TrailingContextFixture()
             } else {
                 HorizontalSwipeFixture()

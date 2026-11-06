@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.24.0** — prepared worktrees load quickly and update automatically without disturbing another review.
 - **0.23.3** — expand unchanged lines below the last change in a file; requires the updated Mac app.
 - **0.23.2** — leaving the worktree list stops a pending connection without keeping its fallback.
-- **0.23.1** — fix the release-build failure that blocked the iPhone and iPad update from TestFlight.
 
 [Every release](CHANGELOG.md).
 

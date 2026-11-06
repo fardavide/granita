@@ -13,6 +13,8 @@ public protocol Store: Sendable {
 
     func state() async -> StoredState
 
+    func updates() async -> AsyncStream<StoredState>
+
     func add(project: StoredProject) async throws(StoreError)
     func setProjectVisible(_ isVisible: Bool, id: ProjectID) async throws(StoreError)
 
@@ -67,6 +69,17 @@ public protocol Store: Sendable {
     /// likely to be left is the one that matters — a project still enabled is a repository still
     /// being served.
     func reset() async throws(StoreError)
+}
+
+extension Store {
+
+    public func updates() async -> AsyncStream<StoredState> {
+        let current = await state()
+        return AsyncStream { continuation in
+            continuation.yield(current)
+            continuation.finish()
+        }
+    }
 }
 
 /// A repository the user enabled by hand.

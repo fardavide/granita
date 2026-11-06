@@ -1,5 +1,6 @@
 import Foundation
 
+import CoreApiDomain
 import CoreDiffDomain
 import CoreReviewDomain
 import ServerGitDomain
@@ -44,8 +45,30 @@ public struct WorktreeReader: Sendable {
     }
 
     public func worktrees(inProject filter: ProjectID?) async throws(WorktreeReadError) -> [Worktree] {
+        try await worktrees(inProject: filter, refreshing: false)
+    }
+
+    public func worktrees(
+        inProject filter: ProjectID?,
+        refreshing: Bool
+    ) async throws(WorktreeReadError) -> [Worktree] {
         do {
-            return try await registry.worktrees(inProject: filter)
+            return try await registry.worktrees(inProject: filter, refreshing: refreshing)
+        } catch {
+            throw WorktreeReadError(error)
+        }
+    }
+
+    public func updates() async -> AsyncStream<WorktreeSnapshot> {
+        await registry.updates()
+    }
+
+    public func snapshot(
+        inProject filter: ProjectID?,
+        refreshing: Bool
+    ) async throws(WorktreeReadError) -> WorktreeSnapshot {
+        do {
+            return try await registry.snapshot(inProject: filter, refreshing: refreshing)
         } catch {
             throw WorktreeReadError(error)
         }
@@ -81,7 +104,11 @@ public struct WorktreeReader: Sendable {
         } catch {
             throw .notSaved(reason: "\(error)")
         }
-        return await registry.worktree(resolved)
+        do {
+            return try await registry.worktree(resolved)
+        } catch {
+            throw WorktreeReadError(error)
+        }
     }
 
     /// Takes a checkout off this Mac, with whatever uncommitted work is in it.
@@ -112,6 +139,7 @@ public struct WorktreeReader: Sendable {
         } catch {
             throw .git(error)
         }
+        await registry.didRemove(id)
     }
 
     // MARK: - Reading a worktree
@@ -397,6 +425,8 @@ extension WorktreeReadError {
         case .projectNotVisible: .projectNotVisible
         case .directoryGone: .directoryGone
         case .notFound: .notFound
+        case .cancelled: .cancelled
+        case .git(let failure): .git(failure)
         }
     }
 }

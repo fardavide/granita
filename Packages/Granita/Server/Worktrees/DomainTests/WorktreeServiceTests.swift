@@ -119,6 +119,65 @@ struct WorktreeServiceTests {
     // MARK: - Content hash and viewed state
 
     @Test
+    func `given another worktree is nested inside this one when it is removed then the unchanged served content keeps its revision`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa 0000000 M", "review.swift"],
+            numstat: ["2\t1\treview.swift"],
+            untracked: [".claude/worktrees/another-agent/"],
+            status: ["1 .M N... 100644 100644 100644 aaa bbb review.swift", "? .claude/worktrees/another-agent/"]
+        )
+        let original = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // when
+        await scenario.git.answer(.untrackedPaths, with: Data())
+        await scenario.git.answer(.worktreeStatus, with: nulSeparated([
+            "1 .M N... 100644 100644 100644 aaa bbb review.swift"
+        ]))
+        let updated = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(original.files == updated.files)
+        #expect(original.stats == updated.stats)
+        #expect(original.revision == updated.revision)
+    }
+
+    @Test
+    func `given unchanged status when HEAD changes then the worktree revision changes`() async throws {
+        // given
+        let before = Scenario(headCommit: "before-commit\n", raw: [], numstat: [], untracked: [], status: [])
+        let after = Scenario(headCommit: "after-commit\n", raw: [], numstat: [], untracked: [], status: [])
+
+        // when
+        let original = try await before.sut.changeSet(in: before.location, viewed: [:])
+        let updated = try await after.sut.changeSet(in: after.location, viewed: [:])
+
+        // then
+        #expect(original.revision != updated.revision)
+    }
+
+    @Test
+    func `given identical status and counts when file contents change then the worktree revision changes`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa 0000000 M", "changed.swift"],
+            numstat: ["1\t1\tchanged.swift"],
+            untracked: [],
+            status: ["1 .M N... 100644 100644 100644 aaa bbb changed.swift"]
+        )
+        let hashCommand = GitCommand.hashWorktreeFiles(paths: [RepositoryRelativePath("changed.swift")])
+        await scenario.git.answer(hashCommand, with: Data("first-contents\n".utf8))
+        let original = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // when
+        await scenario.git.answer(hashCommand, with: Data("next-contents\n".utf8))
+        let updated = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(original.revision != updated.revision)
+    }
+
+    @Test
     func `given a file marked viewed at the content it still has when built then it reads as viewed`(
     ) async throws {
         // given

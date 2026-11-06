@@ -1,6 +1,7 @@
 import Foundation
 
 import ClientConnectionDomain
+import CoreApiDomain
 import CoreDiffDomain
 import CoreReviewDomain
 
@@ -21,6 +22,7 @@ actor FakeGranitaRepository: GranitaRepository {
     private(set) var deleted: [WorktreeID] = []
 
     private(set) var cancelledReads = 0
+    private(set) var updateSubscriptions = 0
 
     private var worktrees: [Worktree]
     private let readFailure: ApiFailure?
@@ -32,6 +34,8 @@ actor FakeGranitaRepository: GranitaRepository {
     private let suspendingSecondRead: Bool
     private let suspendedReadNumbers: Set<Int>
     private let ignoringReadCancellation: Bool
+    private let liveUpdates: [WorktreeUpdate]
+    private let preparedAt: Date?
     private var suspendedReadContinuations: [Int: AsyncStream<Void>.Continuation] = [:]
 
     /// Which writes suspend instead of answering, how many have arrived and are suspended, and the
@@ -74,7 +78,9 @@ actor FakeGranitaRepository: GranitaRepository {
         suspendingReads: Bool = false,
         suspendingSecondRead: Bool = false,
         suspendedReadNumbers: Set<Int> = [],
-        ignoringReadCancellation: Bool = false
+        ignoringReadCancellation: Bool = false,
+        liveUpdates: [WorktreeUpdate] = [],
+        preparedAt: Date? = nil
     ) {
         self.worktrees = worktrees
         self.readFailure = readFailure
@@ -88,10 +94,20 @@ actor FakeGranitaRepository: GranitaRepository {
         self.suspendingSecondRead = suspendingSecondRead
         self.suspendedReadNumbers = suspendedReadNumbers
         self.ignoringReadCancellation = ignoringReadCancellation
+        self.liveUpdates = liveUpdates
+        self.preparedAt = preparedAt
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
         []
+    }
+
+    func updates() -> AsyncStream<WorktreeUpdate> {
+        updateSubscriptions += 1
+        return AsyncStream { continuation in
+            for update in liveUpdates { continuation.yield(update) }
+            continuation.finish()
+        }
     }
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
@@ -131,6 +147,16 @@ actor FakeGranitaRepository: GranitaRepository {
             await progress(stage)
         }
         return worktrees
+    }
+
+    func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        let rows = try await worktrees(inProject: project, reporting: progress)
+        if let preparedAt { return .prepared(WorktreeSnapshot(worktrees: rows, scannedAt: preparedAt)) }
+        return .uncached(rows)
     }
 
     func waitUntilReadStarted(count: Int = 1) async {

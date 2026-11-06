@@ -52,6 +52,16 @@ public protocol GranitaRepository: Sendable {
     /// Every worktree, or only one project's.
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree]
 
+    func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree]
+
+    func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead
+
+    func updates() async -> AsyncStream<WorktreeUpdate>
+
     func worktrees(
         inProject project: ProjectID?,
         reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
@@ -162,6 +172,26 @@ public struct ReviewSettingsPatch: Hashable, Sendable {
 }
 
 extension GranitaRepository {
+
+    public func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        if refreshing {
+            await progress(.reading(.unknown))
+            return .uncached(try await refreshWorktrees(inProject: project))
+        }
+        return .uncached(try await worktrees(inProject: project, reporting: progress))
+    }
+
+    public func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        try await worktrees(inProject: project)
+    }
+
+    public func updates() async -> AsyncStream<WorktreeUpdate> {
+        AsyncStream { $0.finish() }
+    }
 
     public func worktrees(
         inProject project: ProjectID?,

@@ -15,6 +15,64 @@ import CoreReviewDomain
 @Suite("Remembered Macs")
 struct RememberedMacsTests {
 
+    @Test
+    func `given a verified local route when a prepared list is read then transport progress cannot erase that route`() async throws {
+        // given
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            reportingResolutionStages: [.finding(.local), .verifying, .reading(.local)]
+        )
+
+        // when
+        _ = try await scenario.sut.readWorktrees(inProject: nil, refreshing: false, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(await scenario.progress.stages == [.finding(.local), .verifying, .reading(.local)])
+    }
+
+    @Test
+    func `given a remembered Mac when live changes arrive then its snapshot reaches the reader`() async {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+
+        // when
+        let update = await updates.next()
+
+        // then
+        #expect(update == .snapshot(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))))
+        #expect(await scenario.mac.asked == [.updates])
+    }
+
+    @Test
+    func `given a remembered Mac when a forced legacy refresh is requested then the refresh reaches that Mac`() async throws {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        let project = ProjectID(rawValue: "refresh-project")
+
+        // when
+        _ = try await scenario.sut.refreshWorktrees(inProject: project)
+
+        // then
+        #expect(await scenario.mac.asked == [.refreshWorktrees(project)])
+    }
+
+    @Test
+    func `given a remembered Mac when a prepared list is refreshed then its metadata and refresh request are forwarded`() async throws {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        let project = ProjectID(rawValue: "prepared-project")
+
+        // when
+        let read = try await scenario.sut.readWorktrees(inProject: project, refreshing: true, reporting: { _ in })
+
+        // then
+        #expect(read == .prepared(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))))
+        #expect(await scenario.mac.asked == [.readWorktrees(project, true)])
+    }
+
     @Test(.timeLimit(.minutes(1)))
     func `given a legacy repository when reporting a filtered worktree read then unknown reading is reported before its unchanged result arrives`() async throws {
         // given
@@ -886,6 +944,33 @@ private actor FakeMacBehindAPairing: GranitaRepository {
         return [aWorktree]
     }
 
+    func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        try note(.readWorktrees(project, refreshing))
+        await progress(.reading(.unknown))
+        return .prepared(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000)))
+    }
+
+    func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        try note(.refreshWorktrees(project))
+        return [aWorktree]
+    }
+
+    func updates() -> AsyncStream<WorktreeUpdate> {
+        asked.append(.updates)
+        return AsyncStream { continuation in
+            if let answering {
+                continuation.yield(.failed(answering))
+            } else {
+                continuation.yield(.snapshot(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))))
+            }
+            continuation.finish()
+        }
+    }
+
     func waitUntilWorktreeReadStarted(inProject project: ProjectID? = nil) async {
         while asked.contains(.worktrees(inProject: project)) == false {
             await Task.yield()
@@ -1019,6 +1104,9 @@ enum Route: CaseIterable, Sendable {
 private enum MacRequest: Hashable, Sendable {
     case projects
     case worktrees(inProject: ProjectID?)
+    case readWorktrees(ProjectID?, Bool)
+    case refreshWorktrees(ProjectID?)
+    case updates
     case update(WorktreeID, WorktreePatch)
     case delete(WorktreeID)
     case changes(WorktreeID)
