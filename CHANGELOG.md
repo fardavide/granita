@@ -7,6 +7,12 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.24.0 — 2026-11-06
+- **Open prepared worktrees and see changes automatically.** The Mac keeps worktree summaries in
+  memory and refreshes them when files or Git state change. The open review updates automatically;
+  changes in another worktree leave its content and any visible sidebar undisturbed. Update both
+  the Mac and phone apps to use live updates.
+
 ### 0.23.3 — 2026-11-05
 - **Read beyond the last change in a file.** The remainder-of-file control now reveals unchanged
   lines below the final diff hunk. Update Granita on your Mac to use the fix.

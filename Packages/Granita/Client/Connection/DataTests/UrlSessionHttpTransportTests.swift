@@ -9,6 +9,184 @@ import CorePairingDomain
 @Suite("URL session transport diagnostics")
 struct UrlSessionHttpTransportTests {
     @Test
+    func `given an authenticated event request when streaming then its status and ordered lines reach the caller`() async throws {
+        // given
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/events"))
+        let eventLines = [": heartbeat", "event: snapshot", "data: prepared-worktrees", ""]
+        let scenario = Scenario(
+            answer: .success((Data(), try #require(HTTPURLResponse(
+                url: url, statusCode: 202, httpVersion: nil, headerFields: nil
+            )))),
+            timestamp: Date(timeIntervalSince1970: 0),
+            eventLines: eventLines
+        )
+
+        // when
+        let response = try await scenario.sut.stream(HttpRequest(
+            method: .get, url: url,
+            headers: ["Authorization": "Bearer streaming-secret", "Accept": "text/event-stream"], body: nil
+        ))
+        var received: [String] = []
+        for try await line in response.lines { received.append(line) }
+        let outgoing = try #require(await scenario.session.requests.last)
+        let report = await scenario.logs.report()
+
+        // then
+        #expect(response.statusCode == 202)
+        #expect(received == eventLines)
+        #expect(outgoing.url == url)
+        #expect(outgoing.httpMethod == "GET")
+        #expect(outgoing.timeoutInterval == 45)
+        #expect(outgoing.value(forHTTPHeaderField: "Authorization") == "Bearer streaming-secret")
+        #expect(outgoing.value(forHTTPHeaderField: "Accept") == "text/event-stream")
+        #expect(report.contains("GET https://100.81.42.98:8737/v1/events — HTTP 202"))
+        #expect(report.contains("streaming-secret") == false)
+    }
+
+    @Test
+    func `given an insecure event URL when streaming then no native request starts`() async throws {
+        // given
+        let scenario = Scenario(
+            answer: .failure(NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost)),
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+        let url = try #require(URL(string: "http://100.81.42.98:8737/v1/events"))
+
+        // when
+        let failure = await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.stream(HttpRequest(
+                method: .get, url: url, headers: ["Authorization": "Bearer refused-secret"], body: nil
+            ))
+        }
+
+        // then
+        #expect(failure == .requestNotBuildable(diagnostic: "Granita connections require HTTPS"))
+        #expect(await scenario.session.requests.isEmpty)
+        #expect(await scenario.logs.report().contains("/v1/events") == false)
+    }
+
+    @Test
+    func `given a non HTTP event response when streaming then the protocol refusal is preserved`() async throws {
+        // given
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/events"))
+        let scenario = Scenario(
+            answer: .success((Data(), URLResponse(
+                url: url, mimeType: "text/event-stream", expectedContentLength: -1, textEncodingName: "utf-8"
+            ))),
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+
+        // when
+        let failure = await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.stream(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+        }
+
+        // then
+        #expect(failure == .notUnderstood(diagnostic: "the event reply was not an HTTP response"))
+    }
+
+    @Test
+    func `given an event connection is cancelled when streaming then cancellation reaches the caller`() async throws {
+        // given
+        let scenario = Scenario(
+            answer: .failure(NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)),
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/events"))
+
+        // when
+        let failure = await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.stream(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+        }
+
+        // then
+        #expect(failure == .cancelled)
+    }
+
+    @Test
+    func `given an event TLS failure when streaming then safe diagnostics omit private request data`() async throws {
+        // given
+        let scenario = Scenario(
+            answer: .failure(NSError(
+                domain: NSURLErrorDomain, code: NSURLErrorSecureConnectionFailed,
+                userInfo: [NSLocalizedDescriptionKey: "private-tls-description"]
+            )),
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/events?token=query-secret"))
+
+        // when
+        let failure = await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.stream(HttpRequest(
+                method: .get, url: url, headers: ["Authorization": "Bearer event-secret"], body: nil
+            ))
+        }
+        let report = await scenario.logs.report()
+
+        // then
+        guard case .unreachable = failure else {
+            Issue.record("An event TLS failure must remain an unreachable API failure")
+            return
+        }
+        #expect(report.contains("GET https://100.81.42.98:8737/v1/events"))
+        #expect(report.contains("NSURLErrorDomain (-1200)"))
+        #expect(report.contains("query-secret") == false)
+        #expect(report.contains("event-secret") == false)
+        #expect(report.contains("private-tls-description") == false)
+    }
+
+    @Test
+    func `given a non HTTP response when sending then the protocol refusal is preserved`() async throws {
+        // given
+        let url = try #require(URL(string: "https://100.81.42.98:8737/v1/health"))
+        let scenario = Scenario(
+            answer: .success((Data(), URLResponse(
+                url: url, mimeType: "text/plain", expectedContentLength: 0, textEncodingName: nil
+            ))),
+            timestamp: Date(timeIntervalSince1970: 0)
+        )
+
+        // when
+        let failure = await #expect(throws: ApiFailure.self) {
+            _ = try await scenario.sut.send(HttpRequest(method: .get, url: url, headers: [:], body: nil))
+        }
+
+        // then
+        #expect(failure == .notUnderstood(diagnostic: "the reply was not an HTTP response"))
+    }
+
+    @Test
+    func `given a native paired session when inspecting trust then the saved fingerprint is retained`() async {
+        // given
+        let fingerprint = SpkiFingerprint(rawValue: "paired-native-session-key")
+        let sut = UrlSessionHttpTransport(pinnedTo: fingerprint, logs: ConnectionLogs(
+            context: ConnectionLogContext(appVersion: "0.24.0", build: "test", systemVersion: "test", deviceModel: "test"),
+            capacity: 8, now: Date.init
+        ))
+
+        // when
+        let trusted = await sut.trustedFingerprint()
+
+        // then
+        #expect(trusted == fingerprint)
+    }
+
+    @Test
+    func `given a first contact session before a handshake when inspecting trust then no fingerprint is invented`() async {
+        // given
+        let sut = UrlSessionHttpTransport(trustingFirstAnswer: (), logs: ConnectionLogs(
+            context: ConnectionLogContext(appVersion: "0.24.0", build: "test", systemVersion: "test", deviceModel: "test"),
+            capacity: 8, now: Date.init
+        ))
+
+        // when
+        let trusted = await sut.trustedFingerprint()
+
+        // then
+        #expect(trusted == nil)
+    }
+
+    @Test
     func `given a bounded native probe session when inspecting trust then the saved pin is retained`() async {
         // given
         let fingerprint = SpkiFingerprint(rawValue: "bounded-native-session-key")
@@ -223,8 +401,14 @@ struct UrlSessionHttpTransportTests {
         let logs: ConnectionLogs
         let session: FakeSessionRequests
 
-        init(answer: Result<(Data, URLResponse), NSError>, timestamp: Date, requestTimeout: Duration = .seconds(60), elapsed: Duration = .zero) {
-            session = FakeSessionRequests(answer: answer)
+        init(
+            answer: Result<(Data, URLResponse), NSError>,
+            timestamp: Date,
+            requestTimeout: Duration = .seconds(60),
+            elapsed: Duration = .zero,
+            eventLines: [String] = []
+        ) {
+            session = FakeSessionRequests(answer: answer, eventLines: eventLines)
             logs = ConnectionLogs(
                 context: ConnectionLogContext(
                     appVersion: "0.9.1",

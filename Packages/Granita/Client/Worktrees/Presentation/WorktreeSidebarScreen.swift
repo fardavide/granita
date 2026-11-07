@@ -158,18 +158,9 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
         } message: { prompt in
             Text(prompt.message)
         }
-        .task { await model.load() }
-        // **The `.task` above cannot cover coming back to the app**, and that is the whole reason
-        // this modifier exists: it re-runs when the view appears, and a view that was on screen when
-        // the app went away never went away — so it never appears again, and the list a reader came
-        // back to was the one they left.
-        //
-        // Every phase is handed over and the model turns most of them down — not active, a read
-        // already running, nothing ever read, an answer still fresh. **One call and no branch**,
-        // which is the `swift-testing` rule and not a style preference: a `guard` here is a branch
-        // nothing in this repository can drive, since no Ui target exists and a snapshot renders a
-        // screen without ever changing its scene phase. `ScenePhase` stays out of the model, so the
-        // comparison travels as its answer rather than as itself.
+        .task(id: scenePhase) { await model.followUpdates(active: scenePhase == .active) }
+        // Older Macs do not publish snapshots. Keep their age-based foreground read; the model
+        // defers it while a review is open, just as it defers live sidebar changes.
         .onChange(of: scenePhase) { _, phase in Task { await model.sceneBecame(active: phase == .active) } }
         .onDisappear { model.cancelLoading() }
 
@@ -179,7 +170,8 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
             // a row that did nothing at all. See `CLAUDE.md` and `.ai/docs/decisions.md`.
             sidebar.navigationDestination(for: WorktreeID.self) { worktree in
                 opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree), model)
-                    .onAppear { model.cancelLoading() }
+                    .onAppear { model.reviewing(worktree) }
+                    .onDisappear { model.finishedReview(of: worktree) }
             }
         } else {
             sidebar

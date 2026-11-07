@@ -14,6 +14,25 @@ import CoreReviewDomain
 @MainActor
 struct ClientViewerImagesTests {
 
+    @Test
+    func `given picture requests are cancelled when the reader retries a side then it is asked again without an invented refusal`() async throws {
+        // given
+        let picture = aPicture(at: "Art/cancelled-review.png", status: .modified)
+        let scenario = Scenario(files: [picture], imageAnswer: .failure(.cancelled))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        #expect(scenario.repository.imagesAskedFor.count == 2)
+
+        // when
+        await scenario.sut.retryImage(.old, of: picture.id)
+
+        // then
+        let image = try #require(scenario.sut.images[picture.id])
+        #expect(image.old == .awaiting)
+        #expect(image.new == .awaiting)
+        #expect(scenario.repository.imagesAskedFor.count == 3)
+    }
+
     // MARK: - What gets asked for
 
     @Test
@@ -337,7 +356,11 @@ struct ClientViewerImagesTests {
         let repository: FakeGranitaRepository
         let fileIds: [FileID]
 
-        init(files: [FileChange], imagesAnsweringBeforeRefusing: Int = .max) {
+        init(
+            files: [FileChange],
+            imagesAnsweringBeforeRefusing: Int = .max,
+            imageAnswer: Result<Data, ApiFailure> = .success(Data([0x89, 0x50, 0x4E, 0x47]))
+        ) {
             fileIds = files.map(\.id)
             repository = FakeGranitaRepository(
                 changeSet: .success(WorktreeChanges(
@@ -346,6 +369,7 @@ struct ClientViewerImagesTests {
                     files: files,
                     isTruncated: false
                 )),
+                imageAnswer: imageAnswer,
                 imagesAnsweringBeforeRefusing: imagesAnsweringBeforeRefusing
             )
             sut = ClientViewerModel(

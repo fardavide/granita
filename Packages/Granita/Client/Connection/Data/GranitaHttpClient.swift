@@ -45,6 +45,32 @@ struct GranitaHttpClient: Sendable {
         try await perform(.get, path, query: query, body: nil)
     }
 
+    func eventStream() async throws(ApiFailure) -> HttpEventResponse {
+        var outgoing = try request(.get, "/v1/events", query: [], body: nil)
+        outgoing = HttpRequest(
+            method: outgoing.method,
+            url: outgoing.url,
+            headers: outgoing.headers.merging(["Accept": "text/event-stream"]) { _, new in new },
+            body: nil
+        )
+        let response = try await transport.stream(outgoing)
+        guard (200..<300).contains(response.statusCode) else {
+            var body = Data()
+            do {
+                for try await line in response.lines {
+                    body.append(contentsOf: line.utf8)
+                    guard body.count <= 65_536 else {
+                        throw ApiFailure.notUnderstood(diagnostic: "the event refusal exceeded its size limit")
+                    }
+                }
+            } catch {
+                throw ApiFailure.forTransport(error)
+            }
+            throw refusal(status: response.statusCode, body: body)
+        }
+        return response
+    }
+
     func post<Value: Decodable>(
         _ path: String,
         body: some Encodable,
@@ -85,6 +111,19 @@ struct GranitaHttpClient: Sendable {
         query: [URLQueryItem],
         body: Data?
     ) async throws(ApiFailure) -> Data {
+        let response = try await transport.send(request(method, path, query: query, body: body))
+        guard (200..<300).contains(response.statusCode) else {
+            throw refusal(status: response.statusCode, body: response.body)
+        }
+        return response.body
+    }
+
+    private func request(
+        _ method: HttpRequest.Method,
+        _ path: String,
+        query: [URLQueryItem],
+        body: Data?
+    ) throws(ApiFailure) -> HttpRequest {
         var headers = [Branding.apiVersionHeader: String(Branding.apiVersion)]
         if case .bearer(let token) = authorization {
             headers["Authorization"] = "Bearer \(token.rawValue)"
@@ -93,18 +132,12 @@ struct GranitaHttpClient: Sendable {
             headers["Content-Type"] = "application/json"
         }
 
-        let response = try await transport.send(
-            HttpRequest(
-                method: method,
-                url: try url(for: path, query: query),
-                headers: headers,
-                body: body
-            )
+        return HttpRequest(
+            method: method,
+            url: try url(for: path, query: query),
+            headers: headers,
+            body: body
         )
-        guard (200..<300).contains(response.statusCode) else {
-            throw refusal(status: response.statusCode, body: response.body)
-        }
-        return response.body
     }
 
     /// What a non-2xx reply means, decided by the **code** in the body and never by the status.

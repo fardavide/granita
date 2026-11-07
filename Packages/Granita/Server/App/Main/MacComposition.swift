@@ -27,6 +27,7 @@ import ServerReaderData
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
+import ServerWatchData
 import ServerWorktreesData
 import ServerWorktreesDomain
 
@@ -87,13 +88,16 @@ final class MacComposition {
         // Wrapped rather than told to log, so the thing that runs a subprocess keeps having exactly
         // one job — and so the libgit2 client this protocol exists for would arrive logged without
         // knowing it.
-        let git = LoggingGitClient(
-            client: ProcessGitClient(
-                executablePath: gitPath,
-                outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
-                timeout: ProcessGitClient.defaultTimeout
+        let git = BoundedGitClient(
+            client: LoggingGitClient(
+                client: ProcessGitClient(
+                    executablePath: gitPath,
+                    outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
+                    timeout: ProcessGitClient.defaultTimeout
+                ),
+                diagnostics: diagnostics
             ),
-            diagnostics: diagnostics
+            limit: WorktreeReader.concurrentGitProcesses
         )
         let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
         let sessions = SessionIndex(rootUrl: SessionIndex.defaultRootUrl())
@@ -110,13 +114,21 @@ final class MacComposition {
             .map { TailnetEndpoint(host: $0.description, port: Branding.defaultPort) }
         // Held rather than handed straight to the routes, because the merged Mac app's window reads
         // this Mac through the same reader with no socket in the path.
+        let registry = WorktreeRegistry(
+            store: store,
+            service: service,
+            directory: LocalWorktreeDirectory(),
+            suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
+        )
+        let observation = WorktreeObservation(
+            registry: registry,
+            git: git,
+            source: FileSystemWorktreeObservationSource(),
+            store: store,
+            onFailure: { diagnostics.note("Worktree observation failed: \($0)", about: .git) }
+        )
         let reader = WorktreeReader(
-            registry: WorktreeRegistry(
-                store: store,
-                service: service,
-                directory: LocalWorktreeDirectory(),
-                suggestedAliases: { worktrees in await sessions.suggestedAliases(for: worktrees) }
-            ),
+            registry: registry,
             service: service,
             store: store
         )
@@ -155,12 +167,6 @@ final class MacComposition {
             requiresAuthentication: true
         )
 
-        // `SPEC.md` §9's startup housekeeping: drop the marks and reviews of worktrees an agent has
-        // since deleted, and cap the marks. Detached here rather than awaited, unlike the CLI's —
-        // this runs on the way to drawing a menu bar, and a git process per enabled project is not
-        // something a reader should watch an icon wait for.
-        Task { await reader.pruneStore() }
-
         // The Mac woke, or someone pressed Restart. One stream, because what a rebind *does* is
         // identical either way and the teardown ordering is delicate enough to want one owner.
         let rebinds = Rebinds(wakes: WorkspaceWakeNotifications())
@@ -173,23 +179,27 @@ final class MacComposition {
             // Mac that stops serving overnight because a `granita-server` was started in a terminal
             // in the meantime — the lock is a fact about this launch, not about this bind.
             host: StoreLockingServerHost(
-                host: RebindingOnWake(
-                    host: TransportResolvingServerHost(
-                        dependencies: dependencies,
-                        binding: .hostnameAndBonjour(
-                            host: "0.0.0.0",
-                            port: Int(launch.port),
-                            name: MachineName.computer
+                host: ObservingServerHost(
+                    host: RebindingOnWake(
+                        host: TransportResolvingServerHost(
+                            dependencies: dependencies,
+                            binding: .hostnameAndBonjour(
+                                host: "0.0.0.0",
+                                port: Int(launch.port),
+                                name: MachineName.computer
+                            ),
+                            // Asked per run so a wake rebind can refresh the TLS identity.
+                            transport: { () async throws(ServerIdentityError) -> ApiTransport in
+                                .tls(try await identities.keychainIdentity().reference)
+                            }
                         ),
-                        // Asked per run, not once here. A rebind after waking has to be able to
-                        // fail for a reason someone can act on — a locked keychain, an identity
-                        // deleted by hand — and a transport resolved at launch could only report
-                        // that as the app never having started.
-                        transport: { () async throws(ServerIdentityError) -> ApiTransport in
-                            .tls(try await identities.keychainIdentity().reference)
-                        }
+                        wakes: rebinds
                     ),
-                    wakes: rebinds
+                    observation: observation,
+                    wakes: WorkspaceWakeNotifications(),
+                    // Background housekeeping shares the lock-owned server lifetime without
+                    // delaying binding or surviving shutdown.
+                    preparing: { await reader.pruneStore() }
                 ),
                 lock: FileStoreLock(besideStoreAt: storeUrl, holder: .thisProcess)
             ),

@@ -42,6 +42,20 @@ the two readers drift. `.ai/docs/decisions.md` has the full argument.
 `Client` protocol. **They meet over `Domain` on both sides**, so no `Data` target is in the path and
 the phone's shell still links none of it.
 
+Worktree summaries are prepared once in an actor-owned, in-memory cache beneath that shared
+reader. File and Git invalidation policy belongs in Server Worktrees Domain; the native FSEvents
+adapter belongs in Server Watch Data. Observation starts after store ownership is acquired and
+survives listener rebinds. All background and interactive Git calls share one four-process budget.
+Fresh diff, image, context and viewed-mark validation still read current content.
+
+Both readers consume complete prepared snapshots with the time of their oldest successful scan.
+The HTTP boundary frames authenticated SSE events; the local adapter observes the same cache
+directly. The client shares a subscription per source, reconciles after reconnect and compares the
+open worktree's own identity before reloading. While a review is open, the list holds background
+snapshots for its next visit, including when an iPad or Mac sidebar remains visible. Failed scans
+retain previous successful summaries and their age. See
+[0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md).
+
 ## One package, four layers, module boundaries as the enforcement
 
 Everything testable lives in a single local Swift package. The two Xcode targets are thin `@main`

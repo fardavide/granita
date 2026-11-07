@@ -13,6 +13,29 @@ import ServerStoreDomain
 struct JsonDocumentStoreTests {
 
     @Test
+    func `given an observer when a project is added then the saved state is emitted`() async throws {
+        // given
+        let scenario = Scenario()
+        defer { scenario.cleanUp() }
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        let original = await updates.next()
+        let project = StoredProject(
+            id: ProjectID(canonicalPath: "/observed-repository"),
+            path: "/observed-repository",
+            name: "Observed repository",
+            isVisible: true
+        )
+
+        // when
+        try await scenario.sut.add(project: project)
+        let saved = await updates.next()
+
+        // then
+        #expect(original?.projects == [])
+        #expect(saved?.projects == [project])
+    }
+
+    @Test
     func `given nothing on disk when read then the store starts empty rather than failing`() async throws {
         // given
         let scenario = Scenario()

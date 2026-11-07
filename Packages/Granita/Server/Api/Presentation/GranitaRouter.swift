@@ -148,9 +148,38 @@ public enum GranitaRouter {
             await dependencies.reader.projects()
         }
 
+        authenticated.get("/v1/events") { request, _ -> Response in
+            let offered = request.headers[.authorization]?
+                .split(separator: " ", maxSplits: 1).last.map(String.init)
+            let snapshots = await dependencies.reader.updates()
+            return Response(
+                status: .ok,
+                headers: [.contentType: "text/event-stream", .cacheControl: "no-store"],
+                body: WorktreeEventStream.body(snapshots: snapshots, authorized: {
+                    guard dependencies.requiresAuthentication else { return true }
+                    guard let offered else { return false }
+                    let hash = TokenHash.of(offered)
+                    return await dependencies.store.state().devices.contains {
+                        TokenHash.matches(hash, $0.tokenHash)
+                    }
+                })
+            )
+        }
+
         authenticated.get("/v1/worktrees") { request, _ in
             let filter = request.uri.queryParameters["projectID"].map { ProjectID(rawValue: String($0)) }
-            return try await answering { try await dependencies.reader.worktrees(inProject: filter) }
+            let refreshing = request.uri.queryParameters["refresh"] == "true"
+            return try await answering {
+                try await dependencies.reader.worktrees(inProject: filter, refreshing: refreshing)
+            }
+        }
+
+        authenticated.get("/v1/worktree-snapshot") { request, _ in
+            let filter = request.uri.queryParameters["projectID"].map { ProjectID(rawValue: String($0)) }
+            let refreshing = request.uri.queryParameters["refresh"] == "true"
+            return try await answering {
+                try await dependencies.reader.snapshot(inProject: filter, refreshing: refreshing)
+            }
         }
 
         // **It answers about the one worktree it wrote to, and that is the difference between a

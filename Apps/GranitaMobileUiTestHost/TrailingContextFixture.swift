@@ -37,7 +37,7 @@ struct TrailingContextFixture: View {
     }
 }
 
-private struct ContextAnimationProbe: UIViewRepresentable {
+struct ContextAnimationProbe: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UILabel {
         let label = UILabel()

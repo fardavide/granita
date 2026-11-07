@@ -40,6 +40,7 @@ struct ApiScenario {
     /// Exposed so the merged Mac app's local path can be driven against the **same** wiring in the
     /// same test, which is the only way to assert the two agree rather than hope they do.
     let reader: WorktreeReader
+    let registry: WorktreeRegistry
 
     init(repository: FixtureRepository, requiresAuthentication: Bool = false) throws {
         try self.init(at: try repository.location(), requiresAuthentication: requiresAuthentication)
@@ -65,21 +66,22 @@ struct ApiScenario {
         // Unfiltered, deliberately: what the middleware records is this suite's question, and
         // whether the verbose switch would have suppressed it is `VerbosityFilteringDiagnostics`'s.
         diagnostics = FakeDiagnostics()
+        registry = WorktreeRegistry(
+            store: store,
+            service: service,
+            // The real one, because these drive the real git binary against the fixture
+            // repositories: the directories the registry asks about are on disk for the
+            // length of the run, and a fake would answer for a filesystem that is right
+            // there.
+            directory: LocalWorktreeDirectory(),
+            // The session index reads the developer's own `~/.claude`, which is neither
+            // present nor predictable on a runner. Suggested names are best effort by
+            // design, so the seam is closed here with none rather than with someone's real
+            // transcripts.
+            suggestedAliases: { _ in [:] }
+        )
         reader = WorktreeReader(
-            registry: WorktreeRegistry(
-                store: store,
-                service: service,
-                // The real one, because these drive the real git binary against the fixture
-                // repositories: the directories the registry asks about are on disk for the
-                // length of the run, and a fake would answer for a filesystem that is right
-                // there.
-                directory: LocalWorktreeDirectory(),
-                // The session index reads the developer's own `~/.claude`, which is neither
-                // present nor predictable on a runner. Suggested names are best effort by
-                // design, so the seam is closed here with none rather than with someone's real
-                // transcripts.
-                suggestedAliases: { _ in [:] }
-            ),
+            registry: registry,
             service: service,
             store: store
         )

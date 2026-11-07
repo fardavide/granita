@@ -37,6 +37,40 @@ public struct LocalGranitaRepository: GranitaRepository {
         try await answering { try await reader.worktrees(inProject: project) }
     }
 
+    public func refreshWorktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        try await answering { try await reader.worktrees(inProject: project, refreshing: true) }
+    }
+
+    public func readWorktrees(
+        inProject project: ProjectID?,
+        refreshing: Bool,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> WorktreeRead {
+        await progress(.reading(.thisMac))
+        do {
+            return .prepared(try await answering {
+                try await reader.snapshot(inProject: project, refreshing: refreshing)
+            })
+        } catch .worktreeGone {
+            return .uncached(try await refreshWorktrees(inProject: project))
+        }
+    }
+
+    public func updates() async -> AsyncStream<WorktreeUpdate> {
+        let snapshots = await reader.updates()
+        let updates = AsyncStream.makeStream(of: WorktreeUpdate.self, bufferingPolicy: .bufferingNewest(1))
+        let continuation = updates.continuation
+        let forwarding = Task {
+            for await snapshot in snapshots {
+                if Task.isCancelled { break }
+                continuation.yield(.snapshot(snapshot))
+            }
+            continuation.finish()
+        }
+        continuation.onTermination = { _ in forwarding.cancel() }
+        return updates.stream
+    }
+
     /// **Reading, and nothing before it.** The protocol's default reports `.reading(.unknown)`,
     /// which the loading block spells *"Waiting for your Mac's response"* — and there is no response
     /// to wait for. There is nothing to find and nothing to verify either, so this is the only stage

@@ -3,6 +3,7 @@ import Observation
 
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import CoreApiDomain
 import CoreDiffDomain
 
 /// What the phone knows about the checkouts on a Mac it has paired with.
@@ -93,6 +94,8 @@ public final class ClientWorktreesModel {
     private let announcementDelay: Duration
     private var announcedPhase: ReadPhase = .notAnnounced
     private var readTrigger: WorktreeReadTrigger = .appearance
+    private var review: Review = .none
+    private var pendingSnapshot: PendingSnapshot = .none
     private let repository: any GranitaRepository
     private let preferences: any WorktreeListPreferences
     private let copyingLogs: any DiagnosticLogsCopying
@@ -145,6 +148,46 @@ public final class ClientWorktreesModel {
     /// updates so a late completion cannot replace a newer answer.
     public func load() async {
         await load(trigger: .appearance)
+    }
+
+    public func reviewing(_ worktree: WorktreeID) {
+        review = .reading(worktree)
+        cancelLoading()
+    }
+
+    public func finishedReview(of worktree: WorktreeID) {
+        guard case .reading(let current) = review, current == worktree else { return }
+        review = .none
+        if case .snapshot(let snapshot) = pendingSnapshot {
+            pendingSnapshot = .none
+            apply(snapshot)
+        }
+    }
+
+    public func receive(_ update: WorktreeUpdate) async {
+        if case .failed(.unauthorized) = update {
+            cancelLoading()
+            reading = .idle
+            pendingSnapshot = .none
+            readResult = .notRead
+            state = .failed(.unauthorized)
+            return
+        }
+        guard case .snapshot(let snapshot) = update else { return }
+        switch review {
+        case .none: apply(snapshot)
+        case .reading: pendingSnapshot = .snapshot(snapshot)
+        }
+    }
+
+    public func followUpdates(active: Bool = true) async {
+        guard active else { return }
+        if case .notRead = readResult { await load() }
+        guard !Task.isCancelled else { return }
+        for await update in await repository.updates() {
+            guard Task.isCancelled == false else { return }
+            await receive(update)
+        }
     }
 
     public func load(trigger: WorktreeReadTrigger) async {
@@ -213,6 +256,7 @@ public final class ClientWorktreesModel {
     /// Unit row judges it and a test names it.
     public func sceneBecame(active: Bool) async {
         guard active else { return }
+        guard case .none = review else { return }
         guard case .idle = reading else { return }
         let readAt: Date
         switch readResult {
@@ -378,6 +422,17 @@ public final class ClientWorktreesModel {
         worktrees.first { $0.id == worktree }?.projectName ?? "this project"
     }
 
+    private func apply(_ snapshot: WorktreeSnapshot) {
+        cancelLoading()
+        worktrees = snapshot.worktrees
+        let route: WorktreeConnectionRoute = switch readResult {
+        case .notRead: .unknown
+        case .read(_, let route), .stale(_, let route, _): route
+        }
+        readResult = .read(at: snapshot.scannedAt, route: route)
+        state = arrangement
+    }
+
     private func performLoad(attempt: UUID) async {
         // **Only a failure goes back to the spinner**, and the snapshot suites are what settled
         // that: blanking on every read photographed a spinner on screens that had already loaded,
@@ -388,7 +443,11 @@ public final class ClientWorktreesModel {
             state = .loading
         }
         do {
-            let answer = try await repository.worktrees(inProject: nil, reporting: { stage in
+            let refreshing = switch readTrigger {
+            case .appearance, .returnToForeground: false
+            case .pullToRefresh, .retry: true
+            }
+            let read = try await repository.readWorktrees(inProject: nil, refreshing: refreshing, reporting: { stage in
                 await self.record(stage, attempt: attempt)
             })
             guard ownsRead(attempt) else { return }
@@ -396,12 +455,22 @@ public final class ClientWorktreesModel {
                 state = arrangement
                 return
             }
+            let answer: [Worktree]
+            let scannedAt: Date
+            switch read {
+            case .prepared(let snapshot):
+                answer = snapshot.worktrees
+                scannedAt = snapshot.scannedAt
+            case .uncached(let rows):
+                answer = rows
+                scannedAt = now()
+            }
             worktrees = answer
             let route: WorktreeConnectionRoute = switch readStage {
             case .finding, .verifying: .unknown
             case .reading(let route): route
             }
-            readResult = .read(at: now(), route: route)
+            readResult = .read(at: scannedAt, route: route)
             state = arrangement
             announcing.announce(.arrived(worktreeCount: answer.count))
         } catch .cancelled {
@@ -539,6 +608,16 @@ public final class ClientWorktreesModel {
     private enum ReadTask {
         case idle
         case running(UUID, Task<Void, Never>)
+    }
+
+    private enum Review {
+        case none
+        case reading(WorktreeID)
+    }
+
+    private enum PendingSnapshot {
+        case none
+        case snapshot(WorktreeSnapshot)
     }
 
     private enum ReadPhase {

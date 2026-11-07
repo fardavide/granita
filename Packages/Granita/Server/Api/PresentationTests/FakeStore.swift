@@ -16,9 +16,9 @@ actor FakeStore: Store {
 
     private var stored: StoredState
 
-    init(devices: [StoredDevice] = [], failure: StoreError? = nil) {
+    init(projects: [StoredProject] = [], devices: [StoredDevice] = [], failure: StoreError? = nil) {
         stored = StoredState(
-            projects: [],
+            projects: projects,
             worktrees: [:],
             viewed: [:],
             devices: devices,

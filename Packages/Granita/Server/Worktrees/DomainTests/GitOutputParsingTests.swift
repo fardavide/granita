@@ -287,6 +287,57 @@ struct GitOutputParsingTests {
     // MARK: - ls-files --others -z
 
     @Test
+    func `given a worktree separator is missing when the next checkout starts then both records survive`() {
+        // given
+        let output = nulSeparated([
+            "worktree /primary", "HEAD aaa", "branch refs/heads/main",
+            "worktree /linked", "HEAD bbb", "branch refs/heads/review", ""
+        ])
+
+        // when
+        let records = WorktreeListParser.parse(output)
+
+        // then
+        #expect(records.map(\.location) == [RepositoryLocation(path: "/primary"), RepositoryLocation(path: "/linked")])
+        #expect(records.map(\.branch) == ["refs/heads/main", "refs/heads/review"])
+    }
+
+    @Test(arguments: [("T", FileStatus.typeChanged), ("U", .conflicted)])
+    func `given a raw type or merge change when parsed then its specific status is retained`(
+        letter: String,
+        expected: FileStatus
+    ) {
+        // given
+        let output = nulSeparated([":100644 100644 aaa bbb \(letter)", "affected.txt"])
+
+        // when
+        let changes = RawChangeParser.parse(output)
+
+        // then
+        #expect(changes.map(\.status) == [expected])
+    }
+
+    @Test(arguments: [[], ["old.txt"]])
+    func `given a numstat rename is cut before both paths arrive when parsed then no path is invented`(
+        trailingPaths: [String]
+    ) {
+        // given
+        let output = nulSeparated(["3\t4\t"] + trailingPaths)
+
+        // when - then
+        #expect(NumstatParser.parse(output).isEmpty)
+    }
+
+    @Test
+    func `given an unmerged record ends immediately after its metadata when parsed then no empty path is reported`() {
+        // given
+        let output = nulSeparated(["u UU N... 100644 100644 100644 100644 aaa bbb ccc "])
+
+        // when - then
+        #expect(StatusParser.conflictedPaths(output).isEmpty)
+    }
+
+    @Test
     func `given untracked paths when parsed then each NUL separated path is one file`() {
         // given
         let output = nulSeparated(["src/one.txt", "src/a file with spaces.txt", "caffè.txt"])

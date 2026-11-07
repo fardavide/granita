@@ -25,6 +25,7 @@ import CoreDiffDomain
 public struct WorktreeDiffScreen: View {
 
     @State private var model: ClientViewerModel
+    @Environment(\.scenePhase) private var scenePhase
 
     /// **Open by default and shut by the reader**, which is the review's iPad and Davide's amendment
     /// to it on 1 September 2026: the tree is furniture rather than a modal, and a reader who wants
@@ -187,7 +188,7 @@ public struct WorktreeDiffScreen: View {
             } message: {
                 Text("The file changed while you were writing, so the comment was not saved.")
             }
-            .task { await model.load() }
+            .task(id: scenePhase) { await model.followUpdates(active: scenePhase == .active) }
             // **Keyed on both, and `initial: true` so the first render reports rather than assumes.**
             // The model starts on light at the phone's 11pt because nothing else is knowable before a
             // view exists; this is where an iPad at 12pt and a screen already in dark mode say so.

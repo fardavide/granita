@@ -14,14 +14,24 @@ actor FakeGitClient: GitClient {
 
     private let output: GitOutput
     private let failure: GitError?
+    private let yields: Bool
+    private var active = 0
+    private(set) var maximumActive = 0
 
-    init(output: GitOutput, failure: GitError?) {
+    init(output: GitOutput, failure: GitError?, yields: Bool = false) {
         self.output = output
         self.failure = failure
+        self.yields = yields
     }
 
-    func run(_ command: GitCommand, in location: RepositoryLocation) throws(GitError) -> GitOutput {
+    func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
         received.append(command)
+        active += 1
+        maximumActive = max(maximumActive, active)
+        defer { active -= 1 }
+        if yields {
+            for _ in 0..<10 { await Task.yield() }
+        }
         if let failure {
             throw failure
         }

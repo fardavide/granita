@@ -241,6 +241,13 @@ diagnostics. Keep recovery and reporting reachable in a scroll view at accessibi
 
 ### Refresh keeps the content, and makes its age visible
 
+> Live-update contract approved on 6 November 2026: prepared Mac snapshots update the active
+> worktree list without a global loading state. While a worktree is being reviewed, activity in
+> another worktree remains invisible, including in a sidebar. The open worktree automatically
+> reloads only when its own content changes. This replaces the earlier foreground-only policy
+> and SPEC section 10's required update pill; see
+> [0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md).
+
 Add stock pull-to-refresh to the list. Rows remain visible and operable while it runs. Retry from
 a refresh notice starts another refresh and clears the notice for that attempt. Cancel when leaving
 or opening a worktree; ignore stale completions so an old attempt cannot replace a later result.
@@ -2076,6 +2083,12 @@ no-reflow rule forbids — **legal only because staleness can become true only a
 re-measures from the top.** The refresh this anticipated arrived on 18 September 2026 and the row
 survives it unchanged: a pull can only be made at the top of the scroll, so every read this screen
 performs still re-measures from there.
+
+> The automatic same-worktree reload approved in
+> [0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md)
+> also permits this existing row to change during that reload. Its treatment remains unchanged;
+> preserving reading position through simultaneous edits is deferred. Changes to another
+> worktree must not affect this file or any other part of the current review.
 
 ### §7.4 — The way in is a floating capsule, because the toolbar is not there when you need it
 

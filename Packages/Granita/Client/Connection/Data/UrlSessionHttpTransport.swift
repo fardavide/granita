@@ -129,4 +129,32 @@ public final class UrlSessionHttpTransport: HttpTransport {
             throw failure
         }
     }
+
+    public func stream(_ request: HttpRequest) async throws(ApiFailure) -> HttpEventResponse {
+        guard request.url.scheme == "https" else {
+            throw .requestNotBuildable(diagnostic: "Granita connections require HTTPS")
+        }
+        var outgoing = URLRequest(url: request.url)
+        outgoing.timeoutInterval = 45
+        outgoing.httpMethod = request.method.rawValue
+        for (name, value) in request.headers {
+            outgoing.setValue(value, forHTTPHeaderField: name)
+        }
+        await logs.record(.requestStarted(method: request.method, url: request.url))
+        do {
+            let (lines, response) = try await session.lines(for: outgoing)
+            guard let http = response as? HTTPURLResponse else {
+                throw ApiFailure.notUnderstood(diagnostic: "the event reply was not an HTTP response")
+            }
+            await logs.record(.requestFinished(method: request.method, url: request.url, statusCode: http.statusCode))
+            return HttpEventResponse(statusCode: http.statusCode, lines: lines)
+        } catch {
+            await logs.record(.requestFailed(
+                method: request.method,
+                url: request.url,
+                errors: ConnectionLogError.chain(for: error)
+            ))
+            throw ApiFailure.forTransport(error)
+        }
+    }
 }

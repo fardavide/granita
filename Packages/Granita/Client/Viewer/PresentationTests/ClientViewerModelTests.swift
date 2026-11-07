@@ -1,7 +1,11 @@
+import Foundation
+import Observation
+import Synchronization
 import Testing
 
 import ClientConnectionDomain
 import ClientViewerDomain
+import CoreApiDomain
 import CoreDiffDomain
 import CoreReviewDomain
 
@@ -15,6 +19,520 @@ import CoreReviewDomain
 @Suite("Client viewer model")
 @MainActor
 struct ClientViewerModelTests {
+
+    @Test(arguments: ContextDirection.allCases)
+    func `given adjacent changed hunks when expanding their shared gap then neither hunk is read twice`(direction: ContextDirection) async {
+        // given
+        let first = Hunk(
+            index: 0, oldStart: 2, oldCount: 1, newStart: 2, newCount: 1, sectionHeading: nil,
+            lines: [
+                DiffLine(kind: .deletion, oldNumber: 2, newNumber: nil, text: "old first", displayColumns: 9, segments: nil),
+                DiffLine(kind: .addition, oldNumber: nil, newNumber: 2, text: "new first", displayColumns: 9, segments: nil)
+            ]
+        )
+        let second = Hunk(
+            index: 1, oldStart: 8, oldCount: 1, newStart: 8, newCount: 1, sectionHeading: nil,
+            lines: [
+                DiffLine(kind: .deletion, oldNumber: 8, newNumber: nil, text: "old second", displayColumns: 10, segments: nil),
+                DiffLine(kind: .addition, oldNumber: nil, newNumber: 8, text: "new second", displayColumns: 10, segments: nil)
+            ]
+        )
+        let scenario = Scenario(
+            files: aChangeSet(of: 1), hunksFor: 0, hunks: [first, second],
+            linesAnswer: .success(FileLines(lines: ["context 3", "context 4", "context 5", "context 6", "context 7"], eof: false))
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(direction, hunk: direction == .above ? 1 : 0, in: scenario.fileIds[0])
+
+        // then
+        #expect(scenario.repository.windowsAskedFor == [LineWindow(side: .new, start: 3, count: 5)])
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let prepared) = entries[0].content else {
+            Issue.record("Both changed hunks must stay ready after their gap is expanded")
+            return
+        }
+        #expect(prepared.diff.hunks.count == 2)
+        switch direction {
+        case .above: #expect(prepared.diff.hunks[0] == first)
+        case .below: #expect(prepared.diff.hunks[1] == second)
+        }
+    }
+
+    @Test
+    func `given a context answer is suspended when a newer empty revision loads then its late successful lines stay absent`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1), hunksFor: 0, hunks: [aHunkInTheMiddle],
+            linesAnswer: .success(FileLines(lines: ["late context"], eof: true)), holdingLines: true
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let expansion = Task { await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0]) }
+        while scenario.repository.windowsAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty-context", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseLines()
+        await expansion.value
+
+        // then
+        #expect(scenario.sut.state == .nothingChanged)
+        #expect(scenario.sut.expansionFailure == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given failed files are retrying when their next answer is suspended then the old failed-file notice is absent`() async throws {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), diffFailure: .gitFailure(message: "retryable diff failure"), holdingDiffs: true)
+        await scenario.sut.load()
+        let firstRead = Task { await scenario.sut.reading(0) }
+        defer {
+            scenario.repository.releaseDiffs()
+            firstRead.cancel()
+        }
+        while scenario.repository.batchesAskedFor.isEmpty, !Task.isCancelled { await Task.yield() }
+        try #require(scenario.repository.batchesAskedFor.count == 1)
+        scenario.repository.releaseDiffs()
+        await firstRead.value
+        _ = try #require(scenario.sut.batchFailure)
+        scenario.repository.suspendDiffs()
+
+        // when
+        let retry = Task { await scenario.sut.retryDiffs() }
+        defer {
+            scenario.repository.releaseDiffs()
+            retry.cancel()
+        }
+        while scenario.repository.batchesAskedFor.count < 2, !Task.isCancelled { await Task.yield() }
+        try #require(scenario.repository.batchesAskedFor.count == 2)
+
+        // then
+        #expect(scenario.sut.isRetryingDiffs)
+        #expect(scenario.sut.batchFailure == nil)
+        scenario.repository.releaseDiffs()
+        await retry.value
+        #expect(scenario.sut.batchFailure?.hasBeenTried == true)
+    }
+
+    @Test(arguments: [ApiFailure.cancelled, .gitFailure(message: "late refresh failure")])
+    func `given a refresh is suspended when pairing is revoked then its late refusal cannot restore content`(failure: ApiFailure) async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 1)
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: failure)
+        let refresh = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseSuspendedRead()
+        await refresh.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given a review has not appeared when a source snapshot arrives then it does not start a content read`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "source-before-appearance")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == 0)
+        #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a changed summary when fresh content is no longer authorized then the review requires pairing again`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .unauthorized)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "new-unreadable-content")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.repository.changeSetReads == 2)
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given a changed summary when its fresh read proves the worktree gone then the old review is removed`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .worktreeGone)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "changed-before-removal")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+        #expect(scenario.repository.changeSetReads == 2)
+    }
+
+    @Test
+    func `given reconciliation is suspended when pairing is revoked then a late read failure cannot replace that refusal`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 1)
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .gitFailure(message: "late checkout failure"))
+        let reconciling = Task {
+            await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "changed-while-reading")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            )))
+        }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseSuspendedRead()
+        await reconciling.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given the initial read is suspended when the review leaves then no live subscription starts afterward`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 0)
+        let following = Task { await scenario.sut.followUpdates() }
+        await scenario.repository.waitUntilReadStarted(count: 1)
+
+        // when
+        following.cancel()
+        scenario.repository.releaseSuspendedRead()
+        await following.value
+
+        // then
+        #expect(scenario.repository.updateSubscriptions == 0)
+        #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a diff batch is suspended when live authorization is revoked then the refusal survives its late answer`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), holdingDiffs: true)
+        await scenario.sut.load()
+        let batch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseDiffs()
+        await batch.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given an old diff batch is suspended when the reviewed worktree disappears then its late answer cannot restore that review`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), holdingDiffs: true)
+        await scenario.sut.load()
+        let batch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [], scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+        scenario.repository.releaseDiffs()
+        await batch.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given a live review reload is suspended when its lifecycle is cancelled then no diff request follows its late answer`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            suspendingReadsAfter: 1,
+            liveUpdates: [.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "agent-finished")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            ))]
+        )
+        await scenario.sut.load()
+        let follower = Task { await scenario.sut.followUpdates() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        follower.cancel()
+        scenario.repository.releaseSuspendedRead()
+        await follower.value
+
+        // then
+        #expect(scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given context expansion is suspended when a newer revision arrives then its late refusal remains absent`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), hunksFor: 0, hunks: [aHunkInTheMiddle], holdingLines: true)
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let expansion = Task { await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0]) }
+        while scenario.repository.windowsAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseLines()
+        await expansion.value
+
+        // then
+        #expect(scenario.sut.expansionFailure == nil)
+        #expect(scenario.sut.state == .nothingChanged)
+    }
+
+    @Test
+    func `given an old batch is suspended when a newer revision has no changes then its late refusal cannot replace the newer state`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), diffFailure: .fileGone, holdingDiffs: true)
+        await scenario.sut.load()
+        let oldBatch = Task { await scenario.sut.reading(0) }
+        while scenario.repository.batchesAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseDiffs()
+        await oldBatch.value
+
+        // then
+        #expect(scenario.sut.state == .nothingChanged)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
+
+    @Test
+    func `given an inactive review when its lifecycle changes then no read or subscription starts`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.followUpdates(active: false)
+
+        // then
+        #expect(scenario.repository.changeSetReads == 0)
+        #expect(scenario.repository.updateSubscriptions == 0)
+    }
+
+    @Test
+    func `given an unread review when following begins then its initial change set loads once`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
+    @Test
+    func `given an open review when following the source then its changed content reloads`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1),
+            liveUpdates: [.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "agent-completed")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            ))]
+        )
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.followUpdates()
+
+        // then
+        #expect(scenario.repository.changeSetReads == 2)
+    }
+
+    @Test
+    func `given a fresh loaded review when its first stale summary accompanies another worktree change then the visible review stays untouched`() async throws {
+        // given
+        let picture = FileChange(
+            id: FileID(rawValue: "reviewed-picture"),
+            path: "Art/review.png",
+            oldPath: nil,
+            status: .modified,
+            isBinary: true,
+            isSubmodule: false,
+            stats: .zero,
+            contentHash: String(repeating: "e", count: 64),
+            estimatedLineCount: 0,
+            isViewed: false,
+            isTruncated: false,
+            language: nil
+        )
+        let files = aChangeSet(of: 1) + [picture]
+        let scenario = Scenario(files: files, hunksFor: 0, refreshAnnouncementDelay: .zero)
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "newer-direct-read",
+            stats: ChangeStats(filesChanged: 2, insertions: 12, deletions: 4),
+            files: files,
+            isTruncated: false
+        ))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        await scenario.sut.setOpen(false, on: scenario.fileIds[0])
+        scenario.sut.openImage(.new, of: picture.id)
+        scenario.sut.compareImage(true)
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("The review must be loaded before its first summary arrives")
+            return
+        }
+        #expect(entries[0].hunkCountForTests == 1)
+        #expect(entries[0].collapse.isCollapsed)
+        let images = scenario.sut.images
+        #expect(try #require(images[picture.id]).new == .arrived(Data([0x89, 0x50, 0x4E, 0x47, 0x02])))
+        let openedImage = try #require(scenario.sut.openedImage)
+        #expect(scenario.sut.isComparingImage)
+        let visibleStateChanged = Mutex(false)
+        // Final false flags would hide a transient spinner or content reset during reconciliation.
+        withObservationTracking {
+            _ = scenario.sut.state
+            _ = scenario.sut.isRefreshing
+            _ = scenario.sut.isWaitingLong
+            _ = scenario.sut.images
+            _ = scenario.sut.openedImage
+            _ = scenario.sut.isComparingImage
+        } onChange: {
+            visibleStateChanged.withLock { $0 = true }
+        }
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-after")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(visibleStateChanged.withLock { $0 } == false)
+        #expect(scenario.sut.state == .reading(entries))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+        #expect(scenario.sut.images == images)
+        #expect(scenario.sut.openedImage == openedImage)
+        #expect(scenario.sut.isComparingImage)
+    }
+
+    @Test
+    func `given a stale summary for the open review when only another worktree advances then repeated snapshots do not reload it`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "newer-direct-read",
+            stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+            files: aChangeSet(of: 1),
+            isTruncated: false
+        ))
+        await scenario.sut.load()
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-before")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )))
+        let reads = scenario.repository.changeSetReads
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "older-server-summary"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "agent-after")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == reads)
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given an open review when its own content changes then it reloads automatically`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: "finished-agent-content",
+            stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+            files: aChangeSet(of: 1),
+            isTruncated: false
+        ))
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "finished-agent-content")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == 2)
+        #expect(scenario.repository.batchesAskedFor == [[FileID(rawValue: "file-0")]])
+    }
+
+    @Test
+    func `given an open review when another worktree changes then its content and refresh state stay untouched`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let before = scenario.sut.state
+        let reads = scenario.repository.changeSetReads
+        let batches = scenario.repository.batchesAskedFor
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [
+                aLiveWorktree(aWorktree, revision: "9d41e0c7"),
+                aLiveWorktree(WorktreeID(rawValue: "another-worktree"), revision: "new-agent-content")
+            ],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == reads)
+        #expect(scenario.repository.batchesAskedFor == batches)
+        #expect(scenario.sut.state == before)
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.sut.isWaitingLong == false)
+    }
 
     // MARK: - Copying local diagnostics
 
@@ -122,15 +640,15 @@ struct ClientViewerModelTests {
         // given — the reader has content on screen and something re-reads underneath them.
         let scenario = Scenario(files: aChangeSet(of: 3))
         await scenario.sut.load()
-        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
-        await refusing.sut.load()
+        let before = scenario.sut.state
+        scenario.repository.refuseChanges(with: .cancelled)
 
-        // when - then — nothing was read, so there is nothing to keep and the spinner is honest.
-        #expect(refusing.sut.state == .loading)
-        guard case .reading = scenario.sut.state else {
-            Issue.record("a loaded change set has to read as something to read")
-            return
-        }
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.state == before)
+        #expect(scenario.sut.isRefreshing == false)
     }
 
     @Test
@@ -178,11 +696,11 @@ struct ClientViewerModelTests {
         // here would empty a screen they were reading.
         let scenario = Scenario(files: aChangeSet(of: 3))
         await scenario.sut.load()
+        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+        scenario.repository.refuseChanges(with: .cancelled)
 
         // when — the model is asked to read again and that read is called off
-        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
-        await refusing.sut.load()
-        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+        await scenario.sut.load()
 
         // then — the one that had content still has it, entry for entry.
         guard case .reading(let entries) = scenario.sut.state else {
@@ -190,7 +708,7 @@ struct ClientViewerModelTests {
             return
         }
         #expect(entries.count == 3)
-        #expect(refusing.sut.state == .loading)
+        #expect(entries[0].file.isViewed)
     }
 
     // MARK: - Reading the file list again
@@ -1408,9 +1926,11 @@ private struct Scenario {
         isTruncated: Bool = false,
         copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
         holdingDiffs: Bool = false,
+        holdingLines: Bool = false,
         suspendingReadsAfter: Int = .max,
         refreshAnnouncementDelay: Duration = UnaskedForRefresh.announcementDelay,
         longWait: Duration = DiffFileWait.longWait,
+        liveUpdates: [WorktreeUpdate] = [],
         alsoAnswering stranger: FileChange? = nil
     ) {
         fileIds = files.map(\.id)
@@ -1428,8 +1948,10 @@ private struct Scenario {
             linesAnswer: linesAnswer,
             refusesTheFirstRead: refusesTheFirstRead,
             holdingDiffs: holdingDiffs,
+            holdingLines: holdingLines,
             suspendingReadsAfter: suspendingReadsAfter,
-            alsoAnswering: stranger
+            alsoAnswering: stranger,
+            liveUpdates: liveUpdates
         )
         copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
         announcing = FakeDiffReadAnnouncing()
@@ -1585,4 +2107,25 @@ private func aChangeSet(of count: Int, viewedAt read: Int? = nil) -> [FileChange
             language: "swift"
         )
     }
+}
+
+private func aLiveWorktree(_ id: WorktreeID, revision: String) -> Worktree {
+    Worktree(
+        id: id,
+        projectId: ProjectID(rawValue: "granita-project"),
+        projectName: "Granita",
+        branch: "live-review",
+        isPrimary: false,
+        isDetached: false,
+        isLocked: false,
+        hasUnbornHead: false,
+        alias: nil,
+        suggestedAlias: nil,
+        displayName: "Live review",
+        directoryName: "live-review",
+        isPinned: false,
+        stats: ChangeStats(filesChanged: 1, insertions: 12, deletions: 4),
+        lastModified: Date(timeIntervalSince1970: 1_800_000_000),
+        revision: revision
+    )
 }

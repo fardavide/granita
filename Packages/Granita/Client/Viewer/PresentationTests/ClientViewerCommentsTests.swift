@@ -19,6 +19,63 @@ import CoreReviewDomain
 @MainActor
 struct ClientViewerCommentsTests {
 
+    @Test
+    func `given review settings already loaded when a later settings read is refused then the chosen values stay`() async {
+        // given
+        let settings = ReviewSettings(openingLine: "Keep this review opening.", identifier: .numbers)
+        let scenario = Scenario(settings: settings)
+        await scenario.sut.loadReviewSettings()
+        scenario.repository.refuseReviewSettings(with: .unreachable(diagnostic: "settings unavailable"))
+
+        // when
+        await scenario.sut.loadReviewSettings()
+
+        // then
+        #expect(scenario.sut.reviewSettings == settings)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given initial review reconciliation is suspended when pairing is revoked then its late completion cannot publish content`() async throws {
+        // given
+        let scenario = Scenario(loadReviewsAtStart: true)
+        scenario.store.holdsReconciliation = true
+        let reading = Task { await scenario.sut.load() }
+        defer {
+            scenario.store.releaseReconciliation()
+            reading.cancel()
+        }
+        try #require(await scenario.store.waitUntilReconciliationStarts())
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.store.releaseReconciliation()
+        await reading.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given no comment selection when the composer asks for its anchor then its label is empty`() {
+        // given
+        let scenario = Scenario()
+
+        // when - then
+        #expect(scenario.sut.composerAnchorLabel.isEmpty)
+    }
+
+    @Test
+    func `given mutually exclusive viewer sheets when SwiftUI identifies them then every destination has a distinct identity`() {
+        // given
+        let destinations: [ViewerSheet] = [.selector, .composer, .review]
+
+        // when
+        let identities = Set(destinations.map(\.id))
+
+        // then
+        #expect(identities.count == 3)
+    }
+
     // MARK: - Writing one down
 
     @Test
@@ -1041,6 +1098,7 @@ private func aChangeSet(of count: Int) -> [FileChange] {
 private struct Scenario {
 
     let sut: ClientViewerModel
+    let repository: FakeGranitaRepository
     let store: FakeReviewCommentStore
     let pasteboard: FakeReviewPasteboard
 
@@ -1060,19 +1118,20 @@ private struct Scenario {
         )
         store = FakeReviewCommentStore(holding: comments)
         pasteboard = FakeReviewPasteboard()
+        repository = FakeGranitaRepository(
+            changeSet: .success(changes),
+            hunks: Dictionary(uniqueKeysWithValues: files.map { ($0.id, [aHunk]) }),
+            diffFailure: nil,
+            viewedFailure: nil,
+            linesAnswer: .failure(.fileGone),
+            refusesTheFirstRead: nil,
+            alsoAnswering: nil,
+            holdingSettings: settings
+        )
         sut = ClientViewerModel(
             worktree: aWorktree,
             macName: "MacBook Pro",
-            repository: FakeGranitaRepository(
-                changeSet: .success(changes),
-                hunks: Dictionary(uniqueKeysWithValues: files.map { ($0.id, [aHunk]) }),
-                diffFailure: nil,
-                viewedFailure: nil,
-                linesAnswer: .failure(.fileGone),
-                refusesTheFirstRead: nil,
-                alsoAnswering: nil,
-                holdingSettings: settings
-            ),
+            repository: repository,
             commentStore: store,
             pasteboard: pasteboard,
             // Highlighting is beside the point here and is asserted in

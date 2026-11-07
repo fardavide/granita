@@ -82,6 +82,8 @@ public struct MacWorktreeScreen<Source: View, Opened: View, Settings: View>: Vie
             case .chosen(let id, let name):
                 opening(id, name, model.projectName(of: id), model)
                     .id(id)
+                    .onAppear { model.reviewing(id) }
+                    .onDisappear { model.finishedReview(of: id) }
             case .gone(let name):
                 WorktreeGoneView(name: name)
             }

@@ -61,8 +61,8 @@ public struct WorktreeService: Sendable {
         in worktree: RepositoryLocation,
         viewed: [FileID: String]
     ) async throws(GitError) -> WorktreeChangeSet {
-        let revision = try await revisionToCompareAgainst(in: worktree)
-
+        let head = try await git.run(.headCommit, in: worktree).standardOutput
+        let revision: GitRevision = head.isEmpty ? .emptyTree : .head
         let statusBytes = try await git.run(.worktreeStatus, in: worktree).standardOutput
         let conflicted = StatusParser.conflictedPaths(statusBytes)
 
@@ -120,8 +120,33 @@ public struct WorktreeService: Sendable {
             total = total + entry.stats
         }
 
+        // Raw status can name a nested worktree that was deliberately excluded above. Only this
+        // checkout's served content should refresh its reader; viewed marks are separate metadata.
+        var revisionBytes = head
+        revisionBytes.append(0)
+        revisionBytes.append(contentsOf: String(entries.count > limits.maximumChangedFiles).utf8)
+        for file in files {
+            for field in [
+                file.id.rawValue,
+                file.path,
+                file.oldPath ?? "",
+                file.status.rawValue,
+                String(file.isBinary),
+                String(file.isSubmodule),
+                String(file.stats.filesChanged),
+                String(file.stats.insertions),
+                String(file.stats.deletions),
+                file.contentHash,
+                String(file.estimatedLineCount),
+                String(file.isTruncated),
+                file.language ?? ""
+            ] {
+                revisionBytes.append(0)
+                revisionBytes.append(contentsOf: field.utf8)
+            }
+        }
         return WorktreeChangeSet(
-            revision: ContentHash.revision(ofStatusBytes: statusBytes),
+            revision: ContentHash.revision(ofStatusBytes: revisionBytes),
             stats: total,
             files: files,
             isTruncated: entries.count > limits.maximumChangedFiles,
@@ -430,7 +455,7 @@ public struct WorktreeService: Sendable {
 /// A worktree's uncommitted state.
 public struct WorktreeChangeSet: Hashable, Sendable {
 
-    /// Moves whenever anything about the worktree moves, and is what the phone polls.
+    /// Moves when this checkout's served content changes, independently of reader-owned metadata.
     public let revision: String
 
     public let stats: ChangeStats

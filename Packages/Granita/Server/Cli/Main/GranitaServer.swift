@@ -11,9 +11,11 @@ import ServerGitData
 import ServerGitDomain
 import ServerIdentityData
 import ServerIdentityDomain
+import ServerMacData
 import ServerSessionsData
 import ServerStoreData
 import ServerStoreDomain
+import ServerWatchData
 import ServerWorktreesData
 import ServerWorktreesDomain
 
@@ -58,12 +60,16 @@ struct GranitaServer {
         } else {
             client = processGit
         }
-        let git = LoggingGitClient(
-            client: client,
-            diagnostics: VerbosityFilteringDiagnostics(
-                wrapped: OsLogDiagnostics(),
-                verbosity: UserDefaultsVerboseLogging(defaults: .standard)
-            )
+        let diagnostics = VerbosityFilteringDiagnostics(
+            wrapped: OsLogDiagnostics(),
+            verbosity: UserDefaultsVerboseLogging(defaults: .standard)
+        )
+        let git = BoundedGitClient(
+            client: LoggingGitClient(
+                client: client,
+                diagnostics: diagnostics
+            ),
+            limit: WorktreeReader.concurrentGitProcesses
         )
         let service = WorktreeService(git: git, files: LocalWorktreeFiles(), limits: .standard)
 
@@ -125,10 +131,7 @@ struct GranitaServer {
             // turning verbose on for one does not turn it on for the other. `defaults write -g` is
             // this one's switch, since a terminal already has a flag for everything else and a
             // second mechanism would be a second answer to one question.
-            diagnostics: VerbosityFilteringDiagnostics(
-                wrapped: OsLogDiagnostics(),
-                verbosity: UserDefaultsVerboseLogging(defaults: .standard)
-            ),
+            diagnostics: diagnostics,
             serverVersion: Branding.serverVersion,
             // None, and that is not an oversight. Waking is for a Mac nobody is sitting at; this
             // one is running in a terminal in front of somebody, and it exits when they close it.
@@ -160,26 +163,38 @@ struct GranitaServer {
         let projects = await store.state().projects
         log("\(projects.count) project(s) enabled\(projects.isEmpty ? " — add one with --add-project <path>" : "")")
 
+        let lifetime = ObservingServerLifetime(
+            observation: WorktreeObservation(
+                registry: registry,
+                git: git,
+                source: FileSystemWorktreeObservationSource(),
+                store: store,
+                onFailure: { diagnostics.note("Worktree observation failed: \($0)", about: .git) }
+            ),
+            wakes: WorkspaceWakeNotifications()
+        )
         do {
-            try await ApiServer.make(
-                configuration: ApiServerConfiguration(
-                    dependencies: dependencies,
-                    binding: binding,
-                    transport: transport
-                )
-            ) { endpoint in
-                // With a Bonjour bind the port is the system's choice, so this is the first moment
-                // anything knows it — and it is the number to curl.
-                guard let endpoint else { return log("listening, but the port is not knowable") }
-                log("listening on \(endpoint.host):\(endpoint.port)")
-                if arguments.wantsPairing {
-                    await offerPairing(
-                        PairingInvitations(pairing: pairing, identities: identities),
-                        at: endpoint
+            try await lifetime.run {
+                try await ApiServer.make(
+                    configuration: ApiServerConfiguration(
+                        dependencies: dependencies,
+                        binding: binding,
+                        transport: transport
                     )
+                ) { endpoint in
+                    // With a Bonjour bind the port is the system's choice, so this is the first
+                    // moment anything knows it — and it is the number to curl.
+                    guard let endpoint else { return log("listening, but the port is not knowable") }
+                    log("listening on \(endpoint.host):\(endpoint.port)")
+                    if arguments.wantsPairing {
+                        await offerPairing(
+                            PairingInvitations(pairing: pairing, identities: identities),
+                            at: endpoint
+                        )
+                    }
                 }
+                .runService()
             }
-            .runService()
         } catch {
             log("stopped: \(error)")
             exit(1)

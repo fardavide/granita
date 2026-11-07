@@ -69,6 +69,22 @@ struct GitInvocationTests {
         #expect(vector.suffix(4) == ["rev-parse", "--verify", "--quiet", "HEAD"])
     }
 
+    @Test(arguments: [
+        (GitCommand.gitDirectory, "--git-dir"),
+        (GitCommand.commonGitDirectory, "--git-common-dir")
+    ])
+    func `when watching a checkout then git metadata directories are absolute`(
+        command: GitCommand,
+        option: String
+    ) {
+        // given - when
+        let vector = arguments(of: command)
+
+        // then
+        #expect(vector.suffix(3) == ["rev-parse", "--path-format=absolute", option])
+        #expect(vector.contains("--no-ext-diff") == false)
+    }
+
     // MARK: - The subcommands that reject the diff-family flags outright
 
     @Test

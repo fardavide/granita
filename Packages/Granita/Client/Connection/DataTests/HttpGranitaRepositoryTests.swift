@@ -15,6 +15,181 @@ import CoreReviewDomain
 @Suite("Http Granita repository")
 struct HttpGranitaRepositoryTests {
 
+    @Test(.timeLimit(.minutes(1)))
+    func `given an open event source when it is rate limited then followers receive the refusal and can cancel before retry`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_123))
+        let scenario = Scenario(
+            status: 200, json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n", keepingEventsOpen: true
+        )
+        let received = AsyncStream<WorktreeUpdate>.makeStream()
+        let following = Task {
+            for await update in await scenario.sut.updates() { received.continuation.yield(update) }
+            received.continuation.finish()
+        }
+        var updates = received.stream.makeAsyncIterator()
+        #expect(await updates.next() == .snapshot(snapshot))
+
+        // when
+        await scenario.transport.refuseEvents(with: .rateLimited)
+        let refusal = await updates.next()
+        following.cancel()
+        await following.value
+
+        // then
+        #expect(refusal == .failed(.rateLimited))
+        #expect(await updates.next() == nil)
+        #expect(await scenario.transport.sent.count == 1)
+    }
+
+    @Test
+    func `given a source already published a snapshot when another consumer subscribes then its current inventory replays without another connection`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_123))
+        let scenario = Scenario(
+            status: 200, json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n", keepingEventsOpen: true
+        )
+        var first = await scenario.sut.updates().makeAsyncIterator()
+        #expect(await first.next() == .snapshot(snapshot))
+
+        // when
+        var late = await scenario.sut.updates().makeAsyncIterator()
+        let current = await late.next()
+
+        // then
+        #expect(current == .snapshot(snapshot))
+        #expect(await scenario.transport.sent.count == 1)
+        await scenario.transport.finishEvents()
+    }
+
+    @Test
+    func `given an event subscription is no longer authorized when following then the refusal arrives once and observation ends`() async {
+        // given
+        let scenario = Scenario(status: 401, json: #"{"error":{"code":"unauthorized","message":"pair again"}}"#)
+
+        // when
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        let refused = await updates.next()
+        let finished = await updates.next()
+
+        // then
+        #expect(refused == .failed(.unauthorized))
+        #expect(finished == nil)
+        #expect(await scenario.transport.sent.count == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given an event connection ends when following continues then a new subscription reconciles its snapshot`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_000))
+        let scenario = Scenario(status: 200, json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n")
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        _ = await updates.next()
+
+        // when
+        let reconnected = await updates.next()
+
+        // then
+        #expect(reconnected == .snapshot(snapshot))
+        #expect(await scenario.transport.sent.count == 2)
+    }
+
+    @Test
+    func `given an older server when prepared snapshots are absent then reading falls back to uncached legacy worktrees`() async throws {
+        // given
+        let scenario = Scenario(legacyWorktrees: try encoded([aWorktree]))
+
+        // when
+        let read = try await scenario.sut.readWorktrees(inProject: nil, refreshing: true, reporting: { _ in })
+
+        // then
+        #expect(read == .uncached([aWorktree]))
+        #expect(await scenario.transport.sent.map { $0.url.path() } == ["/v1/worktree-snapshot", "/v1/worktrees"])
+        #expect(await scenario.transport.sent.last?.url.query() == "refresh=true")
+    }
+
+    @Test
+    func `given a prepared server snapshot when reading worktrees then the original scan time survives`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let scenario = Scenario(status: 200, json: try encoded(snapshot))
+
+        // when
+        let read = try await scenario.sut.readWorktrees(inProject: nil, refreshing: false, reporting: { _ in })
+
+        // then
+        #expect(read == .prepared(snapshot))
+        #expect(try #require(await scenario.transport.sent.first).url.path() == "/v1/worktree-snapshot")
+    }
+
+    @Test
+    func `given two consumers when both observe worktrees then they share one server subscription`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_000))
+        let scenario = Scenario(
+            status: 200,
+            json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n",
+            keepingEventsOpen: true
+        )
+
+        // when
+        var first = await scenario.sut.updates().makeAsyncIterator()
+        var second = await scenario.sut.updates().makeAsyncIterator()
+        let firstSnapshot = await first.next()
+        let secondSnapshot = await second.next()
+
+        // then
+        #expect(firstSnapshot == .snapshot(snapshot))
+        #expect(secondSnapshot == .snapshot(snapshot))
+        #expect(await scenario.transport.sent.filter { $0.url.path() == "/v1/events" }.count == 1)
+        await scenario.transport.finishEvents()
+    }
+
+    @Test
+    func `given an explicit refresh when worktrees are requested then the server is told to scan fresh`() async throws {
+        // given
+        let scenario = Scenario(status: 200, json: "[]")
+
+        // when
+        _ = try await scenario.sut.refreshWorktrees(inProject: ProjectID(rawValue: "selected-project"))
+
+        // then
+        #expect(try #require(await scenario.transport.sent.first).url.query() == "projectID=selected-project&refresh=true")
+    }
+
+    @Test
+    func `given an older server when events return an absent route then live updates are unsupported without retrying`() async {
+        // given
+        let scenario = Scenario(status: 404, json: "")
+
+        // when
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        let first = await updates.next()
+        let last = await updates.next()
+
+        // then
+        #expect(first == .unsupported)
+        #expect(last == nil)
+        #expect(await scenario.transport.sent.count == 1)
+    }
+
+    @Test
+    func `given a streamed snapshot when observing worktrees then its content and scan time arrive`() async throws {
+        // given
+        let expected = WorktreeSnapshot(
+            worktrees: [aWorktree],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let scenario = Scenario(status: 200, json: "event: snapshot\ndata: \(try encoded(expected))\n\n")
+
+        // when
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        let first = await updates.next()
+
+        // then
+        #expect(first == .snapshot(expected))
+    }
+
     // MARK: - What every request carries
 
     @Test
@@ -512,13 +687,18 @@ private struct Scenario {
     let sut: HttpGranitaRepository
     let transport: FakeHttpTransport
 
-    init(status: Int, json: String) {
-        transport = FakeHttpTransport(status: status, json: json)
+    init(status: Int, json: String, keepingEventsOpen: Bool = false) {
+        transport = FakeHttpTransport(status: status, json: json, keepingEventsOpen: keepingEventsOpen)
         sut = HttpGranitaRepository(macAt: macAddress, token: token, transport: transport)
     }
 
     init(status: Int, body: Data) {
         transport = FakeHttpTransport(status: status, body: body)
+        sut = HttpGranitaRepository(macAt: macAddress, token: token, transport: transport)
+    }
+
+    init(legacyWorktrees json: String) {
+        transport = FakeHttpTransport(legacyWorktrees: json)
         sut = HttpGranitaRepository(macAt: macAddress, token: token, transport: transport)
     }
 

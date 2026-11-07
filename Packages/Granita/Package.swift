@@ -327,6 +327,7 @@ let package = Package(
         .target(
             name: "ClientWorktreesPresentation",
             dependencies: [
+                "CoreApiDomain",
                 "CoreComponentsUi",
                 "ClientMacDomain",
                 "ClientWorktreesUi",
@@ -399,6 +400,7 @@ let package = Package(
         .target(
             name: "ClientViewerPresentation",
             dependencies: [
+                "CoreApiDomain",
                 "CoreComponentsUi",
                 "ClientViewerUi",
                 "ClientViewerDomain",
@@ -444,6 +446,7 @@ let package = Package(
                 "ClientViewerPresentation",
                 "ClientViewerDomain",
                 "ClientConnectionDomain",
+                "CoreApiDomain",
                 "CoreDiffDomain",
                 "CoreReviewDomain",
                 "CoreTreeDomain"
@@ -716,8 +719,14 @@ let package = Package(
 
         .target(
             name: "ServerWatchData",
-            dependencies: ["ServerWorktreesDomain", "CoreDiffDomain"],
+            dependencies: ["ServerWorktreesDomain", "ServerGitDomain", "CoreDiffDomain"],
             path: "Server/Watch/Data",
+            swiftSettings: [swift6]
+        ),
+        .testTarget(
+            name: "ServerWatchDataTests",
+            dependencies: ["ServerWatchData", "ServerWorktreesDomain", "ServerGitDomain", "CoreDiffDomain"],
+            path: "Server/Watch/DataTests",
             swiftSettings: [swift6]
         ),
 
@@ -786,6 +795,7 @@ let package = Package(
                 "ServerStoreData",
                 "ServerSessionsData",
                 "ServerWorktreesData",
+                "ServerWatchData",
                 // The phone's client, against the Mac's routes, in one process. The wire contract
                 // now has one definition in `Core` and both halves name it, which is a claim no
                 // suite that sees only one half can check — so the one place the two meet is a
@@ -1015,6 +1025,7 @@ let package = Package(
                 "ServerWorktreesDomain",
                 "ServerStoreDomain",
                 "ServerStoreData",
+                "ServerMacData",
                 "ServerGitDomain",
                 "ServerGitData",
                 "ServerSessionsData",

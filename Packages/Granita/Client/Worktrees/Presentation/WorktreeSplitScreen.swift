@@ -157,7 +157,8 @@ private extension View {
         // See `WorktreeSidebarScreen`, which carries the whole argument.
         navigationDestination(for: WorktreeID.self) { worktree in
             opening(worktree, model.displayName(of: worktree), model.projectName(of: worktree), model)
-                .onAppear { model.cancelLoading() }
+                .onAppear { model.reviewing(worktree) }
+                .onDisappear { model.finishedReview(of: worktree) }
         }
     }
 }
