@@ -1,6 +1,6 @@
 # Status
 
-## Worktree caching and live updates — implemented locally, full coverage blocked on Mac snapshots
+## Worktree caching and live updates — in review, Mac snapshot lifecycle correction pending CI
 
 The independently reviewed [implementation plan](../plan/worktree-cache-live-updates.md)
 and [decision 0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md)
@@ -48,8 +48,18 @@ from another checkout remains running. The result bundle records Failed and the 
 `build/coverage-inputs/mac/tests.xcresult`. The command reports `coverage-mac` Error 75 and
 `coverage` Interrupt 2, with no numerical coverage verdict. Baselines and tolerances were not
 changed. Full local coverage remains blocked on the Mac snapshot run; no CI pass is claimed.
-Version 0.24.0 and its changelog are prepared as one reviewed local feature commit. No push,
-host installation, pull request publication or release has been made.
+Version 0.24.0 and its changelog are committed and published for review in
+[PR #133](https://github.com/fardavide/granita/pull/133). No host installation or release has been made.
+The [first CI run](https://github.com/fardavide/granita/actions/runs/42315003605) passes the builds,
+generated files, package tests and iOS checks. Its Mac failure is different from the local image
+mismatches: the remote-reader subject remains loading in both appearances, preventing the Mac
+coverage artifact and therefore the aggregate verdict. The raw snapshot host has no SwiftUI scene,
+while appearance reads now require an active phase. A focused local run reproduces both assertions.
+The fixture now supplies an active logical phase only for that appearance-read subject; the
+original appearance/content assertions then pass before capture. Local capture still fails with
+ScreenCaptureKit error -3811, including outside the sandbox. The native window, production
+lifecycle, image baselines and thresholds are unchanged. Independent review approves the correction;
+the full CI verdict remains pending.
 
 Where the project is. Update this when a slice lands.
 

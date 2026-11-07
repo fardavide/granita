@@ -217,7 +217,7 @@ snapshots-mac: ## Render the Mac's Settings panes — EXPECTED TO FAIL locally, 
 	@# The gate that matters is `Snapshot tests (macOS)` on the pull request.
 	@# `-only-testing` because the scheme now holds two kinds. Without it this target would also
 	@# drive the app, and a UI failure would surface in the job that photographs screens.
-	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacSnapshotTests $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project $(PROJECT) -scheme GranitaMac    -destination 'platform=macOS' -only-testing:GranitaMacSnapshotTests$(if $(MAC_SNAPSHOT_TEST),/$(MAC_SNAPSHOT_TEST)) $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
 .PHONY: ui-tests-mac
 ui-tests-mac: ## Drive the Mac app and assert what pressing things changed

@@ -1,6 +1,6 @@
 # Worktree caching and live updates
 
-Status: independently reviewed and implemented locally; full coverage blocked on Mac snapshots.
+Status: independently reviewed and published for review; Mac snapshot lifecycle correction pending CI.
 
 ## Review dispositions
 
@@ -286,5 +286,31 @@ while the user's existing Granita 0.23.3 app in another checkout was left runnin
 is `build/coverage-inputs/mac/tests.xcresult`, including the canceled menu case. The command reports
 `coverage-mac` Error 75 and `coverage` Interrupt 2. No numerical coverage verdict or CI pass is
 claimed, and no baseline or tolerance was changed to bypass the Mac check. Full coverage remains
-blocked on that Mac snapshot run. The feature is prepared as one reviewed local commit and remains
-unpublished; the validation blocker stays recorded with it.
+blocked on that Mac snapshot run. That local validation blocker stays recorded with the feature.
+
+### Published CI follow-up
+
+The feature commit is `634af2f`, published in
+[PR #133](https://github.com/fardavide/granita/pull/133). The
+[first CI run](https://github.com/fardavide/granita/actions/runs/42315003605) passes both app builds,
+generated files, package tests and iOS checks. Mac snapshots report exactly two issues: the remote
+reader's appearance read never leaves loading, in light and dark. Coverage stops because the Mac
+suite cannot produce a successful artifact; it has not evaluated the numeric ratchets.
+
+The focused local reader suite reproduces both loading assertions. The snapshot uses a raw
+NSHostingView outside a SwiftUI scene, while the new lifecycle deliberately ignores inactive
+phases. Supplying an active logical phase only for the remote appearance-read subject makes its
+existing appearance, complete-content and highlighting assertions pass before capture. Other
+subjects stay inactive to preserve their explicitly prepared states and clock invariants.
+Native window activation, production lifecycle, baselines and tolerances stay unchanged.
+
+Both local runs still fail image capture with ScreenCaptureKit error -3811; the second run uses
+execution outside the sandbox and has no loading/content assertion failures. Their result bundles
+are `Test-GranitaMac-2026.11.07_07-02-40-+0100.xcresult` and
+`Test-GranitaMac-2026.11.07_07-05-33-+0100.xcresult` in Xcode's DerivedData test logs.
+The existing `snapshots-mac` make target now accepts `MAC_SNAPSHOT_TEST`, matching the iOS selector,
+so this suite can be checked without unrelated Mac tests. Full CI collection is unchanged.
+Independent review found no issues in this correction. A fresh CI image and coverage verdict is
+still required.
+Fresh `make test`, `make build` and `make resolve` pass after the fixture correction. The resolver
+retains the committed 30-pin Xcode graph.

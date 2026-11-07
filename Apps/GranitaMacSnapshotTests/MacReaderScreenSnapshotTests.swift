@@ -29,7 +29,9 @@ struct MacReaderScreenSnapshotTests {
         }
 
         try await assertReaderSnapshot(
-            scenario.view,
+            // A raw NSHostingView has no scene. Only the appearance-read subject needs
+            // a foreground lifecycle; the remaining subjects prepare their models explicitly.
+            scenario.view.environment(\.scenePhase, subject == .remoteWhileLocalBlocked ? .active : .inactive),
             appearance: appearance,
             named: subject.rawValue,
             capturesPresentedSheet: subject == .composer || subject == .editingComment,
