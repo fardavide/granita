@@ -25,7 +25,7 @@ struct UrlSessionRequests: SessionRequests {
 
     func lines(for request: URLRequest) async throws -> (AsyncThrowingStream<String, any Error>, URLResponse) {
         let (bytes, response) = try await session.bytes(for: request)
-        let lines = EventLineStream.buffer(bytes.lines, capacity: 256) {
+        let lines = EventLineStream.buffer(EventLines(bytes: bytes), capacity: 256) {
             bytes.task.cancel()
         }
         return (lines, response)

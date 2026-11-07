@@ -8,6 +8,8 @@ actor FakeStore: Store {
 
     private var continuations: [UUID: AsyncStream<StoredState>.Continuation] = [:]
     private let subscriptions = AsyncStream.makeStream(of: Void.self)
+    private let pausedStateReads = AsyncStream.makeStream(of: Void.self)
+    private var stateRead: StateRead = .ready
     private var stored: StoredState {
         didSet {
             for continuation in continuations.values { continuation.yield(stored) }
@@ -25,7 +27,28 @@ actor FakeStore: Store {
         )
     }
 
-    func state() -> StoredState { stored }
+    func state() async -> StoredState {
+        if case .requested = stateRead {
+            await withCheckedContinuation { continuation in
+                stateRead = .paused(continuation)
+                pausedStateReads.continuation.yield(())
+            }
+        }
+        return stored
+    }
+
+    func pauseNextStateRead() { stateRead = .requested }
+
+    func waitUntilStateReadPaused() async {
+        var reads = pausedStateReads.stream.makeAsyncIterator()
+        _ = await reads.next()
+    }
+
+    func resumeStateRead() {
+        guard case .paused(let continuation) = stateRead else { return }
+        stateRead = .ready
+        continuation.resume()
+    }
 
     func updates() -> AsyncStream<StoredState> {
         let pair = AsyncStream.makeStream(of: StoredState.self)
@@ -108,5 +131,11 @@ actor FakeStore: Store {
             reviews: stored.reviews,
             reviewSettings: stored.reviewSettings
         )
+    }
+
+    private enum StateRead {
+        case ready
+        case requested
+        case paused(CheckedContinuation<Void, Never>)
     }
 }

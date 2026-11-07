@@ -4,6 +4,40 @@ import XCTest
 /// XCUIApplication requires the native XCTest UI runner.
 final class LiveWorktreeUiTests: XCTestCase {
     @MainActor
+    func testLiveWorktreeListUpdatesWhileNoReviewIsOpen() {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["live-list", "disable-test-animations"]
+        app.launch()
+        defer { app.terminate() }
+        let animations = app.staticTexts["context-probe.animations"]
+        XCTAssertTrue(animations.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertEqual(animations.value as? String, "UIKit=false;SwiftUI=true", app.debugDescription)
+        let reviewed = app.staticTexts["Review A"]
+        XCTAssertTrue(reviewed.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Agent B"].isHittable, app.debugDescription)
+        let subscribed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "1"),
+            object: app.staticTexts["live-probe.subscriptions"]
+        )
+        wait(for: [subscribed], timeout: 10)
+        let reviewedFrame = reviewed.frame
+
+        // when
+        app.buttons["Change other worktree"].tap()
+
+        // then
+        let changed = app.staticTexts["Agent B completed"]
+        XCTAssertTrue(changed.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(changed.isHittable, app.debugDescription)
+        XCTAssertFalse(app.staticTexts["Agent B"].exists, app.debugDescription)
+        XCTAssertTrue(reviewed.isHittable, app.debugDescription)
+        XCTAssertEqual(reviewed.frame, reviewedFrame, app.debugDescription)
+        XCTAssertEqual(app.progressIndicators.count, 0, app.debugDescription)
+    }
+
+    @MainActor
     func testOtherWorktreeChangesLeaveTheVisibleSidebarAndReviewUntouched() {
         // given
         let showsSidebar = UIDevice.current.userInterfaceIdiom == .pad

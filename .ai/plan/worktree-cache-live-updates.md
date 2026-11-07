@@ -1,6 +1,6 @@
 # Worktree caching and live updates
 
-Status: independently reviewed and published for review; Mac snapshot lifecycle correction pending CI.
+Status: independently reviewed and published for review; CI coverage repair verified locally.
 
 ## Review dispositions
 
@@ -314,3 +314,33 @@ Independent review found no issues in this correction. A fresh CI image and cove
 still required.
 Fresh `make test`, `make build` and `make resolve` pass after the fixture correction. The resolver
 retains the committed 30-pin Xcode graph.
+
+### Numeric coverage follow-up
+
+The [second CI run](https://github.com/fardavide/granita/actions/runs/42348392910), on `233e365`,
+passes every build and test job, including all 30 Mac snapshot tests. Coverage evaluates against
+main at `63d525c` and rejects Unit, Ui and All lines and regions. Snapshot holds at 99.4% / 97.2%.
+The failed values are Unit 96.9% / 93.6%, Ui 24.7% / 19.9% and All 97.4% / 94.1%.
+
+The repair covers real observation, registry, API, native transport and viewer boundaries without
+changing the coverage calculator or scopes. Deterministic receipts replace a newly added polling
+wait. Tests also verify the current sidebar owner alone can release held rows, source-wide errors
+cannot erase another worktree's review, and a live list updates while no review is selected.
+
+Two production corrections follow reproduced failures:
+
+- A verified targeted changes read returning worktree-gone now removes the stale review. The
+  generation check still rejects late errors, and source-wide failures keep their existing policy.
+- Native URLSession streaming now preserves blank lines and LF, CRLF and CR boundaries rather than
+  using Foundation's separator-dropping line sequence. Native request tests cover empty input,
+  Unicode and an unterminated tail; a complete transport-to-repository test receives a typed SSE
+  snapshot and owns cancellation and session cleanup. Existing bounded buffering is retained.
+
+Independent review of the complete batch reports no actionable findings. Fresh package coverage
+collection passes all 2,160 reported tests across 37 bundles; the canonical calculator accepts both
+Unit comparisons with 14,368 / 14,679 lines and 5,697 / 5,978 regions. Required Ui collection passes
+all 26 runs without failures, skips or runtime warnings; 6,425 / 20,614 lines and 1,483 / 6,017
+regions also pass. Final unsigned package, Mac and iOS builds pass, and `make resolve` retains the
+30-pin Xcode graph. Fresh combined CI remains pending. These four passing local Unit/Ui
+comparisons are not a claim that Snapshot or All coverage passes. No baseline, threshold, scope,
+tolerance, dependency or marketing version changes are included.

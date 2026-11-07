@@ -391,6 +391,217 @@ struct WorktreeObservationTests {
         ])
     }
 
+    @Test(.timeLimit(.minutes(1)), arguments: [DirectoryAnswer.relative, .truncated])
+    func `given Git returns an unusable root when observing then watching is refused with its location`(
+        directoryAnswer: DirectoryAnswer
+    ) async {
+        // given
+        let scenario = Scenario(directoryAnswer: directoryAnswer)
+        let running = Task { await scenario.sut.run() }
+        var failures = scenario.failures.makeAsyncIterator()
+
+        // when
+        let refusal = await failures.next()
+        await scenario.sut.stop()
+        await running.value
+
+        // then
+        #expect(refusal == .invalidGitDirectory(RepositoryLocation(path: "/project")))
+        #expect(await scenario.source.watched.isEmpty)
+        #expect(await scenario.registry.reconciliationCount == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given an invalid Git root when its next discovery succeeds then native watching recovers`() async {
+        // given
+        let scenario = Scenario(directoryAnswer: .relative)
+        let running = Task { await scenario.sut.run() }
+        var failures = scenario.failures.makeAsyncIterator()
+        _ = await failures.next()
+        let retryDelay = await scenario.timing.nextSleep()
+
+        // when
+        await scenario.git.answer(.repositoryRoot, with: Data("/canonical/project\n".utf8))
+        await scenario.timing.advance(by: .seconds(1))
+        let coalescingDelay = await scenario.timing.nextSleep()
+        await scenario.timing.advance(by: .milliseconds(400))
+        let watched = await scenario.source.nextWatch()
+        await scenario.sut.stop()
+        await running.value
+
+        // then
+        #expect(retryDelay == .seconds(1))
+        #expect(coalescingDelay == .milliseconds(400))
+        #expect(watched == [
+            RepositoryLocation(path: "/canonical/project"),
+            RepositoryLocation(path: "/canonical/project/.git")
+        ])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given running observation when its owner is cancelled then watching and registry teardown finish`() async {
+        // given
+        let scenario = Scenario()
+        let running = Task { await scenario.sut.run() }
+        _ = await scenario.source.nextWatch()
+        await scenario.registry.nextReconciliation()
+
+        // when
+        running.cancel()
+        await scenario.registry.waitUntilStopping()
+        await running.value
+
+        // then
+        #expect(await scenario.source.watched.count == 1)
+        #expect(await scenario.registry.reconciliationCount == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given discovery is suspended when its owner is cancelled then no native watch or inventory is started`() async {
+        // given
+        let scenario = Scenario()
+        await scenario.git.pause(.repositoryRoot)
+        let running = Task { await scenario.sut.run() }
+        await scenario.git.waitUntilPaused(.repositoryRoot)
+
+        // when
+        running.cancel()
+        await scenario.registry.waitUntilStopping()
+        await running.value
+
+        // then
+        #expect(await scenario.source.watched.isEmpty)
+        #expect(await scenario.registry.reconciliationCount == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a missing root is being retried when its owner is cancelled then healthy watching is not restarted`() async {
+        // given
+        let missing = RepositoryLocation(path: "/missing")
+        let scenario = Scenario(
+            locations: [missing, RepositoryLocation(path: "/project")],
+            discoveryFailures: [missing: .workingDirectoryUnreadable(location: missing, reason: "volume is not mounted")]
+        )
+        let running = Task { await scenario.sut.run() }
+        _ = await scenario.source.nextWatch()
+        await scenario.registry.nextReconciliation()
+        var failures = scenario.failures.makeAsyncIterator()
+        _ = await failures.next()
+        _ = await scenario.timing.nextSleep()
+        await scenario.git.allowCommands(in: missing)
+        await scenario.git.pause(.repositoryRoot)
+        await scenario.timing.advance(by: .seconds(1))
+        await scenario.git.waitUntilPaused(.repositoryRoot)
+
+        // when
+        running.cancel()
+        await scenario.registry.waitUntilStopping()
+        await running.value
+
+        // then
+        #expect(await scenario.source.watched.count == 1)
+        #expect(await scenario.registry.reconciliationCount == 1)
+    }
+
+    @Test
+    func `given stopped observation when reconciliation is requested then no work is scheduled`() async {
+        // given
+        let scenario = Scenario()
+
+        // when
+        await scenario.sut.reconcile()
+
+        // then
+        #expect(await scenario.git.received.isEmpty)
+        #expect(await scenario.source.watched.isEmpty)
+        #expect(await scenario.registry.reconciliationCount == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given observation is already running when another owner requests it then no duplicate watch starts`() async {
+        // given
+        let scenario = Scenario()
+        let running = Task { await scenario.sut.run() }
+        _ = await scenario.source.nextWatch()
+        await scenario.registry.nextReconciliation()
+
+        // when
+        await scenario.sut.run()
+        await scenario.sut.stop()
+        await running.value
+
+        // then
+        #expect(await scenario.source.watched.count == 1)
+        #expect(await scenario.registry.reconciliationCount == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `given native watch startup is suspended when stopped then its late outcome cannot keep watching or report a refusal`(
+        watchFails: Bool
+    ) async {
+        // given
+        let scenario = Scenario(sourceFailures: watchFails ? [.couldNotStartStream] : [])
+        await scenario.source.pauseNextWatch()
+        let running = Task { await scenario.sut.run() }
+        await scenario.source.waitUntilWatchPaused()
+
+        // when
+        let stopping = Task { await scenario.sut.stop() }
+        await scenario.registry.waitUntilStopping()
+        await scenario.source.resumeWatch()
+        await stopping.value
+        await running.value
+        await scenario.source.send(.changed([RepositoryLocation(path: "/canonical/project/late.swift")]))
+        await scenario.timing.advance(by: .seconds(2))
+        scenario.failureReports.finish()
+        var failures = scenario.failures.makeAsyncIterator()
+
+        // then
+        #expect(await scenario.source.activeWatchCount == 0)
+        #expect(await scenario.registry.reconciliationCount == 0)
+        #expect(await failures.next() == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a missing project recovers beside healthy roots when discovery retries then its native roots join the existing watch`() async {
+        // given
+        let missing = RepositoryLocation(path: "/missing")
+        let recovered = RepositoryLocation(path: "/returned/project")
+        let scenario = Scenario(
+            locations: [missing, RepositoryLocation(path: "/project")],
+            discoveryFailures: [missing: .workingDirectoryUnreadable(location: missing, reason: "volume is not mounted")]
+        )
+        let running = Task { await scenario.sut.run() }
+        _ = await scenario.source.nextWatch()
+        await scenario.registry.nextReconciliation()
+        var failures = scenario.failures.makeAsyncIterator()
+        _ = await failures.next()
+        let retryDelay = await scenario.timing.nextSleep()
+        await scenario.git.answer(.repositoryRoot, in: missing, with: Data("/returned/project\n".utf8))
+        await scenario.git.answer(.gitDirectory, in: recovered, with: Data("/returned/project/.git\n".utf8))
+        await scenario.git.answer(.commonGitDirectory, in: recovered, with: Data("/returned/project/.git\n".utf8))
+
+        // when
+        await scenario.git.allowCommands(in: missing)
+        await scenario.timing.advance(by: .seconds(1))
+        let reconciliationDelay = await scenario.timing.nextSleep()
+        await scenario.timing.advance(by: .seconds(1))
+        let watched = await scenario.source.nextWatch()
+        await scenario.registry.nextReconciliation()
+        await scenario.sut.stop()
+        await running.value
+
+        // then
+        #expect(retryDelay == .seconds(1))
+        #expect(reconciliationDelay == .seconds(1))
+        #expect(watched == [
+            RepositoryLocation(path: "/canonical/project"),
+            RepositoryLocation(path: "/canonical/project/.git"),
+            recovered,
+            RepositoryLocation(path: "/returned/project/.git")
+        ])
+    }
+
     private struct Scenario {
         let source: FakeWorktreeObservationSource
         let registry: FakeWorktreeObservationRegistry
@@ -398,24 +609,29 @@ struct WorktreeObservationTests {
         let store: FakeStore
         let git: FakeGitClient
         let failures: AsyncStream<WorktreeObservationError>
+        let failureReports: AsyncStream<WorktreeObservationError>.Continuation
         let sut: WorktreeObservation
 
         init(
             locations: [RepositoryLocation] = [RepositoryLocation(path: "/project")],
             sourceFailures: [WorktreeObservationError] = [],
-            discoveryFailures: [RepositoryLocation: GitError] = [:]
+            discoveryFailures: [RepositoryLocation: GitError] = [:],
+            directoryAnswer: DirectoryAnswer = .canonical
         ) {
             source = FakeWorktreeObservationSource(failures: sourceFailures)
             registry = FakeWorktreeObservationRegistry(locations: locations)
             timing = FakeWorktreeObservationTiming()
             store = FakeStore(projects: [])
             git = FakeGitClient(outputs: [
-                .repositoryRoot: Data("/canonical/project\n".utf8),
+                .repositoryRoot: Data((directoryAnswer == .relative ? "relative/project\n" : "/canonical/project\n").utf8),
                 .gitDirectory: Data("/canonical/project/.git\n".utf8),
                 .commonGitDirectory: Data("/canonical/project/.git\n".utf8)
-            ], failures: [:], failuresByLocation: discoveryFailures)
+            ], failures: [:], failuresByLocation: discoveryFailures,
+                truncated: directoryAnswer == .truncated ? [.repositoryRoot] : []
+            )
             let reports = AsyncStream.makeStream(of: WorktreeObservationError.self)
             failures = reports.stream
+            failureReports = reports.continuation
             sut = WorktreeObservation(
                 registry: registry,
                 git: git,
@@ -424,6 +640,7 @@ struct WorktreeObservationTests {
                 onFailure: { failure in
                     reports.continuation.yield(failure)
                     let expected = sourceFailures + discoveryFailures.values.map(WorktreeObservationError.git)
+                        + (directoryAnswer == .canonical ? [] : [.invalidGitDirectory(RepositoryLocation(path: "/project"))])
                     if expected.contains(failure) == false {
                         Issue.record("Unexpected observation failure: \(failure)")
                     }
@@ -431,5 +648,11 @@ struct WorktreeObservationTests {
                 timing: timing
             )
         }
+    }
+
+    enum DirectoryAnswer: Equatable, Sendable {
+        case canonical
+        case relative
+        case truncated
     }
 }

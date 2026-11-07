@@ -83,7 +83,7 @@ final class FakeGranitaRepository: GranitaRepository {
     private let imagesAnsweringBeforeRefusing: Int
 
     /// What this Mac holds for the shape of every exported review.
-    private let settings: ReviewSettings
+    private let settings: Mutex<Result<ReviewSettings, ApiFailure>>
     private let liveUpdates: [WorktreeUpdate]
 
     private let batches = Mutex<[[FileID]]>([])
@@ -108,7 +108,7 @@ final class FakeGranitaRepository: GranitaRepository {
         holdingSettings settings: ReviewSettings = .unset,
         liveUpdates: [WorktreeUpdate] = []
     ) {
-        self.settings = settings
+        self.settings = Mutex(.success(settings))
         self.liveUpdates = liveUpdates
         self.readsAnsweringImmediately = readsAnsweringImmediately
         self.changeSet = Mutex(changeSet)
@@ -130,6 +130,10 @@ final class FakeGranitaRepository: GranitaRepository {
         released.withLock { $0 = true }
     }
 
+    func suspendDiffs() {
+        released.withLock { $0 = false }
+    }
+
     func releaseLines() {
         releasedLines.withLock { $0 = true }
     }
@@ -140,6 +144,14 @@ final class FakeGranitaRepository: GranitaRepository {
 
     func replaceChanges(_ changes: WorktreeChanges) {
         changeSet.withLock { $0 = .success(changes) }
+    }
+
+    func refuseChanges(with failure: ApiFailure) {
+        changeSet.withLock { $0 = .failure(failure) }
+    }
+
+    func refuseReviewSettings(with failure: ApiFailure) {
+        settings.withLock { $0 = .failure(failure) }
     }
 
     /// Lets a suspended change-set read answer.
@@ -258,7 +270,7 @@ final class FakeGranitaRepository: GranitaRepository {
         if let viewedFailure { throw viewedFailure }
     }
 
-    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { settings }
+    func reviewSettings() async throws(ApiFailure) -> ReviewSettings { try settings.withLock { $0 }.get() }
 
     // The review goes through `ReviewCommentStore` rather than through the model's repository, and
     // the settings are only ever written from the settings screen, so these exist for conformance.

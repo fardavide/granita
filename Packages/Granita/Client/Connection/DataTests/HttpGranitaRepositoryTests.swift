@@ -16,6 +16,69 @@ import CoreReviewDomain
 struct HttpGranitaRepositoryTests {
 
     @Test(.timeLimit(.minutes(1)))
+    func `given an open event source when it is rate limited then followers receive the refusal and can cancel before retry`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_123))
+        let scenario = Scenario(
+            status: 200, json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n", keepingEventsOpen: true
+        )
+        let received = AsyncStream<WorktreeUpdate>.makeStream()
+        let following = Task {
+            for await update in await scenario.sut.updates() { received.continuation.yield(update) }
+            received.continuation.finish()
+        }
+        var updates = received.stream.makeAsyncIterator()
+        #expect(await updates.next() == .snapshot(snapshot))
+
+        // when
+        await scenario.transport.refuseEvents(with: .rateLimited)
+        let refusal = await updates.next()
+        following.cancel()
+        await following.value
+
+        // then
+        #expect(refusal == .failed(.rateLimited))
+        #expect(await updates.next() == nil)
+        #expect(await scenario.transport.sent.count == 1)
+    }
+
+    @Test
+    func `given a source already published a snapshot when another consumer subscribes then its current inventory replays without another connection`() async throws {
+        // given
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_123))
+        let scenario = Scenario(
+            status: 200, json: "event: snapshot\ndata: \(try encoded(snapshot))\n\n", keepingEventsOpen: true
+        )
+        var first = await scenario.sut.updates().makeAsyncIterator()
+        #expect(await first.next() == .snapshot(snapshot))
+
+        // when
+        var late = await scenario.sut.updates().makeAsyncIterator()
+        let current = await late.next()
+
+        // then
+        #expect(current == .snapshot(snapshot))
+        #expect(await scenario.transport.sent.count == 1)
+        await scenario.transport.finishEvents()
+    }
+
+    @Test
+    func `given an event subscription is no longer authorized when following then the refusal arrives once and observation ends`() async {
+        // given
+        let scenario = Scenario(status: 401, json: #"{"error":{"code":"unauthorized","message":"pair again"}}"#)
+
+        // when
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+        let refused = await updates.next()
+        let finished = await updates.next()
+
+        // then
+        #expect(refused == .failed(.unauthorized))
+        #expect(finished == nil)
+        #expect(await scenario.transport.sent.count == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func `given an event connection ends when following continues then a new subscription reconciles its snapshot`() async throws {
         // given
         let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_000))

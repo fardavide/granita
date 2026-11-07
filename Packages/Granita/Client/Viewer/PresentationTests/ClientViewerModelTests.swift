@@ -20,6 +20,218 @@ import CoreReviewDomain
 @MainActor
 struct ClientViewerModelTests {
 
+    @Test(arguments: ContextDirection.allCases)
+    func `given adjacent changed hunks when expanding their shared gap then neither hunk is read twice`(direction: ContextDirection) async {
+        // given
+        let first = Hunk(
+            index: 0, oldStart: 2, oldCount: 1, newStart: 2, newCount: 1, sectionHeading: nil,
+            lines: [
+                DiffLine(kind: .deletion, oldNumber: 2, newNumber: nil, text: "old first", displayColumns: 9, segments: nil),
+                DiffLine(kind: .addition, oldNumber: nil, newNumber: 2, text: "new first", displayColumns: 9, segments: nil)
+            ]
+        )
+        let second = Hunk(
+            index: 1, oldStart: 8, oldCount: 1, newStart: 8, newCount: 1, sectionHeading: nil,
+            lines: [
+                DiffLine(kind: .deletion, oldNumber: 8, newNumber: nil, text: "old second", displayColumns: 10, segments: nil),
+                DiffLine(kind: .addition, oldNumber: nil, newNumber: 8, text: "new second", displayColumns: 10, segments: nil)
+            ]
+        )
+        let scenario = Scenario(
+            files: aChangeSet(of: 1), hunksFor: 0, hunks: [first, second],
+            linesAnswer: .success(FileLines(lines: ["context 3", "context 4", "context 5", "context 6", "context 7"], eof: false))
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // when
+        await scenario.sut.expand(direction, hunk: direction == .above ? 1 : 0, in: scenario.fileIds[0])
+
+        // then
+        #expect(scenario.repository.windowsAskedFor == [LineWindow(side: .new, start: 3, count: 5)])
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let prepared) = entries[0].content else {
+            Issue.record("Both changed hunks must stay ready after their gap is expanded")
+            return
+        }
+        #expect(prepared.diff.hunks.count == 2)
+        switch direction {
+        case .above: #expect(prepared.diff.hunks[0] == first)
+        case .below: #expect(prepared.diff.hunks[1] == second)
+        }
+    }
+
+    @Test
+    func `given a context answer is suspended when a newer empty revision loads then its late successful lines stay absent`() async {
+        // given
+        let scenario = Scenario(
+            files: aChangeSet(of: 1), hunksFor: 0, hunks: [aHunkInTheMiddle],
+            linesAnswer: .success(FileLines(lines: ["late context"], eof: true)), holdingLines: true
+        )
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let expansion = Task { await scenario.sut.expand(.below, hunk: 0, in: scenario.fileIds[0]) }
+        while scenario.repository.windowsAskedFor.isEmpty { await Task.yield() }
+
+        // when
+        scenario.repository.replaceChanges(WorktreeChanges(revision: "new-empty-context", stats: .zero, files: [], isTruncated: false))
+        await scenario.sut.load()
+        scenario.repository.releaseLines()
+        await expansion.value
+
+        // then
+        #expect(scenario.sut.state == .nothingChanged)
+        #expect(scenario.sut.expansionFailure == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given failed files are retrying when their next answer is suspended then the old failed-file notice is absent`() async throws {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), diffFailure: .gitFailure(message: "retryable diff failure"), holdingDiffs: true)
+        await scenario.sut.load()
+        let firstRead = Task { await scenario.sut.reading(0) }
+        defer {
+            scenario.repository.releaseDiffs()
+            firstRead.cancel()
+        }
+        while scenario.repository.batchesAskedFor.isEmpty, !Task.isCancelled { await Task.yield() }
+        try #require(scenario.repository.batchesAskedFor.count == 1)
+        scenario.repository.releaseDiffs()
+        await firstRead.value
+        _ = try #require(scenario.sut.batchFailure)
+        scenario.repository.suspendDiffs()
+
+        // when
+        let retry = Task { await scenario.sut.retryDiffs() }
+        defer {
+            scenario.repository.releaseDiffs()
+            retry.cancel()
+        }
+        while scenario.repository.batchesAskedFor.count < 2, !Task.isCancelled { await Task.yield() }
+        try #require(scenario.repository.batchesAskedFor.count == 2)
+
+        // then
+        #expect(scenario.sut.isRetryingDiffs)
+        #expect(scenario.sut.batchFailure == nil)
+        scenario.repository.releaseDiffs()
+        await retry.value
+        #expect(scenario.sut.batchFailure?.hasBeenTried == true)
+    }
+
+    @Test(arguments: [ApiFailure.cancelled, .gitFailure(message: "late refresh failure")])
+    func `given a refresh is suspended when pairing is revoked then its late refusal cannot restore content`(failure: ApiFailure) async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 1)
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: failure)
+        let refresh = Task { await scenario.sut.load() }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseSuspendedRead()
+        await refresh.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given a review has not appeared when a source snapshot arrives then it does not start a content read`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "source-before-appearance")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.repository.changeSetReads == 0)
+        #expect(scenario.sut.state == .loading)
+    }
+
+    @Test
+    func `given a changed summary when fresh content is no longer authorized then the review requires pairing again`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .unauthorized)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "new-unreadable-content")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.repository.changeSetReads == 2)
+        #expect(scenario.sut.isRefreshing == false)
+    }
+
+    @Test
+    func `given a changed summary when its fresh read proves the worktree gone then the old review is removed`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .worktreeGone)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [aLiveWorktree(aWorktree, revision: "changed-before-removal")],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+        #expect(scenario.repository.changeSetReads == 2)
+    }
+
+    @Test
+    func `given reconciliation is suspended when pairing is revoked then a late read failure cannot replace that refusal`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 1)
+        await scenario.sut.load()
+        scenario.repository.refuseChanges(with: .gitFailure(message: "late checkout failure"))
+        let reconciling = Task {
+            await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+                worktrees: [aLiveWorktree(aWorktree, revision: "changed-while-reading")],
+                scannedAt: Date(timeIntervalSince1970: 1_800_000_100)
+            )))
+        }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        scenario.repository.releaseSuspendedRead()
+        await reconciling.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.isRefreshing == false)
+        #expect(scenario.repository.batchesAskedFor.isEmpty)
+    }
+
+    @Test
+    func `given the initial read is suspended when the review leaves then no live subscription starts afterward`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1), suspendingReadsAfter: 0)
+        let following = Task { await scenario.sut.followUpdates() }
+        await scenario.repository.waitUntilReadStarted(count: 1)
+
+        // when
+        following.cancel()
+        scenario.repository.releaseSuspendedRead()
+        await following.value
+
+        // then
+        #expect(scenario.repository.updateSubscriptions == 0)
+        #expect(scenario.sut.state == .loading)
+    }
+
     @Test
     func `given a diff batch is suspended when live authorization is revoked then the refusal survives its late answer`() async {
         // given
@@ -428,15 +640,15 @@ struct ClientViewerModelTests {
         // given — the reader has content on screen and something re-reads underneath them.
         let scenario = Scenario(files: aChangeSet(of: 3))
         await scenario.sut.load()
-        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
-        await refusing.sut.load()
+        let before = scenario.sut.state
+        scenario.repository.refuseChanges(with: .cancelled)
 
-        // when - then — nothing was read, so there is nothing to keep and the spinner is honest.
-        #expect(refusing.sut.state == .loading)
-        guard case .reading = scenario.sut.state else {
-            Issue.record("a loaded change set has to read as something to read")
-            return
-        }
+        // when
+        await scenario.sut.load()
+
+        // then
+        #expect(scenario.sut.state == before)
+        #expect(scenario.sut.isRefreshing == false)
     }
 
     @Test
@@ -484,11 +696,11 @@ struct ClientViewerModelTests {
         // here would empty a screen they were reading.
         let scenario = Scenario(files: aChangeSet(of: 3))
         await scenario.sut.load()
+        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+        scenario.repository.refuseChanges(with: .cancelled)
 
         // when — the model is asked to read again and that read is called off
-        let refusing = Scenario(files: aChangeSet(of: 3), changeSetFailure: .cancelled)
-        await refusing.sut.load()
-        await scenario.sut.setViewed(true, on: scenario.fileIds[0])
+        await scenario.sut.load()
 
         // then — the one that had content still has it, entry for entry.
         guard case .reading(let entries) = scenario.sut.state else {
@@ -496,7 +708,7 @@ struct ClientViewerModelTests {
             return
         }
         #expect(entries.count == 3)
-        #expect(refusing.sut.state == .loading)
+        #expect(entries[0].file.isViewed)
     }
 
     // MARK: - Reading the file list again

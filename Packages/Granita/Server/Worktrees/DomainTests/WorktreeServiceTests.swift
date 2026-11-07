@@ -591,6 +591,136 @@ struct WorktreeServiceTests {
         }
     }
 
+    @Test
+    func `given a tracked file has no numstat record when listed then it is text with unknown zero statistics`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa bbb M", "unmeasured.txt"],
+            numstat: [], untracked: [], status: []
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        let file = try #require(changeSet.files.first)
+        #expect(file.isBinary == false)
+        #expect(file.stats == ChangeStats(filesChanged: 1, insertions: 0, deletions: 0))
+    }
+
+    @Test
+    func `given repeated numstat records name one tracked file when listed then the first counts are retained`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa bbb M", "repeated.txt"],
+            numstat: ["3\t2\trepeated.txt", "90\t80\trepeated.txt"],
+            untracked: [], status: []
+        )
+
+        // when
+        let changeSet = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changeSet.files.map(\.stats) == [ChangeStats(filesChanged: 1, insertions: 3, deletions: 2)])
+        #expect(changeSet.stats == ChangeStats(filesChanged: 1, insertions: 3, deletions: 2))
+    }
+
+    @Test
+    func `given a hash response ends before the last path when listed then only that file loses its viewed mark`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa bbb M", "first.txt", ":100644 100644 ccc ddd M", "last.txt"],
+            numstat: ["1\t1\tfirst.txt", "1\t1\tlast.txt"],
+            untracked: [], status: []
+        )
+        let hashCommand = GitCommand.hashWorktreeFiles(paths: [
+            RepositoryRelativePath("first.txt"), RepositoryRelativePath("last.txt")
+        ])
+        await scenario.git.answer(hashCommand, with: Data("first-object\nlast-object\n".utf8))
+        let before = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+        let previousFirst = try #require(before.files.first)
+        let previousLast = try #require(before.files.last)
+
+        // when
+        await scenario.git.answer(hashCommand, with: Data("first-object\n".utf8))
+        let current = try await scenario.sut.changeSet(
+            in: scenario.location,
+            viewed: [previousFirst.id: previousFirst.contentHash, previousLast.id: previousLast.contentHash]
+        )
+
+        // then
+        #expect(current.files.first?.contentHash == previousFirst.contentHash)
+        #expect(current.files.first?.isViewed == true)
+        #expect(current.files.last?.contentHash != previousLast.contentHash)
+        #expect(current.files.last?.isViewed == false)
+    }
+
+    @Test
+    func `given the Git output cap cuts a diff when read then its whole hunk prefix names the transport limit`() async throws {
+        // given
+        let path = RepositoryRelativePath("capped.txt")
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa bbb M", path.text],
+            numstat: ["2\t2\tcapped.txt"], untracked: [], status: [],
+            fileDiff: """
+                diff --git a/capped.txt b/capped.txt
+                --- a/capped.txt
+                +++ b/capped.txt
+                @@ -1 +1 @@
+                -before
+                +after
+                @@ -10 +10 @@
+                -later before
+                +later after
+
+                """,
+            truncatedCommands: [.fileDiff(path: path, against: .head, contextLines: 3)],
+            limits: WorktreeLimits(
+                maximumChangedFiles: 1_000, maximumDiffLines: 20_000, truncatedDiffLines: 2,
+                maximumImageBytes: WorktreeLimits.standard.maximumImageBytes
+            )
+        )
+        let file = try #require(try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first)
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: file, at: path, in: scenario.location, contextLines: 3)
+
+        // then
+        #expect(diff.isTruncated)
+        #expect(diff.truncationReason == "the diff is larger than this worktree serves in one piece")
+        #expect(diff.hunks.count == 1)
+        #expect(diff.hunks.flatMap(\.lines).map(\.text) == ["before", "after"])
+    }
+
+    @Test
+    func `given the current file disappears after its changed hunk is read when expanded bounds are computed then no unseen remainder is offered`() async throws {
+        // given
+        let path = RepositoryRelativePath("changing.txt")
+        let scenario = Scenario(
+            raw: [":100644 100644 aaa bbb M", path.text],
+            numstat: ["1\t1\tchanging.txt"], untracked: [], status: [],
+            fileDiff: """
+                diff --git a/changing.txt b/changing.txt
+                --- a/changing.txt
+                +++ b/changing.txt
+                @@ -1 +1 @@
+                -before
+                +after
+
+                """
+        )
+        let file = try #require(try await scenario.sut.changeSet(in: scenario.location, viewed: [:]).files.first)
+        await scenario.git.answer(.untrackedFileDiff(path: path, contextLines: 0), with: Data())
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: file, at: path, in: scenario.location, contextLines: 3)
+
+        // then
+        #expect(diff.hunks.count == 1)
+        #expect(diff.newLineCount == 0)
+        #expect(diff.oldLineCount == 0)
+    }
+
     // MARK: - Scenario
 
     private struct Scenario {
@@ -610,6 +740,7 @@ struct WorktreeServiceTests {
             fileDiff: String = "",
             failure: GitError? = nil,
             refusing: [GitCommand: GitError] = [:],
+            truncatedCommands: Set<GitCommand> = [],
             limits: WorktreeLimits = .standard
         ) {
             git = FakeGitClient(
@@ -623,7 +754,8 @@ struct WorktreeServiceTests {
                 failures: (failure.map { [GitCommand.worktreeStatus: $0] } ?? [:])
                     .merging(refusing) { _, given in given },
                 unhashablePaths: unhashablePaths,
-                anyFileDiff: Data(fileDiff.utf8)
+                anyFileDiff: Data(fileDiff.utf8),
+                truncated: truncatedCommands
             )
             // Never reached: nothing this suite asks for is a picture, and the working copy is the
             // one thing git cannot answer for. `WorktreeImageTests` is where it is driven.

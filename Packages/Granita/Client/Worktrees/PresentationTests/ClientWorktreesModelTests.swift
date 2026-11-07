@@ -17,6 +17,54 @@ import CoreDiffDomain
 struct ClientWorktreesModelTests {
 
     @Test
+    func `given another review now owns the sidebar when an older review disappears then deferred rows stay hidden until the current review ends`() async {
+        // given
+        let previous = aWorktree(named: "previous", project: "granita")
+        let current = aWorktree(named: "current", project: "granita")
+        let scenario = Scenario(worktrees: [previous, current])
+        await scenario.sut.load()
+        scenario.sut.reviewing(previous.id)
+        scenario.sut.reviewing(current.id)
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [previous, aWorktree(named: "current", project: "granita", alias: "New server label")],
+            scannedAt: aMoment.addingTimeInterval(60)
+        )))
+        let retained = scenario.sut.state
+
+        // when
+        scenario.sut.finishedReview(of: previous.id)
+
+        // then
+        #expect(scenario.sut.state == retained)
+        #expect(scenario.sut.displayName(of: current.id) == "current")
+        scenario.sut.finishedReview(of: current.id)
+        #expect(scenario.sut.displayName(of: current.id) == "New server label")
+    }
+
+    @Test(arguments: [
+        WorktreeUpdate.unsupported,
+        .failed(.worktreeGone),
+        .failed(.unreachable(diagnostic: "another enabled project could not be read"))
+    ])
+    func `given readable rows when a source update cannot provide an authoritative inventory then the rows and receipt remain unchanged`(
+        update: WorktreeUpdate
+    ) async {
+        // given
+        let scenario = Scenario(worktrees: [aWorktree(named: "reading", project: "granita")])
+        await scenario.sut.load()
+        let retained = scenario.sut.state
+        let receipt = scenario.sut.readResult
+
+        // when
+        await scenario.sut.receive(update)
+
+        // then
+        #expect(scenario.sut.state == retained)
+        #expect(scenario.sut.readResult == receipt)
+        #expect(scenario.sut.isAutomaticallyRefreshing == false)
+    }
+
+    @Test
     func `given a read and deferred snapshot when live authorization is revoked then neither restores the list after review ends`() async {
         // given
         let reviewed = aWorktree(named: "reviewed", project: "granita")

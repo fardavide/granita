@@ -1,6 +1,6 @@
 # Status
 
-## Worktree caching and live updates — in review, Mac snapshot lifecycle correction pending CI
+## Worktree caching and live updates — CI coverage repair verified locally
 
 The independently reviewed [implementation plan](../plan/worktree-cache-live-updates.md)
 and [decision 0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md)
@@ -12,7 +12,7 @@ the cache survives listener rebinds. Nested worktree activity does not change it
 revision. Failed scans retain successful summaries and age; incomplete initial inventories are
 not published as removals.
 
-The corrected sources pass all 2,094 reported package tests under coverage collection, with a complete
+Before the CI repair below, the corrected sources pass all 2,094 reported package tests under coverage collection, with a complete
 artifact receipt. Final unsigned package/Mac/iOS builds pass. Both instrumented iOS snapshot shards
 pass all 1,171 runs (589 + 582), and behavioral UI collection passes all 25 runs, with no failures,
 skips or runtime warnings. Baselines are unchanged. Simulator UI checks pass on phone
@@ -58,8 +58,29 @@ while appearance reads now require an active phase. A focused local run reproduc
 The fixture now supplies an active logical phase only for that appearance-read subject; the
 original appearance/content assertions then pass before capture. Local capture still fails with
 ScreenCaptureKit error -3811, including outside the sandbox. The native window, production
-lifecycle, image baselines and thresholds are unchanged. Independent review approves the correction;
-the full CI verdict remains pending.
+lifecycle, image baselines and thresholds are unchanged. Independent review approves the correction.
+
+The [second CI run](https://github.com/fardavide/granita/actions/runs/42348392910), on `233e365`,
+passes every build and test job, including all 30 Mac snapshot tests. Coverage now evaluates its
+baseline and rejects six numeric comparisons: Unit 96.9% lines / 93.6% regions, Ui 24.7% / 19.9%,
+and All 97.4% / 94.1%. Snapshot coverage holds at 99.4% / 97.2%.
+
+The repair adds deterministic coverage for observation ownership, partial-root recovery, registry
+and API failures, stream termination, stale viewer work and sidebar ownership. Two regressions
+were first reproduced, then corrected: a targeted worktree-gone response left the old review
+visible, and Foundation's native line sequence discarded the blank separators required to deliver
+SSE frames. The transport now preserves those separators; native URLSession integration verifies
+the complete typed snapshot reaches the repository. Source-wide failures still preserve an
+unrelated open review. Independent review found no actionable issues in the complete repair.
+
+Fresh package coverage collection passes all 2,160 reported tests across 37 bundles. The repository calculator compares its Unit result
+against main at `63d525c`: 14,368 / 14,679 lines and 5,697 / 5,978 regions, both passing. The new
+simulator test also verifies a live list updates when no review is open. Required behavioral Ui
+collection passes all 26 runs without failures, skips or runtime warnings, and its coverage holds
+at 31.2% lines / 24.6% regions. All four local Unit/Ui comparisons pass. Final unsigned package,
+Mac and iOS builds pass; `make resolve` retains the 30-pin Xcode graph. A fresh combined CI verdict
+remains pending; the local calculation does not evaluate Snapshot or All.
+No coverage scope, baseline, threshold or snapshot tolerance changed. Version remains 0.24.0.
 
 Where the project is. Update this when a slice lands.
 

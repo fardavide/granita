@@ -417,7 +417,15 @@ public final class ClientViewerModel {
             await reading(readingPosition)
         } catch {
             guard generation == checkingGeneration, !Task.isCancelled else { return }
-            await receive(.failed(error))
+            if error == .worktreeGone {
+                generation = UUID()
+                inFlight = []
+                isRefreshing = false
+                isWaitingLong = false
+                state = .failed(.worktreeGone)
+            } else {
+                await receive(.failed(error))
+            }
         }
     }
 

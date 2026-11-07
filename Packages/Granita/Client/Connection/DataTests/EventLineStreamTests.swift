@@ -7,6 +7,22 @@ import CoreApiDomain
 
 @Suite("Event line buffering")
 struct EventLineStreamTests {
+    @Test
+    func `given complete event lines fit the buffer when the source finishes then every line arrives in order before completion`() async throws {
+        // given
+        let lines = ["event: snapshot", "data: complete-inventory", ""]
+        let scenario = Scenario(lines: lines, capacity: lines.count)
+
+        // when
+        var received: [String] = []
+        for try await line in scenario.sut { received.append(line) }
+
+        // then
+        #expect(received == lines)
+        var completed = scenario.completed.makeAsyncIterator()
+        #expect(await completed.next() != nil)
+    }
+
     @Test(.timeLimit(.minutes(1)))
     func `given a snapshot prefix was read when buffered lines overflow then complete queued frames precede a retryable transport failure`() async throws {
         // given

@@ -17,7 +17,9 @@ struct GranitaMobileUiTestHostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("live-sidebar") {
+            if ProcessInfo.processInfo.arguments.contains("live-list") {
+                LiveWorktreeListFixture()
+            } else if ProcessInfo.processInfo.arguments.contains("live-sidebar") {
                 LiveWorktreeSidebarFixture()
             } else if ProcessInfo.processInfo.arguments.contains("live-worktrees") {
                 LiveWorktreeFixture()

@@ -80,6 +80,11 @@ actor FakeHttpTransport: HttpTransport {
         openEvents = []
     }
 
+    func refuseEvents(with failure: ApiFailure) {
+        for continuation in openEvents { continuation.finish(throwing: failure) }
+        openEvents = []
+    }
+
     private enum LegacyWorktrees {
         case sameAnswer
         case body(Data)

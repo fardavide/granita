@@ -143,6 +143,71 @@ struct LiveWorktreeSidebarFixture: View {
     }
 }
 
+@MainActor
+struct LiveWorktreeListFixture: View {
+    @State private var repository: FakeGranitaRepository
+    @State private var sidebar: ClientWorktreesModel
+    private let other: WorktreeID
+
+    init() {
+        let reviewed = WorktreeID(rawValue: "reviewed-worktree")
+        let other = WorktreeID(rawValue: "other-worktree")
+        let repository = FakeGranitaRepository(liveWorktrees: [reviewed, other])
+        self.other = other
+        _repository = State(initialValue: repository)
+        _sidebar = State(initialValue: ClientWorktreesModel(
+            macName: "Fixture Mac", repository: repository,
+            preferences: LiveWorktreePreferences(),
+            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
+            announcing: LiveWorktreeAnnouncements(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        ))
+    }
+
+    var body: some View {
+        NavigationStack {
+            WorktreeSplitScreen(
+                model: sidebar, onPairAgain: {}, settings: { Text("Fixture settings") }
+            ) { id, name, _, sidebar in
+                WorktreeDiffScreen(
+                    worktreeName: name,
+                    model: ClientViewerModel(
+                        worktree: id, macName: "Fixture Mac", repository: repository,
+                        commentStore: FakeReviewCommentStore(), pasteboard: FakeReviewPasteboard(),
+                        highlighter: FakeSyntaxHighlighter(), copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
+                        announcing: FakeDiffReadAnnouncing(),
+                        onViewedCountChanged: { id, count in sidebar.recordViewedCount(count, on: id) },
+                        longWait: .seconds(60)
+                    ),
+                    onPairAgain: {}
+                )
+            }
+            .toolbar {
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Change B") { repository.change(other) }
+                        .accessibilityLabel("Change other worktree")
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack {
+                    Text("Live subscriptions")
+                        .accessibilityIdentifier("live-probe.subscriptions")
+                        .accessibilityValue(String(repository.subscriptionCount))
+                    ContextAnimationProbe().frame(height: 20)
+                }
+                .font(.caption)
+            }
+        }
+        .preferredColorScheme(.light)
+        .transaction { transaction in
+            if ProcessInfo.processInfo.arguments.contains("disable-test-animations") {
+                transaction.disablesAnimations = true
+                transaction.animation = nil
+            }
+        }
+    }
+}
+
 private struct LiveWorktreePreferences: WorktreeListPreferences {
     func mode() -> WorktreeListMode { .groupedByProject }
     func remember(_ mode: WorktreeListMode) {}

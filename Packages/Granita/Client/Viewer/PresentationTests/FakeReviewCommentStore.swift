@@ -16,6 +16,7 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     private(set) var pushed: [[ReviewComment]] = []
 
     private let pushCounts = AsyncStream<Int>.makeStream(bufferingPolicy: .bufferingNewest(1))
+    private let reconciliationStarts = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
 
     private(set) var invocations: [Invocation] = []
 
@@ -45,10 +46,9 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
     }
 
     func waitUntilReconciliationStarts() async -> Bool {
-        for _ in 0..<1_000 where invocations.contains(.reconcile) == false {
-            await Task.yield()
-        }
-        return invocations.contains(.reconcile)
+        guard invocations.contains(.reconcile) == false else { return true }
+        for await _ in reconciliationStarts.stream { return true }
+        return false
     }
 
     /// Returns once `count` pushes have been made, because a change offers the review to the Mac
@@ -83,6 +83,7 @@ final class FakeReviewCommentStore: ReviewCommentStore, @unchecked Sendable {
 
     func reconcile(in worktree: WorktreeID) async -> [ReviewComment] {
         invocations.append(.reconcile)
+        reconciliationStarts.continuation.yield(())
         let anchors = Set(saved.map(\.anchor))
         let read = saved + onTheMac.filter { anchors.contains($0.anchor) == false }
         while holdsReconciliation {

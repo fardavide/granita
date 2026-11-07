@@ -13,6 +13,26 @@ import ServerReaderData
 @Suite("Worktree cache routes")
 struct WorktreeCacheRouteTests {
 
+    @Test
+    func `given two enabled projects when a prepared snapshot is filtered then only the requested project is served`() async throws {
+        // given
+        let scenario = try ApiScenario(repository: .main)
+        defer { scenario.cleanUp() }
+        try await scenario.enableProject()
+        let other = try FixtureRepository.renames.location()
+        try await scenario.enableProject(at: other)
+        let selected = ProjectID(canonicalPath: other.path)
+
+        // when
+        let snapshot = try await scenario.get(
+            WorktreeSnapshot.self, "/v1/worktree-snapshot?projectID=\(selected.rawValue)"
+        )
+
+        // then
+        #expect(snapshot.worktrees.map(\.id) == [WorktreeID(canonicalPath: other.path)])
+        #expect(snapshot.worktrees.map(\.projectId) == [selected])
+    }
+
     @Test(arguments: [Reader.local, .http])
     func `given a missing unscanned project and a stale healthy summary when reading the prepared list then fresh healthy rows arrive uncached`(
         reader: Reader
