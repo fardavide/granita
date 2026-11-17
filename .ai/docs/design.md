@@ -427,6 +427,11 @@ hides on scroll, which is 3% of the screen for the one thing that says where the
 Six states, one navigation title, no invented controls. The shape was right; three things were wrong
 and one of them was a bug the snapshot suite was asserting as correct.
 
+**Privacy Policy lives in the discovery screen's More menu.** The icon-only ellipsis keeps legal
+information out of the device picker and recovery copy. The menu is available before pairing in
+every discovery state, including when Local Network access is off. Davide asked for this lower
+prominence on 17 November 2026 after seeing the direct toolbar link.
+
 ### The row is a navigation link, not a labelled pair
 
 A label-and-value pair resolves width pressure by giving the label what it asks for and dropping the

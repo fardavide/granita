@@ -1,5 +1,12 @@
 # Status
 
+## First App Store release
+
+0.24.1 puts Privacy Policy in the iPhone and iPad discovery screen's More menu. The simulator test
+opens More and verifies the policy URL with Local Network access denied. Package tests, unsigned
+builds and the affected iOS snapshots passed. The local coverage run reached Mac Settings snapshot
+mismatches. The App Store draft is set to manual release and awaits a store build.
+
 ## Worktree caching and live updates — CI coverage repair verified locally
 
 The independently reviewed [implementation plan](../plan/worktree-cache-live-updates.md)

@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.24.1 — 2026-11-17
+- **Read the privacy policy before pairing.** Open *More → Privacy Policy* on the iPhone or iPad
+  discovery screen, including when local network access is off.
+
 ### 0.24.0 — 2026-11-06
 - **Open prepared worktrees and see changes automatically.** The Mac keeps worktree summaries in
   memory and refreshes them when files or Git state change. The open review updates automatically;

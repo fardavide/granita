@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+import ClientConnectionDomain
+import ClientConnectionUi
 import ClientViewerDomain
 import ClientViewerUi
 import CoreDiffDomain
@@ -25,10 +27,44 @@ struct GranitaMobileUiTestHostApp: App {
                 LiveWorktreeFixture()
             } else if ProcessInfo.processInfo.arguments.contains("trailing-context") {
                 TrailingContextFixture()
+            } else if ProcessInfo.processInfo.arguments.contains("discovery-privacy") {
+                DiscoveryPrivacyFixture()
             } else {
                 HorizontalSwipeFixture()
             }
         }
+    }
+}
+
+@MainActor
+private struct DiscoveryPrivacyFixture: View {
+    @State private var openedUrl: URL?
+
+    var body: some View {
+        NavigationStack {
+            ServerDiscoveryView(
+                state: .localNetworkDenied,
+                logCopyState: .ready,
+                onSearchAgain: {},
+                onOpenSettings: {},
+                onCopyLogs: {}
+            )
+            .environment(\.openURL, OpenURLAction { url in
+                openedUrl = url
+                return .handled
+            })
+            .safeAreaInset(edge: .bottom) {
+                VStack {
+                    Text(verbatim: "UIKit animations enabled: \(UIView.areAnimationsEnabled)")
+                        .accessibilityIdentifier("discovery-privacy.animations")
+                    if let openedUrl {
+                        Text(verbatim: openedUrl.absoluteString)
+                            .accessibilityIdentifier("discovery-privacy.opened-url")
+                    }
+                }
+            }
+        }
+        .environment(\._accessibilityReduceMotion, true)
     }
 }
 
