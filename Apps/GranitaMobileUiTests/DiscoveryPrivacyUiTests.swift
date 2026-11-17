@@ -3,7 +3,7 @@ import XCTest
 final class DiscoveryPrivacyUiTests: XCTestCase {
 
     @MainActor
-    func testPrivacyPolicyOpensWhenLocalNetworkAccessIsDenied() {
+    func testPrivacyPolicyOpensFromMoreWhenLocalNetworkAccessIsDenied() {
         // given
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -14,10 +14,15 @@ final class DiscoveryPrivacyUiTests: XCTestCase {
         XCTAssertTrue(permissionDenied.waitForExistence(timeout: 15), app.debugDescription)
         XCTAssertEqual(app.staticTexts["discovery-privacy.animations"].label, "UIKit animations enabled: false")
 
-        // when
         let privacyPolicy = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Privacy Policy")).firstMatch
-        XCTAssertTrue(privacyPolicy.isHittable, "Privacy Policy should be reachable before pairing.\n\(app.debugDescription)")
+        XCTAssertFalse(privacyPolicy.exists, "Privacy Policy should only appear in More.\n\(app.debugDescription)")
+
+        // when
+        let more = app.buttons["More"]
+        XCTAssertTrue(more.isHittable, app.debugDescription)
+        more.tap()
+        XCTAssertTrue(privacyPolicy.waitForExistence(timeout: 5), app.debugDescription)
         privacyPolicy.tap()
 
         // then

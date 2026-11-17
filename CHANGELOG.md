@@ -8,8 +8,8 @@ entry here in the same pull request. Merging to `main` publishes the phone app t
 app also runs locally with `make run-mac`.
 
 ### 0.24.1 — 2026-11-17
-- **Read the privacy policy before pairing.** Open *Privacy Policy* from Granita’s discovery screen
-  on iPhone or iPad, including when local network access is off.
+- **Read the privacy policy before pairing.** Open *More → Privacy Policy* on the iPhone or iPad
+  discovery screen, including when local network access is off.
 
 ### 0.24.0 — 2026-11-06
 - **Open prepared worktrees and see changes automatically.** The Mac keeps worktree summaries in

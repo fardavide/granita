@@ -2,8 +2,8 @@
 
 ## First App Store release
 
-0.24.1 adds a Privacy Policy link to the iPhone and iPad discovery toolbar. The simulator test
-tapped the link with Local Network access denied and verified the URL. Package tests, unsigned
+0.24.1 puts Privacy Policy in the iPhone and iPad discovery screen's More menu. The simulator test
+opens More and verifies the policy URL with Local Network access denied. Package tests, unsigned
 builds and the affected iOS snapshots passed. The local coverage run reached Mac Settings snapshot
 mismatches. The App Store draft is set to manual release and awaits a store build.
 
