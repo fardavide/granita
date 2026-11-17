@@ -52,6 +52,12 @@ public struct ServerDiscoveryView: View {
             }
         }
         .navigationTitle("Granita")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                // This fixed HTTPS literal has no runtime input. The discovery UI test opens it.
+                Link("Privacy Policy", destination: URL(string: "https://granita.fardavide.dev/privacy/")!)
+            }
+        }
         .animation(reduceMotion ? nil : .default, value: logCopyState)
     }
 

@@ -427,6 +427,11 @@ hides on scroll, which is 3% of the screen for the one thing that says where the
 Six states, one navigation title, no invented controls. The shape was right; three things were wrong
 and one of them was a bug the snapshot suite was asserting as correct.
 
+**Privacy Policy stays in the trailing toolbar in every discovery state.** The standard system link
+opens Granita's web policy before pairing, including when Local Network access is off. Keeping it
+in the toolbar makes it available alongside the device list and the recovery states. Davide
+approved the placement directly on 17 November 2026.
+
 ### The row is a navigation link, not a labelled pair
 
 A label-and-value pair resolves width pressure by giving the label what it asks for and dropping the

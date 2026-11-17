@@ -35,8 +35,8 @@ The diff is every changed file in one scroll: syntax highlighted, word-level cha
 markers, torn bands over what git skipped, mark-as-viewed.
 
 On iPhone and iPad, comment by tapping anywhere on a code line, or select a range by holding and
-dragging across lines. Holding one line and tapping another still works. Comments live on the phone
-that wrote them; the review copies as text.
+dragging across lines. Holding one line and tapping another still works. Review comments sync to
+your paired Mac. You can copy the review as text.
 
 <p align="center">
   <img src="Apps/GranitaMobileSnapshotTests/__Snapshots__/ReadmeScreenshotTests/screenshot-of.review-iPhone-light.png" width="250" alt="The review screen">
@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.24.1** — open the privacy policy on iPhone and iPad before pairing.
 - **0.24.0** — prepared worktrees load quickly and update automatically without disturbing another review.
 - **0.23.3** — expand unchanged lines below the last change in a file; requires the updated Mac app.
-- **0.23.2** — leaving the worktree list stops a pending connection without keeping its fallback.
 
 [Every release](CHANGELOG.md).
 
