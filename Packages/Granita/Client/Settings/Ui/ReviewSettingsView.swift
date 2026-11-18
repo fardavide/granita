@@ -43,6 +43,7 @@ public struct ReviewSettingsView: View {
 
     /// Which icon the Home Screen shows, or that this device cannot show another.
     private let appIcon: AppIconStanding
+    private let appIconSchedule: AppIconSchedule
 
     /// Which half of the pair the phone is drawing right now.
     ///
@@ -57,6 +58,7 @@ public struct ReviewSettingsView: View {
     private let onChooseCodeTheme: (CodeTheme) -> Void
     private let onChooseCodeSize: (CodeSize) -> Void
     private let onChooseAppIcon: (AppIcon) -> Void
+    private let onChooseAppIconSchedule: (AppIconSchedule) -> Void
     private let onCommitOpeningLine: () -> Void
     private let onReset: () -> Void
     private let onPair: () -> Void
@@ -74,11 +76,13 @@ public struct ReviewSettingsView: View {
         codeTheme: CodeTheme,
         codeSize: CodeSizeReadout,
         appIcon: AppIconStanding,
+        appIconSchedule: AppIconSchedule,
         onChoose: @escaping @Sendable (ReviewIdentifier) -> Void,
         onChooseAppearance: @escaping (AppAppearance) -> Void,
         onChooseCodeTheme: @escaping (CodeTheme) -> Void,
         onChooseCodeSize: @escaping (CodeSize) -> Void,
         onChooseAppIcon: @escaping (AppIcon) -> Void,
+        onChooseAppIconSchedule: @escaping (AppIconSchedule) -> Void,
         onCommitOpeningLine: @escaping () -> Void,
         onReset: @escaping () -> Void,
         onPair: @escaping () -> Void,
@@ -93,11 +97,13 @@ public struct ReviewSettingsView: View {
         self.codeTheme = codeTheme
         self.codeSize = codeSize
         self.appIcon = appIcon
+        self.appIconSchedule = appIconSchedule
         self.onChoose = onChoose
         self.onChooseAppearance = onChooseAppearance
         self.onChooseCodeTheme = onChooseCodeTheme
         self.onChooseCodeSize = onChooseCodeSize
         self.onChooseAppIcon = onChooseAppIcon
+        self.onChooseAppIconSchedule = onChooseAppIconSchedule
         self.onCommitOpeningLine = onCommitOpeningLine
         self.onReset = onReset
         self.onPair = onPair
@@ -160,7 +166,12 @@ public struct ReviewSettingsView: View {
     private func appSection(_ choice: AppIconChoice) -> some View {
         Section {
             NavigationLink {
-                AppIconChooserView(choice: choice, onChoose: onChooseAppIcon)
+                AppIconChooserView(
+                    choice: choice,
+                    schedule: appIconSchedule,
+                    onChoose: onChooseAppIcon,
+                    onChooseSchedule: onChooseAppIconSchedule
+                )
             } label: {
                 HStack(spacing: 8) {
                     Text("App icon")

@@ -383,10 +383,13 @@ shows a name on its own.
 > side by side make the section as tall as the three rows above it put together, for a setting a
 > reader changes about once a year.
 
-**The push is the *Code colours* chooser's shape exactly**: a stock grouped list, one row per icon at
-60pt with its name, *Default* beside the glass and nowhere else, a checkmark on the one the Home
-Screen shows. No Apply, no confirmation of ours — **iOS confirms a changed icon with its own alert**,
-which is the feedback a reader perceives, and a second one from us would be the same sentence twice.
+**The push is a stock grouped list.** The first section has a *Seasonal icon* switch with the date
+range below it. It starts on and follows the device's local date. The *Icon* section shows Granita,
+Ice Cube and Christmas at 60pt, with a checkmark on the one the Home Screen shows. Picking another
+icon turns the schedule off once the system changes the icon. Turning the switch off keeps the
+current icon. Turning it on applies the one for today's date.
+
+**iOS confirms a changed icon with its own alert.** The seasonal change uses the same confirmation.
 
 **The checkmark moves only when the system agrees.** A refusal leaves it on the icon the Home Screen
 still shows and says so in the footer: *"The icon did not change, so your Home Screen still shows

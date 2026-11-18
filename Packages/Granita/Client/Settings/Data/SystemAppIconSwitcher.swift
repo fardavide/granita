@@ -22,6 +22,7 @@ public struct SystemAppIconSwitcher: AppIconSwitcher {
         switch icon {
         case .granita: nil
         case .iceCube: "AppIcon-IceCube"
+        case .christmas: "AppIcon-Christmas"
         }
     }
 

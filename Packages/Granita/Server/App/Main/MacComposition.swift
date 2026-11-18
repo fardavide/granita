@@ -50,7 +50,7 @@ final class MacComposition {
     let copyingLogs: CopyDiagnosticLogs
     let remote: MacRemoteComposition
     let appearance: AppearanceModel
-    let appIcon = AppIconModel(switcher: SystemAppIconSwitcher())
+    let appIcon: AppIconModel
     private(set) var readerRequests = 0
 
     /// Bumped when the menu asks for Settings. The window that can actually open it watches this;
@@ -65,6 +65,7 @@ final class MacComposition {
         self.defaults = defaults
         readerModel = ClientMacModel(memory: UserDefaultsReaderSelectionMemory(defaults: defaults))
         appearance = AppearanceModel(preferences: UserDefaultsAppearancePreferences(defaults: defaults))
+        appIcon = AppIconModel(switcher: SystemAppIconSwitcher(), preferences: UserDefaultsAppIconPreferences(defaults: defaults))
         appearance.note(windowWidth: 0, fitsSelectorColumn: true, textSize: .default)
         opensSettingsAtLaunch = launch.opensSettingsAtLaunch
         // The one thing about this app a launch argument may move, and it moves for one reason: a
