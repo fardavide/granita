@@ -1,5 +1,12 @@
 # Status
 
+## Remembered Mac route after leaving home
+
+The iPhone logs from Granita 0.24.0 build 184 confirmed that reopening a Mac reused the last LAN
+address after leaving home. The 0.24.2 fix reruns route selection for worktree list reads. The
+reopening and Bonjour fallback regressions cover the route change and progress reporting.
+See [0266](decisions/0266-recheck-remembered-routes-for-worktree-list-reads.md).
+
 ## First App Store release
 
 0.24.1 puts Privacy Policy in the iPhone and iPad discovery screen's More menu. The simulator test
