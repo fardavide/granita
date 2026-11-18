@@ -7,6 +7,11 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.24.3 — 2026-11-18
+- **Get the Mac app before pairing.** First-time discovery explains the Mac companion and offers
+  its GitHub download. The download dialog also shows that a Mac App Store version is not available
+  yet. Already-paired Macs keep their existing connection guidance.
+
 ### 0.24.2 — 2026-11-18
 - **Reopen your Mac over Tailscale after leaving home.** Opening or refreshing its worktree list
   checks for a reachable route before saying how Granita connected.

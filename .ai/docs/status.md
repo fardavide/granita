@@ -1,5 +1,27 @@
 # Status
 
+## Mac companion download before pairing
+
+[Issue #138](https://github.com/fardavide/granita/issues/138) is implemented locally for 0.24.3.
+The approved discovery treatment uses a larger symbol and smaller text, with a native alert offering
+the GitHub download and a disabled, labelled Mac App Store choice. Pairing history and discovery
+state gate the offer; an offline remembered Mac keeps its existing recovery. See design §1.
+
+The full package suite and both unsigned app builds pass. The first package run lacked the Git
+fixture repositories; `make fixtures` created them without changing committed golden files, and
+the full repeat passed. All 74 connection-model tests pass, as do 36 discovery snapshot renderings
+and all three discovery UI checks on both iPhone and iPad. The 12 new baselines were reviewed in
+light, dark and accessibility layouts. UI-test attachments capture the native alert. GitHub's
+public latest-release page returns HTTP 200 and contains the Mac DMG.
+
+An earlier native cancellation check caught an unnecessary presentation reset, which was removed.
+The existing Privacy Policy check missed a menu tap once; unchanged quiet repeats passed on both
+devices. No cause is assigned to that intermittent failure. `make resolve` produced the complete
+30-pin Xcode graph, changing only its generated origin hash. Davide requested opening the pull
+request with the full local coverage gate and interactive Mac launch deferred. Mac desktop checks
+remain allowed only after the **Add seasonal Xmas icon** session finishes. CI will provide the
+coverage verdict; no local coverage pass is claimed.
+
 ## Remembered Mac route after leaving home
 
 The iPhone logs from Granita 0.24.0 build 184 confirmed that reopening a Mac reused the last LAN

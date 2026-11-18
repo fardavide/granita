@@ -45,6 +45,7 @@ struct ErrorDiagnosticsSnapshotTests {
             NavigationStack {
                 ServerDiscoveryView(
                     state: .failed(diagnostic: diagnostic),
+                    offersMacDownload: false,
                     logCopyState: subject.logCopyState,
                     onSearchAgain: {},
                     onOpenSettings: {},

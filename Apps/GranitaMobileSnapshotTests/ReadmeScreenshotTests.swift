@@ -97,6 +97,7 @@ private func theScreen(of screen: Screen, in layout: SnapshotLayout) async throw
             NavigationStack {
                 ServerDiscoveryView(
                     state: .found(theMacsOnThisNetwork),
+                    offersMacDownload: false,
                     logCopyState: .ready,
                     onSearchAgain: {},
                     onOpenSettings: {},

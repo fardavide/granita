@@ -487,6 +487,42 @@ Same facts, ordered so the first clause answers the alert.
 *Should feel like* AirPlay looking for a screen. Something is alive; when it stops being alive, you
 noticed without reading.
 
+### A first connection offers the Mac app *(Davide, 18 November 2026)*
+
+The design for [issue #138](https://github.com/fardavide/granita/issues/138) stays inside discovery.
+Before any Mac has been paired, *Looking for your Mac* and *No Mac found* offer **Get Granita for
+Mac** as the prominent action. Read pairing history before making that offer: a remembered Mac
+being offline is a connection problem, not a reason to install the app again. Finding a nearby Mac
+also removes the offer, because Granita is already running there. The Mac reader does not offer to
+download itself.
+
+The searching description still leads with Local Network permission: *Allow Local Network access
+so Granita can find your Mac. You’ll also need Granita installed and running on it.* The empty
+description says *Granita needs the Mac app to show your projects here. Install and open it on your
+Mac, with both devices on the same network.* **Search Again** remains beneath the download action,
+as borderless text, followed by **Copy Logs**. Permission refusal and search failure retain their
+existing recovery actions.
+
+Davide's correction to the first proposal was *“the icon is small and the text is large.”* These
+two first-connection states therefore use a larger, Dynamic Type-scaled device symbol, a title3
+bold heading and a subheadline description. This is a local exception to the shared empty-state
+hierarchy; other empty and error screens keep title2 over body. Stock controls, semantic colours
+and the full available screen width remain binding.
+
+**The button opens a native alert**, rather than immediately opening a web page. The simulator
+showed that the confirmation-dialog presentation omits the disabled App Store choice, so an alert
+keeps both choices visible on phone and iPad.
+Davide confirmed its two choices: **Download from GitHub**, opening the public latest-release
+page, and **Mac App Store — Not available yet**, disabled with its reason visible in the label.
+Cancel returns to discovery. The current Mac release is a notarized direct download; publishing
+an App Store version is a separate task, and this screen must not imply that one exists.
+
+Rejected: a separate onboarding screen before discovery, a download prompt for an offline paired
+Mac, and an enabled App Store action with no destination. The dialog and actual GitHub URL are
+verified by pressing the production controls in the simulator. Baselines cover both first-connection
+states on phone and iPad, including large text; UI-test attachments capture the native alert on
+both devices.
+
 ### Never put the system's string in the advice slot
 
 An unavailable-content view's description is the one line the reader will act on. Handing it the

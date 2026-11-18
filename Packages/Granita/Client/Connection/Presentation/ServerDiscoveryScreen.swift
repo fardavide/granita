@@ -43,6 +43,7 @@ public struct ServerDiscoveryScreen<RememberedMacScreen: View>: View {
     public var body: some View {
         ServerDiscoveryView(
             state: model.discovery,
+            offersMacDownload: model.offersMacDownload,
             logCopyState: model.logCopyState,
             onSearchAgain: model.searchAgain,
             onOpenSettings: { model.openSettings(.localNetwork) },
