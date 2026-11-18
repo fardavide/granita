@@ -18,6 +18,7 @@ struct AppIconTests {
         // would draw a picture with nothing beside it rather than fail to compile.
         #expect(AppIcon.granita.displayName == "Granita")
         #expect(AppIcon.iceCube.displayName == "Ice Cube")
+        #expect(AppIcon.christmas.displayName == "Christmas")
     }
 
     @Test

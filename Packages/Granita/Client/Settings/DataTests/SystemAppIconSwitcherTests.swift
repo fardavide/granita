@@ -37,6 +37,12 @@ struct SystemAppIconSwitcherTests {
     }
 
     @Test
+    func `given Christmas when it is named to the system then it matches the bundled icon set`() {
+        #expect(SystemAppIconSwitcher.alternateName(for: .christmas) == "AppIcon-Christmas")
+        #expect(SystemAppIconSwitcher.icon(forAlternateName: "AppIcon-Christmas") == .christmas)
+    }
+
+    @Test
     func `given a name no release ever shipped when the icon is read then the default stands`() {
         // given — reachable only by an older build reading a name a newer one set, since iOS keeps the
         // alternate across an update. The glass is what that build ships as its own icon.

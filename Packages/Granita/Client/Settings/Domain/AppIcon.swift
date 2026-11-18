@@ -1,16 +1,16 @@
 /// Which drawing the Home Screen shows for this app.
 ///
-/// **The glass is the app's own icon and the cube is an alternate**, which is the whole of the
-/// difference between them: the system shows the glass until it is told otherwise, and a Mac shows
-/// nothing else, because macOS has no alternate icons for Finder to follow.
+/// The glass is the bundled primary icon. The other drawings are iPhone and iPad alternates.
 public enum AppIcon: String, Hashable, Sendable, CaseIterable {
 
     /// A glass of granita whose syrup layers are a diff's rows.
     case granita
 
-    /// The diff frozen in an ice cube with a straw in it — the wintry one. Davide, 27 September 2026:
-    /// *"more of a Christmas version"*.
+    /// The diff frozen in an ice cube with a straw in it.
     case iceCube
+
+    /// Evergreen granita with a gold star and diff marks on its glass.
+    case christmas
 
     public static let `default` = AppIcon.granita
 
@@ -19,6 +19,7 @@ public enum AppIcon: String, Hashable, Sendable, CaseIterable {
         switch self {
         case .granita: "Granita"
         case .iceCube: "Ice Cube"
+        case .christmas: "Christmas"
         }
     }
 }

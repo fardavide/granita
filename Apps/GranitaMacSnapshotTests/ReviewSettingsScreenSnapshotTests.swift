@@ -61,7 +61,7 @@ struct ReviewSettingsScreenSnapshotTests {
             self.repository = repository
             model = ClientSettingsModel(macName: "MacBook Pro", isPaired: true, repository: repository)
             appearance = AppearanceModel(preferences: FakeAppearancePreferences())
-            appIcon = AppIconModel(switcher: FakeAppIconSwitcher(canChangeIcon: false))
+        appIcon = AppIconModel(switcher: FakeAppIconSwitcher(canChangeIcon: false), preferences: FakeAppIconPreferences())
         }
 
         func prepare() async {

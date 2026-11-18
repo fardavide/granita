@@ -45,11 +45,13 @@ struct ReviewSettingsViewSnapshotTests {
                     rowWidth: layout.diffRowWidth
                 ),
                 appIcon: subject.appIcon,
+            appIconSchedule: .automatic,
                 onChoose: { _ in },
                 onChooseAppearance: { _ in },
                 onChooseCodeTheme: { _ in },
                 onChooseCodeSize: { _ in },
                 onChooseAppIcon: { _ in },
+            onChooseAppIconSchedule: { _ in },
                 onCommitOpeningLine: {},
                 onReset: {},
                 onPair: {},
