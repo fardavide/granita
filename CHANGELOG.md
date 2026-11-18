@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.24.2 — 2026-11-18
+- **Reopen your Mac over Tailscale after leaving home.** Opening or refreshing its worktree list
+  checks for a reachable route before saying how Granita connected.
+
 ### 0.24.1 — 2026-11-17
 - **Read the privacy policy before pairing.** Open *More → Privacy Policy* on the iPhone or iPad
   discovery screen, including when local network access is off.

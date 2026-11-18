@@ -12,13 +12,10 @@ import CoreReviewDomain
 /// stable tailnet endpoint is the fallback when Bonjour cannot cross the network boundary. The
 /// session that carries a request is pinned to the key pairing bought whichever route wins.
 ///
-/// **One connection per Mac, kept.** A session per request would leak a delegate and a connection
-/// pool every time the phone polls, and re-resolving a Bonjour name on every read would put an mDNS
-/// round trip in front of each one. What drops a connection is being told contact was lost, which is
-/// the only event that can make a resolved address wrong.
+/// Keep a session per Mac for diff requests and live updates. Worktree list reads verify
+/// reachability again because the phone can change networks while no request is running.
 ///
-/// An actor because the screens above it read concurrently — the sidebar and an open diff both make
-/// requests — and two of them arriving together must produce one resolution rather than two.
+/// The sidebar and an open diff read concurrently, so the actor owns their shared session cache.
 public actor RememberedMacs {
 
     private let store: any RememberedMacStore
@@ -30,9 +27,8 @@ public actor RememberedMacs {
 
     /// What that Mac says about itself, asked through the key this phone already trusts.
     ///
-    /// **Only for the backfill below**, and a closure for the same reason `connect` is one: reading
-    /// health means an HTTP client, which is `Data`'s to build. Answers nothing when the Mac cannot
-    /// be reached or is too old to say, which are the same thing to the caller.
+    /// A bounded probe for metadata backfill and for a previously verified LAN address when
+    /// discovery fails. Reading health needs the HTTP client built by `Data`.
     private let healthOf: @Sendable (ServerAddress, SpkiFingerprint) async -> HealthResponse?
 
     private var reached: [BonjourInstanceName: ReachedMac] = [:]
@@ -70,7 +66,13 @@ public actor RememberedMacs {
             await progress(.reading(reached.route))
             return reached.repository
         }
+        return try await reconnect(to: server, reporting: progress)
+    }
 
+    func reconnect(
+        to server: DiscoveredServer,
+        reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
+    ) async throws(ApiFailure) -> any GranitaRepository {
         let remembered: RememberedMac?
         do {
             remembered = try await store.remembered(server.id)
@@ -106,6 +108,16 @@ public actor RememberedMacs {
             guard Task.isCancelled == false else { throw .cancelled }
             switch error {
             case .unreachable(let diagnostic):
+                if let cached = reached[server.id], cached.route == .local {
+                    await observation.report(.verifying)
+                    let health = await healthOf(cached.mac.address, remembered.fingerprint)
+                    guard Task.isCancelled == false else { throw .cancelled }
+                    if health != nil {
+                        address = cached.mac.address
+                        await observation.report(.reading(.local))
+                        break
+                    }
+                }
                 guard let fallbackAddress = remembered.fallbackAddress else {
                     throw ApiFailure.unreachable(diagnostic: diagnostic)
                 }
@@ -136,8 +148,11 @@ public actor RememberedMacs {
         )
         let route = await observation.route
         guard Task.isCancelled == false else { throw .cancelled }
+        if let reached = reached[server.id], reached.mac == paired, reached.route == route {
+            return reached.repository
+        }
         let connection = connect(paired)
-        reached[server.id] = ReachedMac(repository: connection, route: route)
+        reached[server.id] = ReachedMac(mac: paired, repository: connection, route: route)
         await refreshMetadata(of: paired)
         return connection
     }
@@ -178,11 +193,7 @@ public actor RememberedMacs {
         )
     }
 
-    /// Throws away where that Mac was, so the next read asks Bonjour again.
-    ///
-    /// A resolved address is only wrong in one situation — the Mac restarted, slept or moved network
-    /// since it was resolved — and that situation is what an unreachable read means. Keeping the
-    /// address after one would be an app that stays broken until it is force quit.
+    /// Drops a route after a request loses contact, so the next request resolves again.
     func lostContact(with mac: BonjourInstanceName) {
         reached[mac] = nil
     }
@@ -198,6 +209,7 @@ public actor RememberedMacs {
     }
 
     private struct ReachedMac: Sendable {
+        let mac: PairedMac
         let repository: any GranitaRepository
         let route: WorktreeConnectionRoute
     }
@@ -305,7 +317,7 @@ public struct RememberedMacRepository: GranitaRepository {
         reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
     ) async throws(ApiFailure) -> WorktreeRead {
         do {
-            return try await macs.connection(to: server, reporting: progress)
+            return try await macs.reconnect(to: server, reporting: progress)
                 .readWorktrees(inProject: project, refreshing: refreshing, reporting: { stage in
                     guard stage != .reading(.unknown) else { return }
                     await progress(stage)

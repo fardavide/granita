@@ -33,6 +33,71 @@ struct RememberedMacsTests {
     }
 
     @Test
+    func `given worktrees were read at home when the Mac is reopened away then its worktrees are read over Tailscale`() async throws {
+        // given
+        let local = ServerAddress(host: "192.168.10.24", port: 8_737)
+        let tailnet = ServerAddress(host: "100.101.102.103", port: 8_737)
+        let remembered = RememberedMac(
+            device: aRememberedMac.device,
+            fingerprint: aRememberedMac.fingerprint,
+            fallbackAddress: tailnet,
+            wakeAddresses: aRememberedMac.wakeAddresses
+        )
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: remembered],
+            resolving: .success(local),
+            reportingResolutionStages: [.finding(.localAndTailnet), .verifying, .reading(.local)]
+        )
+        let firstRead = try await scenario.sut.readWorktrees(inProject: nil, refreshing: false, reporting: { _ in })
+        try #require(scenario.opened.map(\.address) == [local])
+        scenario.addresses.answerWith(.success(tailnet), reporting: [.finding(.tailnet), .verifying, .reading(.tailnet)])
+        let reopened = RememberedMacRepository(reading: theMacTheReaderTapped, through: scenario.rememberedMacs)
+
+        // when
+        let read = try await reopened.readWorktrees(inProject: nil, refreshing: false, reporting: { stage in
+            await scenario.progress.record(stage)
+        })
+
+        // then
+        #expect(read == firstRead)
+        #expect(scenario.opened.map(\.address) == [local, tailnet])
+        let stages = await scenario.progress.stages
+        #expect(stages.contains(.reading(.tailnet)))
+        #expect(stages.contains(.reading(.local)) == false)
+    }
+
+    @Test(arguments: [true, false])
+    func `given a local-only Mac when Bonjour stops answering then its previous route is used only if it verifies`(isReachable: Bool) async throws {
+        // given
+        let local = ServerAddress(host: "192.168.10.24", port: 8_737)
+        let scenario = Scenario(
+            remembering: [theMacTheReaderTapped.id: aRememberedMac],
+            resolving: .success(local),
+            reportingResolutionStages: [.finding(.local), .verifying, .reading(.local)],
+            healthUnavailable: !isReachable
+        )
+        let firstRead = try await scenario.sut.readWorktrees(inProject: nil, refreshing: false, reporting: { _ in })
+        let diagnostic = "Bonjour timed out looking for the Mac"
+        scenario.addresses.answerWith(.failure(.unreachable(diagnostic: diagnostic)), reporting: [.finding(.local)])
+
+        // when
+        let outcome: Result<WorktreeRead, ApiFailure>
+        do throws(ApiFailure) {
+            outcome = .success(try await scenario.sut.readWorktrees(inProject: nil, refreshing: false, reporting: { stage in
+                await scenario.progress.record(stage)
+            }))
+        } catch {
+            outcome = .failure(error)
+        }
+
+        // then
+        #expect(outcome == (isReachable ? .success(firstRead) : .failure(.unreachable(diagnostic: diagnostic))))
+        let stages = await scenario.progress.stages
+        #expect(stages.contains(.reading(.local)) == isReachable)
+        #expect(scenario.opened.map(\.address) == [local])
+    }
+
+    @Test
     func `given a remembered Mac when live changes arrive then its snapshot reaches the reader`() async {
         // given
         let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
@@ -824,6 +889,7 @@ extension RememberedMacsTests {
 private struct Scenario {
 
     let sut: RememberedMacRepository
+    let rememberedMacs: RememberedMacs
     let macs: FakeRememberedMacStore
     let addresses: FakeBonjourResolver
     let mac: FakeMacBehindAPairing
@@ -875,18 +941,16 @@ private struct Scenario {
                 wakeAddresses: wakeAddresses
             )
         }
-        sut = RememberedMacRepository(
-            reading: theMacTheReaderTapped,
-            through: RememberedMacs(
-                store: macs,
-                addresses: addresses,
-                connect: { pairing in
-                    connections.opened(pairing)
-                    return mac
-                },
-                healthOf: { _, _ in availableHealth }
-            )
+        rememberedMacs = RememberedMacs(
+            store: macs,
+            addresses: addresses,
+            connect: { pairing in
+                connections.opened(pairing)
+                return mac
+            },
+            healthOf: { _, _ in availableHealth }
         )
+        sut = RememberedMacRepository(reading: theMacTheReaderTapped, through: rememberedMacs)
     }
 }
 

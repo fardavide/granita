@@ -385,9 +385,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        include:
+          - shard: 0
+            timeout: 50
+          - shard: 1
+            timeout: 40
     runs-on: xcode-27
-    timeout-minutes: 40
+    # Shard 0 also runs the pinned TLS and reader gesture suites after its snapshots.
+    timeout-minutes: ${{ matrix.timeout }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode

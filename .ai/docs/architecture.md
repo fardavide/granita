@@ -21,6 +21,10 @@ URLSession implement them in Data. HTTP methods and request timing remain in Dat
 journal formats sanitized report text. Probe sessions have a short total deadline; source-reading
 sessions retain their existing timeouts.
 
+Each worktree list read rechecks the routes. File reads and live updates share the resulting session,
+and a successful recheck can reuse the session when the endpoint and pairing match. See
+[0266](decisions/0266-recheck-remembered-routes-for-worktree-list-reads.md).
+
 The Mac app embeds the backend in-process. The same backend is also an executable, so the whole
 server side builds, runs and is tested from a terminal with no Xcode in the loop. The menu bar app is
 a delivery mechanism for it, not its host.

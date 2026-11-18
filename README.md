@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.24.2** — reopening your Mac checks for Tailscale after you leave home.
 - **0.24.1** — open the privacy policy on iPhone and iPad before pairing.
 - **0.24.0** — prepared worktrees load quickly and update automatically without disturbing another review.
-- **0.23.3** — expand unchanged lines below the last change in a file; requires the updated Mac app.
 
 [Every release](CHANGELOG.md).
 
