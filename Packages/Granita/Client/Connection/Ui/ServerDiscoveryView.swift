@@ -16,7 +16,11 @@ public struct ServerDiscoveryView: View {
 
     @Environment(\.accessibilityReduceMotion) public var reduceMotion
 
+    @State private var isChoosingMacDownload = false
+    @ScaledMetric(relativeTo: .title) private var macDownloadSymbolSize: CGFloat = 80
+
     private let state: DiscoveryState
+    private let offersMacDownload: Bool
     private let logCopyState: DiagnosticCopyState
     private let onSearchAgain: () -> Void
     private let onOpenSettings: () -> Void
@@ -24,12 +28,14 @@ public struct ServerDiscoveryView: View {
 
     public init(
         state: DiscoveryState,
+        offersMacDownload: Bool,
         logCopyState: DiagnosticCopyState,
         onSearchAgain: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
         onCopyLogs: @escaping () -> Void
     ) {
         self.state = state
+        self.offersMacDownload = offersMacDownload
         self.logCopyState = logCopyState
         self.onSearchAgain = onSearchAgain
         self.onOpenSettings = onOpenSettings
@@ -40,9 +46,25 @@ public struct ServerDiscoveryView: View {
         Group {
             switch state {
             case .idle, .searching:
+                #if os(iOS)
+                if offersMacDownload {
+                    firstConnection(isSearching: true)
+                } else {
+                    searching
+                }
+                #else
                 searching
+                #endif
             case .found(let servers) where servers.isEmpty:
+                #if os(iOS)
+                if offersMacDownload {
+                    firstConnection(isSearching: false)
+                } else {
+                    nothingFound
+                }
+                #else
                 nothingFound
+                #endif
             case .found(let servers):
                 list(of: servers)
             case .localNetworkDenied:
@@ -63,8 +85,55 @@ public struct ServerDiscoveryView: View {
                 }
             }
         }
+        .animation(reduceMotion ? nil : .default, value: offersMacDownload)
         .animation(reduceMotion ? nil : .default, value: logCopyState)
     }
+
+    #if os(iOS)
+    private func firstConnection(isSearching: Bool) -> some View {
+        EmptyState {
+            Label {
+                Text(isSearching ? "Looking for your Mac" : "No Mac found")
+                    .font(.title3.bold())
+            } icon: {
+                Image(systemName: isSearching ? "antenna.radiowaves.left.and.right" : "laptopcomputer")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: macDownloadSymbolSize, height: macDownloadSymbolSize)
+                    .symbolEffect(.variableColor.iterative, isActive: isSearching)
+            }
+        } description: {
+            Text(isSearching
+                 ? "Allow Local Network access so Granita can find your Mac. You’ll also need Granita installed and running on it."
+                 : "Granita needs the Mac app to show your projects here. Install and open it on your Mac, with both devices on the same network.")
+                .font(.subheadline)
+        } actions: {
+            VStack(spacing: 12) {
+                Button("Get Granita for Mac") {
+                    isChoosingMacDownload = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .alert("Get Granita for Mac", isPresented: $isChoosingMacDownload) {
+                    // This fixed HTTPS literal has no runtime input. The simulator test opens it.
+                    Link("Download from GitHub", destination: URL(string: "https://github.com/fardavide/granita/releases/latest")!)
+                    Button("Mac App Store — Not available yet") {}
+                        .disabled(true)
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Choose where to get the Mac app.")
+                }
+
+                if !isSearching {
+                    Button("Search Again", action: onSearchAgain)
+                        .buttonStyle(.borderless)
+                        .controlSize(.large)
+                    ErrorReportAction(state: reportState, onCopyLogs: onCopyLogs)
+                }
+            }
+        }
+    }
+    #endif
 
     /// No spinner: a progress view promises a finish, and Bonjour has none. The symbol's motion is
     /// the progress indicator, and arriving at a *static* symbol is what says searching stopped —

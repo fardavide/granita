@@ -7,6 +7,11 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.25.1 — 2026-11-19
+- **Get the Mac app before pairing.** First-time discovery explains the Mac companion and offers
+  its GitHub download. The download dialog also shows that a Mac App Store version is not available
+  yet. Already-paired Macs keep their existing connection guidance.
+
 ### 0.25.0 — 2026-11-18
 - **Give Granita a Christmas icon on iPhone and iPad.** The seasonal setting shows it from
   December 1 through January 7 and uses the regular Granita icon the rest of the year. Open

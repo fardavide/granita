@@ -43,6 +43,18 @@ public final class ClientConnectionModel {
             .sorted { $0.name < $1.name }
     }
 
+    public var offersMacDownload: Bool {
+        guard remembered.isEmpty else { return false }
+        switch discovery {
+        case .searching:
+            return true
+        case .found(let servers):
+            return servers.isEmpty
+        case .idle, .localNetworkDenied, .failed:
+            return false
+        }
+    }
+
     /// What is in the six-word field, exactly as it was typed.
     ///
     /// **Never corrected.** The server lowercases and accepts spaces, hyphens, middle dots and the

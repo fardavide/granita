@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.25.1** — get the Mac companion from discovery before pairing your iPhone or iPad.
 - **0.25.0** — Granita switches to its Christmas icon from December 1 through January 7 on iPhone and iPad.
 - **0.24.2** — reopening your Mac checks for Tailscale after you leave home.
-- **0.24.1** — open the privacy policy on iPhone and iPad before pairing.
 
 [Every release](CHANGELOG.md).
 

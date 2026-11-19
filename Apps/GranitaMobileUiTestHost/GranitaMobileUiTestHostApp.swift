@@ -43,7 +43,8 @@ private struct DiscoveryPrivacyFixture: View {
     var body: some View {
         NavigationStack {
             ServerDiscoveryView(
-                state: .localNetworkDenied,
+                state: ProcessInfo.processInfo.arguments.contains("discovery-download") ? .found([]) : .localNetworkDenied,
+                offersMacDownload: true,
                 logCopyState: .ready,
                 onSearchAgain: {},
                 onOpenSettings: {},

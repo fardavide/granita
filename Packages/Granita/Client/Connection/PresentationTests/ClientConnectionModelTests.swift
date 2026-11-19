@@ -119,6 +119,130 @@ struct ClientConnectionModelTests {
         #expect(scenario.sut.discovery == .found([mac]))
     }
 
+    @Test
+    func `given no Mac has been paired when discovery finds no Macs then getting the Mac app is offered`() async {
+        // given
+        let scenario = Scenario(discovering: [.found([])], remembering: [])
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given no Mac has been paired when discovery finds a nearby Mac then getting the Mac app is not offered`() async {
+        // given
+        let scenario = Scenario(
+            discovering: [.found([
+                DiscoveredServer(
+                    id: BonjourInstanceName(rawValue: "Studio Mac mini"),
+                    name: "Studio Mac mini"
+                )
+            ])],
+            remembering: []
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given pairing history has not been read when the model is created then getting the Mac app is not offered`() {
+        // given - when
+        let scenario = Scenario(discovering: [], remembering: [])
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given no Mac has been paired when discovery is searching then getting the Mac app is offered`() async {
+        // given
+        let scenario = Scenario(discovering: [.searching], remembering: [])
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given no Mac has been paired when local network discovery is denied then getting the Mac app is not offered`() async {
+        // given
+        let scenario = Scenario(discovering: [.localNetworkDenied], remembering: [])
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given no Mac has been paired when discovery fails then getting the Mac app is not offered`() async {
+        // given
+        let scenario = Scenario(
+            discovering: [.failed(diagnostic: "Bonjour browser unavailable")],
+            remembering: []
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given a saved Mac is offline when discovery is searching then getting the Mac app is not offered`() async {
+        // given
+        let scenario = Scenario(
+            discovering: [.searching],
+            remembering: [BonjourInstanceName(rawValue: "Away MacBook Air")]
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given a saved Mac is offline when discovery finds no Macs then getting the Mac app is not offered`() async {
+        // given
+        let scenario = Scenario(
+            discovering: [.found([])],
+            remembering: [BonjourInstanceName(rawValue: "Away MacBook Air")]
+        )
+
+        // when
+        await scenario.sut.start()
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
+    @Test
+    func `given getting the Mac app is offered when pairing succeeds then the offer disappears immediately`() async {
+        // given
+        let scenario = Scenario(discovering: [.found([])], remembering: [])
+        await scenario.sut.start()
+        #expect(scenario.sut.offersMacDownload)
+
+        // when
+        await scenario.sut.join(.scanned(aLink), on: aMacTheBrowseFound, as: anIphone)
+
+        // then
+        #expect(!scenario.sut.offersMacDownload)
+    }
+
     // MARK: - Where a row goes
 
     @Test(arguments: SourceChoice.allCases)

@@ -18,6 +18,27 @@ import Testing
 @MainActor
 struct ServerDiscoveryViewSnapshotTests {
 
+    @Test(arguments: MacDownloadCase.allCases, SnapshotLayout.all)
+    private func macDownload(subject: MacDownloadCase, layout: SnapshotLayout) {
+        // given - when - then
+        assertScreenSnapshot(
+            NavigationStack {
+                ServerDiscoveryView(
+                    state: subject == .searching ? .searching : .found([]),
+                    offersMacDownload: true,
+                    logCopyState: .ready,
+                    onSearchAgain: {},
+                    onOpenSettings: {},
+                    onCopyLogs: {}
+                )
+            }
+            .environment(\._accessibilityReduceMotion, true)
+            .environment(\.dynamicTypeSize, subject == .accessibility ? .accessibility3 : .large),
+            layout: layout,
+            named: subject.rawValue
+        )
+    }
+
     @Test(arguments: Case.all, SnapshotLayout.all)
     func `given a discovery state when rendering then it matches its baseline`(
         subject: Case,
@@ -36,6 +57,7 @@ struct ServerDiscoveryViewSnapshotTests {
             NavigationStack {
                 ServerDiscoveryView(
                     state: subject.state,
+                    offersMacDownload: false,
                     logCopyState: .ready,
                     onSearchAgain: {},
                     onOpenSettings: {},
@@ -45,6 +67,12 @@ struct ServerDiscoveryViewSnapshotTests {
             layout: layout,
             named: subject.name
         )
+    }
+
+    private enum MacDownloadCase: String, CaseIterable {
+        case searching = "mac-download-searching"
+        case nothingFound = "mac-download-empty"
+        case accessibility = "mac-download-accessibility"
     }
 }
 
