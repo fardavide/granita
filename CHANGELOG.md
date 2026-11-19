@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.25.2 — 2026-11-19
+- **See the Christmas icon more clearly on your Home Screen.** A lighter teal background with a
+  subtle gradient helps the icon stand out against dark wallpapers.
+
 ### 0.25.1 — 2026-11-19
 - **Get the Mac app before pairing.** First-time discovery explains the Mac companion and offers
   its GitHub download. The download dialog also shows that a Mac App Store version is not available
