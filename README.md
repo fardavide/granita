@@ -124,9 +124,12 @@ make project     # regenerate Granita.xcodeproj from project.yml
 [Mac release setup](.ai/docs/mac-releases.md) is configured, successful main builds also publish a
 notarized DMG and checksum on [GitHub Releases](https://github.com/fardavide/granita/releases).
 
-Every screenshot above is a snapshot baseline rendered by
-[`ReadmeScreenshotTests`](Apps/GranitaMobileSnapshotTests/ReadmeScreenshotTests.swift) — there is no
-folder of exported images to go stale, and a screen that moves turns them red.
+The screenshots above are snapshot baselines. Changes to those screens are checked by
+[`ReadmeScreenshotTests`](Apps/GranitaMobileSnapshotTests/ReadmeScreenshotTests.swift).
+
+Run `make app-store-screenshots` to regenerate the
+[App Store galleries and presentation images](Art/AppStore/README.md) and the
+[Mac release gallery](Art/MacRelease/README.md).
 
 ### Reading
 
