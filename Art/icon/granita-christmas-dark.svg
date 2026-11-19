@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <clipPath id="sqC"><path d="M512 0C1008 0 1024 16 1024 512S1008 1024 512 1024 0 1008 0 512 16 0 512 0Z"/></clipPath>
-    <radialGradient id="night" cx="50%" cy="43%" r="67%">
-      <stop stop-color="#143B40"/><stop offset="1" stop-color="#060C18"/>
-    </radialGradient>
+    <linearGradient id="background" x2="0" y2="1">
+      <stop stop-color="#173F44"/><stop offset="1" stop-color="#11373C"/>
+    </linearGradient>
     <linearGradient id="tree" x2="0" y2="1">
       <stop stop-color="#D4FDE6"/><stop offset=".23" stop-color="#83D3AA"/><stop offset=".67" stop-color="#329C81"/><stop offset="1" stop-color="#1F655F"/>
     </linearGradient>
@@ -18,7 +18,7 @@
     </linearGradient>
   </defs>
   <g clip-path="url(#sqC)">
-    <path fill="url(#night)" d="M0 0H1024V1024H0Z"/>
+    <path fill="url(#background)" d="M0 0H1024V1024H0Z"/>
     <ellipse cx="512" cy="880" rx="250" ry="27" fill="#040A13" opacity=".68"/>
     <g fill="#B8EBD9">
       <path opacity=".67" d="M235 291Q241 325 275 331Q241 337 235 371Q229 337 195 331Q229 325 235 291Z"/>
