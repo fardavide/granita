@@ -336,6 +336,62 @@ func assertScreenSnapshot(
     drainTheKeyboard()
 }
 
+/// Capture the whole window so a presented comment composer appears over the diff.
+@MainActor
+func captureStoreScreen(
+    _ view: some View,
+    layout: SnapshotLayout,
+    afterMount: () throws -> Void
+) throws -> UIImage {
+    let scene = try prepareSnapshotScene()
+    let keyWindow = scene.windows.first(where: \.isKeyWindow)
+    let previousWindow = try #require(keyWindow)
+    let size = try #require(layout.configuration.size)
+    let window = UIWindow(windowScene: scene)
+    let traits = layout.configuration.traits
+    window.frame = CGRect(origin: .zero, size: size)
+    window.overrideUserInterfaceStyle = layout.style
+    window.traitOverrides.userInterfaceIdiom = traits.userInterfaceIdiom
+    window.traitOverrides.horizontalSizeClass = traits.horizontalSizeClass
+    window.traitOverrides.verticalSizeClass = traits.verticalSizeClass
+    window.traitOverrides.displayScale = traits.displayScale
+    window.traitOverrides.preferredContentSizeCategory = traits.preferredContentSizeCategory
+    window.backgroundColor = .systemBackground
+    window.rootViewController = UIHostingController(
+        rootView: view
+            .environment(\.locale, Locale(identifier: "en_US"))
+            .environment(\._accessibilityReduceMotion, true)
+            .transaction { $0.disablesAnimations = true }
+    )
+
+    let animationsEnabled = UIView.areAnimationsEnabled
+    UIView.setAnimationsEnabled(false)
+    window.makeKeyAndVisible()
+    defer {
+        window.endEditing(true)
+        window.isHidden = true
+        previousWindow.makeKey()
+        UIView.setAnimationsEnabled(animationsEnabled)
+        drainTheKeyboard()
+    }
+    _ = try prepareSnapshotScene()
+    try afterMount()
+    _ = try prepareSnapshotScene()
+    drainTheKeyboard()
+    _ = try prepareSnapshotScene()
+
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = traits.displayScale
+    format.opaque = true
+    format.preferredRange = .standard
+    var rendered = false
+    let image = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+        rendered = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+    }
+    try #require(rendered, "The \(layout.name) store window did not finish drawing.")
+    return image
+}
+
 /// Native materials resolve differently while the test host is inactive. Activation alone left
 /// the Done material inactive; the next native display callback matched the unchanged baseline.
 @MainActor

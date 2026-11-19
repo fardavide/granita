@@ -200,6 +200,30 @@ snapshots: snapshots-ios ## Render the phone's screens and compare against the c
 snapshots-ios: ## Render the phone's screens on a simulator
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' $(if $(IOS_SNAPSHOT_TEST),-only-testing:GranitaMobileSnapshotTests/$(IOS_SNAPSHOT_TEST)) -collect-test-diagnostics $(TEST_DIAGNOSTICS) $(if $(IOS_SNAPSHOT_RESULT_BUNDLE),-resultBundlePath '$(IOS_SNAPSHOT_RESULT_BUNDLE)') $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO
 
+.PHONY: app-store-screenshots
+app-store-screenshots: ## Export the App Store galleries, presentations and Mac release screenshots
+	@set -eu; \
+	mkdir -p build; \
+	staging=$$(mktemp -d "$(CURDIR)/build/app-store-screenshots.XXXXXX"); \
+	trap 'rm -rf "$$staging"' EXIT; \
+	TEST_RUNNER_GRANITA_STORE_SCREENSHOTS_DIRECTORY="$$staging" \
+		xcodebuild test -project $(PROJECT) -scheme GranitaMobile -destination '$(IOS_SIM)' \
+		-only-testing:GranitaMobileSnapshotTests/AppStoreScreenshotTests -parallel-testing-enabled NO \
+		$(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO; \
+	for device in iPhone iPad Mac; do \
+		set -- "$$staging/$$device/"*.png; \
+		test "$$#" -eq 4 || { echo "Expected four $$device screenshots" >&2; exit 1; }; \
+	done; \
+	test -s "$$staging/presentation.png" || { echo "Missing default presentation image" >&2; exit 1; }; \
+	test -s "$$staging/presentation-diagonal.png" || { echo "Missing straight diagonal presentation image" >&2; exit 1; }; \
+	mkdir -p Art/AppStore/iPhone Art/AppStore/iPad Art/MacRelease; \
+	mv "$$staging/iPhone/"*.png Art/AppStore/iPhone/; \
+	mv "$$staging/iPad/"*.png Art/AppStore/iPad/; \
+	mv "$$staging/Mac/"*.png Art/MacRelease/; \
+	mv "$$staging/presentation.png" "$$staging/presentation-diagonal.png" Art/AppStore/; \
+	echo "Exported eight store screenshots and two presentation images to Art/AppStore."; \
+	echo "Exported four native Mac screenshots to Art/MacRelease."
+
 .PHONY: tls-tests-ios
 tls-tests-ios: ## Exercise pinned HTTPS against a real TLS listener under the phone app's ATS policy
 	xcodebuild test -project $(PROJECT) -scheme GranitaMobileConnections -destination '$(IOS_SIM)' $(XCODE_QUIET) CODE_SIGNING_ALLOWED=NO $(TLS_PACKAGE_FLAGS)

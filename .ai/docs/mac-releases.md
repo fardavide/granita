@@ -7,6 +7,8 @@ compressed DMG, notarizes and staples the DMG, and publishes it on
 [GitHub Releases](https://github.com/fardavide/granita/releases). The release carries
 `Granita-<version>.dmg`, `SHA256SUMS`, and the matching entry from `CHANGELOG.md`.
 
+The [Mac release gallery](../../Art/MacRelease/README.md) contains native screenshots for release notes.
+
 The GitHub workflow starts after a successful **push-to-main CI run**. It never builds or signs the
 app itself, never consumes PR artifacts, and never uploads an unnotarized export. A separate token
 writes tags and releases; Apple signing certificates and profiles are not copied into GitHub.
