@@ -1,7 +1,8 @@
 # Mac downloads and GitHub releases
 
-Xcode Cloud builds, signs and notarizes the unified `GranitaMac` app. GitHub Actions waits for the
-notarized export of the same commit, puts `Granita.app` beside an Applications shortcut in a
+The automatic route uses Xcode Cloud to build, sign and notarize the unified `GranitaMac` app.
+GitHub Actions waits for the notarized export of the same commit, puts `Granita.app` beside an
+Applications shortcut in a
 compressed DMG, notarizes and staples the DMG, and publishes it on
 [GitHub Releases](https://github.com/fardavide/granita/releases). The release carries
 `Granita-<version>.dmg`, `SHA256SUMS`, and the matching entry from `CHANGELOG.md`.
@@ -10,7 +11,57 @@ The [Mac release gallery](../../Art/MacRelease/README.md) contains native screen
 
 The GitHub workflow starts after a successful **push-to-main CI run**. It never builds or signs the
 app itself, never consumes PR artifacts, and never uploads an unnotarized export. A separate token
-writes tags and releases; Apple signing certificates and profiles stay in Xcode Cloud.
+writes tags and releases; Apple signing certificates and profiles are not copied into GitHub.
+
+## Verified manual Developer ID route
+
+Cloud's managed Developer ID export has repeatedly returned an empty certificate lookup followed
+by HTTP 409 / code 7460 when requesting a managed certificate. The successful 0.24.0 publication
+used the original Cloud archive and a manual Developer ID Application certificate with Davide's
+explicit approval. Repeating that process published
+[0.25.2](https://github.com/fardavide/granita/releases/tag/v0.25.2) without a new certificate or an
+Apple Support request. [Decision 0268](decisions/0268-manual-developer-id-signing-preserves-cloud-archive-provenance.md)
+records this boundary; it does not establish a repair of Cloud-managed signing.
+
+Use the original Mac `ARCHIVE` artifact for the selected Cloud run. Before copying its app, verify
+the run's full source revision, Mac archive action, successful main push CI for that revision, and
+the intended release tag. Verify the app's bundle ID `dev.fardavide.granita.mac`, marketing version,
+Cloud build number, architectures and entitlements. Copy `Products/Applications/Granita.app` out of
+the archive; never modify the retained original or substitute a local development build.
+
+Sign the copied app with the already approved Developer ID Application identity in the login
+keychain, using a secure timestamp and hardened runtime. Do not export its private key. Verify the
+signature for all architectures, its Developer ID authority and team `A7Q83J6LR4`, then zip the app
+with `ditto --keepParent --sequesterRsrc`. Submit that zip with `notarytool` and the existing team
+API key, retain the submission ID, wait for **Accepted**, and staple and validate the app. Inspect
+the existing submission before retrying an interrupted wait; do not submit duplicate requests.
+
+The existing publisher accepts this already signed, notarized and stapled app:
+
+```bash
+.venv-release/bin/python .github/scripts/mac_release.py publish \
+  --app <verified-stapled-app> --build-number <cloud-build-number> \
+  --notes-file <reviewed-public-release-notes> --version <marketing-version> \
+  --issuer-id <existing-issuer> --key-id <existing-key-id> --key-file <private-p8-path> \
+  --repository fardavide/granita --revision <full-verified-source-sha> \
+  --output <new-release-output-directory>
+```
+
+It verifies app identity, version, build, Developer ID team and stapled ticket before packaging.
+It notarizes, staples and validates the DMG and verifies its disk-image checksum before creating
+a draft, uploading the DMG and `SHA256SUMS`, and publishing. Its immutable tag and published-asset
+rules also apply here. Supply public notes reviewed against the last public release for this
+channel; `make release-plan` previews only the current internal changelog entry.
+
+0.25.2 used Cloud build 193 at `5b08a28cf853a728b57046025e62a6d921fa8533`.
+App notarization `d0daa1d8-fcf3-45b5-8204-eac213eb38e1` and DMG notarization
+`7d7fe21c-8290-47cb-ba4d-84d2868fea7e` were accepted. The public DMG SHA-256 is
+`c45c2d37b8a986d5c565c02b25909b2a6a4fb231dcbc96452b3201a442f764dc`.
+
+The release client uses its pinned `certifi` CA bundle for both Apple API and artifact-download
+HTTPS. This supports a Python installation with an empty default CA store while retaining
+certificate and hostname verification; the API bearer token is never forwarded to the CDN.
+No system certificate, shell or Python installation configuration is changed.
 
 ## One-time activation
 
@@ -124,7 +175,8 @@ make release-plan    # preview current version and changelog; never publishes
 make coverage-tests  # all CI-tooling tests, including releases; existing CI runs this gate
 ```
 
-The release tests verify source-commit selection, rejection of unnotarized exports and failed
+The release tests verify trusted HTTPS with an empty system CA store, source-commit selection,
+rejection of unnotarized exports and failed
 builds, API pagination and signed JWTs, rejection before publication, draft recovery, matching
 tags, and upload ordering. The app's package tests, unsigned build and existing CI coverage and
 snapshot gates retain their separate jobs.

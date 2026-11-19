@@ -1,5 +1,9 @@
 # Xcode Cloud exports become notarized DMG downloads on GitHub
 
+Cloud-only signing is partially superseded by
+[0268](0268-manual-developer-id-signing-preserves-cloud-archive-provenance.md), which records the
+owner-approved use of the original Cloud archive and an existing local Developer ID identity.
+
 Davide asked for Mac DMG downloads and GitHub releases. Xcode Cloud keeps the responsibilities
 chosen in decision 0004: app archives, automatic Developer ID signing and app notarization.
 GitHub Actions handles the public download after successful main CI, selecting the stapled
