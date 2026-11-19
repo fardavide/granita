@@ -1,5 +1,26 @@
 # Status
 
+## Public launch and Mac 0.25.2
+
+The iPhone and iPad app is publicly available at 0.24.1. Version 0.25.2, build 192, was submitted
+for App Review with manual release on November 19. The website now links to the App Store, explains
+the required Mac companion, and retains the Mac GitHub download and Mac App Store coming-soon note.
+
+[Mac 0.25.2](https://github.com/fardavide/granita/releases/tag/v0.25.2) is published from the exact
+Cloud build 193 archive at `5b08a28cf853a728b57046025e62a6d921fa8533`, whose main CI passed.
+The owner-approved manual Developer ID process used for 0.24.0 signed the copied app with the
+existing local keychain identity. Both app and DMG notarization were accepted; stapling and DMG
+verification passed. The public notes compare against public 0.24.0, including the new Christmas
+icon rather than describing its unreleased refinements as an upgrade. No Apple Support request
+was sent and no certificate or Cloud configuration was changed.
+
+The release client now supplies a pinned CA bundle for verified Apple API and CDN HTTPS, fixing
+downloads on a Python installation with no default CA file. Its regression failed before the fix;
+all 19 release tests and 140 CI-tooling tests pass afterwards. Cloud-managed Developer ID export
+still fails independently with empty lookup and code 7460. See
+[0268](decisions/0268-manual-developer-id-signing-preserves-cloud-archive-provenance.md) and
+[`mac-releases.md`](mac-releases.md) for the verified manual route and its remaining boundary.
+
 ## Mac companion download before pairing
 
 [Issue #138](https://github.com/fardavide/granita/issues/138) is implemented for 0.25.1 in

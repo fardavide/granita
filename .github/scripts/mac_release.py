@@ -6,6 +6,7 @@ import json
 import plistlib
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -18,8 +19,9 @@ from pathlib import Path
 from typing import BinaryIO, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener, urlopen
 
+import certifi
 import jwt
 
 
@@ -77,7 +79,10 @@ class NoApiRedirects(HTTPRedirectHandler):
 def request_json(url: str, bearer_token: str) -> object:
     request = Request(url, headers={"Authorization": f"Bearer {bearer_token}"})
     try:
-        with build_opener(NoApiRedirects()).open(request, timeout=60) as response:
+        with build_opener(
+            NoApiRedirects(),
+            HTTPSHandler(context=ssl.create_default_context(cafile=certifi.where())),
+        ).open(request, timeout=60) as response:
             return json.load(response)
     except HTTPError as error:
         raise ValueError(f"App Store Connect returned HTTP {error.code}") from None
@@ -111,7 +116,11 @@ class AppleClient:
         destination.parent.mkdir(parents=True, exist_ok=True)
         # Apple returns a temporary CDN URL. Never send the API bearer token to it.
         try:
-            with urlopen(url, timeout=120) as response, destination.open("wb") as output:
+            with urlopen(
+                url,
+                timeout=120,
+                context=ssl.create_default_context(cafile=certifi.where()),
+            ) as response, destination.open("wb") as output:
                 shutil.copyfileobj(response, output)
         except (HTTPError, URLError):
             raise ValueError("Could not download the notarized Xcode Cloud archive") from None
