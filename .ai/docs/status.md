@@ -2,7 +2,8 @@
 
 ## Mac companion download before pairing
 
-[Issue #138](https://github.com/fardavide/granita/issues/138) is implemented locally for 0.24.3.
+[Issue #138](https://github.com/fardavide/granita/issues/138) is implemented for 0.25.1 in
+[PR #139](https://github.com/fardavide/granita/pull/139).
 The approved discovery treatment uses a larger symbol and smaller text, with a native alert offering
 the GitHub download and a disabled, labelled Mac App Store choice. Pairing history and discovery
 state gate the offer; an offline remembered Mac keeps its existing recovery. See design §1.
@@ -19,8 +20,12 @@ The existing Privacy Policy check missed a menu tap once; unchanged quiet repeat
 devices. No cause is assigned to that intermittent failure. `make resolve` produced the complete
 30-pin Xcode graph, changing only its generated origin hash. Davide requested opening the pull
 request with the full local coverage gate and interactive Mac launch deferred. Mac desktop checks
-remain allowed only after the **Add seasonal Xmas icon** session finishes. CI will provide the
-coverage verdict; no local coverage pass is claimed.
+remain allowed only after the **Add seasonal Xmas icon** session finishes. The original CI run
+passed all required checks, including coverage. After the Christmas icon release reached main at
+0.25.0, this branch merged that update and advanced its release metadata to 0.25.1. The combined
+branch passes `make test` and `make build`; both Xcode builds report `BUILD SUCCEEDED`. An earlier
+quiet build exited zero but printed an inconsistent compiler diagnostic, prompting that full
+repeat. The updated CI verdict is pending; no local full coverage pass is claimed.
 
 ## Remembered Mac route after leaving home
 

@@ -26,6 +26,8 @@ import CoreReviewDomain
 /// lives in the app bundle.
 public struct GranitaMobileScene: Scene {
 
+    @Environment(\.scenePhase) private var scenePhase
+
     public init() {}
 
     public var body: some Scene {
@@ -109,6 +111,16 @@ public struct GranitaMobileScene: Scene {
             // item is not rendered at all rather than rendered dead.
             .environment(\.sideBySide, SideBySideSetting(isOn: isSideBySide, choose: chooseSideBySide))
             }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                await Self.appIcon.refreshSeasonalIcon()
+            }
+            #if canImport(UIKit)
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                guard scenePhase == .active else { return }
+                Task { await Self.appIcon.refreshSeasonalIcon() }
+            }
+            #endif
         }
     }
 
@@ -123,7 +135,10 @@ public struct GranitaMobileScene: Scene {
 
     /// The Home Screen icon, made once for the life of the app for the reason the appearance is: the
     /// sheet is rebuilt per Mac, and the icon is a fact about this device rather than about that Mac.
-    private static let appIcon = AppIconModel(switcher: SystemAppIconSwitcher())
+    private static let appIcon = AppIconModel(
+        switcher: SystemAppIconSwitcher(),
+        preferences: UserDefaultsAppIconPreferences(defaults: .standard)
+    )
 
     /// The camera, made once for the life of the app.
     ///

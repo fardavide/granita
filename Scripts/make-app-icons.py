@@ -16,8 +16,8 @@ build failure:
   macOS   the shaped icon WITH alpha, at every slot in the ladder. Nothing masks a Mac icon for you,
           and with the mac slots empty the asset compiler emits no macOS icon at all (ITMS-90236).
 
-The phone carries two icons since 0.20.0: the glass as its own icon and the ice cube as an alternate
-the reader picks in Settings. Each is three drawings, and each gets a preview image set beside the
+The phone carries the glass as its own icon, with Ice Cube and Christmas as alternates.
+Each is three drawings, and each gets a preview image set beside the
 icon sets — shaped and with alpha, like the Mac's — because an app icon set is not something a view
 can load, and the chooser draws the icons rather than naming them.
 
@@ -51,6 +51,7 @@ APPEARANCES = {
 MOBILE_ICONS = [
     ("AppIcon", "granita", "AppIconPreview-Granita"),
     ("AppIcon-IceCube", "granita-icecube", "AppIconPreview-IceCube"),
+    ("AppIcon-Christmas", "granita-christmas", "AppIconPreview-Christmas"),
 ]
 
 # A preview is drawn at 60pt at most, in the chooser's rows.

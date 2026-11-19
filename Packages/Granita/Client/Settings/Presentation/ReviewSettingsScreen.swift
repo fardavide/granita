@@ -52,6 +52,7 @@ public struct ReviewSettingsScreen: View {
             codeTheme: appearance.codeTheme,
             codeSize: appearance.codeSizeReadout,
             appIcon: appIcon.standing,
+            appIconSchedule: appIcon.schedule,
             onChoose: { identifier in Task { await model.choose(identifier) } },
             // No `Task` around either of these, and the asymmetry with the two above it is the point:
             // the review's settings are offered to a Mac and these are written to this device, so there
@@ -61,6 +62,7 @@ public struct ReviewSettingsScreen: View {
             onChooseCodeSize: { appearance.choose($0) },
             // Awaited like the review's two, because the system can refuse — unlike the three above.
             onChooseAppIcon: { icon in Task { await appIcon.choose(icon) } },
+            onChooseAppIconSchedule: { schedule in Task { await appIcon.chooseSchedule(schedule) } },
             onCommitOpeningLine: { Task { await model.commitOpeningLine() } },
             onReset: { Task { await model.resetOpeningLine() } },
             onPair: onPair,

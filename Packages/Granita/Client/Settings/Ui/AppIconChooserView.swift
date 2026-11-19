@@ -2,7 +2,7 @@ import SwiftUI
 
 import ClientSettingsDomain
 
-/// The moment of choosing the Home Screen icon: both drawings, one tap.
+/// Choose whether the Home Screen follows the Christmas calendar, or pick a drawing to keep.
 ///
 /// **The same shape as the *Code colours* chooser, on purpose** — a stock grouped list with a
 /// checkmark, pushed onto the sheet's own stack, each row the thing itself rather than its name. The
@@ -11,20 +11,35 @@ import ClientSettingsDomain
 ///
 /// **No Apply and no confirmation of our own.** iOS confirms a changed icon with an alert of its own,
 /// which is the one feedback this needs; a second one from us would be the same sentence twice.
-/// **Nothing is disabled**: both icons are always available where this screen can be reached at all,
-/// and on a Mac the row that pushes it is absent.
 public struct AppIconChooserView: View {
 
     private let choice: AppIconChoice
+    private let schedule: AppIconSchedule
     private let onChoose: (AppIcon) -> Void
+    private let onChooseSchedule: (AppIconSchedule) -> Void
 
-    public init(choice: AppIconChoice, onChoose: @escaping (AppIcon) -> Void) {
+    public init(
+        choice: AppIconChoice,
+        schedule: AppIconSchedule,
+        onChoose: @escaping (AppIcon) -> Void,
+        onChooseSchedule: @escaping (AppIconSchedule) -> Void
+    ) {
         self.choice = choice
+        self.schedule = schedule
         self.onChoose = onChoose
+        self.onChooseSchedule = onChooseSchedule
     }
 
     public var body: some View {
         Form {
+            Section {
+                Toggle("Seasonal icon", isOn: Binding(
+                    get: { schedule == .automatic },
+                    set: { onChooseSchedule($0 ? .automatic : .manual) }
+                ))
+            } footer: {
+                Text("Shows Christmas from December 1 through January 7 and Granita the rest of the year.")
+            }
             Section {
                 ForEach(AppIcon.allCases, id: \.self) { icon in
                     Button { onChoose(icon) } label: {
@@ -58,13 +73,6 @@ public struct AppIconChooserView: View {
             Text(icon.displayName)
                 .foregroundStyle(.primary)
             Spacer(minLength: 10)
-            // The one place the word appears, as in the *Code colours* chooser: the section marks the
-            // default nowhere, because a value the reader can always choose back needs no badge.
-            if icon == .default {
-                Text("Default")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
             if icon == choice.shown {
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
@@ -123,6 +131,7 @@ struct AppIconPreviewView: View {
         switch icon {
         case .granita: "AppIconPreview-Granita"
         case .iceCube: "AppIconPreview-IceCube"
+        case .christmas: "AppIconPreview-Christmas"
         }
     }
 }

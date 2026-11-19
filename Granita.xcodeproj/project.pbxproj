@@ -80,6 +80,7 @@
 		962D9FBC6BC3F85B470BF2D3 /* MenuBarContentSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FE6425F26947A49618D5421 /* MenuBarContentSnapshotTests.swift */; };
 		96829EC72A2D51F9C84880F2 /* FakeLastOpenedMacPreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467E34A933D3C654545D054B /* FakeLastOpenedMacPreference.swift */; };
 		995346EDCFE3C27F21791772 /* FakeReviewPasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 671A563536921F3291BA08ED /* FakeReviewPasteboard.swift */; };
+		9B62741BC6D3E6E09D28FFE5 /* FakeAppIconPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F43C1504E68A71700AAE15 /* FakeAppIconPreferences.swift */; };
 		A555327E526815742E23C992 /* GranitaSettingsScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AA2E8BD00BE482B83614DF5 /* GranitaSettingsScreenSnapshotTests.swift */; };
 		A9C2295445A8583FDDD21E4E /* WorktreeDiffScreenSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1921F6DE07387F2370CD13 /* WorktreeDiffScreenSnapshotTests.swift */; };
 		AA44462D702F910B96524E06 /* FakeDiffSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A38FC197C62671336DD162A /* FakeDiffSource.swift */; };
@@ -172,6 +173,7 @@
 		0FD21B30724C2477BC4F7B14 /* GranitaMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranitaMobileApp.swift; sourceTree = "<group>"; };
 		160B6573F41F430438E5DDEB /* WorktreeRenameSheetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeRenameSheetSnapshotTests.swift; sourceTree = "<group>"; };
 		169340A626DBF30EB02C3F19 /* MacReaderScreenSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacReaderScreenSnapshotTests.swift; sourceTree = "<group>"; };
+		16F43C1504E68A71700AAE15 /* FakeAppIconPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAppIconPreferences.swift; sourceTree = "<group>"; };
 		17CCA12B46FF0D7559C4EE66 /* DiffFileHeaderSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffFileHeaderSnapshotTests.swift; sourceTree = "<group>"; };
 		1D8BA25970E39E480588A658 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1E98ACE3257ECAA43FE2C616 /* FakeDiagnosticReportProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeDiagnosticReportProviding.swift; sourceTree = "<group>"; };
@@ -373,6 +375,7 @@
 			isa = PBXGroup;
 			children = (
 				EA8B079F967819E6A825B06A /* FakeAppearancePreferences.swift */,
+				16F43C1504E68A71700AAE15 /* FakeAppIconPreferences.swift */,
 				AADF8C5B37E7607826E68772 /* FakeAppIconSwitcher.swift */,
 				6FA5BF872AB3724793E72CAD /* FakeSettingsRepository.swift */,
 			);
@@ -885,6 +888,7 @@
 				D392DB3CFE446E8426AAA986 /* AdvancedSettingsViewSnapshotTests.swift in Sources */,
 				8CFBBC9DE14C23D70908A986 /* ConnectionLogViewSnapshotTests.swift in Sources */,
 				9148CC664C173384A313C279 /* DevicesSettingsViewSnapshotTests.swift in Sources */,
+				9B62741BC6D3E6E09D28FFE5 /* FakeAppIconPreferences.swift in Sources */,
 				60B79DC74C0CB10259E99230 /* FakeAppIconSwitcher.swift in Sources */,
 				AE4F642A1FA7D7451B96533C /* FakeAppearancePreferences.swift in Sources */,
 				37331CE29D9CB4B9FED747A6 /* FakeDiagnosticLogsCopying.swift in Sources */,
@@ -1061,7 +1065,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1095,7 +1099,7 @@
 		0A1CCCA40259C712AB973243 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-IceCube";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-IceCube AppIcon-Christmas";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Apps/GranitaMobile/GranitaMobile.entitlements;
@@ -1109,7 +1113,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -1138,7 +1142,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile.connectiontests;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -1155,7 +1159,7 @@
 		14749A447F73E55629E54719 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-IceCube";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphone*]" = "AppIcon-IceCube AppIcon-Christmas";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Apps/GranitaMobile/GranitaMobile.entitlements;
@@ -1169,7 +1173,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mobile;
 				PRODUCT_NAME = Granita;
 				SDKROOT = auto;
@@ -1308,7 +1312,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
@@ -1334,7 +1338,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.24.3;
+				MARKETING_VERSION = 0.25.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.fardavide.granita.mac;
 				PRODUCT_NAME = Granita;
 				SDKROOT = macosx;
