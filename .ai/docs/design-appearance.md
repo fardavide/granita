@@ -383,22 +383,22 @@ shows a name on its own.
 > side by side make the section as tall as the three rows above it put together, for a setting a
 > reader changes about once a year.
 
-**The push is a stock grouped list.** The first section has a *Seasonal icon* switch with the date
-range below it. It starts on and follows the device's local date. The *Icon* section shows Granita,
-Ice Cube and Christmas at 60pt, with a checkmark on the one the Home Screen shows. Picking another
-icon turns the schedule off once the system changes the icon. Turning the switch off keeps the
-current icon. Turning it on applies the one for today's date.
+**The push is a stock grouped list.** The first section has a *Seasonal icons* switch and explains
+that the usual icon returns when the season ends. The switch starts on for new installations and
+uses the device's local date. The second section shows Granita, Ice Cube and Christmas at 48pt,
+with a checkmark on the saved choice. All three choices are available year-round. Picking an icon
+during the season saves it for later. When the displayed icon differs from the saved choice, the
+first section says *“Now showing Christmas.”* The Settings row previews the icon on the Home Screen.
 
 **iOS confirms a changed icon with its own alert.** The seasonal change uses the same confirmation.
 
-**The checkmark moves only when the system agrees.** A refusal leaves it on the icon the Home Screen
-still shows and says so in the footer: *"The icon did not change, so your Home Screen still shows
-Granita. Try again in a moment."* The system's own words go underneath at caption2, monospaced,
-tertiary and selectable, with their code — the same place every system error in this app goes.
+**A refused change preserves the saved choice and switch setting.** The switch footer reports the
+icon the system kept: *"The icon did not change, so your Home Screen still shows Granita. Try again
+in a moment."* The system's words go underneath at caption2, monospaced, tertiary and selectable,
+with their code.
 
-**Tapping the ticked row does nothing, and that is not a dead control.** It is the list's selected
-state, as in *Code colours*; asking the system for the icon it already shows would put up iOS's alert
-to announce that nothing changed.
+**The ticked row represents the saved setting.** Choosing another icon updates the checkmark even
+when Christmas stays on the Home Screen. UIKit is called only when the displayed icon needs to change.
 
 **Absent on a Mac, not disabled.** macOS has no alternate app icons, so there is nothing a reader
 could do about the row; its absence is the state the never-ship-a-dead-control rule permits.
@@ -406,5 +406,5 @@ could do about the row; its absence is the state the never-ship-a-dead-control r
 **The previews follow the reader's appearance**: each has a dark variant, drawn from the dark icon,
 so a phone in dark mode shows the drawing its Home Screen shows.
 
-**VoiceOver:** the row reads *"App icon, Granita"*. Each chooser row is one element — the drawing is
-decorative — reading the icon's name, marked selected when it is the one on the Home Screen.
+**VoiceOver** reads the Settings row as *"App icon, Granita"*. Each chooser row reads the icon's
+name and marks the saved choice as selected. Its drawing is decorative.

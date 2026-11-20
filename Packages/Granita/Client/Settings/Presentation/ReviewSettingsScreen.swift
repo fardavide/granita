@@ -52,6 +52,7 @@ public struct ReviewSettingsScreen: View {
             codeTheme: appearance.codeTheme,
             codeSize: appearance.codeSizeReadout,
             appIcon: appIcon.standing,
+            appIconSelection: appIcon.selection,
             appIconSchedule: appIcon.schedule,
             onChoose: { identifier in Task { await model.choose(identifier) } },
             // No `Task` around either of these, and the asymmetry with the two above it is the point:

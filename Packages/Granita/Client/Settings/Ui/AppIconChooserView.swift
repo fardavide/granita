@@ -2,7 +2,7 @@ import SwiftUI
 
 import ClientSettingsDomain
 
-/// Choose whether the Home Screen follows the Christmas calendar, or pick a drawing to keep.
+/// Choose the usual app icon and whether the Home Screen follows the holiday calendar.
 ///
 /// **The same shape as the *Code colours* chooser, on purpose** — a stock grouped list with a
 /// checkmark, pushed onto the sheet's own stack, each row the thing itself rather than its name. The
@@ -14,17 +14,20 @@ import ClientSettingsDomain
 public struct AppIconChooserView: View {
 
     private let choice: AppIconChoice
+    private let selection: AppIcon
     private let schedule: AppIconSchedule
     private let onChoose: (AppIcon) -> Void
     private let onChooseSchedule: (AppIconSchedule) -> Void
 
     public init(
         choice: AppIconChoice,
+        selection: AppIcon,
         schedule: AppIconSchedule,
         onChoose: @escaping (AppIcon) -> Void,
         onChooseSchedule: @escaping (AppIconSchedule) -> Void
     ) {
         self.choice = choice
+        self.selection = selection
         self.schedule = schedule
         self.onChoose = onChoose
         self.onChooseSchedule = onChooseSchedule
@@ -33,12 +36,12 @@ public struct AppIconChooserView: View {
     public var body: some View {
         Form {
             Section {
-                Toggle("Seasonal icon", isOn: Binding(
+                Toggle("Seasonal icons", isOn: Binding(
                     get: { schedule == .automatic },
                     set: { onChooseSchedule($0 ? .automatic : .manual) }
                 ))
             } footer: {
-                Text("Shows Christmas from December 1 through January 7 and Granita the rest of the year.")
+                footer
             }
             Section {
                 ForEach(AppIcon.allCases, id: \.self) { icon in
@@ -52,12 +55,10 @@ public struct AppIconChooserView: View {
                     // `.plain` keeps the name from turning blue: it is content, not a link.
                     .buttonStyle(.plain)
                 }
-            } header: {
-                Text("Icon")
-            } footer: {
-                footer
             }
         }
+        .animation(.default, value: choice.shown != selection)
+        .animation(.default, value: choice)
         .navigationTitle("App icon")
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -69,36 +70,33 @@ public struct AppIconChooserView: View {
     @ViewBuilder
     private func row(for icon: AppIcon) -> some View {
         HStack(spacing: 14) {
-            AppIconPreviewView(icon: icon, size: 60)
+            AppIconPreviewView(icon: icon, size: 48)
             Text(icon.displayName)
                 .foregroundStyle(.primary)
             Spacer(minLength: 10)
-            if icon == choice.shown {
+            if icon == selection {
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
             }
         }
         .padding(.vertical, 4)
-        // One element per row: the drawing is decorative, so a screen reader reads the name and
-        // whether it is the one on the Home Screen.
+        // VoiceOver reads each icon's name and whether it is the saved choice.
         .accessibilityElement(children: .combine)
         .accessibilityLabel(icon.displayName)
-        .accessibilityAddTraits(icon == choice.shown ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(icon == selection ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// Where the sentence says what happened when the system said no.
-    ///
-    /// **Ours first, the system's underneath.** The reader needs to know the Home Screen did not
-    /// change and what it still shows; the system's words go below as small print, monospaced and
-    /// selectable, with their code — the same place every other system error in this app goes.
-    @ViewBuilder
     private var footer: some View {
-        switch choice {
-        case .showing:
-            Text("The icon on your Home Screen. Kept on this device.")
-        case .refused(let shown, let reason):
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Uses holiday icons during the season, then restores your chosen icon.")
+            switch choice {
+            case .showing(let shown):
+                if shown != selection {
+                    Text("Now showing \(shown.displayName).")
+                        .foregroundStyle(Color.primary)
+                }
+            case .refused(let shown, let reason):
                 Text("The icon did not change, so your Home Screen still shows \(shown.displayName). Try again in a moment.")
                 Text(reason)
                     .font(.caption2.monospaced())

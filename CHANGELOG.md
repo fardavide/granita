@@ -7,6 +7,11 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.25.3 — 2026-11-20
+- **Keep your chosen icon when the season ends.** On iPhone and iPad, Seasonal Icons shows Christmas
+  from December 1 through January 7. Pick your usual icon at any time. Granita restores it when the
+  season ends or you turn Seasonal Icons off.
+
 ### 0.25.2 — 2026-11-19
 - **See the Christmas icon more clearly on your Home Screen.** A lighter teal background with a
   subtle gradient helps the icon stand out against dark wallpapers.

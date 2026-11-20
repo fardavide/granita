@@ -287,3 +287,4 @@ read whole:
 - [0266](decisions/0266-recheck-remembered-routes-for-worktree-list-reads.md) Worktree list reads rerun route selection before reporting a connection, and reuse the HTTP session when the selected route and pairing match.
 - [0267](decisions/0267-follow-the-christmas-calendar-for-the-mobile-icon.md) The iPhone and iPad default to the Christmas icon from December 1 through January 7 in local time, with a saved setting for manual choices.
 - [0268](decisions/0268-manual-developer-id-signing-preserves-cloud-archive-provenance.md) Owner-authorized manual Developer ID signing uses the original verified Cloud archive and existing keychain identity, retaining app and DMG notarization and immutable publication.
+- [0269](decisions/0269-seasonal-icons-preserve-the-saved-choice.md) The icon picker remembers the usual choice and applies Christmas temporarily, following Aura's settings behavior and Granita's existing calendar.
