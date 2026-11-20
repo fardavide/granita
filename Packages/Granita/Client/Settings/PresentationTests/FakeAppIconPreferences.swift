@@ -6,7 +6,7 @@ final class FakeAppIconPreferences: AppIconPreferences {
     private var storedSchedule: AppIconSchedule?
     private var storedSelection: AppIcon?
 
-    init(storedSchedule: AppIconSchedule?) {
+    init(storedSchedule: AppIconSchedule? = nil) {
         self.storedSchedule = storedSchedule
     }
 
