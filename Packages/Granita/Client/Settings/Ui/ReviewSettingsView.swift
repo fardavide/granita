@@ -43,6 +43,7 @@ public struct ReviewSettingsView: View {
 
     /// Which icon the Home Screen shows, or that this device cannot show another.
     private let appIcon: AppIconStanding
+    private let appIconSelection: AppIcon
     private let appIconSchedule: AppIconSchedule
 
     /// Which half of the pair the phone is drawing right now.
@@ -76,6 +77,7 @@ public struct ReviewSettingsView: View {
         codeTheme: CodeTheme,
         codeSize: CodeSizeReadout,
         appIcon: AppIconStanding,
+        appIconSelection: AppIcon,
         appIconSchedule: AppIconSchedule,
         onChoose: @escaping @Sendable (ReviewIdentifier) -> Void,
         onChooseAppearance: @escaping (AppAppearance) -> Void,
@@ -97,6 +99,7 @@ public struct ReviewSettingsView: View {
         self.codeTheme = codeTheme
         self.codeSize = codeSize
         self.appIcon = appIcon
+        self.appIconSelection = appIconSelection
         self.appIconSchedule = appIconSchedule
         self.onChoose = onChoose
         self.onChooseAppearance = onChooseAppearance
@@ -168,6 +171,7 @@ public struct ReviewSettingsView: View {
             NavigationLink {
                 AppIconChooserView(
                     choice: choice,
+                    selection: appIconSelection,
                     schedule: appIconSchedule,
                     onChoose: onChooseAppIcon,
                     onChooseSchedule: onChooseAppIconSchedule

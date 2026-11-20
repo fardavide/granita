@@ -64,8 +64,45 @@ struct AppIconModelTests {
         #expect(reopened.standing == .available(.showing(.granita)))
     }
 
+    @Test
+    func `given Ice Cube chosen off season when the app opens in December then the schedule still applies`() async throws {
+        // given
+        let scenario = Scenario()
+        let november = try Date("2026-11-30T12:00:00Z", strategy: .iso8601)
+        let december = try Date("2026-12-01T12:00:00Z", strategy: .iso8601)
+        await scenario.sut.choose(.iceCube, on: november, in: .gmt)
+
+        // when
+        let reopened = AppIconModel(switcher: scenario.switcher, preferences: scenario.preferences)
+        await reopened.refreshSeasonalIcon(on: december, in: .gmt)
+
+        // then
+        #expect(reopened.standing == .available(.showing(.christmas)))
+    }
+
+    @Test
+    func `given Christmas is active when Ice Cube is picked then it is saved for after the season`() async throws {
+        // given
+        let scenario = Scenario()
+        let december = try Date("2026-12-25T12:00:00Z", strategy: .iso8601)
+        let january = try Date("2027-01-08T12:00:00Z", strategy: .iso8601)
+        await scenario.sut.refreshSeasonalIcon(on: december, in: .gmt)
+        await scenario.sut.choose(.iceCube, on: december, in: .gmt)
+        try #require(scenario.sut.standing == .available(.showing(.christmas)))
+
+        // when
+        let reopened = AppIconModel(switcher: scenario.switcher, preferences: scenario.preferences)
+        await reopened.refreshSeasonalIcon(on: january, in: .gmt)
+
+        // then
+        #expect(reopened.selection == .iceCube)
+        #expect(reopened.schedule == .automatic)
+        #expect(scenario.switcher.requested == [.christmas, .iceCube])
+    }
+
     @Test(arguments: [
         (DateComponents(year: 2026, month: 11, day: 30, hour: 23, minute: 59), AppIcon.granita, AppIcon.granita),
+        (DateComponents(year: 2027, month: 1, day: 1, hour: 0, minute: 0), AppIcon.granita, AppIcon.christmas),
         (DateComponents(year: 2027, month: 1, day: 7, hour: 23, minute: 59), AppIcon.granita, AppIcon.christmas),
         (DateComponents(year: 2027, month: 1, day: 8, hour: 0, minute: 0), AppIcon.christmas, AppIcon.granita)
     ])
@@ -101,6 +138,20 @@ struct AppIconModelTests {
     }
 
     @Test
+    func `given Christmas was chosen before upgrade when January ends the season then Christmas stays`() async throws {
+        // given
+        let scenario = Scenario(current: .christmas, storedSchedule: .manual)
+        let date = try Date("2027-01-08T12:00:00Z", strategy: .iso8601)
+
+        // when
+        await scenario.sut.refreshSeasonalIcon(on: date, in: .gmt)
+
+        // then
+        #expect(scenario.sut.selection == .christmas)
+        #expect(scenario.switcher.requested.isEmpty)
+    }
+
+    @Test
     func `given a manual icon when automatic is enabled in December then Christmas is applied`() async throws {
         // given
         let scenario = Scenario(current: .iceCube)
@@ -111,22 +162,22 @@ struct AppIconModelTests {
 
         // then
         #expect(scenario.sut.standing == .available(.showing(.christmas)))
-        #expect(scenario.preferences.schedule(defaultingTo: .manual) == .automatic)
+        #expect(scenario.preferences.schedule(migratingFrom: .manual) == .automatic)
     }
 
     @Test
-    func `given a seasonal Christmas icon when automatic is disabled then the icon is kept in January`() async throws {
+    func `given Christmas is showing over Ice Cube when seasonal icons are disabled then Ice Cube returns`() async throws {
         // given
-        let scenario = Scenario(current: .christmas)
-        let date = try Date("2027-01-08T00:00:00Z", strategy: .iso8601)
+        let scenario = Scenario(current: .iceCube)
+        let date = try Date("2026-12-25T12:00:00Z", strategy: .iso8601)
+        await scenario.sut.chooseSchedule(.automatic, on: date, in: .gmt)
+        try #require(scenario.switcher.currentIcon() == .christmas)
 
         // when
         await scenario.sut.chooseSchedule(.manual, on: date, in: .gmt)
-        await scenario.sut.refreshSeasonalIcon(on: date, in: .gmt)
 
         // then
-        #expect(scenario.switcher.requested.isEmpty)
-        #expect(scenario.preferences.schedule(defaultingTo: .automatic) == .manual)
+        #expect(scenario.switcher.currentIcon() == .iceCube)
     }
 
     @Test
@@ -148,12 +199,13 @@ struct AppIconModelTests {
     // MARK: - Choosing
 
     @Test
-    func `given the glass when the cube is chosen then the Home Screen shows the cube`() async {
+    func `given the glass when the cube is chosen then the Home Screen shows the cube`() async throws {
         // given
         let scenario = Scenario(current: .granita)
+        let date = try Date("2026-11-30T12:00:00Z", strategy: .iso8601)
 
         // when
-        await scenario.sut.choose(.iceCube)
+        await scenario.sut.choose(.iceCube, on: date, in: .gmt)
 
         // then — asked of the system, and moved on screen only once the system agreed.
         #expect(scenario.switcher.requested == [.iceCube])
@@ -174,17 +226,19 @@ struct AppIconModelTests {
     }
 
     @Test
-    func `given the system refuses when the cube is chosen then the glass stays ticked with the reason`() async {
+    func `given the system refuses when the cube is chosen then the glass stays ticked with the reason`() async throws {
         // given
         let scenario = Scenario(
             current: .granita,
             refusal: AppIconRefusal(reason: "Resource temporarily unavailable (NSPOSIXErrorDomain 35)")
         )
+        let date = try Date("2026-11-30T12:00:00Z", strategy: .iso8601)
 
         // when
-        await scenario.sut.choose(.iceCube)
+        await scenario.sut.choose(.iceCube, on: date, in: .gmt)
 
-        // then — the checkmark stays where the Home Screen is, and the system's words come with it.
+        // then
+        #expect(scenario.sut.selection == .granita)
         #expect(
             scenario.sut.standing == .available(
                 .refused(showing: .granita, reason: "Resource temporarily unavailable (NSPOSIXErrorDomain 35)")
@@ -193,14 +247,15 @@ struct AppIconModelTests {
     }
 
     @Test
-    func `given a refusal on screen when a change then succeeds then the refusal leaves`() async {
+    func `given a refusal on screen when a change then succeeds then the refusal leaves`() async throws {
         // given — refused once, then the system recovered.
         let scenario = Scenario(current: .granita, refusal: AppIconRefusal(reason: "Busy"))
-        await scenario.sut.choose(.iceCube)
+        let date = try Date("2026-11-30T12:00:00Z", strategy: .iso8601)
+        await scenario.sut.choose(.iceCube, on: date, in: .gmt)
         scenario.switcher.stopRefusing()
 
         // when
-        await scenario.sut.choose(.iceCube)
+        await scenario.sut.choose(.iceCube, on: date, in: .gmt)
 
         // then
         #expect(scenario.sut.standing == .available(.showing(.iceCube)))
@@ -227,10 +282,16 @@ private struct Scenario {
 
     let sut: AppIconModel
     let switcher: FakeAppIconSwitcher
-    let preferences = FakeAppIconPreferences()
+    let preferences: FakeAppIconPreferences
 
-    init(canChangeIcon: Bool = true, current: AppIcon = .default, refusal: AppIconRefusal? = nil) {
+    init(
+        canChangeIcon: Bool = true,
+        current: AppIcon = .default,
+        refusal: AppIconRefusal? = nil,
+        storedSchedule: AppIconSchedule? = nil
+    ) {
         switcher = FakeAppIconSwitcher(canChangeIcon: canChangeIcon, current: current, refusal: refusal)
+        preferences = FakeAppIconPreferences(storedSchedule: storedSchedule)
         sut = AppIconModel(switcher: switcher, preferences: preferences)
     }
 }

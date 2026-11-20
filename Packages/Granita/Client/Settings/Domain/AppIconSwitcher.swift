@@ -1,8 +1,7 @@
 /// The system's answer to which icon this app shows on the Home Screen.
 ///
-/// **The system is the source of truth, so nothing here is stored.** iOS remembers the alternate icon
-/// across launches by itself and reports it back; a copy in this device's defaults could only ever be
-/// a second answer that disagrees with the first after a restore.
+/// iOS remembers the displayed icon across launches. The usual choice in device preferences can
+/// differ while the seasonal schedule is active.
 ///
 /// Main-actor because the only implementation is `UIApplication`, which is.
 public protocol AppIconSwitcher: Sendable {

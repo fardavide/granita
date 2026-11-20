@@ -1,5 +1,17 @@
 # Status
 
+## Aura-style seasonal icon settings
+
+The iPhone and iPad picker saves the chosen icon separately from the seasonal switch. When the
+Christmas schedule is active, the picker marks the saved choice and names the icon on the Home
+Screen. Granita keeps its December 1 through January 7 window. See
+[decision 0269](decisions/0269-seasonal-icons-preserve-the-saved-choice.md).
+
+The package suite and both unsigned app builds passed. All 16 chooser snapshots and 60 Settings
+snapshots passed on iOS 27.0. The built app includes both alternates for iPhone and iPad. UIKit
+displayed its Ice Cube change confirmation on the iPhone simulator. The full tap-through from the
+paired Settings screen to the Home Screen remains unverified.
+
 ## Public launch and Mac 0.25.2
 
 The iPhone and iPad app is publicly available at 0.24.1. Version 0.25.2, build 192, was submitted
