@@ -194,6 +194,110 @@ struct ClientWorktreesModelTests {
     }
 
     @Test
+    func `given one unavailable worktree when its scan is retried then the recovered row joins the healthy sibling`() async {
+        // given
+        let healthy = aWorktree(named: "reader", project: "granita")
+        let recovered = aWorktree(named: "watcher", project: "granita")
+        let issue = WorktreeScanIssue(
+            target: .worktree(recovered.id),
+            projectID: recovered.projectId,
+            name: "watcher",
+            projectName: "granita",
+            reason: .gitFailure,
+            lastRead: .never
+        )
+        let scenario = Scenario(
+            worktrees: [healthy],
+            retryAnswer: .success(WorktreeSnapshot(
+                worktrees: [healthy, recovered],
+                scannedAt: aMoment.addingTimeInterval(60)
+            ))
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [healthy],
+            scannedAt: aMoment,
+            issues: [issue]
+        )))
+        #expect(scenario.sut.scanIssues == [issue])
+
+        // when
+        await scenario.sut.retryScan(issue.target)
+
+        // then
+        #expect(scenario.sut.scanIssues.isEmpty)
+        #expect(Set(scenario.rows.map(\.id)) == Set([healthy.id, recovered.id]))
+        #expect(await scenario.repository.retriedScans == [.worktree(recovered.id)])
+        #expect(await scenario.repository.reads == 0)
+    }
+
+    @Test
+    func `given a scan retry is pending when a list read refuses authorization then the retry cannot restore the list`() async {
+        // given
+        let worktree = aWorktree(named: "watcher", project: "granita")
+        let issue = WorktreeScanIssue(
+            target: .worktree(worktree.id),
+            projectID: worktree.projectId,
+            name: "watcher",
+            projectName: "granita",
+            reason: .gitFailure,
+            lastRead: .never
+        )
+        let scenario = Scenario(
+            worktrees: [],
+            readFailure: .unauthorized,
+            retryAnswer: .success(WorktreeSnapshot(worktrees: [worktree], scannedAt: aMoment)),
+            suspendingScanRetry: true
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+        let retry = Task { await scenario.sut.retryScan(issue.target) }
+        await scenario.repository.waitUntilScanRetryStarted()
+
+        // when
+        await scenario.sut.load(trigger: .pullToRefresh)
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        await scenario.repository.releaseScanRetry()
+        await retry.value
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.scanIssues.isEmpty)
+        #expect(scenario.sut.scanAction == .idle)
+    }
+
+    @Test
+    func `given a scan retry is pending when a later live snapshot arrives then the retry cannot replace live rows`() async {
+        // given
+        let healthy = aWorktree(named: "reader", project: "granita")
+        let updated = aWorktree(named: "reader", project: "granita", alias: "Reader finished")
+        let recovered = aWorktree(named: "watcher", project: "granita")
+        let issue = WorktreeScanIssue(
+            target: .worktree(recovered.id),
+            projectID: recovered.projectId,
+            name: "watcher",
+            projectName: "granita",
+            reason: .gitFailure,
+            lastRead: .never
+        )
+        let scenario = Scenario(
+            worktrees: [healthy],
+            retryAnswer: .success(WorktreeSnapshot(worktrees: [healthy, recovered], scannedAt: aMoment)),
+            suspendingScanRetry: true
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [healthy], scannedAt: aMoment, issues: [issue])))
+        let retry = Task { await scenario.sut.retryScan(issue.target) }
+        await scenario.repository.waitUntilScanRetryStarted()
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [updated, recovered], scannedAt: aMoment)))
+        await scenario.repository.releaseScanRetry()
+        await retry.value
+
+        // then
+        #expect(scenario.sut.displayName(of: healthy.id) == "Reader finished")
+        #expect(scenario.sut.scanAction == .idle)
+    }
+
+    @Test
     func `given a review is open when the app returns to foreground then the sidebar does not start a global refresh`() async {
         // given
         let reviewed = aWorktree(named: "reviewed", project: "granita")
@@ -1851,6 +1955,8 @@ struct ClientWorktreesModelTests {
             ignoringReadCancellation: Bool = false,
             liveUpdates: [WorktreeUpdate] = [],
             preparedAt: Date? = nil,
+            retryAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed),
+            suspendingScanRetry: Bool = false,
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences(),
             announcementDelay: Duration = UnaskedForRefresh.announcementDelay
@@ -1869,7 +1975,9 @@ struct ClientWorktreesModelTests {
                 suspendedReadNumbers: suspendedReadNumbers,
                 ignoringReadCancellation: ignoringReadCancellation,
                 liveUpdates: liveUpdates,
-                preparedAt: preparedAt
+                preparedAt: preparedAt,
+                retryAnswer: retryAnswer,
+                suspendingScanRetry: suspendingScanRetry
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)

@@ -11,6 +11,7 @@ actor FakeGitClient: GitClient {
 
     private var outputs: [GitCommand: Data]
     private var outputsByLocation: [RepositoryLocation: [GitCommand: Data]] = [:]
+    private var standardErrors: [GitCommand: String] = [:]
     private var failures: [GitCommand: GitError]
     private var failuresByLocation: [RepositoryLocation: GitError]
     private let anyFileDiff: Data
@@ -52,8 +53,9 @@ actor FakeGitClient: GitClient {
         self.truncated = truncated
     }
 
-    func answer(_ command: GitCommand, with output: Data) {
+    func answer(_ command: GitCommand, with output: Data, standardError: String = "") {
         outputs[command] = output
+        standardErrors[command] = standardError
     }
 
     func answer(_ command: GitCommand, in location: RepositoryLocation, with output: Data) {
@@ -110,7 +112,11 @@ actor FakeGitClient: GitClient {
             return GitOutput(standardOutput: output, isTruncated: truncated.contains(command))
         }
         if let output = outputs[command] {
-            return GitOutput(standardOutput: output, isTruncated: truncated.contains(command))
+            return GitOutput(
+                standardOutput: output,
+                isTruncated: truncated.contains(command),
+                standardError: standardErrors[command] ?? ""
+            )
         }
         // Answered by kind rather than by value, because the paths this one carries are derived
         // from the change set rather than chosen by a test, and reproducing them in every `given`

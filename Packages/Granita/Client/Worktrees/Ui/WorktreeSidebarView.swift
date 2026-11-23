@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import CoreApiDomain
 import CoreComponentsUi
 import CoreDiffDomain
 
@@ -52,6 +53,10 @@ public struct WorktreeSidebarView: View {
     private let onCopyLogs: () -> Void
     private let onOpenSettings: () -> Void
     private let onOpenProjects: (() -> Void)?
+    private let scanIssues: [WorktreeScanIssue]
+    private let scanAction: WorktreeScanAction
+    private let onRetryScan: (WorktreeScanTarget) -> Void
+    private let onPreviewRepair: (WorktreeID) -> Void
     @Binding private var selection: WorktreeID?
 
     /// The rows whose directory is being taken off the Mac right now, dimmed and not operable until
@@ -83,7 +88,11 @@ public struct WorktreeSidebarView: View {
         onCopyLogs: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void,
         onOpenProjects: (() -> Void)? = nil,
-        selection: Binding<WorktreeID?> = .constant(nil)
+        selection: Binding<WorktreeID?> = .constant(nil),
+        scanIssues: [WorktreeScanIssue] = [],
+        scanAction: WorktreeScanAction = .idle,
+        onRetryScan: @escaping (WorktreeScanTarget) -> Void = { _ in },
+        onPreviewRepair: @escaping (WorktreeID) -> Void = { _ in }
     ) {
         self.macName = macName
         self.state = state
@@ -109,6 +118,10 @@ public struct WorktreeSidebarView: View {
         self.onCopyLogs = onCopyLogs
         self.onOpenSettings = onOpenSettings
         self.onOpenProjects = onOpenProjects
+        self.scanIssues = scanIssues
+        self.scanAction = scanAction
+        self.onRetryScan = onRetryScan
+        self.onPreviewRepair = onPreviewRepair
         _selection = selection
     }
 
@@ -119,6 +132,8 @@ public struct WorktreeSidebarView: View {
                 loading
             case .failed:
                 failed
+            case .noProjects where !scanIssues.isEmpty, .allQuiet where !scanIssues.isEmpty:
+                list(WorktreeListing(of: [], mode: mode, showingQuiet: false, now: now), showsReceipt: false)
             case .noProjects:
                 emptyResult(noProjects)
             case .allQuiet(let worktreeCount, let projectNames):
@@ -154,6 +169,8 @@ public struct WorktreeSidebarView: View {
         .animation(reduceMotion ? nil : .default, value: logCopyState)
         .animation(reduceMotion ? nil : .default, value: state)
         .animation(reduceMotion ? nil : .default, value: readResult)
+        .animation(reduceMotion ? nil : .default, value: scanIssues)
+        .animation(reduceMotion ? nil : .default, value: scanAction)
         .animation(reduceMotion ? nil : .default, value: isRetryingRefresh)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state == .loading)
     }
@@ -303,18 +320,11 @@ public struct WorktreeSidebarView: View {
         }
         #endif
         #if os(macOS)
-        ToolbarItem(placement: .automatic) {
-            HStack(spacing: 6) {
-                Button {
-                    Task { await onRefresh() }
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-                if isAutomaticallyRefreshing {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityLabel("Refreshing worktrees")
-                }
+        if isAutomaticallyRefreshing {
+            ToolbarItem(placement: .automatic) {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Refreshing worktrees")
             }
         }
         #endif
@@ -416,7 +426,7 @@ public struct WorktreeSidebarView: View {
         }
     }
 
-    private func list(_ listing: WorktreeListing) -> some View {
+    private func list(_ listing: WorktreeListing, showsReceipt: Bool = true) -> some View {
         let rows = Group {
             if isRetryingRefresh {
                 Section {
@@ -464,7 +474,25 @@ public struct WorktreeSidebarView: View {
                     .font(.footnote)
                 }
             }
-            if readResult != .notRead {
+            if !scanIssues.isEmpty {
+                Section("Unavailable") {
+                    ForEach(scanIssues) { issue in
+                        let notice = WorktreeRecoveryRow(
+                            issue: issue, action: scanAction, now: now, onRetry: onRetryScan, onPreview: onPreviewRepair
+                        )
+                        #if os(macOS)
+                        if case .worktree(let id) = issue.target, id == selection {
+                            notice.tag(id)
+                        } else {
+                            notice
+                        }
+                        #else
+                        notice
+                        #endif
+                    }
+                }
+            }
+            if showsReceipt && readResult != .notRead && (!listing.sections.isEmpty || scanIssues.isEmpty) {
                 Section {
                 } footer: {
                     Text(readResult.footer(at: now))

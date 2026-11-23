@@ -116,7 +116,8 @@ struct RequestDiagnosticsTests {
                         suggestedAliases: { _ in [:] }
                     ),
                     service: service,
-                    store: store
+                    store: store,
+                    registrationBackups: LocalWorktreeRegistrationBackups()
                 ),
                 store: store,
                 pairing: Pairing(store: store, now: { Date(timeIntervalSince1970: 0) }),

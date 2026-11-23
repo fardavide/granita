@@ -83,7 +83,8 @@ struct ApiScenario {
         reader = WorktreeReader(
             registry: registry,
             service: service,
-            store: store
+            store: store,
+            registrationBackups: LocalWorktreeRegistrationBackups()
         )
         let dependencies = ApiDependencies(
             reader: reader,
@@ -124,7 +125,8 @@ struct ApiScenario {
                 suggestedAliases: { _ in [:] }
             ),
             service: service,
-            store: store
+            store: store,
+            registrationBackups: LocalWorktreeRegistrationBackups()
         )
     }
 
@@ -364,7 +366,8 @@ extension ApiScenario {
                     suggestedAliases: { _ in [:] }
                 ),
                 service: service,
-                store: store
+                store: store,
+                registrationBackups: LocalWorktreeRegistrationBackups()
             ),
             store: store,
             pairing: Pairing(store: store, now: { Date() }),

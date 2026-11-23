@@ -224,7 +224,8 @@ struct PairingRouteTests {
                                 suggestedAliases: { _ in [:] }
                             ),
                             service: service,
-                            store: store
+                            store: store,
+                            registrationBackups: LocalWorktreeRegistrationBackups()
                         ),
                         store: store,
                         pairing: pairing,

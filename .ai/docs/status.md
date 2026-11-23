@@ -1,5 +1,21 @@
 # Status
 
+## Worktree recovery in 0.26.0
+
+An unavailable checkout or project leaves the readable list in place. The reader can retry the
+failed scan. A stale Git registration can be backed up from a paired iPhone after confirmation
+of the affected entries. The Mac verifies the Git dry run and moves only the approved
+administrative directories. See
+[0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md).
+
+## Live Mac worktree sidebar
+
+The Mac sidebar applies worktree snapshots while a diff is open. The toolbar Refresh button is
+gone, and This Mac shows the age of its successful data in the existing footer. The iPad simulator
+test drives the Mac split view and verifies that another worktree's row changes while the open
+diff keeps its content, position and read count. See
+[0270](decisions/0270-keep-the-mac-worktree-sidebar-live-during-review.md).
+
 ## Aura-style seasonal icon settings
 
 The iPhone and iPad picker saves the chosen icon separately from the seasonal switch. When the

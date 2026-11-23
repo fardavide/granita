@@ -770,10 +770,15 @@ reads as the list being wrong — and its viewed marks and comments would be ref
 `worktreeGone`. The name is the one captured when the row was chosen. **There is no button**: the next
 move is a row in the sidebar.
 
-**The list has no refresh on a Mac.** The sidebar's only refresh is `.refreshable`, and on macOS that
-modifier **draws no gesture** — so without a Refresh command the list is read once per window and
-never again. A toolbar button at the head of the sidebar and ⌘R in the View menu both call the
-`onRefresh` the view already takes.
+**The sidebar stays live with a diff open.** Apply worktree snapshots to the list as they arrive.
+Activity in another worktree can change its row while the open diff keeps its position. The existing
+footer on This Mac says *Updated <age>.* and uses the age of the last successful list data. Remove
+the sidebar toolbar's Refresh button. View → Refresh (⌘R) remains available, including when reading
+an older Mac, and a failed read can still offer Try Again. See
+[0270](decisions/0270-keep-the-mac-worktree-sidebar-live-during-review.md).
+
+Unavailable worktrees appear under the same *Unavailable* section as on iPhone. The Mac offers
+the same targeted retry and repair sheet. An unrelated open diff stays in place.
 
 **Nothing changed** needs a rule the iPad does not have. `DiffPaneLayout` keeps the column while
 withholding its toggle when there are no files, and the iPad baseline shows the result: a column

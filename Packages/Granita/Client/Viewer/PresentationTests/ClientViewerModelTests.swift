@@ -272,6 +272,34 @@ struct ClientViewerModelTests {
     }
 
     @Test
+    func `given an open review when a snapshot could not list its project then the loaded diff stays visible`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let loadedDiff = scenario.sut.state
+        let project = ProjectID(rawValue: "granita-project")
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100),
+            issues: [WorktreeScanIssue(
+                target: .project(project),
+                projectID: project,
+                name: "Granita",
+                projectName: "Granita",
+                reason: .gitFailure,
+                lastRead: .never
+            )]
+        )))
+
+        // then
+        #expect(scenario.sut.state == loadedDiff)
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
+    @Test
     func `given a live review reload is suspended when its lifecycle is cancelled then no diff request follows its late answer`() async {
         // given
         let scenario = Scenario(

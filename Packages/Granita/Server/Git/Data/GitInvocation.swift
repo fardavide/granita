@@ -50,9 +50,20 @@ enum GitInvocation {
         "GIT_OPTIONAL_LOCKS": "0",
         "GIT_TERMINAL_PROMPT": "0",
         "GIT_DIR": nil,
+        "GIT_COMMON_DIR": nil,
         "GIT_WORK_TREE": nil,
         "GIT_INDEX_FILE": nil
     ]
+
+    static func environmentOverrides(for command: GitCommand) -> [String: String?] {
+        var overrides = environmentOverrides
+        if case .previewWorktreePrune = command {
+            // The prune report has no porcelain format.
+            overrides["LC_ALL"] = "C"
+            overrides["LANGUAGE"] = .some(nil)
+        }
+        return overrides
+    }
 
     /// Arguments after the executable, in bytes.
     ///
@@ -76,7 +87,7 @@ enum GitInvocation {
         case .headCommit:
             exitCode == 0 || exitCode == 1
         case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory, .currentBranch, .worktrees,
-             .untrackedPaths, .worktreeStatus, .hashWorktreeFiles, .removeWorktree:
+             .untrackedPaths, .worktreeStatus, .hashWorktreeFiles, .removeWorktree, .previewWorktreePrune:
             exitCode == 0
         }
     }
@@ -94,7 +105,7 @@ enum GitInvocation {
             ProcessGitClient.fileContentLimitBytes
         case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory, .currentBranch, .headCommit, .worktrees,
              .untrackedPaths, .worktreeStatus, .trackedChanges, .trackedStats, .fileDiff,
-             .untrackedFileDiff, .removeWorktree, .hashWorktreeFiles:
+             .untrackedFileDiff, .removeWorktree, .previewWorktreePrune, .hashWorktreeFiles:
             limit
         }
     }
@@ -174,6 +185,9 @@ enum GitInvocation {
             // row the phone offered the control on. Measured on 2.52.0: `fatal: cannot remove a
             // locked working tree … use 'remove -f -f' to override or unlock first`.
             encoded(["worktree", "remove", "--force", "--force", "--"]) + [Array(worktree.path.utf8)]
+
+        case .previewWorktreePrune:
+            encoded(["worktree", "prune", "--dry-run", "--verbose", "--expire", "now"])
 
         case .hashWorktreeFiles:
             encoded(["hash-object", "--stdin-paths"])

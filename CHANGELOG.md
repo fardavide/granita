@@ -7,6 +7,13 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.26.0 — 2026-11-23
+- **Keep reviewing when a worktree is unavailable.** Granita keeps readable worktrees visible and
+  offers a retry for the failed checkout or project. When Git reports stale registrations, you can
+  preview the affected registrations and confirm moving them to a backup from your iPhone or Mac.
+- **See the Mac sidebar update during a review.** Worktree rows update as changes arrive while the
+  open diff stays in place.
+
 ### 0.25.3 — 2026-11-20
 - **Keep your chosen icon when the season ends.** On iPhone and iPad, Seasonal Icons shows Christmas
   from December 1 through January 7. Pick your usual icon at any time. Granita restores it when the

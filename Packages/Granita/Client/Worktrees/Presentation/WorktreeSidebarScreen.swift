@@ -2,6 +2,7 @@ import SwiftUI
 
 import ClientWorktreesDomain
 import ClientWorktreesUi
+import CoreApiDomain
 import CoreDiffDomain
 
 /// Binds the worktrees model to the sidebar, its rename sheet and the refusals its two writes can
@@ -117,15 +118,34 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
                 onCopyLogs: { Task { await model.copyLogs() } },
                 onOpenSettings: onOpenSettings,
                 onOpenProjects: onOpenProjects,
-                selection: $selection
+                selection: $selection,
+                scanIssues: model.scanIssues,
+                scanAction: model.scanAction,
+                onRetryScan: { target in Task { await model.retryScan(target) } },
+                onPreviewRepair: { worktree in Task { await model.previewRepair(for: worktree) } }
             )
         }
-        .sheet(item: Binding(get: { model.renaming }, set: { if $0 == nil { model.cancelRenaming() } })) { subject in
-            WorktreeRenameSheet(
-                subject: subject,
-                onSave: { alias in Task { await model.rename(subject.worktree, to: alias) } },
-                onCancel: model.cancelRenaming
-            )
+        .sheet(item: Binding(get: { sheet }, set: { value in
+            if value == nil {
+                model.cancelRenaming()
+                model.cancelRepair()
+            }
+        })) { sheet in
+            switch sheet {
+            case .rename(let subject):
+                WorktreeRenameSheet(
+                    subject: subject,
+                    onSave: { alias in Task { await model.rename(subject.worktree, to: alias) } },
+                    onCancel: model.cancelRenaming
+                )
+            case .repair(let preview):
+                WorktreeRepairSheet(
+                    preview: preview,
+                    macName: model.macName,
+                    onConfirm: { Task { await model.approveRepair(preview) } },
+                    onCancel: model.cancelRepair
+                )
+            }
         }
         // **One alert driven by a two-case prompt, rather than one modifier each.** Two `.alert`
         // modifiers on a single view is the shape where only one ever presents, and the one that
@@ -188,9 +208,31 @@ public struct WorktreeSidebarScreen<Opened: View>: View {
     /// alert is presented into a window of its own and no raster here includes it, so a sentence
     /// written in a screen is a sentence nothing in this repository can hold to its words. These are
     /// the words a reader gets at the worst moment this app has.
+    private var sheet: SidebarSheet? {
+        if case .confirming(_, let preview) = model.scanAction { return .repair(preview) }
+        return model.renaming.map(SidebarSheet.rename)
+    }
+
     private var prompt: WorktreeAlertPrompt? {
         if let refusal = model.writeFailure { return .refusal(refusal) }
         if let subject = model.deleting { return .confirmDeletion(subject) }
         return nil
+    }
+}
+
+private enum SidebarSheet: Identifiable {
+    case rename(WorktreeRenameSubject)
+    case repair(WorktreeRepairPreview)
+
+    var id: ID {
+        switch self {
+        case .rename(let subject): .rename(subject.worktree)
+        case .repair(let preview): .repair(preview.approval)
+        }
+    }
+
+    enum ID: Hashable {
+        case rename(WorktreeID)
+        case repair(WorktreeRepairApproval)
     }
 }

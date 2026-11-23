@@ -173,6 +173,41 @@ public struct WorktreeService: Sendable {
         _ = try await git.run(.removeWorktree(at: worktree), in: project)
     }
 
+    public func staleRegistrations(
+        in project: RepositoryLocation
+    ) async throws(WorktreePruneError) -> [WorktreeRegistrationName] {
+        try await parsePrunePreview(in: project)
+    }
+
+    public func verifyStaleRegistrations(
+        in project: RepositoryLocation,
+        matching registrations: [WorktreeRegistrationName]
+    ) async throws(WorktreePruneError) {
+        let current = try await staleRegistrations(in: project)
+        guard current == registrations else {
+            throw .previewChanged
+        }
+    }
+
+    public func commonGitDirectory(
+        in project: RepositoryLocation
+    ) async throws(WorktreePruneError) -> RepositoryLocation {
+        let output: GitOutput
+        do {
+            output = try await git.run(.commonGitDirectory, in: project)
+        } catch {
+            throw .git(error)
+        }
+        guard !output.isTruncated, !output.isStandardErrorTruncated, output.standardError.isEmpty,
+              let answer = String(data: output.standardOutput, encoding: .utf8), answer.hasSuffix("\n") else {
+            throw .unavailable
+        }
+        let path = String(answer.dropLast())
+        let disallowed = CharacterSet.controlCharacters.union(.newlines)
+        guard path.hasPrefix("/"), path.rangeOfCharacter(from: disallowed) == nil else { throw .unavailable }
+        return RepositoryLocation(path: path)
+    }
+
     /// One file's diff, with the size guards applied.
     ///
     /// An untracked file has no side in the revision, so it is compared against the null device
@@ -319,6 +354,36 @@ public struct WorktreeService: Sendable {
     }
 
     // MARK: - Assembly
+
+    private func parsePrunePreview(
+        in project: RepositoryLocation
+    ) async throws(WorktreePruneError) -> [WorktreeRegistrationName] {
+        let output: GitOutput
+        do {
+            output = try await git.run(.previewWorktreePrune, in: project)
+        } catch {
+            throw .git(error)
+        }
+        guard !output.isTruncated, !output.isStandardErrorTruncated, output.standardOutput.isEmpty else {
+            throw .unavailable
+        }
+        guard !output.standardError.isEmpty else { return [] }
+
+        let prefix = "Removing worktrees/"
+        let suffix = ": gitdir file points to non-existent location"
+        let report = output.standardError.dropLast(output.standardError.hasSuffix("\n") ? 1 : 0)
+        guard !report.isEmpty else { throw .unavailable }
+
+        var registrations = Set<WorktreeRegistrationName>()
+        for line in report.split(separator: "\n", omittingEmptySubsequences: false) {
+            // Bulk prune can also target a duplicate registration whose checkout still exists.
+            // Offer cleanup only if every line describes a confirmed missing checkout link.
+            guard line.hasPrefix(prefix), line.hasSuffix(suffix) else { throw .unavailable }
+            let name = try WorktreeRegistrationName(String(line.dropFirst(prefix.count).dropLast(suffix.count)))
+            guard registrations.insert(name).inserted else { throw .unavailable }
+        }
+        return registrations.sorted { $0.rawValue.utf8.lexicographicallyPrecedes($1.rawValue.utf8) }
+    }
 
     private func tracked(
         _ changes: [RawChange],

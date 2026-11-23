@@ -592,6 +592,28 @@ struct WorktreeServiceTests {
     }
 
     @Test
+    func `given the prune preview has gained a registration when confirming then Git refuses the changed preview`() async throws {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
+        let dryRun = GitCommand.previewWorktreePrune
+        await scenario.git.answer(dryRun, with: Data(), standardError: """
+            Removing worktrees/boiler-check-in: gitdir file points to non-existent location
+            Removing worktrees/boiler-reserve: gitdir file points to non-existent location
+            """)
+        let approved = [try WorktreeRegistrationName("boiler-check-in")]
+
+        // when
+        await #expect(throws: WorktreePruneError.previewChanged) {
+            try await scenario.sut.verifyStaleRegistrations(in: scenario.location, matching: approved)
+        }
+
+        // then
+        let received = await scenario.git.received
+        #expect(received == [dryRun])
+        #expect(await scenario.git.locations == [scenario.location])
+    }
+
+    @Test
     func `given a tracked file has no numstat record when listed then it is text with unknown zero statistics`() async throws {
         // given
         let scenario = Scenario(

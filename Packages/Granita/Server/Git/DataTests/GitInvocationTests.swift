@@ -251,6 +251,18 @@ struct GitInvocationTests {
     }
 
     @Test
+    func `when previewing a worktree prune then the argument vector always uses dry run`() {
+        // given - when
+        let vector = arguments(of: .previewWorktreePrune)
+
+        // then
+        #expect(vector == [
+            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false", "--no-pager",
+            "worktree", "prune", "--dry-run", "--verbose", "--expire", "now"
+        ])
+    }
+
+    @Test
     func `when a worktree is removed then it is forced twice rather than once`() {
         // given - when
         let vector = arguments(of: .removeWorktree(at: RepositoryLocation(path: "/checkouts/one")))
@@ -383,6 +395,7 @@ struct GitInvocationTests {
         // whatever launched the Mac app would answer every question about a different repository.
         // A key mapped to nil is a variable removed, which is not the same as one set to empty.
         #expect(environment["GIT_DIR"] == .some(nil))
+        #expect(environment["GIT_COMMON_DIR"] == .some(nil))
         #expect(environment["GIT_WORK_TREE"] == .some(nil))
         #expect(environment["GIT_INDEX_FILE"] == .some(nil))
     }

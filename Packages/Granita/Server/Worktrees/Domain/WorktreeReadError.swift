@@ -47,6 +47,10 @@ public enum WorktreeReadError: Error, Sendable {
     /// This Mac's own document refused the write, carrying its reason.
     case notSaved(reason: String)
 
+    case staleRegistration
+    case repairUnavailable
+    case repairPreviewChanged
+
     /// git refused, carrying its own error so a boundary can classify it.
     ///
     /// **Classified at the boundary rather than here**, because which of these becomes "the worktree

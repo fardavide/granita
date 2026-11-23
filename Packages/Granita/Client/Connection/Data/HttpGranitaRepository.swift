@@ -72,6 +72,7 @@ public struct HttpGranitaRepository: GranitaRepository {
     ) async throws(ApiFailure) -> WorktreeRead {
         await progress(.reading(.unknown))
         var query = project.map { [URLQueryItem(name: "projectID", value: $0.rawValue)] } ?? []
+        query.append(URLQueryItem(name: "allowPartial", value: "true"))
         if refreshing { query.append(URLQueryItem(name: "refresh", value: "true")) }
         do {
             return .prepared(try await client.get("/v1/worktree-snapshot", query: query, returning: WorktreeSnapshot.self))
@@ -89,6 +90,18 @@ public struct HttpGranitaRepository: GranitaRepository {
 
     public func updates() async -> AsyncStream<WorktreeUpdate> {
         await liveUpdates.stream()
+    }
+
+    public func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        try await client.post("/v1/worktree-snapshot/retry", body: target, returning: WorktreeSnapshot.self)
+    }
+
+    public func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        try await client.get("/v1/worktrees/\(worktree.rawValue)/repair", returning: WorktreeRepairPreview.self)
+    }
+
+    public func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        try await client.post("/v1/worktrees/repair", body: approval, returning: WorktreeSnapshot.self)
     }
 
     public func update(

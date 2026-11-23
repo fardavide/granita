@@ -40,6 +40,12 @@ extension ApiError {
             self.init(.fileGone, message: "that file could not be read: \(reason)")
         case .notSaved(let reason):
             self.init(.badRequest, message: "could not save that: \(reason)")
+        case .staleRegistration:
+            self.init(.gitFailure, message: "Git reports a stale worktree registration")
+        case .repairUnavailable:
+            self.init(.badRequest, message: "Git couldn’t verify that the stale registrations can be removed.")
+        case .repairPreviewChanged:
+            self.init(.badRequest, message: "The repair preview changed or expired. Review it again before confirming.")
         case .git(let failure):
             self = GranitaRouter.gitFailure(failure)
         case .gitUnknown(let description):

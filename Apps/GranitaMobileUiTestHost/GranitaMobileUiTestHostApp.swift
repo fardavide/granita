@@ -19,7 +19,9 @@ struct GranitaMobileUiTestHostApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("live-list") {
+            if ProcessInfo.processInfo.arguments.contains("worktree-repair") {
+                WorktreeRepairFixture()
+            } else if ProcessInfo.processInfo.arguments.contains("live-list") {
                 LiveWorktreeListFixture()
             } else if ProcessInfo.processInfo.arguments.contains("live-sidebar") {
                 LiveWorktreeSidebarFixture()

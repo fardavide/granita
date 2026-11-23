@@ -49,7 +49,7 @@ public struct LocalGranitaRepository: GranitaRepository {
         await progress(.reading(.thisMac))
         do {
             return .prepared(try await answering {
-                try await reader.snapshot(inProject: project, refreshing: refreshing)
+                try await reader.snapshot(inProject: project, refreshing: refreshing, allowPartial: true)
             })
         } catch .worktreeGone {
             return .uncached(try await refreshWorktrees(inProject: project))
@@ -57,7 +57,7 @@ public struct LocalGranitaRepository: GranitaRepository {
     }
 
     public func updates() async -> AsyncStream<WorktreeUpdate> {
-        let snapshots = await reader.updates()
+        let snapshots = await reader.updates(allowPartial: true)
         let updates = AsyncStream.makeStream(of: WorktreeUpdate.self, bufferingPolicy: .bufferingNewest(1))
         let continuation = updates.continuation
         let forwarding = Task {
@@ -69,6 +69,18 @@ public struct LocalGranitaRepository: GranitaRepository {
         }
         continuation.onTermination = { _ in forwarding.cancel() }
         return updates.stream
+    }
+
+    public func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        try await answering { try await reader.retry(target) }
+    }
+
+    public func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        try await answering { try await reader.previewRepair(for: worktree) }
+    }
+
+    public func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        try await answering { try await reader.approveRepair(approval) }
     }
 
     /// **Reading, and nothing before it.** The protocol's default reports `.reading(.unknown)`,
@@ -221,6 +233,12 @@ extension ApiFailure {
             self = .fileGone
         case .notSaved(let reason):
             self = .badRequest(message: reason)
+        case .staleRegistration:
+            self = .gitFailure(message: "Git reports a stale worktree registration")
+        case .repairUnavailable:
+            self = .badRequest(message: "Git couldn’t verify that the stale registrations can be removed.")
+        case .repairPreviewChanged:
+            self = .badRequest(message: "The repair preview changed or expired. Review it again before confirming.")
         case .git(let failure):
             self = ApiFailure(failure)
         case .gitUnknown(let description):

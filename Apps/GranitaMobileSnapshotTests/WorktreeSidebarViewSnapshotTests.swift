@@ -2,6 +2,7 @@ import ClientConnectionDomain
 import ClientWorktreesDomain
 import ClientWorktreesPresentation
 import ClientWorktreesUi
+import CoreApiDomain
 import CoreDiffDomain
 import Foundation
 import SwiftUI
@@ -63,7 +64,9 @@ struct WorktreeSidebarViewSnapshotTests {
                     onRefresh: {},
                     onPairAgain: {},
                     onCopyLogs: {},
-                    onOpenSettings: {}
+                    onOpenSettings: {},
+                    scanIssues: subject.scanIssues,
+                    scanAction: subject.scanAction
                 )
             }
             .dynamicTypeSize(subject.dynamicTypeSize)
@@ -74,6 +77,24 @@ struct WorktreeSidebarViewSnapshotTests {
             layout: layout,
             named: subject.name,
             freezesActivity: subject.state == .loading && subject.dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
+    @Test(arguments: SnapshotLayout.all)
+    func repairPreview(layout: SnapshotLayout) {
+        assertScreenSnapshot(
+            WorktreeRepairSheet(
+                preview: WorktreeRepairPreview(
+                    approval: WorktreeRepairApproval(id: UUID()),
+                    projectName: "site-config",
+                    registrations: ["local-preview", "preview-settings"]
+                ),
+                macName: aMacName,
+                onConfirm: {},
+                onCancel: {}
+            ),
+            layout: layout,
+            named: "two-stale-registrations"
         )
     }
 }
@@ -96,6 +117,8 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
     let isAutomaticallyRefreshing: Bool
     let dynamicTypeSize: DynamicTypeSize
     let reduceMotion: Bool
+    let scanIssues: [WorktreeScanIssue]
+    let scanAction: WorktreeScanAction
 
     var testDescription: String { name }
 
@@ -116,7 +139,9 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         isRetryingRefresh: Bool = false,
         isAutomaticallyRefreshing: Bool = false,
         dynamicTypeSize: DynamicTypeSize = .large,
-        reduceMotion: Bool = false
+        reduceMotion: Bool = false,
+        scanIssues: [WorktreeScanIssue] = [],
+        scanAction: WorktreeScanAction = .idle
     ) {
         self.name = name
         self.macName = macName
@@ -131,9 +156,49 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         self.isAutomaticallyRefreshing = isAutomaticallyRefreshing
         self.dynamicTypeSize = dynamicTypeSize
         self.reduceMotion = reduceMotion
+        self.scanIssues = scanIssues
+        self.scanAction = scanAction
     }
 
     static let all: [SidebarCase] = [
+        SidebarCase(
+            name: "unavailable-checkout",
+            state: WorktreeSidebarState(
+                of: Array(aBusyMac.prefix(1)), mode: .groupedByProject, showingQuiet: false, now: aFixedMoment
+            ),
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .local),
+            scanIssues: [
+                WorktreeScanIssue(
+                    target: .worktree(WorktreeID(rawValue: "preview-settings")),
+                    projectID: ProjectID(rawValue: "site-config"),
+                    name: "Update preview settings",
+                    projectName: "site-config",
+                    reason: .staleRegistration,
+                    lastRead: .at(aFixedMoment.addingTimeInterval(-1_080))
+                )
+            ]
+        ),
+
+        SidebarCase(
+            name: "unavailable-project",
+            state: .noProjects,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .local),
+            scanIssues: [
+                WorktreeScanIssue(
+                    target: .project(ProjectID(rawValue: "site-config")),
+                    projectID: ProjectID(rawValue: "site-config"),
+                    name: "site-config",
+                    projectName: "site-config",
+                    reason: .gitFailure,
+                    lastRead: .never
+                )
+            ]
+        ),
+
         SidebarCase(
             name: "no-projects-stale",
             state: .noProjects,

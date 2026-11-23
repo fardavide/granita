@@ -151,7 +151,9 @@ public enum GranitaRouter {
         authenticated.get("/v1/events") { request, _ -> Response in
             let offered = request.headers[.authorization]?
                 .split(separator: " ", maxSplits: 1).last.map(String.init)
-            let snapshots = await dependencies.reader.updates()
+            let snapshots = await dependencies.reader.updates(
+                allowPartial: request.uri.queryParameters["allowPartial"] == "true"
+            )
             return Response(
                 status: .ok,
                 headers: [.contentType: "text/event-stream", .cacheControl: "no-store"],
@@ -177,9 +179,25 @@ public enum GranitaRouter {
         authenticated.get("/v1/worktree-snapshot") { request, _ in
             let filter = request.uri.queryParameters["projectID"].map { ProjectID(rawValue: String($0)) }
             let refreshing = request.uri.queryParameters["refresh"] == "true"
+            let allowPartial = request.uri.queryParameters["allowPartial"] == "true"
             return try await answering {
-                try await dependencies.reader.snapshot(inProject: filter, refreshing: refreshing)
+                try await dependencies.reader.snapshot(inProject: filter, refreshing: refreshing, allowPartial: allowPartial)
             }
+        }
+
+        authenticated.post("/v1/worktree-snapshot/retry") { request, context -> WorktreeSnapshot in
+            let target = try await decoded(WorktreeScanTarget.self, from: request, context: context)
+            return try await answering { try await dependencies.reader.retry(target) }
+        }
+
+        authenticated.get("/v1/worktrees/:worktreeId/repair") { _, context -> WorktreeRepairPreview in
+            let id = try worktreeId(from: context)
+            return try await answering { try await dependencies.reader.previewRepair(for: id) }
+        }
+
+        authenticated.post("/v1/worktrees/repair") { request, context -> WorktreeSnapshot in
+            let approval = try await decoded(WorktreeRepairApproval.self, from: request, context: context)
+            return try await answering { try await dependencies.reader.approveRepair(approval) }
         }
 
         // **It answers about the one worktree it wrote to, and that is the difference between a

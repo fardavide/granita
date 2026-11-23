@@ -23,6 +23,7 @@ actor FakeGranitaRepository: GranitaRepository {
 
     private(set) var cancelledReads = 0
     private(set) var updateSubscriptions = 0
+    private(set) var retriedScans: [WorktreeScanTarget] = []
 
     private var worktrees: [Worktree]
     private let readFailure: ApiFailure?
@@ -36,7 +37,10 @@ actor FakeGranitaRepository: GranitaRepository {
     private let ignoringReadCancellation: Bool
     private let liveUpdates: [WorktreeUpdate]
     private let preparedAt: Date?
+    private let retryAnswer: Result<WorktreeSnapshot, ApiFailure>
+    private let suspendingScanRetry: Bool
     private var suspendedReadContinuations: [Int: AsyncStream<Void>.Continuation] = [:]
+    private var suspendedRetryContinuation: AsyncStream<Void>.Continuation?
 
     /// Which writes suspend instead of answering, how many have arrived and are suspended, and the
     /// continuations that will let them go.
@@ -80,7 +84,9 @@ actor FakeGranitaRepository: GranitaRepository {
         suspendedReadNumbers: Set<Int> = [],
         ignoringReadCancellation: Bool = false,
         liveUpdates: [WorktreeUpdate] = [],
-        preparedAt: Date? = nil
+        preparedAt: Date? = nil,
+        retryAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed),
+        suspendingScanRetry: Bool = false
     ) {
         self.worktrees = worktrees
         self.readFailure = readFailure
@@ -96,6 +102,8 @@ actor FakeGranitaRepository: GranitaRepository {
         self.ignoringReadCancellation = ignoringReadCancellation
         self.liveUpdates = liveUpdates
         self.preparedAt = preparedAt
+        self.retryAnswer = retryAnswer
+        self.suspendingScanRetry = suspendingScanRetry
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
@@ -108,6 +116,17 @@ actor FakeGranitaRepository: GranitaRepository {
             for update in liveUpdates { continuation.yield(update) }
             continuation.finish()
         }
+    }
+
+    func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        retriedScans.append(target)
+        if suspendingScanRetry {
+            let suspended = AsyncStream<Void>.makeStream()
+            suspendedRetryContinuation = suspended.continuation
+            var events = suspended.stream.makeAsyncIterator()
+            _ = await events.next()
+        }
+        return try retryAnswer.get()
     }
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
@@ -163,6 +182,17 @@ actor FakeGranitaRepository: GranitaRepository {
         while reads < count {
             await Task.yield()
         }
+    }
+
+    func waitUntilScanRetryStarted() async {
+        while retriedScans.isEmpty {
+            await Task.yield()
+        }
+    }
+
+    func releaseScanRetry() {
+        suspendedRetryContinuation?.finish()
+        suspendedRetryContinuation = nil
     }
 
     func releaseHeldRead() {

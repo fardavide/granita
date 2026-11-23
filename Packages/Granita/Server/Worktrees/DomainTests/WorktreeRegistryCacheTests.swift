@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 
+import CoreApiDomain
 import CoreDiffDomain
 import ServerGitDomain
 import ServerStoreDomain
@@ -53,6 +54,71 @@ struct WorktreeRegistryCacheTests {
         await #expect(throws: WorktreeRegistryError.git(failure)) {
             try await scenario.sut.worktrees(inProject: nil)
         }
+    }
+
+    @Test
+    func `given a stale linked worktree when reading the first snapshot then healthy siblings remain visible`() async throws {
+        // given
+        let scenario = Scenario()
+        let stale = RepositoryLocation(path: "/worktrees/removed-task")
+        let healthy = RepositoryLocation(path: "/worktrees/current-task")
+        await scenario.git.answer(.worktrees, with: Data(
+            ("worktree /repo\0HEAD abc123\0branch refs/heads/main\0\0"
+                + "worktree \(stale.path)\0HEAD def456\0branch refs/heads/removed-task\0"
+                + "prunable gitdir file points to non-existent location\0\0"
+                + "worktree \(healthy.path)\0HEAD 123abc\0branch refs/heads/current-task\0\0").utf8
+        ))
+        await scenario.git.refuseCommands(in: stale, with: .commandFailed(
+            command: .headCommit,
+            exitCode: 128,
+            standardError: "fatal: not a git repository (or any of the parent directories): .git"
+        ))
+
+        // when
+        let snapshot = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+
+        // then
+        #expect(snapshot.worktrees.map(\.id) == [
+            WorktreeID(canonicalPath: "/repo"),
+            WorktreeID(canonicalPath: healthy.path)
+        ])
+        #expect(snapshot.issues == [WorktreeScanIssue(
+            target: .worktree(WorktreeID(canonicalPath: stale.path)),
+            projectID: ProjectID(canonicalPath: "/repo"),
+            name: "removed-task",
+            projectName: "Reader",
+            reason: .staleRegistration,
+            lastRead: .never
+        )])
+    }
+
+    @Test
+    func `given a temporarily unavailable worktree when retried then only that checkout is rescanned`() async throws {
+        // given
+        let unavailable = RepositoryLocation(path: "/worktrees/temporarily-unavailable")
+        let unavailableID = WorktreeID(canonicalPath: unavailable.path)
+        let scenario = Scenario(worktrees: [RepositoryLocation(path: "/repo"), unavailable])
+        let read = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        scenario.time.advance(by: 1_200)
+        await scenario.git.refuseCommands(in: unavailable, with: .commandFailed(
+            command: .headCommit, exitCode: 128, standardError: "checkout temporarily unreadable"
+        ))
+        await scenario.sut.refresh(in: [unavailableID])
+        let stale = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        #expect(stale.issues.first?.lastRead == .at(read.scannedAt))
+        let beforeRetry = await scenario.git.received.count
+        await scenario.git.allowCommands(in: unavailable)
+
+        // when
+        let retried = try await scenario.sut.retry(.worktree(unavailableID))
+
+        // then
+        #expect(retried.issues.isEmpty)
+        #expect(retried.worktrees.map(\.id) == read.worktrees.map(\.id))
+        let commands = await scenario.git.received
+        let locations = await scenario.git.locations
+        let scanned = zip(commands, locations).dropFirst(beforeRetry).filter { $0.0 == .worktreeStatus }
+        #expect(scanned.map(\.1) == [unavailable])
     }
 
     @Test

@@ -11,6 +11,7 @@ import CoreDiffDomain
 extension Project: ResponseEncodable {}
 extension Worktree: ResponseEncodable {}
 extension WorktreeSnapshot: ResponseEncodable {}
+extension WorktreeRepairPreview: ResponseEncodable {}
 extension FileDiff: ResponseEncodable {}
 extension WorktreeChanges: ResponseEncodable {}
 extension FileLines: ResponseEncodable {}

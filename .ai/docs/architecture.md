@@ -52,13 +52,18 @@ adapter belongs in Server Watch Data. Observation starts after store ownership i
 survives listener rebinds. All background and interactive Git calls share one four-process budget.
 Fresh diff, image, context and viewed-mark validation still read current content.
 
-Both readers consume complete prepared snapshots with the time of their oldest successful scan.
+Both readers consume prepared snapshots with the time of their oldest successful scan.
 The HTTP boundary frames authenticated SSE events; the local adapter observes the same cache
 directly. The client shares a subscription per source, reconciles after reconnect and compares the
-open worktree's own identity before reloading. While a review is open, the list holds background
-snapshots for its next visit, including when an iPad or Mac sidebar remains visible. Failed scans
-retain previous successful summaries and their age. See
-[0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md).
+open worktree's own identity before reloading. During a review the Mac sidebar applies snapshots as
+they arrive. The mobile list holds them for its next visit, including when an iPad sidebar remains
+visible. Failed scans retain previous successful summaries and their age. See
+[0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md) and
+[0270](decisions/0270-keep-the-mac-worktree-sidebar-live-during-review.md).
+Readers that opt into partial inventories receive typed scan issues with healthy and last known
+rows. Stale-registration cleanup uses a server-owned Git preview and a separate one-use approval
+to back up exactly the listed registrations.
+See [0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md).
 
 ## One package, four layers, module boundaries as the enforcement
 
