@@ -196,14 +196,21 @@ public enum RawChangeParser {
 public struct NumstatRecord: Hashable, Sendable {
 
     public let path: RepositoryRelativePath
+    public let oldPath: RepositoryRelativePath?
 
     /// Absent for a binary file, where git writes a dash. Reading the dash as zero would claim the
     /// file did not change.
     public let insertions: Int?
     public let deletions: Int?
 
-    public init(path: RepositoryRelativePath, insertions: Int?, deletions: Int?) {
+    public init(
+        path: RepositoryRelativePath,
+        oldPath: RepositoryRelativePath?,
+        insertions: Int?,
+        deletions: Int?
+    ) {
         self.path = path
+        self.oldPath = oldPath
         self.insertions = insertions
         self.deletions = deletions
     }
@@ -227,12 +234,13 @@ public enum NumstatParser {
             guard parts.count >= 3 else { continue }
 
             let path: RepositoryRelativePath
+            let oldPath: RepositoryRelativePath?
             if parts[2].isEmpty {
-                // A rename: the old path is next, the new one after it, and it is the new one the
-                // counts belong to.
-                guard fields.next() != nil, let new = fields.next() else { break }
+                guard let old = fields.next(), let new = fields.next() else { break }
+                oldPath = RepositoryRelativePath(bytes: Data(old))
                 path = RepositoryRelativePath(bytes: Data(new))
             } else {
+                oldPath = nil
                 path = RepositoryRelativePath(bytes: Data(field.dropFirst(
                     parts[0].utf8.count + parts[1].utf8.count + 2
                 )))
@@ -240,6 +248,7 @@ public enum NumstatParser {
 
             records.append(NumstatRecord(
                 path: path,
+                oldPath: oldPath,
                 insertions: Int(parts[0]),
                 deletions: Int(parts[1])
             ))

@@ -6,3 +6,6 @@ behind, and it is what there is to review; committed history is a different prod
 is explicitly v2. Keeping the scope this narrow is what makes a single comparison the source of
 truth for both the file list and its stats, which in turn avoids the whole class of bug in SPEC §5.3.
 
+[0272](0272-pair-unstaged-renames-in-a-private-index.md) narrows the untracked-as-added rule
+for a destination that Git pairs with a tracked deletion.
+

@@ -187,6 +187,27 @@ struct GitInvocationTests {
     }
 
     @Test
+    func `when comparing untracked rename candidates then Git receives literal paths and rename stats`() {
+        // given
+        let command = GitCommand.untrackedRenameStats(
+            deleted: [RepositoryRelativePath("old/one[1].txt")],
+            untracked: [RepositoryRelativePath("new/one[1].txt")],
+            against: .head
+        )
+
+        // when
+        let vector = arguments(of: command)
+
+        // then
+        #expect(vector == [
+            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false", "--no-pager",
+            "-c", "core.splitIndex=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+            "--literal-pathspecs", "diff", "--no-ext-diff", "--no-color", "--src-prefix=a/", "--dst-prefix=b/",
+            "HEAD", "-M", "-l1000", "--diff-filter=R", "-z", "--numstat", "--", "old/one[1].txt", "new/one[1].txt"
+        ])
+    }
+
+    @Test
     func `given an untracked file when diffing it then it is compared against nothing`() {
         // given
         let path = RepositoryRelativePath("src/untracked.txt")
@@ -290,6 +311,22 @@ struct GitInvocationTests {
     }
 
     // MARK: - Hashing the working tree
+
+    @Test
+    func `given rename destinations with special characters when preparing an index then paths are raw NUL records`() {
+        // given
+        let paths = [RepositoryRelativePath("new/line\nbreak.kt"), RepositoryRelativePath("new/[one].kt")]
+        let emptyBlob = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
+        // when
+        let input = GitInvocation.scratchIndexInput(tracking: paths, emptyBlob: emptyBlob)
+
+        // then
+        #expect(input == Data((
+            "100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tnew/line\nbreak.kt\u{0}"
+                + "100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tnew/[one].kt\u{0}"
+        ).utf8))
+    }
 
     @Test
     func `when worktree files are hashed then the paths go in on standard input`() {

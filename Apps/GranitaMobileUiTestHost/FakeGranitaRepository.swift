@@ -21,14 +21,20 @@ final class FakeGranitaRepository: GranitaRepository {
     private let diff: FileDiff
     private let content: [String]
     private let liveWorktrees: [WorktreeID]
+    private let beforeWorktreeRead: @MainActor () async -> Void
     private var repair: Repair
     private var revisions: [WorktreeID: Int]
     private var reads: [WorktreeID: Int] = [:]
     private var observers: [UUID: AsyncStream<WorktreeUpdate>.Continuation] = [:]
 
-    init(liveWorktrees: [WorktreeID] = [], repair: Repair = .unavailable) {
+    init(
+        liveWorktrees: [WorktreeID] = [],
+        repair: Repair = .unavailable,
+        beforeWorktreeRead: @escaping @MainActor () async -> Void = {}
+    ) {
         self.liveWorktrees = liveWorktrees
         self.repair = repair
+        self.beforeWorktreeRead = beforeWorktreeRead
         revisions = Dictionary(uniqueKeysWithValues: liveWorktrees.map { ($0, 1) })
         content = (1...626).map { $0 == 600 ? "changed line 600" : "unchanged line \($0)" }
         let lines = (597...603).flatMap { number -> [DiffLine] in
@@ -103,7 +109,10 @@ final class FakeGranitaRepository: GranitaRepository {
     }
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
-    func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] { snapshot().worktrees }
+    func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
+        await beforeWorktreeRead()
+        return snapshot().worktrees
+    }
 
     func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
         guard case .available(let issue, let preview) = repair, issue.target == .worktree(worktree) else {

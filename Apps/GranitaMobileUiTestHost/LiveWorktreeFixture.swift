@@ -213,8 +213,11 @@ struct LiveWorktreeListFixture: View {
 struct WorktreeRepairFixture: View {
     @State private var repository: FakeGranitaRepository
     @State private var sidebar: ClientWorktreesModel
+    @State private var pendingRead: AsyncStream<Void>.Continuation
 
     init() {
+        let (read, pendingRead) = AsyncStream<Void>.makeStream()
+        _pendingRead = State(initialValue: pendingRead)
         let issue = WorktreeScanIssue(
             target: .worktree(WorktreeID(rawValue: "missing-review")),
             projectID: ProjectID(rawValue: "live-project"),
@@ -230,7 +233,11 @@ struct WorktreeRepairFixture: View {
         )
         let repository = FakeGranitaRepository(
             liveWorktrees: [WorktreeID(rawValue: "healthy-review")],
-            repair: .available(issue, preview)
+            repair: .available(issue, preview),
+            beforeWorktreeRead: {
+                var iterator = read.makeAsyncIterator()
+                _ = await iterator.next()
+            }
         )
         _repository = State(initialValue: repository)
         _sidebar = State(initialValue: ClientWorktreesModel(
@@ -249,6 +256,9 @@ struct WorktreeRepairFixture: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack {
+                    if sidebar.state == .loading {
+                        Button("Finish fixture read") { pendingRead.finish() }
+                    }
                     let approvals = repository.repairApprovals.map(\.id.uuidString)
                     Text("Approved repairs")
                         .accessibilityIdentifier("worktree-repair.approvals")

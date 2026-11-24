@@ -48,23 +48,103 @@ public struct ProcessGitClient: GitClient {
     }
 
     public func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
-        let arguments = Arguments(Self.terminated(GitInvocation.arguments(for: command)))
-        let overrides = Dictionary(uniqueKeysWithValues: GitInvocation.environmentOverrides(for: command).map {
+        switch command {
+        case .untrackedRenameStats(_, let destinations, _):
+            return try await runWithScratchIndex(command, tracking: destinations, in: location)
+        case .renamedFileDiff(_, let destination, _, _):
+            return try await runWithScratchIndex(command, tracking: [destination], in: location)
+        case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory,
+             .currentBranch, .headCommit, .worktrees, .untrackedPaths, .worktreeStatus, .trackedChanges,
+             .trackedStats, .fileDiff, .untrackedFileDiff, .fileContent, .removeWorktree,
+             .previewWorktreePrune, .hashWorktreeFiles:
+            return try await invoke(
+                command,
+                in: location,
+                arguments: GitInvocation.arguments(for: command),
+                input: GitInvocation.standardInput(for: command),
+                environment: GitInvocation.environmentOverrides(for: command)
+            )
+        }
+    }
+
+    private func runWithScratchIndex(
+        _ command: GitCommand,
+        tracking destinations: [RepositoryRelativePath],
+        in location: RepositoryLocation
+    ) async throws(GitError) -> GitOutput {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "granita-rename-\(UUID().uuidString)", directoryHint: .isDirectory)
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700]
+            )
+        } catch {
+            throw .gitUnavailable(reason: "Cannot create a temporary index directory: \(error)")
+        }
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        var environment = GitInvocation.environmentOverrides(for: command)
+        environment["GIT_INDEX_FILE"] = directory.appending(path: "index").path
+        environment["GIT_NO_LAZY_FETCH"] = "1"
+        let emptyBlob = try await invoke(
+            command,
+            in: location,
+            arguments: GitInvocation.emptyBlobArguments,
+            input: Data(),
+            environment: environment,
+            requiresZeroExit: true
+        )
+        guard !emptyBlob.isTruncated else {
+            throw .gitUnavailable(reason: "Git truncated the empty blob identifier for the temporary index")
+        }
+        let objectId = String(decoding: emptyBlob.standardOutput, as: UTF8.self)
+            .trimmingCharacters(in: .newlines)
+
+        // An index entry with empty content and no cached stat data makes git compare the
+        // destination's current working bytes. update-index writes only the private index.
+        _ = try await invoke(
+            command,
+            in: location,
+            arguments: GitInvocation.scratchIndexArguments,
+            input: GitInvocation.scratchIndexInput(tracking: destinations, emptyBlob: objectId),
+            environment: environment,
+            requiresZeroExit: true
+        )
+        return try await invoke(
+            command,
+            in: location,
+            arguments: GitInvocation.arguments(for: command),
+            input: nil,
+            environment: environment
+        )
+    }
+
+    private func invoke(
+        _ command: GitCommand,
+        in location: RepositoryLocation,
+        arguments rawArguments: [[UInt8]],
+        input: Data?,
+        environment: [String: String?],
+        requiresZeroExit: Bool = false
+    ) async throws(GitError) -> GitOutput {
+        let arguments = Arguments(Self.terminated(rawArguments))
+        let overrides = Dictionary(uniqueKeysWithValues: environment.map {
             (Environment.Key(stringLiteral: $0.key), $0.value)
         })
 
         let terminationStatus: TerminationStatus
         let outcome: Outcome
         do {
-            // Two shapes of the same call, because only one command reads standard input and the
-            // input type is part of the execution's type rather than a value it carries.
-            if let standardInput = GitInvocation.standardInput(for: command) {
+            // The input type is part of the execution's type.
+            if let input {
                 let result = try await Subprocess.run(
                     .path(FilePath(executablePath)),
                     arguments: arguments,
                     environment: .inherit.updating(overrides),
                     workingDirectory: FilePath(location.path),
-                    input: .data(standardInput),
+                    input: .data(input),
                     output: .sequence,
                     error: .sequence,
                     body: { execution in try await drain(execution, command: command) }
@@ -102,7 +182,7 @@ public struct ProcessGitClient: GitClient {
         if outcome.isTruncated == false {
             switch terminationStatus {
             case .exited(let code):
-                guard GitInvocation.accepts(exitCode: code, from: command) else {
+                guard requiresZeroExit ? code == 0 : GitInvocation.accepts(exitCode: code, from: command) else {
                     throw .commandFailed(command: command, exitCode: code, standardError: standardError)
                 }
             case .signaled(let signal):

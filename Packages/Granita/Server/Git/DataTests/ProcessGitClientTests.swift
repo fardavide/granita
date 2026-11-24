@@ -228,6 +228,24 @@ struct ProcessGitClientTests {
 
     // MARK: - Scenario
 
+    @Test
+    func `given a capped blob identifier when comparing renames then preparing the index fails`() async throws {
+        // given
+        let scenario = try Scenario(repository: .main, outputLimitBytes: 8)
+        let command = GitCommand.renamedFileDiff(
+            from: RepositoryRelativePath("old.txt"),
+            to: RepositoryRelativePath("new.txt"),
+            against: .head,
+            contextLines: 3
+        )
+
+        // when
+        let failure = await scenario.failure(from: command)
+
+        // then
+        #expect(failure == .gitUnavailable(reason: "Git truncated the empty blob identifier for the temporary index"))
+    }
+
     private struct Scenario {
 
         let sut: ProcessGitClient

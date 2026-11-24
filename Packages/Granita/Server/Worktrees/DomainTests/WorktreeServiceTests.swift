@@ -36,6 +36,99 @@ struct WorktreeServiceTests {
     }
 
     @Test
+    func `given a truncated rename inventory when changes are read then the observed paths stay separate`() async throws {
+        // given
+        let scenario = Scenario(
+            raw: [":100644 000000 abc 000 D", "old.txt"],
+            numstat: ["0\t3\told.txt"],
+            untracked: ["new.txt"],
+            status: [],
+            truncatedCommands: [.trackedChanges(against: .head)]
+        )
+
+        // when
+        let changes = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changes.files.map(\.path) == ["old.txt", "new.txt"])
+        #expect(changes.files.map(\.status) == [.deleted, .untracked])
+    }
+
+    @Test
+    func `given a truncated rename comparison when changes are read then no move is inferred`() async throws {
+        // given
+        let command = GitCommand.untrackedRenameStats(
+            deleted: [RepositoryRelativePath("old.txt")],
+            untracked: [RepositoryRelativePath("new.txt")],
+            against: .head
+        )
+        let scenario = Scenario(
+            raw: [":100644 000000 abc 000 D", "old.txt"],
+            numstat: ["0\t3\told.txt"],
+            untracked: ["new.txt"],
+            status: [],
+            truncatedCommands: [command]
+        )
+        await scenario.git.answer(command, with: nulSeparated(["0\t0\t", "old.txt", "new.txt"]))
+
+        // when
+        let changes = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changes.files.map(\.status) == [.deleted, .untracked])
+    }
+
+    @Test
+    func `given a rename outside the candidates when changes are read then the paths stay separate`() async throws {
+        // given
+        let command = GitCommand.untrackedRenameStats(
+            deleted: [RepositoryRelativePath("old.txt")],
+            untracked: [RepositoryRelativePath("new.txt")],
+            against: .head
+        )
+        let scenario = Scenario(
+            raw: [":100644 000000 abc 000 D", "old.txt"],
+            numstat: ["0\t3\told.txt"],
+            untracked: ["new.txt"],
+            status: []
+        )
+        await scenario.git.answer(command, with: nulSeparated(["0\t0\t", "other.txt", "new.txt"]))
+
+        // when
+        let changes = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        #expect(changes.files.map(\.status) == [.deleted, .untracked])
+    }
+
+    @Test
+    func `given a binary rename when changes are read then the destination carries the binary status`() async throws {
+        // given
+        let command = GitCommand.untrackedRenameStats(
+            deleted: [RepositoryRelativePath("old.png")],
+            untracked: [RepositoryRelativePath("new.png")],
+            against: .head
+        )
+        let scenario = Scenario(
+            raw: [":100644 000000 abc 000 D", "old.png"],
+            numstat: ["-\t-\told.png"],
+            untracked: ["new.png"],
+            status: []
+        )
+        await scenario.git.answer(command, with: nulSeparated(["-\t-\t", "old.png", "new.png"]))
+
+        // when
+        let changes = try await scenario.sut.changeSet(in: scenario.location, viewed: [:])
+
+        // then
+        let file = try #require(changes.files.first)
+        #expect(changes.files.count == 1)
+        #expect(file.status == .renamed)
+        #expect(file.isBinary)
+        #expect(file.stats == ChangeStats(filesChanged: 1, insertions: 0, deletions: 0))
+    }
+
+    @Test
     func `given untracked files when the change set is built then they are added files`() async throws {
         // given
         let scenario = Scenario(

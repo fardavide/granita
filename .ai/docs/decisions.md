@@ -290,3 +290,4 @@ read whole:
 - [0269](decisions/0269-seasonal-icons-preserve-the-saved-choice.md) The icon picker remembers the usual choice and applies Christmas temporarily, following Aura's settings behavior and Granita's existing calendar.
 - [0270](decisions/0270-keep-the-mac-worktree-sidebar-live-during-review.md) The Mac sidebar applies live snapshots during review, keeps the open diff scoped to its own worktree, and replaces the toolbar Refresh button with the existing age footer.
 - [0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md) Partial snapshots keep readable worktrees available and report scan failures by checkout or project. Paired readers can confirm a server-verified Git cleanup preview.
+- [0272](decisions/0272-pair-unstaged-renames-in-a-private-index.md) Git pairs tracked deletions with untracked destinations using a private index. One rename carries both paths and the line counts and hunks from that comparison.

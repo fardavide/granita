@@ -107,7 +107,8 @@ public enum FileCollapsing {
         if ImageFormat.forPath(file.path) == nil, file.isBinary {
             return .binary
         }
-        if file.status == .renamed,
+        // Git uses dashes for binary edits, so a changed picture can have zero line counts.
+        if file.status == .renamed, !file.isBinary,
            file.stats.insertions == 0,
            file.stats.deletions == 0,
            // A rename the Mac could not name is a sentence with a hole in it, and shutting a file

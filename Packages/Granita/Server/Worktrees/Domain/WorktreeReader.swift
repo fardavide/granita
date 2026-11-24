@@ -413,6 +413,7 @@ public struct WorktreeReader: Sendable {
                         let diff = try await service.fileDiff(
                             for: file,
                             at: path,
+                            from: changes.oldPaths[file.id],
                             in: location,
                             contextLines: contextLines
                         )

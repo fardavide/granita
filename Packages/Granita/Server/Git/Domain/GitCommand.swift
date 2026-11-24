@@ -60,8 +60,23 @@ public enum GitCommand: Hashable, Sendable {
     /// what makes the two agree by construction rather than by coincidence.
     case trackedStats(against: GitRevision)
 
+    /// Renames and their line counts between tracked deletions and untracked files.
+    case untrackedRenameStats(
+        deleted: [RepositoryRelativePath],
+        untracked: [RepositoryRelativePath],
+        against: GitRevision
+    )
+
     /// One tracked file's diff, with the given number of context lines around each change.
     case fileDiff(path: RepositoryRelativePath, against: GitRevision, contextLines: Int)
+
+    /// Compares a rename's committed source with its working-tree destination.
+    case renamedFileDiff(
+        from: RepositoryRelativePath,
+        to: RepositoryRelativePath,
+        against: GitRevision,
+        contextLines: Int
+    )
 
     /// One untracked file's diff, rendered as a full addition.
     case untrackedFileDiff(path: RepositoryRelativePath, contextLines: Int)

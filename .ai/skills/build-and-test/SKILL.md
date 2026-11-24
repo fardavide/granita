@@ -1,7 +1,7 @@
 ---
 name: build-and-test
-description: Builds and tests Granita through its sanctioned package, app, and coverage commands. Use when the user asks to build, test, verify, or prepare Granita for a PR.
-when_to_use: Use when the user asks to build, test, verify, or prepare Granita for a PR.
+description: Builds and tests Granita through its sanctioned commands and verifies the signed Mac app installed in Applications. Use when building, testing, installing a local Mac build, or preparing Granita for a PR.
+when_to_use: Use when the user asks to build, test, verify, install a local Mac build, or prepare Granita for a PR.
 user-invocable: true
 ---
 
@@ -35,11 +35,36 @@ If the change touches a screen:
 make snapshots-ios  # phone baselines; run twice when adding a state — the first run writes, the second verifies
 ```
 
-Before opening a pull request that updates Granita, build the proposed revision with `make run-mac`.
-Keep a rollback copy of the installed app, install the signed build in `/Applications/Granita.app`,
-and restart Granita. Verify that the installed app is the process serving `/v1/health` and that it
-reports the expected version. Exercise the changed behavior on the installed build, using a paired
-iPhone for changes that involve the Mac server.
+### Installed Mac preflight
+
+Before opening a pull request that updates Granita, get session approval for the Mac install and
+restart. Name the app and the interruption to active reviews. Then follow this order.
+
+1. Record the installed version and running Granita PIDs. Use `ditto` to make a rollback copy of
+   `/Applications/Granita.app` at a fresh path. Verify that the backup has the installed version
+   and passes `codesign --verify --deep --strict`.
+2. Run `make run-mac` from the proposed revision. It builds and opens the worktree bundle at
+   `.build/mac/Build/Products/Debug/Granita.app`. Check that bundle's version and signature before
+   interrupting the installed app.
+3. Send `SIGTERM` to the verified Granita PIDs and wait for exit. Before replacing the installed
+   bundle, confirm that both the installed and worktree-built Granita processes have exited and
+   that port 8737 is free. If an instance closes its listener but stays alive, resolve that
+   process before continuing.
+4. Move the old bundle aside and use `ditto` to install the complete signed build at
+   `/Applications/Granita.app`. Verify the installed signature and version, then run
+   `open /Applications/Granita.app`.
+5. After launching the installed bundle, match the listener PID to the new process and check
+   the version returned by `/v1/health`. Use `lsof -nP -a -iTCP:8737 -sTCP:LISTEN` to find the
+   PID and `ps` to confirm that it started after the restart from
+   `/Applications/Granita.app/Contents/MacOS/Granita`. Check
+   `https://127.0.0.1:8737/v1/health` for the expected `serverVersion`. If relying on
+   `curl --insecure` for the self-signed certificate, limit that check to loopback health
+   without credentials. If the installed app cannot be verified, stop the failed instance
+   and confirm its exit. Restore the rollback bundle and verify that the previous version is
+   serving again.
+
+Exercise the changed behavior on the installed build. For a change to the Mac server, exercise it
+from a paired iPhone and report that result separately from the Mac health check.
 
 Press the control the change adds. See the `design` skill's dead-control rule.
 
