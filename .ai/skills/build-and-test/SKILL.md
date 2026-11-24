@@ -35,11 +35,11 @@ If the change touches a screen:
 make snapshots-ios  # phone baselines; run twice when adding a state — the first run writes, the second verifies
 ```
 
-Then run the unified Mac app:
-
-```bash
-make run-mac           # the server and reader, signed for this machine
-```
+Before opening a pull request that updates Granita, build the proposed revision with `make run-mac`.
+Keep a rollback copy of the installed app, install the signed build in `/Applications/Granita.app`,
+and restart Granita. Verify that the installed app is the process serving `/v1/health` and that it
+reports the expected version. Exercise the changed behavior on the installed build, using a paired
+iPhone for changes that involve the Mac server.
 
 Press the control the change adds. See the `design` skill's dead-control rule.
 
