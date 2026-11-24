@@ -97,6 +97,24 @@ struct WorktreeSidebarViewSnapshotTests {
             named: "two-stale-registrations"
         )
     }
+
+    @Test(arguments: SnapshotLayout.all)
+    func singleRegistrationRepair(layout: SnapshotLayout) {
+        assertScreenSnapshot(
+            WorktreeRepairSheet(
+                preview: WorktreeRepairPreview(
+                    approval: WorktreeRepairApproval(id: UUID()),
+                    projectName: "site-config",
+                    registrations: ["preview-settings"]
+                ),
+                macName: aMacName,
+                onConfirm: {},
+                onCancel: {}
+            ),
+            layout: layout,
+            named: "one-stale-registration"
+        )
+    }
 }
 
 // MARK: -
@@ -169,16 +187,7 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             mode: .groupedByProject,
             showsQuietWorktrees: false,
             readResult: .read(at: aFixedMoment, route: .local),
-            scanIssues: [
-                WorktreeScanIssue(
-                    target: .worktree(WorktreeID(rawValue: "preview-settings")),
-                    projectID: ProjectID(rawValue: "site-config"),
-                    name: "Update preview settings",
-                    projectName: "site-config",
-                    reason: .staleRegistration,
-                    lastRead: .at(aFixedMoment.addingTimeInterval(-1_080))
-                )
-            ]
+            scanIssues: [aStaleRegistration]
         ),
 
         SidebarCase(
@@ -653,10 +662,61 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
             mode: .groupedByProject,
             showsQuietWorktrees: false
         )
-    ]
+    ] + recoveringWorktreeCases
 }
 
 // MARK: -
 
 /// Three with changes and exactly one without, which is the singular half of the footer's sentence.
 private nonisolated let aQuietOneAmongFour: [Worktree] = Array(aBusyMac.prefix(3)) + [aBusyMac[5]]
+
+private nonisolated let aStaleRegistration = WorktreeScanIssue(
+    target: .worktree(WorktreeID(rawValue: "preview-settings")),
+    projectID: ProjectID(rawValue: "site-config"),
+    name: "Update preview settings",
+    projectName: "site-config",
+    reason: .staleRegistration,
+    lastRead: .at(aFixedMoment.addingTimeInterval(-1_080))
+)
+
+private nonisolated let anUnreadWorktree = WorktreeScanIssue(
+    target: .worktree(WorktreeID(rawValue: "validate-deploy")),
+    projectID: ProjectID(rawValue: "site-config"),
+    name: "Validate deploy",
+    projectName: "site-config",
+    reason: .gitFailure,
+    lastRead: .never
+)
+
+private nonisolated let aFirstReadStaleRegistration = WorktreeScanIssue(
+    target: aStaleRegistration.target,
+    projectID: aStaleRegistration.projectID,
+    name: "Site preview",
+    projectName: aStaleRegistration.projectName,
+    reason: .staleRegistration,
+    lastRead: .never
+)
+
+private nonisolated let recoverySubjects: [(String, WorktreeScanIssue, WorktreeScanAction, DynamicTypeSize)] = [
+    ("checking-checkout", aStaleRegistration, .checking(aStaleRegistration.target), .large),
+    ("checkout-still-unavailable", anUnreadWorktree, .stillUnavailable(anUnreadWorktree.target), .large),
+    ("backing-up-registrations", aStaleRegistration, .repairing(WorktreeID(rawValue: "preview-settings")), .large),
+    ("repair-failed", aFirstReadStaleRegistration, .failed(aStaleRegistration.target, .routeNotServed), .accessibility4),
+    (
+        "retry-failed-with-diagnostic", anUnreadWorktree,
+        .failed(anUnreadWorktree.target, .gitFailure(message: "fatal: index file is unreadable")), .large
+    )
+]
+
+private nonisolated let recoveringWorktreeCases = recoverySubjects.map { name, issue, action, typeSize in
+    SidebarCase(
+        name: name,
+        state: .allQuiet(worktreeCount: 1, projectNames: ["site-config"]),
+        mode: .groupedByProject,
+        showsQuietWorktrees: false,
+        readResult: .read(at: aFixedMoment, route: .local),
+        dynamicTypeSize: typeSize,
+        scanIssues: [issue],
+        scanAction: action
+    )
+}

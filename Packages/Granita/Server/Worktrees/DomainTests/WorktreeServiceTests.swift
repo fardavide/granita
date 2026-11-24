@@ -614,6 +614,101 @@ struct WorktreeServiceTests {
     }
 
     @Test
+    func `given Git reports no stale registrations when previewing cleanup then the preview is empty`() async throws {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
+        await scenario.git.answer(.previewWorktreePrune, with: Data())
+
+        // when
+        let registrations = try await scenario.sut.staleRegistrations(in: scenario.location)
+
+        // then
+        #expect(registrations.isEmpty)
+        #expect(await scenario.git.received == [.previewWorktreePrune])
+    }
+
+    @Test(arguments: [
+        "\n",
+        "Removing worktrees/duplicate: duplicate entry\n",
+        "Removing worktrees/../outside: gitdir file points to non-existent location\n",
+        "Removing worktrees/same: gitdir file points to non-existent location\nRemoving worktrees/same: gitdir file points to non-existent location\n"
+    ])
+    func `given a cleanup preview cannot identify distinct missing links when read then it is refused`(
+        report: String
+    ) async {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
+        await scenario.git.answer(.previewWorktreePrune, with: Data(), standardError: report)
+
+        // when - then
+        await #expect(throws: WorktreePruneError.unavailable) {
+            try await scenario.sut.staleRegistrations(in: scenario.location)
+        }
+    }
+
+    @Test
+    func `given a cleanup preview was truncated when read then it is refused`() async {
+        // given
+        let command = GitCommand.previewWorktreePrune
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [], truncatedCommands: [command])
+        await scenario.git.answer(
+            command,
+            with: Data(),
+            standardError: "Removing worktrees/one: gitdir file points to non-existent location\n"
+        )
+
+        // when - then
+        await #expect(throws: WorktreePruneError.unavailable) {
+            try await scenario.sut.staleRegistrations(in: scenario.location)
+        }
+    }
+
+    @Test(arguments: [
+        Data("/repositories/granita/.git".utf8),
+        Data("relative/.git\n".utf8),
+        Data("/repositories/granita/.git\n/extra\n".utf8),
+        Data([0xFF, 0x0A])
+    ])
+    func `given Git does not report exactly one complete absolute metadata path when reading it then cleanup is refused`(
+        output: Data
+    ) async {
+        // given
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [])
+        await scenario.git.answer(.commonGitDirectory, with: output)
+
+        // when - then
+        await #expect(throws: WorktreePruneError.unavailable) {
+            try await scenario.sut.commonGitDirectory(in: scenario.location)
+        }
+    }
+
+    @Test
+    func `given Git refuses the cleanup preview when it is read then the process failure reaches the caller`() async {
+        // given
+        let command = GitCommand.previewWorktreePrune
+        let failure = GitError.commandFailed(command: command, exitCode: 128, standardError: "repository not available")
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [], refusing: [command: failure])
+
+        // when - then
+        await #expect(throws: WorktreePruneError.git(failure)) {
+            try await scenario.sut.staleRegistrations(in: scenario.location)
+        }
+    }
+
+    @Test
+    func `given Git refuses the common directory when it is read then the process failure reaches the caller`() async {
+        // given
+        let command = GitCommand.commonGitDirectory
+        let failure = GitError.commandFailed(command: command, exitCode: 128, standardError: "repository not available")
+        let scenario = Scenario(raw: [], numstat: [], untracked: [], status: [], refusing: [command: failure])
+
+        // when - then
+        await #expect(throws: WorktreePruneError.git(failure)) {
+            try await scenario.sut.commonGitDirectory(in: scenario.location)
+        }
+    }
+
+    @Test
     func `given a tracked file has no numstat record when listed then it is text with unknown zero statistics`() async throws {
         // given
         let scenario = Scenario(

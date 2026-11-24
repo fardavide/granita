@@ -230,8 +230,10 @@ struct ClientWorktreesModelTests {
         #expect(await scenario.repository.reads == 0)
     }
 
-    @Test
-    func `given a scan retry is pending when a list read refuses authorization then the retry cannot restore the list`() async {
+    @Test(arguments: [nil, ApiFailure.routeNotServed])
+    func `given a scan retry is pending when a list read refuses authorization then its answer cannot replace the refusal`(
+        retryFailure: ApiFailure?
+    ) async {
         // given
         let worktree = aWorktree(named: "watcher", project: "granita")
         let issue = WorktreeScanIssue(
@@ -245,7 +247,8 @@ struct ClientWorktreesModelTests {
         let scenario = Scenario(
             worktrees: [],
             readFailure: .unauthorized,
-            retryAnswer: .success(WorktreeSnapshot(worktrees: [worktree], scannedAt: aMoment)),
+            retryAnswer: retryFailure.map { .failure($0) } ??
+                .success(WorktreeSnapshot(worktrees: [worktree], scannedAt: aMoment)),
             suspendingScanRetry: true
         )
         await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
@@ -295,6 +298,265 @@ struct ClientWorktreesModelTests {
         // then
         #expect(scenario.sut.displayName(of: healthy.id) == "Reader finished")
         #expect(scenario.sut.scanAction == .idle)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a retry is pending when the same button is pressed again then one request owns the check`() async {
+        // given
+        let unavailable = aWorktree(named: "garage", project: "granita")
+        let issue = scanIssue(for: unavailable, reason: .gitFailure)
+        let snapshot = WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])
+        let scenario = Scenario(
+            worktrees: [],
+            retryAnswer: .success(snapshot),
+            suspendingScanRetry: true
+        )
+        await scenario.sut.receive(.snapshot(snapshot))
+        let checking = Task { await scenario.sut.retryScan(issue.target) }
+        await scenario.repository.waitUntilScanRetryStarted()
+
+        // when
+        #expect(scenario.sut.scanAction == .checking(issue.target))
+        await scenario.sut.retryScan(issue.target)
+        await scenario.repository.releaseScanRetry()
+        await checking.value
+
+        // then
+        #expect(await scenario.repository.retriedScans == [issue.target])
+        #expect(scenario.sut.scanAction == .stillUnavailable(issue.target))
+        #expect(scenario.sut.scanIssues == [issue])
+    }
+
+    @Test(arguments: [ApiFailure.cancelled, .gitFailure(message: "scan timed out")])
+    func `given a scan retry is refused when checking one worktree then the healthy list remains visible`(
+        failure: ApiFailure
+    ) async {
+        // given
+        let healthy = aWorktree(named: "reader", project: "granita")
+        let unavailable = aWorktree(named: "garage", project: "granita")
+        let issue = scanIssue(for: unavailable, reason: .gitFailure)
+        let scenario = Scenario(worktrees: [healthy], retryAnswer: .failure(failure))
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [healthy], scannedAt: aMoment, issues: [issue]
+        )))
+
+        // when
+        await scenario.sut.retryScan(issue.target)
+
+        // then
+        #expect(scenario.rows.map(\.id) == [healthy.id])
+        #expect(scenario.sut.scanIssues == [issue])
+        #expect(scenario.sut.scanAction == (failure == .cancelled ? .idle : .failed(issue.target, failure)))
+    }
+
+    @Test
+    func `given a scan retry is refused authorization when checking one worktree then the list requires pairing again`() async {
+        // given
+        let healthy = aWorktree(named: "reader", project: "granita")
+        let issue = scanIssue(for: aWorktree(named: "watcher", project: "granita"), reason: .gitFailure)
+        let scenario = Scenario(worktrees: [healthy], retryAnswer: .failure(.unauthorized))
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [healthy], scannedAt: aMoment, issues: [issue]
+        )))
+
+        // when
+        await scenario.sut.retryScan(issue.target)
+
+        // then
+        #expect(scenario.sut.state == .failed(.unauthorized))
+        #expect(scenario.sut.scanIssues.isEmpty)
+        #expect(scenario.sut.scanAction == .idle)
+    }
+
+    @Test(arguments: [
+        (WorktreeScanTarget.worktree(WorktreeID(rawValue: "w-watcher")), false),
+        (.project(ProjectID(rawValue: "granita")), true)
+    ])
+    func `given a previously visible worktree when its scan is uncertain then the last known summary is retained`(
+        target: WorktreeScanTarget,
+        isStillListed: Bool
+    ) async {
+        // given
+        let cached = aWorktree(named: "watcher", project: "granita")
+        let healthy = aWorktree(named: "reader", project: "swift-tools")
+        let scenario = Scenario(worktrees: [cached, healthy])
+        await scenario.sut.load()
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [healthy],
+            scannedAt: aMoment.addingTimeInterval(60),
+            issues: [WorktreeScanIssue(
+                target: target, projectID: cached.projectId, name: "Watcher", projectName: "Granita",
+                reason: .gitFailure, lastRead: .at(aMoment)
+            )]
+        )))
+
+        // then
+        #expect(scenario.sut.worktrees == [healthy, cached])
+        #expect(scenario.rows.contains { $0.id == cached.id } == isStillListed)
+        #expect(scenario.rows.contains { $0.id == healthy.id })
+    }
+
+    @Test
+    func `given an ordinary scan failure when repair is requested then the model leaves the worktree available to retry`() async {
+        // given
+        let worktree = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: worktree, reason: .gitFailure)
+        let scenario = Scenario(worktrees: [])
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+
+        // when
+        await scenario.sut.previewRepair(for: worktree.id)
+
+        // then
+        #expect(await scenario.repository.previewedRepairs.isEmpty)
+        #expect(scenario.sut.scanIssues == [issue])
+        #expect(scenario.sut.scanAction == .idle)
+    }
+
+    @Test
+    func `given a stale registration when the repair preview is cancelled then no approval is sent`() async {
+        // given
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let preview = repairPreview(project: "Granita", registrations: ["watcher", "old-agent"])
+        let scenario = Scenario(worktrees: [], previewAnswer: .success(preview))
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+        await scenario.sut.previewRepair(for: stale.id)
+        #expect(scenario.sut.scanAction == .confirming(stale.id, preview))
+
+        // when
+        scenario.sut.cancelRepair()
+        await scenario.sut.approveRepair(preview)
+
+        // then
+        #expect(await scenario.repository.previewedRepairs == [stale.id])
+        #expect(await scenario.repository.approvedRepairs.isEmpty)
+        #expect(scenario.sut.scanAction == .idle)
+        #expect(scenario.sut.scanIssues == [issue])
+    }
+
+    @Test
+    func `given a different repair preview is outstanding when an older preview is approved then the repository is not asked`() async {
+        // given
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let current = repairPreview(project: "Granita", registrations: ["watcher", "another-agent"])
+        let expired = repairPreview(project: "Granita", registrations: ["watcher"])
+        let scenario = Scenario(worktrees: [], previewAnswer: .success(current))
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+        await scenario.sut.previewRepair(for: stale.id)
+
+        // when
+        await scenario.sut.approveRepair(expired)
+
+        // then
+        #expect(await scenario.repository.approvedRepairs.isEmpty)
+        #expect(scenario.sut.scanAction == .confirming(stale.id, current))
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [nil, ApiFailure.routeNotServed])
+    func `given a repair preview is pending when the Mac revokes access then its answer cannot reopen confirmation`(
+        previewFailure: ApiFailure?
+    ) async {
+        // given
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let preview = repairPreview(project: "Granita", registrations: ["watcher"])
+        let scenario = Scenario(
+            worktrees: [],
+            previewAnswer: previewFailure.map { .failure($0) } ?? .success(preview)
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+        await scenario.repository.holdTheNext(.repairPreview)
+        let checking = Task { await scenario.sut.previewRepair(for: stale.id) }
+        await scenario.repository.waitForOneToArrive(.repairPreview)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        await scenario.repository.releaseHeld(.repairPreview)
+        await checking.value
+
+        // then
+        #expect(scenario.sut.scanAction == .idle)
+        #expect(scenario.sut.state == .failed(.unauthorized))
+    }
+
+    @Test
+    func `given the Mac refuses a repair preview when it is requested then the failure stays with that worktree`() async {
+        // given
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let failure = ApiFailure.gitFailure(message: "could not preview stale registrations")
+        let scenario = Scenario(worktrees: [], previewAnswer: .failure(failure))
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+
+        // when
+        await scenario.sut.previewRepair(for: stale.id)
+
+        // then
+        #expect(scenario.sut.scanAction == .failed(issue.target, failure))
+        #expect(scenario.sut.scanIssues == [issue])
+    }
+
+    @Test(arguments: [nil, ApiFailure.gitFailure(message: "The stale registrations changed")])
+    func `given a confirmed repair when the Mac answers then the list shows whether the worktree still needs attention`(
+        failure: ApiFailure?
+    ) async {
+        // given
+        let healthy = aWorktree(named: "reader", project: "granita")
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let preview = repairPreview(project: "Granita", registrations: ["watcher", "old-agent"])
+        let scenario = Scenario(
+            worktrees: [healthy],
+            previewAnswer: .success(preview),
+            approvalAnswer: failure.map { .failure($0) } ??
+                .success(WorktreeSnapshot(worktrees: [healthy], scannedAt: aMoment.addingTimeInterval(60)))
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [healthy], scannedAt: aMoment, issues: [issue]
+        )))
+        await scenario.sut.previewRepair(for: stale.id)
+
+        // when
+        await scenario.sut.approveRepair(preview)
+
+        // then
+        #expect(await scenario.repository.approvedRepairs == [preview.approval])
+        #expect(scenario.rows.map(\.id) == [healthy.id])
+        #expect(scenario.sut.scanIssues == (failure == nil ? [] : [issue]))
+        #expect(scenario.sut.scanAction == (failure.map { .failed(issue.target, $0) } ?? .idle))
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [nil, ApiFailure.gitFailure(message: "repair exited 128")])
+    func `given a repair approval is pending when the Mac revokes access then its answer cannot replace the refusal`(
+        failure: ApiFailure?
+    ) async {
+        // given
+        let stale = aWorktree(named: "watcher", project: "granita")
+        let issue = scanIssue(for: stale, reason: .staleRegistration)
+        let preview = repairPreview(project: "Granita", registrations: ["watcher"])
+        let scenario = Scenario(
+            worktrees: [],
+            previewAnswer: .success(preview),
+            approvalAnswer: failure.map { .failure($0) } ?? .success(WorktreeSnapshot(worktrees: [], scannedAt: aMoment))
+        )
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(worktrees: [], scannedAt: aMoment, issues: [issue])))
+        await scenario.sut.previewRepair(for: stale.id)
+        await scenario.repository.holdTheNext(.repairApproval)
+        let approving = Task { await scenario.sut.approveRepair(preview) }
+        await scenario.repository.waitForOneToArrive(.repairApproval)
+
+        // when
+        await scenario.sut.receive(.failed(.unauthorized))
+        await scenario.repository.releaseHeld(.repairApproval)
+        await approving.value
+
+        // then
+        #expect(scenario.sut.scanAction == .idle)
+        #expect(scenario.sut.state == .failed(.unauthorized))
     }
 
     @Test
@@ -1957,6 +2219,8 @@ struct ClientWorktreesModelTests {
             preparedAt: Date? = nil,
             retryAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed),
             suspendingScanRetry: Bool = false,
+            previewAnswer: Result<WorktreeRepairPreview, ApiFailure> = .failure(.routeNotServed),
+            approvalAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed),
             copyingLogs copyOutcome: Result<Void, DiagnosticCopyFailure> = .success(()),
             preferences: FakeWorktreeListPreferences = FakeWorktreeListPreferences(),
             announcementDelay: Duration = UnaskedForRefresh.announcementDelay
@@ -1977,7 +2241,9 @@ struct ClientWorktreesModelTests {
                 liveUpdates: liveUpdates,
                 preparedAt: preparedAt,
                 retryAnswer: retryAnswer,
-                suspendingScanRetry: suspendingScanRetry
+                suspendingScanRetry: suspendingScanRetry,
+                previewAnswer: previewAnswer,
+                approvalAnswer: approvalAnswer
             )
             self.preferences = preferences
             copyingLogs = FakeDiagnosticLogsCopying(answering: copyOutcome)
@@ -2003,6 +2269,25 @@ struct ClientWorktreesModelTests {
 /// Explicitly nonisolated because this target is main-actor by default and the model's clock is a
 /// `@Sendable` closure, which cannot reach across to the main actor to read it.
 private nonisolated let aMoment = Date(timeIntervalSince1970: 1_800_000_000)
+
+private func scanIssue(for worktree: Worktree, reason: WorktreeScanIssue.Reason) -> WorktreeScanIssue {
+    WorktreeScanIssue(
+        target: .worktree(worktree.id),
+        projectID: worktree.projectId,
+        name: worktree.displayName,
+        projectName: worktree.projectName,
+        reason: reason,
+        lastRead: .never
+    )
+}
+
+private func repairPreview(project: String, registrations: [String]) -> WorktreeRepairPreview {
+    WorktreeRepairPreview(
+        approval: WorktreeRepairApproval(id: UUID()),
+        projectName: project,
+        registrations: registrations
+    )
+}
 
 private func aWorktree(
     named name: String,

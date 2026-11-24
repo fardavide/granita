@@ -271,8 +271,10 @@ struct ClientViewerModelTests {
         #expect(scenario.sut.isWaitingLong == false)
     }
 
-    @Test
-    func `given an open review when a snapshot could not list its project then the loaded diff stays visible`() async {
+    @Test(arguments: [false, true])
+    func `given an open review when a snapshot could not scan its checkout then the loaded diff stays visible`(
+        checkoutOnly: Bool
+    ) async {
         // given
         let scenario = Scenario(files: aChangeSet(of: 1))
         await scenario.sut.load()
@@ -285,7 +287,7 @@ struct ClientViewerModelTests {
             worktrees: [],
             scannedAt: Date(timeIntervalSince1970: 1_800_000_100),
             issues: [WorktreeScanIssue(
-                target: .project(project),
+                target: checkoutOnly ? .worktree(aWorktree) : .project(project),
                 projectID: project,
                 name: "Granita",
                 projectName: "Granita",
@@ -296,6 +298,29 @@ struct ClientViewerModelTests {
 
         // then
         #expect(scenario.sut.state == loadedDiff)
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
+    @Test
+    func `given another worktree could not be scanned when a complete project no longer lists this worktree then its open review is removed`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        let project = ProjectID(rawValue: "granita-project")
+        let other = WorktreeID(rawValue: "another-worktree")
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100),
+            issues: [WorktreeScanIssue(
+                target: .worktree(other), projectID: project, name: "Other checkout", projectName: "Granita",
+                reason: .gitFailure, lastRead: .never
+            )]
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
         #expect(scenario.repository.changeSetReads == 1)
     }
 

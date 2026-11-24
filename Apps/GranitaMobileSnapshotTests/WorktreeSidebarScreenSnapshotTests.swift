@@ -3,6 +3,8 @@ import ClientViewerPresentation
 import ClientWorktreesDomain
 import ClientWorktreesPresentation
 import ClientWorktreesUi
+import CoreApiDomain
+import CoreDiffDomain
 import Foundation
 import SwiftUI
 import Testing
@@ -63,6 +65,39 @@ struct WorktreeSidebarScreenSnapshotTests {
             theSidebar(of: model, opening: diff, in: layout),
             layout: layout,
             named: "screen-beneath-the-rename-sheet"
+        )
+    }
+
+    @Test(arguments: SnapshotLayout.all)
+    func presentedRepairPreview(layout: SnapshotLayout) async throws {
+        // given
+        let worktree = WorktreeID(rawValue: "preview-settings")
+        let preview = WorktreeRepairPreview(
+            approval: WorktreeRepairApproval(id: UUID()),
+            projectName: "site-config",
+            registrations: ["preview-settings", "stage-config"]
+        )
+        let model = aModel(repairPreview: .success(preview))
+        let issue = WorktreeScanIssue(
+            target: .worktree(worktree),
+            projectID: ProjectID(rawValue: "site-config"),
+            name: "Update preview settings",
+            projectName: "site-config",
+            reason: .staleRegistration,
+            lastRead: .never
+        )
+        await model.receive(.snapshot(WorktreeSnapshot(
+            worktrees: Array(aBusyMac.prefix(1)), scannedAt: aFixedMoment, issues: [issue]
+        )))
+        await model.previewRepair(for: worktree)
+        try #require(model.scanAction == .confirming(worktree, preview))
+        let diff = await aLoadedViewerModel(in: layout)
+
+        // when - then
+        assertScreenSnapshot(
+            theSidebar(of: model, opening: diff, in: layout),
+            layout: layout,
+            named: "screen-beneath-the-repair-preview"
         )
     }
 
@@ -175,10 +210,13 @@ private func theSidebar(
 }
 
 @MainActor
-private func aModel(writeFailure: ApiFailure? = nil) -> ClientWorktreesModel {
+private func aModel(
+    writeFailure: ApiFailure? = nil,
+    repairPreview: Result<WorktreeRepairPreview, ApiFailure> = .failure(.routeNotServed)
+) -> ClientWorktreesModel {
     ClientWorktreesModel(
         macName: aMacName,
-        repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: writeFailure),
+        repository: FakeGranitaRepository(worktrees: aBusyMac, writeFailure: writeFailure, repairPreview: repairPreview),
         preferences: FakeWorktreeListPreferences(mode: .groupedByProject, showsQuiet: false),
         copyingLogs: FakeDiagnosticLogsCopying(),
         announcing: FakeWorktreeReadAnnouncing(),

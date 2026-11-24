@@ -111,6 +111,23 @@ struct RememberedMacsTests {
         #expect(await scenario.mac.asked == [.updates])
     }
 
+    @Test(arguments: [WorktreeUpdate.unsupported, .failed(.unauthorized)])
+    func `given live inventory cannot continue when observing then the event and pairing state describe the refusal`(
+        update: WorktreeUpdate
+    ) async {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac], sendingUpdate: update)
+        var updates = await scenario.sut.updates().makeAsyncIterator()
+
+        // when
+        let first = await updates.next()
+
+        // then
+        #expect(first == update)
+        #expect(await updates.next() == nil)
+        #expect(await scenario.macs.saved.isEmpty == (update == .failed(.unauthorized)))
+    }
+
     @Test
     func `given a remembered Mac when a forced legacy refresh is requested then the refresh reaches that Mac`() async throws {
         // given
@@ -136,6 +153,49 @@ struct RememberedMacsTests {
         // then
         #expect(read == .prepared(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))))
         #expect(await scenario.mac.asked == [.readWorktrees(project, true)])
+    }
+
+    @Test
+    func `given a remembered Mac when a scan is retried then the selected project and its refreshed rows are forwarded`() async throws {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        let target = WorktreeScanTarget.project(ProjectID(rawValue: "draft-publisher"))
+
+        // when
+        let snapshot = try await scenario.sut.retryWorktreeScan(target)
+
+        // then
+        #expect(snapshot.worktrees == [aWorktree])
+        #expect(await scenario.mac.asked == [.retryWorktreeScan(target)])
+    }
+
+    @Test
+    func `given a remembered Mac when a repair is previewed then the chosen checkout and listed registrations are forwarded`() async throws {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        let worktree = WorktreeID(rawValue: "stale-publisher-draft")
+
+        // when
+        let preview = try await scenario.sut.previewWorktreeRepair(worktree)
+
+        // then
+        #expect(preview.projectName == "Draft Publisher")
+        #expect(preview.registrations == ["draft", "retired-preview"])
+        #expect(await scenario.mac.asked == [.previewWorktreeRepair(worktree)])
+    }
+
+    @Test
+    func `given a remembered Mac when a repair is approved then only that approval and the refreshed rows are forwarded`() async throws {
+        // given
+        let scenario = Scenario(remembering: [theMacTheReaderTapped.id: aRememberedMac])
+        let approval = WorktreeRepairApproval(id: UUID())
+
+        // when
+        let snapshot = try await scenario.sut.approveWorktreeRepair(approval)
+
+        // then
+        #expect(snapshot.worktrees == [aWorktree])
+        #expect(await scenario.mac.asked == [.approveWorktreeRepair(approval)])
     }
 
     @Test(.timeLimit(.minutes(1)))
@@ -910,6 +970,7 @@ private struct Scenario {
         ignoringResolutionCancellation: Bool = false,
         suspendingWorktreeReads: Bool = false,
         refusing readFailure: ApiFailure? = nil,
+        sendingUpdate liveUpdate: WorktreeUpdate? = nil,
         healthUnavailable isHealthUnavailable: Bool = false,
         servingHealth healthResponse: HealthResponse? = nil,
         servingWakeAddresses wakeAddresses: [String] = []
@@ -928,7 +989,9 @@ private struct Scenario {
         // One instance rather than one per connection, so a test can read what reached the Mac
         // without holding the repository the reconnection built. That the reconnection only ever
         // builds *one* is asserted separately, through `opened`.
-        let mac = FakeMacBehindAPairing(answering: readFailure, suspendingWorktreeReads: suspendingWorktreeReads)
+        let mac = FakeMacBehindAPairing(
+            answering: readFailure, sendingUpdate: liveUpdate, suspendingWorktreeReads: suspendingWorktreeReads
+        )
         self.mac = mac
         let availableHealth: HealthResponse? = if isHealthUnavailable {
             nil
@@ -982,12 +1045,14 @@ private actor FakeMacBehindAPairing: GranitaRepository {
     private(set) var asked: [MacRequest] = []
 
     private let answering: ApiFailure?
+    private let liveUpdate: WorktreeUpdate?
     private let suspendingWorktreeReads: Bool
     private let suspendedWorktreeRead: AsyncStream<Void>
     private let suspendedWorktreeReadContinuation: AsyncStream<Void>.Continuation
 
-    init(answering: ApiFailure?, suspendingWorktreeReads: Bool = false) {
+    init(answering: ApiFailure?, sendingUpdate liveUpdate: WorktreeUpdate?, suspendingWorktreeReads: Bool = false) {
         self.answering = answering
+        self.liveUpdate = liveUpdate
         self.suspendingWorktreeReads = suspendingWorktreeReads
         let suspended = AsyncStream<Void>.makeStream()
         suspendedWorktreeRead = suspended.stream
@@ -1026,13 +1091,34 @@ private actor FakeMacBehindAPairing: GranitaRepository {
     func updates() -> AsyncStream<WorktreeUpdate> {
         asked.append(.updates)
         return AsyncStream { continuation in
-            if let answering {
+            if let liveUpdate {
+                continuation.yield(liveUpdate)
+            } else if let answering {
                 continuation.yield(.failed(answering))
             } else {
                 continuation.yield(.snapshot(WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))))
             }
             continuation.finish()
         }
+    }
+
+    func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        try note(.retryWorktreeScan(target))
+        return WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_111))
+    }
+
+    func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        try note(.previewWorktreeRepair(worktree))
+        return WorktreeRepairPreview(
+            approval: WorktreeRepairApproval(id: UUID()),
+            projectName: "Draft Publisher",
+            registrations: ["draft", "retired-preview"]
+        )
+    }
+
+    func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        try note(.approveWorktreeRepair(approval))
+        return WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_000_222))
     }
 
     func waitUntilWorktreeReadStarted(inProject project: ProjectID? = nil) async {
@@ -1132,6 +1218,11 @@ enum Route: CaseIterable, Sendable {
 
     case projects
     case worktrees
+    case refreshWorktrees
+    case worktreesReportingProgress
+    case retryWorktreeScan
+    case previewWorktreeRepair
+    case approveWorktreeRepair
     case update
     case delete
     case changes
@@ -1146,6 +1237,16 @@ enum Route: CaseIterable, Sendable {
             _ = try await repository.projects()
         case .worktrees:
             _ = try await repository.worktrees(inProject: nil)
+        case .refreshWorktrees:
+            _ = try await repository.refreshWorktrees(inProject: aProject)
+        case .worktreesReportingProgress:
+            _ = try await repository.worktrees(inProject: aProject, reporting: { _ in })
+        case .retryWorktreeScan:
+            _ = try await repository.retryWorktreeScan(.project(aProject))
+        case .previewWorktreeRepair:
+            _ = try await repository.previewWorktreeRepair(aWorktree.id)
+        case .approveWorktreeRepair:
+            _ = try await repository.approveWorktreeRepair(WorktreeRepairApproval(id: UUID()))
         case .update:
             _ = try await repository.update(aWorktree.id, with: WorktreePatch(alias: .cleared, isPinned: nil))
         case .delete:
@@ -1171,6 +1272,9 @@ private enum MacRequest: Hashable, Sendable {
     case readWorktrees(ProjectID?, Bool)
     case refreshWorktrees(ProjectID?)
     case updates
+    case retryWorktreeScan(WorktreeScanTarget)
+    case previewWorktreeRepair(WorktreeID)
+    case approveWorktreeRepair(WorktreeRepairApproval)
     case update(WorktreeID, WorktreePatch)
     case delete(WorktreeID)
     case changes(WorktreeID)

@@ -111,7 +111,18 @@ struct HttpGranitaRepositoryTests {
     @Test
     func `given a prepared server snapshot when reading worktrees then the original scan time survives`() async throws {
         // given
-        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let snapshot = WorktreeSnapshot(
+            worktrees: [aWorktree],
+            scannedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            issues: [WorktreeScanIssue(
+                target: .worktree(WorktreeID(rawValue: "a-missing-checkout")),
+                projectID: aWorktree.projectId,
+                name: "Draft checkout",
+                projectName: aWorktree.projectName,
+                reason: .staleRegistration,
+                lastRead: .never
+            )]
+        )
         let scenario = Scenario(status: 200, json: try encoded(snapshot))
 
         // when
@@ -119,7 +130,66 @@ struct HttpGranitaRepositoryTests {
 
         // then
         #expect(read == .prepared(snapshot))
-        #expect(try #require(await scenario.transport.sent.first).url.path() == "/v1/worktree-snapshot")
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.url.path() == "/v1/worktree-snapshot")
+        #expect(request.url.query() == "allowPartial=true")
+    }
+
+    @Test
+    func `given an unavailable project when retrying then its typed target travels and the updated snapshot returns`() async throws {
+        // given
+        let target = WorktreeScanTarget.project(ProjectID(rawValue: "publication-tools"))
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_001_000))
+        let scenario = Scenario(status: 200, json: try encoded(snapshot))
+
+        // when
+        let recovered = try await scenario.sut.retryWorktreeScan(target)
+
+        // then
+        #expect(recovered == snapshot)
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.method == .post)
+        #expect(request.url.path() == "/v1/worktree-snapshot/retry")
+        #expect(try JSONDecoder().decode(WorktreeScanTarget.self, from: #require(request.body)) == target)
+    }
+
+    @Test
+    func `given a stale worktree when previewing repair then only its identifier is sent and the approval list returns`() async throws {
+        // given
+        let preview = WorktreeRepairPreview(
+            approval: WorktreeRepairApproval(id: UUID()),
+            projectName: "Publication Tools",
+            registrations: ["draft-setup", "old-export"]
+        )
+        let scenario = Scenario(status: 200, json: try encoded(preview))
+
+        // when
+        let received = try await scenario.sut.previewWorktreeRepair(WorktreeID(rawValue: "stale-publication-checkout"))
+
+        // then
+        #expect(received == preview)
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.method == .get)
+        #expect(request.url.path() == "/v1/worktrees/stale-publication-checkout/repair")
+        #expect(request.body == nil)
+    }
+
+    @Test
+    func `given confirmed registrations when approving repair then only the approval travels and the updated snapshot returns`() async throws {
+        // given
+        let approval = WorktreeRepairApproval(id: UUID())
+        let snapshot = WorktreeSnapshot(worktrees: [aWorktree], scannedAt: Date(timeIntervalSince1970: 1_800_002_000))
+        let scenario = Scenario(status: 200, json: try encoded(snapshot))
+
+        // when
+        let recovered = try await scenario.sut.approveWorktreeRepair(approval)
+
+        // then
+        #expect(recovered == snapshot)
+        let request = try #require(await scenario.transport.sent.first)
+        #expect(request.method == .post)
+        #expect(request.url.path() == "/v1/worktrees/repair")
+        #expect(try JSONDecoder().decode(WorktreeRepairApproval.self, from: #require(request.body)) == approval)
     }
 
     @Test
@@ -188,6 +258,7 @@ struct HttpGranitaRepositoryTests {
 
         // then
         #expect(first == .snapshot(expected))
+        #expect(await scenario.transport.sent.first?.url.query() == "allowPartial=true")
     }
 
     // MARK: - What every request carries

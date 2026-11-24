@@ -182,6 +182,25 @@ struct PairingSpineSnapshotTests {
             named: "a-mac-resumed-on-launch"
         )
     }
+
+    @Test(arguments: SnapshotLayout.all)
+    func revokedPairing(layout: SnapshotLayout) async {
+        // given
+        let model = aModel(camera: .granted, joining: .refused(.pairingExpired), resolving: .failure(.localNetworkDenied))
+        await model.start()
+        let navigation = PairingSpineNavigation(
+            startingAt: NavigationPath(),
+            remembering: FakeLastOpenedMacPreference(opened: aDiscoveredMac)
+        )
+
+        // when - then
+        navigation.pairAgain(with: aDiscoveredMac)
+        assertScreenSnapshot(
+            theSpine(model, startingAt: navigation.path, on: aPhone()),
+            layout: layout,
+            named: "pair-again-after-worktree-access-was-revoked"
+        )
+    }
 }
 
 // MARK: -

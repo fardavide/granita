@@ -121,6 +121,238 @@ struct WorktreeRegistryCacheTests {
         #expect(scanned.map(\.1) == [unavailable])
     }
 
+    @Test(arguments: [false, true])
+    func `given a project root cannot be read when the list is scanned then its issue reports the last successful inventory`(
+        previouslyScanned: Bool
+    ) async throws {
+        // given
+        let scenario = Scenario()
+        let root = RepositoryLocation(path: "/work/Print Tools")
+        let project = StoredProject(id: ProjectID(canonicalPath: root.path), path: root.path, name: "Print Tools", isVisible: true)
+        await scenario.store.add(project: project)
+        await scenario.git.answer(.worktrees, in: root, with: Data(
+            "worktree \(root.path)\0HEAD abc123\0branch refs/heads/main\0\0".utf8
+        ))
+        if previouslyScanned {
+            _ = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        }
+        scenario.time.advance(by: 2_400)
+        await scenario.git.refuseCommands(in: root, with: .commandFailed(
+            command: .worktrees, exitCode: 128, standardError: "The project volume is offline"
+        ))
+
+        // when
+        let snapshot = try await scenario.sut.snapshot(inProject: nil, refreshing: true, allowPartial: true)
+
+        // then
+        #expect(Set(snapshot.worktrees.map(\.id)) == Set([
+            WorktreeID(canonicalPath: "/repo")
+        ] + (previouslyScanned ? [WorktreeID(canonicalPath: root.path)] : [])))
+        #expect(snapshot.issues == [WorktreeScanIssue(
+            target: .project(project.id),
+            projectID: project.id,
+            name: "Print Tools",
+            projectName: "Print Tools",
+            reason: .gitFailure,
+            lastRead: previouslyScanned ? .at(Date(timeIntervalSince1970: 1_800_000_100)) : .never
+        )])
+    }
+
+    @Test
+    func `given a failed project inventory when that project returns then retry refreshes only its inventory`() async throws {
+        // given
+        let scenario = Scenario()
+        let root = RepositoryLocation(path: "/work/Print Tools")
+        let project = StoredProject(id: ProjectID(canonicalPath: root.path), path: root.path, name: "Print Tools", isVisible: true)
+        await scenario.store.add(project: project)
+        await scenario.git.refuseCommands(in: root, with: .commandFailed(
+            command: .worktrees, exitCode: 128, standardError: "The project volume is offline"
+        ))
+        let failed = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        try #require(failed.issues.map(\.target) == [.project(project.id)])
+        let commandsBeforeRetry = await scenario.git.received.count
+        await scenario.git.allowCommands(in: root)
+        await scenario.git.answer(.worktrees, in: root, with: Data("worktree \(root.path)\0HEAD abc123\0detached\0\0".utf8))
+
+        // when
+        let recovered = try await scenario.sut.retry(.project(project.id))
+
+        // then
+        #expect(recovered.issues.isEmpty)
+        #expect(Set(recovered.worktrees.map(\.id)) == [WorktreeID(canonicalPath: "/repo"), WorktreeID(canonicalPath: root.path)])
+        #expect(Set(await scenario.git.locations.dropFirst(commandsBeforeRetry)) == [root])
+    }
+
+    @Test(arguments: [true, false])
+    func `given a detached stale registration when subscribers connect then only a partial reader gets an unavailable row`(
+        allowPartial: Bool
+    ) async throws {
+        // given
+        let scenario = Scenario()
+        let stale = WorktreeID(canonicalPath: "/worktrees/expired-preview")
+        await scenario.git.answer(.worktrees, with: Data(
+            ("worktree /repo\0HEAD abc123\0branch refs/heads/main\0\0"
+                + "worktree /worktrees/expired-preview\0HEAD def456\0detached\0"
+                + "prunable gitdir file points to non-existent location\0\0").utf8
+        ))
+
+        // when
+        var events = await scenario.sut.updates(allowPartial: allowPartial).makeAsyncIterator()
+        await scenario.sut.storeDidChange()
+        await scenario.sut.stop()
+        let snapshot = await events.next()
+
+        // then
+        if allowPartial {
+            let snapshot = try #require(snapshot)
+            #expect(snapshot.worktrees.map(\.id) == [WorktreeID(canonicalPath: "/repo")])
+            #expect(snapshot.issues.first?.target == .worktree(stale))
+            #expect(snapshot.issues.first?.name == "expired-preview")
+        } else {
+            #expect(snapshot == nil)
+        }
+    }
+
+    @Test
+    func `given an older subscriber already has a full inventory when a project goes offline then its cached rows still receive aliases`() async throws {
+        // given
+        let scenario = Scenario()
+        let worktree = WorktreeID(canonicalPath: "/repo")
+        var events = await scenario.sut.updates().makeAsyncIterator()
+        let first = try #require(await events.next())
+        await scenario.git.refuseCommands(in: RepositoryLocation(path: "/repo"), with: .commandFailed(
+            command: .worktrees, exitCode: 128, standardError: "The project volume is offline"
+        ))
+        await scenario.store.setAlias("Print review", for: worktree)
+
+        // when
+        await scenario.sut.reconcile()
+        await scenario.sut.stop()
+
+        // then
+        let update = try #require(await events.next())
+        #expect(update.worktrees.map(\.id) == [worktree])
+        #expect(update.worktrees.first?.alias == "Print review")
+        #expect(update.scannedAt == first.scannedAt)
+        #expect(update.issues.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `given a stale registration lookup is in progress when observation ends or the project is hidden then it cannot be repaired`(
+        hidingProject: Bool
+    ) async {
+        // given
+        let scenario = Scenario()
+        let stale = WorktreeID(canonicalPath: "/worktrees/retired-print-preview")
+        await scenario.git.answer(.worktrees, with: Data(
+            ("worktree /repo\0HEAD abc123\0branch refs/heads/main\0\0"
+                + "worktree /worktrees/retired-print-preview\0HEAD def456\0detached\0"
+                + "prunable gitdir file points to non-existent location\0\0").utf8
+        ))
+        await scenario.git.pause(.worktrees)
+        let lookup = Task { try await scenario.sut.prunableProject(for: stale) }
+        await scenario.git.waitUntilPaused(.worktrees)
+
+        // when
+        if hidingProject {
+            await scenario.store.setProjectVisible(false, id: ProjectID(canonicalPath: "/repo"))
+        } else {
+            await scenario.sut.stop()
+        }
+        await scenario.git.resume(.worktrees)
+
+        // then
+        let expected: WorktreeRegistryError = hidingProject ? .projectNotVisible : .cancelled
+        await #expect(throws: expected) { try await lookup.value }
+    }
+
+    @Test
+    func `given a failed checkout when a sibling is refreshed then the failure is retained without scanning its checkout again`() async throws {
+        // given
+        let unavailable = RepositoryLocation(path: "/worktrees/offline-copy")
+        let scenario = Scenario(worktrees: [RepositoryLocation(path: "/repo"), unavailable])
+        await scenario.git.refuseCommands(in: unavailable, with: .commandFailed(
+            command: .headCommit, exitCode: 128, standardError: "checkout temporarily unreadable"
+        ))
+        let original = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        let commandsBeforeRefresh = await scenario.git.received.count
+
+        // when
+        await scenario.sut.refresh(in: [WorktreeID(canonicalPath: "/repo")])
+
+        // then
+        let refreshed = try await scenario.sut.snapshot(inProject: nil, refreshing: false, allowPartial: true)
+        #expect(refreshed.issues == original.issues)
+        #expect(refreshed.issues.map(\.reason) == [.gitFailure])
+        #expect(await scenario.git.locations.dropFirst(commandsBeforeRefresh).contains(unavailable) == false)
+    }
+
+    @Test
+    func `given a hidden project when retry is requested then Git receives no command`() async {
+        // given
+        let scenario = Scenario()
+        let project = ProjectID(canonicalPath: "/repo")
+        await scenario.store.setProjectVisible(false, id: project)
+
+        // when - then
+        await #expect(throws: WorktreeRegistryError.projectNotVisible) { try await scenario.sut.retry(.project(project)) }
+        #expect(await scenario.git.received.isEmpty)
+    }
+
+    @Test
+    func `given an unknown checkout when retry is requested then Git receives no command`() async {
+        // given
+        let scenario = Scenario()
+        let missing = WorktreeID(canonicalPath: "/worktrees/unknown")
+
+        // when - then
+        await #expect(throws: WorktreeRegistryError.notFound) { try await scenario.sut.retry(.worktree(missing)) }
+        #expect(await scenario.git.received.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a retry whose project lookup is suspended when observation stops then the retry cannot start Git`() async {
+        // given
+        let scenario = Scenario()
+        let project = ProjectID(canonicalPath: "/repo")
+        await scenario.store.pauseNextStateRead()
+        let retry = Task { try await scenario.sut.retry(.project(project)) }
+        await scenario.store.waitUntilStateReadPaused()
+
+        // when
+        await scenario.sut.stop()
+        await scenario.store.resumeStateRead()
+
+        // then
+        await #expect(throws: WorktreeRegistryError.cancelled) { try await retry.value }
+        #expect(await scenario.git.received.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `given an observer scan is waiting for projects when observation stops then it does not start Git`(
+        reconcilingInventory: Bool
+    ) async {
+        // given
+        let scenario = Scenario()
+        await scenario.store.pauseNextStateRead()
+        let update = Task {
+            if reconcilingInventory {
+                await scenario.sut.reconcile()
+            } else {
+                await scenario.sut.refresh(in: [WorktreeID(canonicalPath: "/repo")])
+            }
+        }
+        await scenario.store.waitUntilStateReadPaused()
+
+        // when
+        await scenario.sut.stop()
+        await scenario.store.resumeStateRead()
+        await update.value
+
+        // then
+        #expect(await scenario.git.received.isEmpty)
+    }
+
     @Test
     func `given a warm list when observing then its current snapshot arrives without scanning`() async throws {
         // given
