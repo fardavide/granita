@@ -250,6 +250,10 @@ struct DisposableRepository {
         try Self.git(["commit", "--quiet", "-m", message], in: URL(filePath: location.path))
     }
 
+    func stage(_ path: String) throws {
+        try Self.git(["add", "--", path], in: URL(filePath: location.path))
+    }
+
     /// Replaces a file in the primary checkout's working tree, leaving the commit alone.
     func write(_ path: String, bytes: Data) throws {
         let url = URL(filePath: location.path).appending(path: path, directoryHint: .notDirectory)

@@ -385,6 +385,96 @@ struct ApiRoutesTests {
     }
 
     @Test
+    func `given an unstaged filesystem rename with an edit when opened then one renamed file shows only its edit`() async throws {
+        // given
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        let oldPath = "Sources/OldReview.swift"
+        let newPath = "NewReview.swift"
+        let oldLine = "    let title = \"Draft\""
+        let newLine = "    let title = \"Review\""
+        let original = """
+            struct ReviewSettings {
+                let canComment = true
+                let canResolve = true
+                let canApprove = false
+            \(oldLine)
+                let showsFileList = true
+                let showsLineNumbers = true
+                let followsSystemAppearance = true
+            }
+
+            """
+        try repository.commit(oldPath, bytes: Data(original.utf8), message: "track review settings")
+        let checkout = URL(filePath: repository.location.path)
+        try FileManager.default.moveItem(
+            at: checkout.appending(path: oldPath),
+            to: checkout.appending(path: newPath)
+        )
+        let edited = original.replacingOccurrences(of: oldLine, with: newLine)
+        try repository.write(newPath, bytes: Data(edited.utf8))
+        try await scenario.enableProject()
+        let id = WorktreeID(canonicalPath: repository.location.path)
+        let uri = "/v1/worktrees/\(id.rawValue)"
+
+        // when
+        let changes = try await scenario.get(ChangesBody.self, "\(uri)/changes")
+        let file = try #require(changes.files.first { $0.path == newPath })
+        let diffs = try await scenario.get([FileDiff].self, "\(uri)/diffs?fileIDs=\(file.id.rawValue)&context=3")
+        let diff = try #require(diffs.first)
+
+        // then
+        let editStats = ChangeStats(filesChanged: 1, insertions: 1, deletions: 1)
+        #expect(changes.files.map(\.path) == [newPath])
+        #expect(changes.stats == editStats)
+        #expect(file.status == .renamed)
+        #expect(file.oldPath == oldPath)
+        #expect(file.stats == editStats)
+        #expect(diff.file == file)
+        let lines = diff.hunks.flatMap(\.lines)
+        #expect(lines.filter { $0.kind == .deletion }.map(\.text) == [oldLine])
+        #expect(lines.filter { $0.kind == .addition }.map(\.text) == [newLine])
+    }
+
+    @Test
+    func `given staged work and an unstaged move when changes and its diff are read then the live index stays intact`() async throws {
+        // given
+        let repository = try DisposableRepository()
+        defer { repository.cleanUp() }
+        let scenario = try ApiScenario(at: repository.location)
+        defer { scenario.cleanUp() }
+        let oldPath = "Before.txt"
+        let newPath = "After.txt"
+        let stagedPath = "StagedSettings.txt"
+        try repository.commit(oldPath, bytes: Data("contents to move\n".utf8), message: "track original")
+        try repository.write(stagedPath, bytes: Data("settings to commit\n".utf8))
+        try repository.stage(stagedPath)
+        let checkout = URL(filePath: repository.location.path)
+        try FileManager.default.moveItem(
+            at: checkout.appending(path: oldPath),
+            to: checkout.appending(path: newPath)
+        )
+        try await scenario.enableProject()
+        let index = checkout.appending(path: ".git/index", directoryHint: .notDirectory)
+        let indexBeforeRead = try Data(contentsOf: index)
+        let id = WorktreeID(canonicalPath: repository.location.path)
+        let uri = "/v1/worktrees/\(id.rawValue)"
+
+        // when
+        let changes = try await scenario.get(ChangesBody.self, "\(uri)/changes")
+        let indexAfterChanges = try Data(contentsOf: index)
+        let file = try #require(changes.files.first { $0.path == newPath })
+        _ = try await scenario.get(FileDiff.self, "\(uri)/files/\(file.id.rawValue)/diff?context=3")
+        let indexAfterDiff = try Data(contentsOf: index)
+
+        // then
+        #expect(indexAfterChanges == indexBeforeRead)
+        #expect(indexAfterDiff == indexBeforeRead)
+    }
+
+    @Test
     func `given a conflicted merge when the changes are asked for then the path says so`() async throws {
         // given
         let scenario = try ApiScenario(repository: .conflicted)

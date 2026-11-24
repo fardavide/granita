@@ -38,6 +38,29 @@ enum GitInvocation {
         "--dst-prefix=b/"
     ]
 
+    private static let scratchIndexPrefix = [
+        "-c", "core.splitIndex=false",
+        "-c", "core.fsmonitor=false",
+        "-c", "core.hooksPath=/dev/null"
+    ]
+
+    static let emptyBlobArguments = encoded(globalPrefix + ["hash-object", "--stdin"])
+
+    static let scratchIndexArguments = encoded(
+        globalPrefix + scratchIndexPrefix + ["update-index", "-z", "--index-info"]
+    )
+
+    static func scratchIndexInput(tracking paths: [RepositoryRelativePath], emptyBlob: String) -> Data {
+        let entry = Data("100644 \(emptyBlob)\t".utf8)
+        var input = Data()
+        for path in paths {
+            input.append(entry)
+            input.append(path.bytes)
+            input.append(0)
+        }
+        return input
+    }
+
     /// Everything the environment of a git child process must say.
     ///
     /// A `nil` unsets the variable. The three that are unset would each silently redirect the
@@ -82,7 +105,8 @@ enum GitInvocation {
     /// empty answer is the answer. Everything else means git refused.
     static func accepts(exitCode: Int32, from command: GitCommand) -> Bool {
         switch command {
-        case .trackedChanges, .trackedStats, .fileDiff, .untrackedFileDiff, .fileContent:
+        case .trackedChanges, .trackedStats, .untrackedRenameStats, .fileDiff, .renamedFileDiff,
+             .untrackedFileDiff, .fileContent:
             exitCode == 0 || exitCode == 1
         case .headCommit:
             exitCode == 0 || exitCode == 1
@@ -104,7 +128,8 @@ enum GitInvocation {
         case .fileContent:
             ProcessGitClient.fileContentLimitBytes
         case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory, .commonGitDirectory, .currentBranch, .headCommit, .worktrees,
-             .untrackedPaths, .worktreeStatus, .trackedChanges, .trackedStats, .fileDiff,
+             .untrackedPaths, .worktreeStatus, .trackedChanges, .trackedStats, .untrackedRenameStats,
+             .fileDiff, .renamedFileDiff,
              .untrackedFileDiff, .removeWorktree, .previewWorktreePrune, .hashWorktreeFiles:
             limit
         }
@@ -161,9 +186,15 @@ enum GitInvocation {
         case .trackedStats(let revision):
             encoded(["diff"] + diffFamilySuffix + [spelling(of: revision), "-z", "-M", "--numstat"])
 
+        case .untrackedRenameStats(let deleted, let untracked, let revision):
+            renameDiffArguments(against: revision, options: ["-z", "--numstat"], paths: deleted + untracked)
+
         case .fileDiff(let path, let revision, let contextLines):
             encoded(["diff"] + diffFamilySuffix + [spelling(of: revision), "-U\(contextLines)", "--"])
                 + [Array(path.bytes)]
+
+        case .renamedFileDiff(let old, let new, let revision, let contextLines):
+            renameDiffArguments(against: revision, options: ["-U\(contextLines)"], paths: [old, new])
 
         case .untrackedFileDiff(let path, let contextLines):
             encoded(["diff"] + diffFamilySuffix + ["--no-index", "-U\(contextLines)", "--", "/dev/null"])
@@ -192,6 +223,16 @@ enum GitInvocation {
         case .hashWorktreeFiles:
             encoded(["hash-object", "--stdin-paths"])
         }
+    }
+
+    private static func renameDiffArguments(
+        against revision: GitRevision,
+        options: [String],
+        paths: [RepositoryRelativePath]
+    ) -> [[UInt8]] {
+        encoded(scratchIndexPrefix + ["--literal-pathspecs", "diff"] + diffFamilySuffix
+            + [spelling(of: revision), "-M", "-l1000", "--diff-filter=R"] + options + ["--"])
+            + paths.map { Array($0.bytes) }
     }
 }
 

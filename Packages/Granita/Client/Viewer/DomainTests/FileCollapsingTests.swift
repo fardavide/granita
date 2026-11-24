@@ -154,6 +154,26 @@ struct FileCollapsingTests {
     }
 
     @Test
+    func `given a moved picture with binary edits when its collapse is asked for then the picture diff can open`() {
+        // given
+        let file = aChangedFile(
+            path: "Snapshots/New/home.png",
+            oldPath: "Snapshots/Old/home.png",
+            status: .renamed,
+            isBinary: true,
+            insertions: 0,
+            deletions: 0
+        )
+
+        // when
+        let collapse = FileCollapsing.state(of: file, openedByTheReader: nil)
+
+        // then
+        #expect(collapse.isCollapsed == false)
+        #expect(collapse.isCollapsible)
+    }
+
+    @Test
     func `given a rename the Mac did not say the old name of when its collapse is asked for then it opens`() {
         // given — `oldPath` is set only for a rename, so an absent one here is a Mac that reported
         // a rename it cannot name. Shutting the file behind a sentence with a hole in it is worse

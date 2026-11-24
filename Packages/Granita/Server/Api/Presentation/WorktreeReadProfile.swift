@@ -28,8 +28,8 @@ public struct WorktreeReadProfile: Sendable {
                 case .hashWorktreeFiles: .contentHash
                 case .worktrees: .enumeration
                 case .currentBranch, .headCommit: .revision
-                case .untrackedPaths, .trackedChanges, .trackedStats: .changeMetadata
-                case .fileDiff, .untrackedFileDiff, .fileContent: .diffContent
+                case .untrackedPaths, .trackedChanges, .trackedStats, .untrackedRenameStats: .changeMetadata
+                case .fileDiff, .renamedFileDiff, .untrackedFileDiff, .fileContent: .diffContent
                 case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory,
                      .commonGitDirectory, .removeWorktree, .previewWorktreePrune: .other
                 }

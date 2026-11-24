@@ -9,9 +9,9 @@ import ServerGitDomain
 /// comparison with identical options.** Taking the file list from the merge state and the stats
 /// from a diff runs rename detection twice over two different comparisons — one is HEAD to index
 /// and index to working tree, the other is HEAD to working tree — and they disagree often enough
-/// that the result is files with no stats, stats with no file, and totals that do not add up. The
-/// merge state is read here for exactly two things it alone knows: which paths are conflicted, and
-/// what the whole worktree's revision is.
+/// that the result is files with no stats, stats with no file, and totals that do not add up.
+/// Status supplies only the conflicted paths. A second comparison can pair unmatched tracked
+/// deletions with untracked destinations and supplies both paths and stats for those renames.
 public struct WorktreeService: Sendable {
 
     private let git: any GitClient
@@ -66,15 +66,12 @@ public struct WorktreeService: Sendable {
         let statusBytes = try await git.run(.worktreeStatus, in: worktree).standardOutput
         let conflicted = StatusParser.conflictedPaths(statusBytes)
 
-        let changes = RawChangeParser.parse(
-            try await git.run(.trackedChanges(against: revision), in: worktree).standardOutput
-        )
+        let raw = try await git.run(.trackedChanges(against: revision), in: worktree)
+        let changes = RawChangeParser.parse(raw.standardOutput)
         let numbers = NumstatParser.parse(
             try await git.run(.trackedStats(against: revision), in: worktree).standardOutput
         )
-        let untracked = UntrackedPathParser.parse(
-            try await git.run(.untrackedPaths, in: worktree).standardOutput
-        )
+        let others = try await git.run(.untrackedPaths, in: worktree)
 
         // A trailing separator is git declining to look inside: `ls-files --others` reports a
         // nested repository or worktree as one directory entry rather than descending into it.
@@ -82,8 +79,18 @@ public struct WorktreeService: Sendable {
         // checkout of any project an agent has touched has one — and it is not a file. Shown as
         // one it is an added file nobody can open, and hashing it fails the **whole** batch rather
         // than its own line, which takes the entire change set down with it.
-        let entries = tracked(changes, statsBy: numbers, conflicted: conflicted)
-            + untracked.filter { $0.text.hasSuffix("/") == false }.map(Entry.untracked)
+        let untracked = UntrackedPathParser.parse(others.standardOutput).filter { !$0.text.hasSuffix("/") }
+        let tracked = tracked(changes, statsBy: numbers, conflicted: conflicted)
+        let entries = if raw.isTruncated || others.isTruncated {
+            tracked + untracked.map(Entry.untracked)
+        } else {
+            await entriesIncludingUntrackedRenames(
+                tracked: tracked,
+                untracked: untracked,
+                against: revision,
+                in: worktree
+            )
+        }
         let kept = Array(entries.prefix(limits.maximumChangedFiles))
         let worktreeObjectIds = await worktreeObjectIds(for: kept, in: worktree)
 
@@ -215,13 +222,19 @@ public struct WorktreeService: Sendable {
     public func fileDiff(
         for file: FileChange,
         at path: RepositoryRelativePath,
+        from oldPath: RepositoryRelativePath? = nil,
         in worktree: RepositoryLocation,
         contextLines: Int
     ) async throws(GitError) -> FileDiff {
         let revision = try await revisionToCompareAgainst(in: worktree)
-        let command: GitCommand = file.status == .untracked
-            ? .untrackedFileDiff(path: path, contextLines: contextLines)
-            : .fileDiff(path: path, against: revision, contextLines: contextLines)
+        let command: GitCommand
+        if file.status == .renamed, let oldPath {
+            command = .renamedFileDiff(from: oldPath, to: path, against: revision, contextLines: contextLines)
+        } else if file.status == .untracked {
+            command = .untrackedFileDiff(path: path, contextLines: contextLines)
+        } else {
+            command = .fileDiff(path: path, against: revision, contextLines: contextLines)
+        }
 
         let output = try await git.run(command, in: worktree)
         let text = String(decoding: output.standardOutput, as: UTF8.self)
@@ -409,6 +422,57 @@ public struct WorktreeService: Sendable {
                 indexObjectId: change.newObjectId
             )
         }
+    }
+
+    private func entriesIncludingUntrackedRenames(
+        tracked: [Entry],
+        untracked: [RepositoryRelativePath],
+        against revision: GitRevision,
+        in worktree: RepositoryLocation
+    ) async -> [Entry] {
+        let deleted = tracked.filter { $0.status == .deleted && !$0.isSubmodule }
+        let trackedPaths = Set(tracked.map(\.path))
+        let destinations = untracked.filter { !trackedPaths.contains($0) }
+        guard !deleted.isEmpty, !destinations.isEmpty,
+              deleted.count + destinations.count <= limits.maximumChangedFiles else {
+            return tracked + untracked.map(Entry.untracked)
+        }
+
+        // An incomplete comparison cannot safely take separate entries out of the change set.
+        let command = GitCommand.untrackedRenameStats(
+            deleted: deleted.map(\.path),
+            untracked: destinations,
+            against: revision
+        )
+        guard let output = try? await git.run(command, in: worktree), !output.isTruncated else {
+            return tracked + untracked.map(Entry.untracked)
+        }
+
+        let deletedByPath = Dictionary(uniqueKeysWithValues: deleted.map { ($0.path, $0) })
+        let possibleDestinations = Set(destinations)
+        var renames: [RepositoryRelativePath: Entry] = [:]
+        var matchedDestinations: Set<RepositoryRelativePath> = []
+        for record in NumstatParser.parse(output.standardOutput) {
+            guard let oldPath = record.oldPath, let source = deletedByPath[oldPath],
+                  possibleDestinations.contains(record.path) else { continue }
+            renames[oldPath] = Entry(
+                path: record.path,
+                oldPath: oldPath,
+                status: .renamed,
+                stats: ChangeStats(
+                    filesChanged: 1,
+                    insertions: record.insertions ?? 0,
+                    deletions: record.deletions ?? 0
+                ),
+                isBinary: record.insertions == nil && record.deletions == nil,
+                isSubmodule: false,
+                headObjectId: source.headObjectId,
+                indexObjectId: ContentHash.absentObjectId
+            )
+            matchedDestinations.insert(record.path)
+        }
+        return tracked.map { renames[$0.path] ?? $0 }
+            + untracked.filter { !matchedDestinations.contains($0) }.map(Entry.untracked)
     }
 
     /// Never throws, which is the change: a worktree the reader cannot open at all is a worse answer

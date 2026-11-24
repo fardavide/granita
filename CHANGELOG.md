@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.26.1 — 2026-11-24
+- **Review moved files in one place.** Granita shows a detected move as one rename and displays
+  only the lines you changed. Moves without edits are marked as having no content change.
+
 ### 0.26.0 — 2026-11-23
 - **Keep reviewing when a worktree is unavailable.** Granita keeps readable worktrees visible and
   offers a retry for the failed checkout or project. When Git reports stale registrations, you can
