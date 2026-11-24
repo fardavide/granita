@@ -11,15 +11,24 @@ import CoreReviewDomain
 @MainActor
 final class FakeGranitaRepository: GranitaRepository {
 
+    enum Repair {
+        case unavailable
+        case available(WorktreeScanIssue, WorktreeRepairPreview)
+    }
+
+    private(set) var repairApprovals: [WorktreeRepairApproval] = []
+
     private let diff: FileDiff
     private let content: [String]
     private let liveWorktrees: [WorktreeID]
+    private var repair: Repair
     private var revisions: [WorktreeID: Int]
     private var reads: [WorktreeID: Int] = [:]
     private var observers: [UUID: AsyncStream<WorktreeUpdate>.Continuation] = [:]
 
-    init(liveWorktrees: [WorktreeID] = []) {
+    init(liveWorktrees: [WorktreeID] = [], repair: Repair = .unavailable) {
         self.liveWorktrees = liveWorktrees
+        self.repair = repair
         revisions = Dictionary(uniqueKeysWithValues: liveWorktrees.map { ($0, 1) })
         content = (1...626).map { $0 == 600 ? "changed line 600" : "unchanged line \($0)" }
         let lines = (597...603).flatMap { number -> [DiffLine] in
@@ -95,6 +104,21 @@ final class FakeGranitaRepository: GranitaRepository {
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] { snapshot().worktrees }
+
+    func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        guard case .available(let issue, let preview) = repair, issue.target == .worktree(worktree) else {
+            throw .worktreeGone
+        }
+        return preview
+    }
+
+    func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        repairApprovals.append(approval)
+        guard case .available(_, let preview) = repair, preview.approval == approval else { throw .worktreeGone }
+        repair = .unavailable
+        return snapshot()
+    }
+
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree { throw .worktreeGone }
     func delete(_ worktree: WorktreeID) async throws(ApiFailure) { throw .worktreeGone }
     func image(of file: FileID, in worktree: WorktreeID, side: DiffSide) async throws(ApiFailure) -> Data { throw .fileGone }
@@ -105,7 +129,11 @@ final class FakeGranitaRepository: GranitaRepository {
     func updateReviewSettings(_ patch: ReviewSettingsPatch) async throws(ApiFailure) -> ReviewSettings { .unset }
 
     private func snapshot() -> WorktreeSnapshot {
-        WorktreeSnapshot(worktrees: liveWorktrees.map { id in
+        let issues: [WorktreeScanIssue] = switch repair {
+        case .unavailable: []
+        case .available(let issue, _): [issue]
+        }
+        return WorktreeSnapshot(worktrees: liveWorktrees.map { id in
             let revision = revisions[id, default: 1]
             let name = id == liveWorktrees.first ? "Review A" : "Agent B"
             let alias = id != liveWorktrees.first && revision > 1 ? "Agent B completed" : nil
@@ -116,7 +144,7 @@ final class FakeGranitaRepository: GranitaRepository {
                 stats: ChangeStats(filesChanged: 1, insertions: revision, deletions: 0),
                 lastModified: Date(timeIntervalSince1970: 1_000), revision: "revision-\(revisions[id, default: 1])"
             )
-        }, scannedAt: Date(timeIntervalSince1970: 1_000))
+        }, scannedAt: Date(timeIntervalSince1970: 1_000), issues: issues)
     }
 
     private static func liveDiff(revision: Int) -> FileDiff {

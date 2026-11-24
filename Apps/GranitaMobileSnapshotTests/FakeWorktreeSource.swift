@@ -1,5 +1,6 @@
 import ClientConnectionDomain
 import ClientWorktreesDomain
+import CoreApiDomain
 import CoreDiffDomain
 import CoreReviewDomain
 import Foundation
@@ -14,15 +15,25 @@ actor FakeGranitaRepository: GranitaRepository {
 
     private var worktrees: [Worktree]
     private let writeFailure: ApiFailure?
+    private let repairPreview: Result<WorktreeRepairPreview, ApiFailure>
 
-    init(worktrees: [Worktree], writeFailure: ApiFailure? = nil) {
+    init(
+        worktrees: [Worktree],
+        writeFailure: ApiFailure? = nil,
+        repairPreview: Result<WorktreeRepairPreview, ApiFailure> = .failure(.routeNotServed)
+    ) {
         self.worktrees = worktrees
         self.writeFailure = writeFailure
+        self.repairPreview = repairPreview
     }
 
     func projects() async throws(ApiFailure) -> [Project] { [] }
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] { worktrees }
+
+    func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        try repairPreview.get()
+    }
 
     func update(_ worktree: WorktreeID, with patch: WorktreePatch) async throws(ApiFailure) -> Worktree {
         if let writeFailure { throw writeFailure }

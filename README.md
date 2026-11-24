@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.26.0** — keep reviewing healthy worktrees and confirm stale worktree cleanup from your phone.
 - **0.25.3** — Granita remembers your chosen icon and restores it after Christmas.
 - **0.25.2** — the Christmas icon has a lighter teal background with a subtle gradient.
-- **0.25.1** — get the Mac companion from discovery before pairing your iPhone or iPad.
 
 [Every release](CHANGELOG.md).
 

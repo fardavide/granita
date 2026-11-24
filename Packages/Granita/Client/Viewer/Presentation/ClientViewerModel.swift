@@ -391,6 +391,12 @@ public final class ClientViewerModel {
         guard case .snapshot(let snapshot) = update,
               case .read(let revision) = loadedRevision else { return }
         guard let row = snapshot.worktrees.first(where: { $0.id == worktree }) else {
+            guard snapshot.issues.contains(where: { issue in
+                switch issue.target {
+                case .project: true
+                case .worktree(let id): id == worktree
+                }
+            }) == false else { return }
             generation = UUID()
             inFlight = []
             isRefreshing = false

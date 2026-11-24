@@ -62,6 +62,12 @@ public protocol GranitaRepository: Sendable {
 
     func updates() async -> AsyncStream<WorktreeUpdate>
 
+    func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot
+
+    func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview
+
+    func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot
+
     func worktrees(
         inProject project: ProjectID?,
         reporting progress: @escaping @Sendable (WorktreeReadStage) async -> Void
@@ -191,6 +197,18 @@ extension GranitaRepository {
 
     public func updates() async -> AsyncStream<WorktreeUpdate> {
         AsyncStream { $0.finish() }
+    }
+
+    public func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        throw .routeNotServed
+    }
+
+    public func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        throw .routeNotServed
+    }
+
+    public func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        throw .routeNotServed
     }
 
     public func worktrees(

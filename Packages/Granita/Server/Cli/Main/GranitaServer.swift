@@ -116,7 +116,10 @@ struct GranitaServer {
         let identities = KeychainServerIdentityStore(subject: .thisMac, now: { Date() })
 
         let dependencies = ApiDependencies(
-            reader: WorktreeReader(registry: registry, service: service, store: store),
+            reader: WorktreeReader(
+                registry: registry, service: service, store: store,
+                registrationBackups: LocalWorktreeRegistrationBackups()
+            ),
             store: store,
             pairing: pairing,
             failedAttempts: FailedAttempts(now: { Date() }),

@@ -308,7 +308,7 @@ let package = Package(
             // A sibling `Domain`, which is the one thing a `Domain` may see: the vocabulary a Mac
             // refuses a request in is the connection unit's, and inventing a second copy of it here
             // would be two spellings of one refusal.
-            dependencies: ["ClientConnectionDomain", "CoreDiffDomain"],
+            dependencies: ["ClientConnectionDomain", "CoreApiDomain", "CoreDiffDomain"],
             path: "Client/Worktrees/Domain",
             swiftSettings: [swift6]
         ),
@@ -320,7 +320,7 @@ let package = Package(
         ),
         .target(
             name: "ClientWorktreesUi",
-            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreComponentsUi", "CoreDiffDomain"],
+            dependencies: ["ClientWorktreesDomain", "ClientConnectionDomain", "CoreApiDomain", "CoreComponentsUi", "CoreDiffDomain"],
             path: "Client/Worktrees/Ui",
             swiftSettings: [swift6, mainActorByDefault]
         ),

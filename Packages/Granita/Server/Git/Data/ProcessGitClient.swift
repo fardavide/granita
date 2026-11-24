@@ -31,8 +31,7 @@ public struct ProcessGitClient: GitClient {
     /// SPEC §5.1's budget for one invocation.
     public static let defaultTimeout = Duration.seconds(10)
 
-    /// Standard error is a sentence for a person, not a payload. A git that will not stop writing
-    /// to it should not be able to fill this process's memory with the complaint.
+    /// Bound git's diagnostics and verbose prune reports independently of standard output.
     private static let standardErrorLimitBytes = 64 * 1024
 
     /// How long a torn-down process is given to exit before it is killed.
@@ -50,7 +49,7 @@ public struct ProcessGitClient: GitClient {
 
     public func run(_ command: GitCommand, in location: RepositoryLocation) async throws(GitError) -> GitOutput {
         let arguments = Arguments(Self.terminated(GitInvocation.arguments(for: command)))
-        let overrides = Dictionary(uniqueKeysWithValues: GitInvocation.environmentOverrides.map {
+        let overrides = Dictionary(uniqueKeysWithValues: GitInvocation.environmentOverrides(for: command).map {
             (Environment.Key(stringLiteral: $0.key), $0.value)
         })
 
@@ -111,7 +110,12 @@ public struct ProcessGitClient: GitClient {
             }
         }
 
-        return GitOutput(standardOutput: outcome.standardOutput, isTruncated: outcome.isTruncated)
+        return GitOutput(
+            standardOutput: outcome.standardOutput,
+            isTruncated: outcome.isTruncated,
+            standardError: standardError,
+            isStandardErrorTruncated: outcome.isStandardErrorTruncated
+        )
     }
 
     /// The argument vector with a zero byte on the end of every element.
@@ -200,6 +204,7 @@ public struct ProcessGitClient: GitClient {
                 standardOutput: standardOutput?.bytes ?? Data(),
                 isTruncated: standardOutput?.isTruncated ?? false,
                 standardError: standardError?.bytes ?? Data(),
+                isStandardErrorTruncated: standardError?.isTruncated ?? false,
                 timedOut: timedOut
             )
         }
@@ -243,5 +248,6 @@ private struct Outcome: Sendable {
     let standardOutput: Data
     let isTruncated: Bool
     let standardError: Data
+    let isStandardErrorTruncated: Bool
     let timedOut: Bool
 }

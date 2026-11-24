@@ -34,7 +34,7 @@ struct WorktreeCacheRouteTests {
     }
 
     @Test(arguments: [Reader.local, .http])
-    func `given a missing unscanned project and a stale healthy summary when reading the prepared list then fresh healthy rows arrive uncached`(
+    func `given a missing project when refreshing the prepared list then fresh healthy rows arrive with its issue`(
         reader: Reader
     ) async throws {
         // given
@@ -57,7 +57,7 @@ struct WorktreeCacheRouteTests {
         switch reader {
         case .local:
             read = try await LocalGranitaRepository(reader: scenario.reader)
-                .readWorktrees(inProject: nil, refreshing: false, reporting: { _ in })
+                .readWorktrees(inProject: nil, refreshing: true, reporting: { _ in })
         case .http:
             read = try await scenario.application.test(.router) { client in
                 try await HttpGranitaRepository(
@@ -65,16 +65,19 @@ struct WorktreeCacheRouteTests {
                     token: PairingToken(rawValue: "unused when authentication is off"),
                     transport: RouterTransport.over(client)
                 )
-                .readWorktrees(inProject: nil, refreshing: false, reporting: { _ in })
+                .readWorktrees(inProject: nil, refreshing: true, reporting: { _ in })
             }
         }
 
         // then
-        guard case .uncached(let rows) = read else {
-            Issue.record("An incomplete prepared inventory must return uncached healthy rows")
+        guard case .prepared(let snapshot) = read else {
+            Issue.record("A partial inventory must return prepared healthy rows and the failed project")
             return
         }
-        let refreshed = try #require(rows.first { $0.id == primary.id })
+        let missingID = ProjectID(canonicalPath: missingStoredProject.path)
+        #expect(snapshot.issues.map(\.target) == [.project(missingID)])
+        #expect(snapshot.issues.map(\.lastRead) == [.never])
+        let refreshed = try #require(snapshot.worktrees.first { $0.id == primary.id })
         #expect(refreshed.stats.insertions == 2)
         #expect(refreshed.revision != primary.revision)
     }

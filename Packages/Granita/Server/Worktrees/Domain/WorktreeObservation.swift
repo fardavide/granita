@@ -7,11 +7,18 @@ import ServerStoreDomain
 
 public protocol WorktreeObservationRegistry: Sendable {
     func updates() async -> AsyncStream<WorktreeSnapshot>
+    func observationUpdates() async -> AsyncStream<WorktreeSnapshot>
     func observationLocations() async -> [RepositoryLocation]
     func refresh(in worktrees: Set<WorktreeID>) async
     func reconcile() async
     func storeDidChange() async
     func stop() async
+}
+
+public extension WorktreeObservationRegistry {
+    func observationUpdates() async -> AsyncStream<WorktreeSnapshot> {
+        await updates()
+    }
 }
 
 extension WorktreeRegistry: WorktreeObservationRegistry {}
@@ -148,7 +155,7 @@ public actor WorktreeObservation {
 
     private func observeInventory(_ id: UUID) async {
         var previous = Set(await registry.observationLocations())
-        for await _ in await registry.updates() {
+        for await _ in await registry.observationUpdates() {
             let locations = Set(await registry.observationLocations())
             guard owns(id), Task.isCancelled == false else { return }
             if locations != previous { await receive(.reconcile, run: id) }

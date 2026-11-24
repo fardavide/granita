@@ -4,6 +4,43 @@ import XCTest
 /// XCUIApplication requires the native XCTest UI runner.
 final class LiveWorktreeUiTests: XCTestCase {
     @MainActor
+    func testRepairConfirmsTheListedRegistrationsAndKeepsTheHealthyWorktree() {
+        // given
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["worktree-repair", "disable-test-animations"]
+        app.launch()
+        defer { app.terminate() }
+        let animations = app.staticTexts["context-probe.animations"]
+        XCTAssertTrue(animations.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertEqual(animations.value as? String, "UIKit=false;SwiftUI=true", app.debugDescription)
+        let healthy = app.staticTexts["Review A"]
+        XCTAssertTrue(healthy.waitForExistence(timeout: 15), app.debugDescription)
+        let approvals = app.staticTexts["worktree-repair.approvals"]
+        XCTAssertEqual(approvals.value as? String, "none", app.debugDescription)
+
+        // when
+        let repair = app.buttons["Repair…"]
+        XCTAssertTrue(repair.waitForExistence(timeout: 15), app.debugDescription)
+        repair.tap()
+        let confirm = app.buttons["Back Up 2 Stale Registrations"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["boiler-check-in"].exists, app.debugDescription)
+        XCTAssertTrue(app.staticTexts["boiler-reserve"].exists, app.debugDescription)
+        confirm.tap()
+
+        // then
+        let expectedApproval = "00000000-0000-0000-0000-000000000042"
+        let approved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", expectedApproval), object: approvals
+        )
+        wait(for: [approved], timeout: 10)
+        XCTAssertEqual(approvals.value as? String, expectedApproval, app.debugDescription)
+        XCTAssertTrue(healthy.isHittable, app.debugDescription)
+        XCTAssertFalse(app.staticTexts["Missing review"].exists, app.debugDescription)
+    }
+
+    @MainActor
     func testLiveWorktreeListUpdatesWhileNoReviewIsOpen() {
         // given
         continueAfterFailure = false
@@ -38,7 +75,7 @@ final class LiveWorktreeUiTests: XCTestCase {
     }
 
     @MainActor
-    func testOtherWorktreeChangesLeaveTheVisibleSidebarAndReviewUntouched() {
+    func testOtherWorktreeChangesUpdateTheMacSidebarAndLeaveTheReviewUntouched() {
         // given
         let showsSidebar = UIDevice.current.userInterfaceIdiom == .pad
         continueAfterFailure = false
@@ -53,7 +90,6 @@ final class LiveWorktreeUiTests: XCTestCase {
         // opens the production review directly. Mobile value-navigation remains outside this check.
         let code = app.staticTexts["review revision 1"]
         XCTAssertTrue(code.waitForExistence(timeout: 15), app.debugDescription)
-        let sidebar: SidebarFrame
         if showsSidebar {
             let subscribed = XCTNSPredicateExpectation(
                 predicate: NSPredicate(format: "value == %@", "2"), object: app.staticTexts["live-probe.subscriptions"]
@@ -61,9 +97,6 @@ final class LiveWorktreeUiTests: XCTestCase {
             wait(for: [subscribed], timeout: 10)
             let otherRow = app.staticTexts["Agent B"]
             XCTAssertTrue(otherRow.isHittable, app.debugDescription)
-            sidebar = .visible(otherRow.frame)
-        } else {
-            sidebar = .notVisible
         }
         let codeFrame = code.frame
         let reads = app.staticTexts["live-probe.reads"].value as? String
@@ -76,26 +109,18 @@ final class LiveWorktreeUiTests: XCTestCase {
         wait(for: [otherChanged], timeout: 10)
 
         // then
+        if showsSidebar {
+            let changed = app.staticTexts["Agent B completed"]
+            XCTAssertTrue(changed.waitForExistence(timeout: 15), app.debugDescription)
+            XCTAssertTrue(changed.isHittable, app.debugDescription)
+            XCTAssertFalse(app.staticTexts["Agent B"].exists, app.debugDescription)
+        }
         let unexpectedRead = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "value != %@", reads ?? ""), object: app.staticTexts["live-probe.reads"]
         )
         unexpectedRead.isInverted = true
-        var unchanged = [unexpectedRead]
-        switch sidebar {
-        case .notVisible: break
-        case .visible:
-            let sidebarChanged = XCTNSPredicateExpectation(
-                predicate: NSPredicate(format: "exists == true"), object: app.staticTexts["Agent B completed"]
-            )
-            sidebarChanged.isInverted = true
-            unchanged.append(sidebarChanged)
-        }
-        wait(for: unchanged, timeout: 1)
+        wait(for: [unexpectedRead], timeout: 1)
         XCTAssertEqual(app.staticTexts["live-probe.reads"].value as? String, reads, app.debugDescription)
-        switch sidebar {
-        case .notVisible: break
-        case .visible(let frame): XCTAssertEqual(app.staticTexts["Agent B"].frame, frame, app.debugDescription)
-        }
         XCTAssertEqual(code.frame, codeFrame, app.debugDescription)
         XCTAssertTrue(code.isHittable, app.debugDescription)
         XCTAssertEqual(app.progressIndicators.count, 0, app.debugDescription)
@@ -130,10 +155,5 @@ final class LiveWorktreeUiTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["review revision 2"].isHittable, app.debugDescription)
         XCTAssertEqual(app.staticTexts["live-probe.reads"].value as? String, reads, app.debugDescription)
         XCTAssertEqual(app.progressIndicators.count, 0, app.debugDescription)
-    }
-
-    private enum SidebarFrame {
-        case notVisible
-        case visible(CGRect)
     }
 }

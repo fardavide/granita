@@ -46,7 +46,9 @@ struct GranitaHttpClient: Sendable {
     }
 
     func eventStream() async throws(ApiFailure) -> HttpEventResponse {
-        var outgoing = try request(.get, "/v1/events", query: [], body: nil)
+        var outgoing = try request(
+            .get, "/v1/events", query: [URLQueryItem(name: "allowPartial", value: "true")], body: nil
+        )
         outgoing = HttpRequest(
             method: outgoing.method,
             url: outgoing.url,

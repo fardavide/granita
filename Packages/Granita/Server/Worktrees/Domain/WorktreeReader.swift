@@ -31,11 +31,18 @@ public struct WorktreeReader: Sendable {
     private let registry: WorktreeRegistry
     private let service: WorktreeService
     private let store: any Store
+    private let repairs: WorktreeRepairCoordinator
 
-    public init(registry: WorktreeRegistry, service: WorktreeService, store: any Store) {
+    public init(
+        registry: WorktreeRegistry,
+        service: WorktreeService,
+        store: any Store,
+        registrationBackups: any WorktreeRegistrationBackingUp
+    ) {
         self.registry = registry
         self.service = service
         self.store = store
+        repairs = WorktreeRepairCoordinator(registry: registry, service: service, backups: registrationBackups)
     }
 
     // MARK: - Listing
@@ -59,19 +66,36 @@ public struct WorktreeReader: Sendable {
         }
     }
 
-    public func updates() async -> AsyncStream<WorktreeSnapshot> {
-        await registry.updates()
+    public func updates(allowPartial: Bool = false) async -> AsyncStream<WorktreeSnapshot> {
+        await registry.updates(allowPartial: allowPartial)
     }
 
     public func snapshot(
         inProject filter: ProjectID?,
-        refreshing: Bool
+        refreshing: Bool,
+        allowPartial: Bool = false
     ) async throws(WorktreeReadError) -> WorktreeSnapshot {
         do {
-            return try await registry.snapshot(inProject: filter, refreshing: refreshing)
+            return try await registry.snapshot(inProject: filter, refreshing: refreshing, allowPartial: allowPartial)
         } catch {
             throw WorktreeReadError(error)
         }
+    }
+
+    public func retry(_ target: WorktreeScanTarget) async throws(WorktreeReadError) -> WorktreeSnapshot {
+        do {
+            return try await registry.retry(target)
+        } catch {
+            throw WorktreeReadError(error)
+        }
+    }
+
+    public func previewRepair(for worktree: WorktreeID) async throws(WorktreeReadError) -> WorktreeRepairPreview {
+        try await repairs.preview(for: worktree)
+    }
+
+    public func approveRepair(_ approval: WorktreeRepairApproval) async throws(WorktreeReadError) -> WorktreeSnapshot {
+        try await repairs.approve(approval)
     }
 
     /// `SPEC.md` §9's startup housekeeping: drop what the store holds for worktrees that no longer
@@ -426,6 +450,7 @@ extension WorktreeReadError {
         case .directoryGone: .directoryGone
         case .notFound: .notFound
         case .cancelled: .cancelled
+        case .staleRegistration: .staleRegistration
         case .git(let failure): .git(failure)
         }
     }

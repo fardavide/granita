@@ -23,6 +23,9 @@ actor FakeGranitaRepository: GranitaRepository {
 
     private(set) var cancelledReads = 0
     private(set) var updateSubscriptions = 0
+    private(set) var retriedScans: [WorktreeScanTarget] = []
+    private(set) var previewedRepairs: [WorktreeID] = []
+    private(set) var approvedRepairs: [WorktreeRepairApproval] = []
 
     private var worktrees: [Worktree]
     private let readFailure: ApiFailure?
@@ -36,23 +39,30 @@ actor FakeGranitaRepository: GranitaRepository {
     private let ignoringReadCancellation: Bool
     private let liveUpdates: [WorktreeUpdate]
     private let preparedAt: Date?
+    private let retryAnswer: Result<WorktreeSnapshot, ApiFailure>
+    private let suspendingScanRetry: Bool
+    private let previewAnswer: Result<WorktreeRepairPreview, ApiFailure>
+    private let approvalAnswer: Result<WorktreeSnapshot, ApiFailure>
     private var suspendedReadContinuations: [Int: AsyncStream<Void>.Continuation] = [:]
+    private var suspendedRetryContinuation: AsyncStream<Void>.Continuation?
 
-    /// Which writes suspend instead of answering, how many have arrived and are suspended, and the
+    /// Which operations suspend instead of answering, how many have arrived, and the
     /// continuations that will let them go.
     ///
     /// **The in-flight state is only observable while a request is outstanding**, and a fake that
     /// answers instantly has no such window at all — so both the row's `Deleting…` and the rename
     /// the phone applies before the Mac replies can only be reasoned about without this, never
     /// asserted.
-    private var held: Set<Write> = []
-    private var arrived: [Write: Int] = [:]
-    private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var held: Set<Operation> = []
+    private var arrived: [Operation: Int] = [:]
+    private var waiting: [Operation: [CheckedContinuation<Void, Never>]] = [:]
 
-    /// The two writes a test can hold independently of a suspended list read.
-    enum Write: Hashable, Sendable {
+    /// Operations a test can hold independently of a suspended list read.
+    enum Operation: Hashable, Sendable {
         case update
         case deletion
+        case repairPreview
+        case repairApproval
     }
 
     /// What the first read answers with, when the point of the test is what the **second** one does.
@@ -80,7 +90,11 @@ actor FakeGranitaRepository: GranitaRepository {
         suspendedReadNumbers: Set<Int> = [],
         ignoringReadCancellation: Bool = false,
         liveUpdates: [WorktreeUpdate] = [],
-        preparedAt: Date? = nil
+        preparedAt: Date? = nil,
+        retryAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed),
+        suspendingScanRetry: Bool = false,
+        previewAnswer: Result<WorktreeRepairPreview, ApiFailure> = .failure(.routeNotServed),
+        approvalAnswer: Result<WorktreeSnapshot, ApiFailure> = .failure(.routeNotServed)
     ) {
         self.worktrees = worktrees
         self.readFailure = readFailure
@@ -96,6 +110,10 @@ actor FakeGranitaRepository: GranitaRepository {
         self.ignoringReadCancellation = ignoringReadCancellation
         self.liveUpdates = liveUpdates
         self.preparedAt = preparedAt
+        self.retryAnswer = retryAnswer
+        self.suspendingScanRetry = suspendingScanRetry
+        self.previewAnswer = previewAnswer
+        self.approvalAnswer = approvalAnswer
     }
 
     func projects() async throws(ApiFailure) -> [Project] {
@@ -108,6 +126,29 @@ actor FakeGranitaRepository: GranitaRepository {
             for update in liveUpdates { continuation.yield(update) }
             continuation.finish()
         }
+    }
+
+    func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        retriedScans.append(target)
+        if suspendingScanRetry, retriedScans.count == 1 {
+            let suspended = AsyncStream<Void>.makeStream()
+            suspendedRetryContinuation = suspended.continuation
+            var events = suspended.stream.makeAsyncIterator()
+            _ = await events.next()
+        }
+        return try retryAnswer.get()
+    }
+
+    func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        previewedRepairs.append(worktree)
+        await arrive(.repairPreview)
+        return try previewAnswer.get()
+    }
+
+    func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        approvedRepairs.append(approval)
+        await arrive(.repairApproval)
+        return try approvalAnswer.get()
     }
 
     func worktrees(inProject project: ProjectID?) async throws(ApiFailure) -> [Worktree] {
@@ -165,6 +206,17 @@ actor FakeGranitaRepository: GranitaRepository {
         }
     }
 
+    func waitUntilScanRetryStarted() async {
+        while retriedScans.isEmpty {
+            await Task.yield()
+        }
+    }
+
+    func releaseScanRetry() {
+        suspendedRetryContinuation?.finish()
+        suspendedRetryContinuation = nil
+    }
+
     func releaseHeldRead() {
         for continuation in suspendedReadContinuations.values {
             continuation.finish()
@@ -189,32 +241,31 @@ actor FakeGranitaRepository: GranitaRepository {
         worktrees.removeAll { $0.id == worktree }
     }
 
-    /// Keeps every write of this kind suspended until a test lets it go.
-    func holdTheNext(_ write: Write) {
-        held.insert(write)
+    /// Suspends every operation of this kind until the test releases it.
+    func holdTheNext(_ operation: Operation) {
+        held.insert(operation)
     }
 
-    /// Suspends until `count` writes of this kind have arrived and are being held.
-    func waitForOneToArrive(_ write: Write, count: Int = 1) async {
-        while arrived[write, default: 0] < count {
+    /// Suspends until `count` operations of this kind have arrived and are being held.
+    func waitForOneToArrive(_ operation: Operation, count: Int = 1) async {
+        while arrived[operation, default: 0] < count {
             await Task.yield()
         }
     }
 
-    func releaseHeld(_ write: Write) {
-        held.remove(write)
-        for continuation in waiting {
+    func releaseHeld(_ operation: Operation) {
+        held.remove(operation)
+        for continuation in waiting.removeValue(forKey: operation) ?? [] {
             continuation.resume()
         }
-        waiting = []
     }
 
     /// Counts the arrival and suspends if this kind is being held.
-    private func arrive(_ write: Write) async {
-        arrived[write, default: 0] += 1
-        guard held.contains(write) else { return }
+    private func arrive(_ operation: Operation) async {
+        arrived[operation, default: 0] += 1
+        guard held.contains(operation) else { return }
         await withCheckedContinuation { continuation in
-            waiting.append(continuation)
+            waiting[operation, default: []].append(continuation)
         }
     }
 

@@ -30,6 +30,8 @@ public final class ClientWorktreesModel {
     public private(set) var readStage: WorktreeReadStage = .finding(.unknown)
     public private(set) var readTiming: WorktreeReadTiming = .notStarted
     public private(set) var readResult: WorktreeReadResult = .notRead
+    public private(set) var scanIssues: [WorktreeScanIssue] = []
+    public private(set) var scanAction: WorktreeScanAction = .idle
     public private(set) var logCopyState: DiagnosticCopyState = .ready
     public private(set) var mode: WorktreeListMode
     public private(set) var showsQuietWorktrees: Bool
@@ -96,6 +98,7 @@ public final class ClientWorktreesModel {
     private var readTrigger: WorktreeReadTrigger = .appearance
     private var review: Review = .none
     private var pendingSnapshot: PendingSnapshot = .none
+    private var inventoryRevision = UUID()
     private let repository: any GranitaRepository
     private let preferences: any WorktreeListPreferences
     private let copyingLogs: any DiagnosticLogsCopying
@@ -168,9 +171,7 @@ public final class ClientWorktreesModel {
         if case .failed(.unauthorized) = update {
             cancelLoading()
             reading = .idle
-            pendingSnapshot = .none
-            readResult = .notRead
-            state = .failed(.unauthorized)
+            refuseUnauthorizedRead()
             return
         }
         guard case .snapshot(let snapshot) = update else { return }
@@ -187,6 +188,56 @@ public final class ClientWorktreesModel {
         for await update in await repository.updates() {
             guard Task.isCancelled == false else { return }
             await receive(update)
+        }
+    }
+
+    public func retryScan(_ target: WorktreeScanTarget) async {
+        guard !scanAction.isBusy, scanIssues.contains(where: { $0.target == target }) else { return }
+        let revision = inventoryRevision
+        scanAction = .checking(target)
+        do {
+            let snapshot = try await repository.retryWorktreeScan(target)
+            guard scanAction == .checking(target) else { return }
+            applyRecovery(snapshot, since: revision)
+            scanAction = scanIssues.contains(where: { $0.target == target }) ? .stillUnavailable(target) : .idle
+        } catch {
+            guard scanAction == .checking(target) else { return }
+            await reportScanActionFailure(error, for: target)
+        }
+    }
+
+    public func previewRepair(for worktree: WorktreeID) async {
+        let target = WorktreeScanTarget.worktree(worktree)
+        guard !scanAction.isBusy, scanIssues.contains(where: {
+            $0.target == target && $0.reason == .staleRegistration
+        }) else { return }
+        scanAction = .checking(target)
+        do {
+            let preview = try await repository.previewWorktreeRepair(worktree)
+            guard scanAction == .checking(target) else { return }
+            scanAction = .confirming(worktree, preview)
+        } catch {
+            guard scanAction == .checking(target) else { return }
+            await reportScanActionFailure(error, for: target)
+        }
+    }
+
+    public func cancelRepair() {
+        if case .confirming = scanAction { scanAction = .idle }
+    }
+
+    public func approveRepair(_ preview: WorktreeRepairPreview) async {
+        guard case .confirming(let worktree, let pending) = scanAction, preview == pending else { return }
+        let revision = inventoryRevision
+        scanAction = .repairing(worktree)
+        do {
+            let snapshot = try await repository.approveWorktreeRepair(preview.approval)
+            guard scanAction == .repairing(worktree) else { return }
+            applyRecovery(snapshot, since: revision)
+            scanAction = .idle
+        } catch {
+            guard scanAction == .repairing(worktree) else { return }
+            await reportScanActionFailure(error, for: .worktree(worktree))
         }
     }
 
@@ -424,13 +475,47 @@ public final class ClientWorktreesModel {
 
     private func apply(_ snapshot: WorktreeSnapshot) {
         cancelLoading()
-        worktrees = snapshot.worktrees
+        setInventory(snapshot)
         let route: WorktreeConnectionRoute = switch readResult {
         case .notRead: .unknown
         case .read(_, let route), .stale(_, let route, _): route
         }
         readResult = .read(at: snapshot.scannedAt, route: route)
         state = arrangement
+    }
+
+    private func setInventory(_ snapshot: WorktreeSnapshot) {
+        let listed = Set(snapshot.worktrees.map(\.id))
+        let uncertainTargets = Set(snapshot.issues.map(\.target))
+        let retained = worktrees.filter {
+            !listed.contains($0.id) &&
+                (uncertainTargets.contains(.worktree($0.id)) || uncertainTargets.contains(.project($0.projectId)))
+        }
+        worktrees = snapshot.worktrees + retained
+        scanIssues = snapshot.issues
+        inventoryRevision = UUID()
+    }
+
+    private func applyRecovery(_ snapshot: WorktreeSnapshot, since revision: UUID) {
+        guard inventoryRevision == revision else { return }
+        pendingSnapshot = .none
+        apply(snapshot)
+    }
+
+    private func refuseUnauthorizedRead() {
+        pendingSnapshot = .none
+        readResult = .notRead
+        scanIssues = []
+        scanAction = .idle
+        state = .failed(.unauthorized)
+    }
+
+    private func reportScanActionFailure(_ failure: ApiFailure, for target: WorktreeScanTarget) async {
+        switch failure {
+        case .cancelled: scanAction = .idle
+        case .unauthorized: await receive(.failed(.unauthorized))
+        default: scanAction = .failed(target, failure)
+        }
     }
 
     private func performLoad(attempt: UUID) async {
@@ -459,11 +544,14 @@ public final class ClientWorktreesModel {
             let scannedAt: Date
             switch read {
             case .prepared(let snapshot):
-                answer = snapshot.worktrees
+                setInventory(snapshot)
+                answer = worktrees
                 scannedAt = snapshot.scannedAt
             case .uncached(let rows):
                 answer = rows
                 scannedAt = now()
+                scanIssues = []
+                inventoryRevision = UUID()
             }
             worktrees = answer
             let route: WorktreeConnectionRoute = switch readStage {
@@ -482,8 +570,7 @@ public final class ClientWorktreesModel {
                 state = arrangement
                 return
             }
-            readResult = .notRead
-            state = .failed(.unauthorized)
+            refuseUnauthorizedRead()
         } catch {
             guard ownsRead(attempt) else { return }
             guard !Task.isCancelled else {
@@ -602,7 +689,18 @@ public final class ClientWorktreesModel {
     /// measured against the same instant — a list whose rows each read their own `Date()` would
     /// show two worktrees touched together as a minute apart.
     private var arrangement: WorktreeSidebarState {
-        WorktreeSidebarState(of: worktrees, mode: mode, showingQuiet: showsQuietWorktrees, now: now())
+        let unavailable = Set(scanIssues.compactMap { issue -> WorktreeID? in
+            guard case .worktree(let id) = issue.target else { return nil }
+            return id
+        })
+        let readable = worktrees.filter { !unavailable.contains($0.id) }
+        if !scanIssues.isEmpty, !worktrees.isEmpty {
+            return .listing(WorktreeListing(of: readable, mode: mode, showingQuiet: showsQuietWorktrees, now: now()))
+        }
+        return WorktreeSidebarState(
+            of: readable,
+            mode: mode, showingQuiet: showsQuietWorktrees, now: now()
+        )
     }
 
     private enum ReadTask {

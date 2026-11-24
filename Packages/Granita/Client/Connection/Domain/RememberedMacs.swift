@@ -276,6 +276,30 @@ public struct RememberedMacRepository: GranitaRepository {
         await liveUpdates.stream()
     }
 
+    public func retryWorktreeScan(_ target: WorktreeScanTarget) async throws(ApiFailure) -> WorktreeSnapshot {
+        do {
+            return try await macs.connection(to: server).retryWorktreeScan(target)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func previewWorktreeRepair(_ worktree: WorktreeID) async throws(ApiFailure) -> WorktreeRepairPreview {
+        do {
+            return try await macs.connection(to: server).previewWorktreeRepair(worktree)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
+    public func approveWorktreeRepair(_ approval: WorktreeRepairApproval) async throws(ApiFailure) -> WorktreeSnapshot {
+        do {
+            return try await macs.connection(to: server).approveWorktreeRepair(approval)
+        } catch {
+            throw await noted(error)
+        }
+    }
+
     public func projects() async throws(ApiFailure) -> [Project] {
         do {
             return try await macs.connection(to: server).projects()

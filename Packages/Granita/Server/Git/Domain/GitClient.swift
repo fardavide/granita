@@ -30,9 +30,20 @@ public struct GitOutput: Hashable, Sendable {
     /// part of, and the size guards exist to show it rather than to refuse.
     public let isTruncated: Bool
 
-    public init(standardOutput: Data, isTruncated: Bool) {
+    /// Git uses this stream for both diagnostics and verbose worktree prune reports.
+    public let standardError: String
+    public let isStandardErrorTruncated: Bool
+
+    public init(
+        standardOutput: Data,
+        isTruncated: Bool,
+        standardError: String = "",
+        isStandardErrorTruncated: Bool = false
+    ) {
         self.standardOutput = standardOutput
         self.isTruncated = isTruncated
+        self.standardError = standardError
+        self.isStandardErrorTruncated = isStandardErrorTruncated
     }
 }
 

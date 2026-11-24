@@ -31,7 +31,7 @@ public struct WorktreeReadProfile: Sendable {
                 case .untrackedPaths, .trackedChanges, .trackedStats: .changeMetadata
                 case .fileDiff, .untrackedFileDiff, .fileContent: .diffContent
                 case .version, .isInsideWorkTree, .repositoryRoot, .gitDirectory,
-                     .commonGitDirectory, .removeWorktree: .other
+                     .commonGitDirectory, .removeWorktree, .previewWorktreePrune: .other
                 }
                 return measuredGroup == group
             }

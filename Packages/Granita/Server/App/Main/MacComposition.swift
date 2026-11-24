@@ -131,7 +131,8 @@ final class MacComposition {
         let reader = WorktreeReader(
             registry: registry,
             service: service,
-            store: store
+            store: store,
+            registrationBackups: LocalWorktreeRegistrationBackups()
         )
         localRepository = LocalGranitaRepository(reader: reader)
         localReviews = LocalReviewCommentStore(repository: localRepository)

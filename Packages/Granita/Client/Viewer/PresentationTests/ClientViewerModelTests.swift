@@ -271,6 +271,59 @@ struct ClientViewerModelTests {
         #expect(scenario.sut.isWaitingLong == false)
     }
 
+    @Test(arguments: [false, true])
+    func `given an open review when a snapshot could not scan its checkout then the loaded diff stays visible`(
+        checkoutOnly: Bool
+    ) async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+        let loadedDiff = scenario.sut.state
+        let project = ProjectID(rawValue: "granita-project")
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100),
+            issues: [WorktreeScanIssue(
+                target: checkoutOnly ? .worktree(aWorktree) : .project(project),
+                projectID: project,
+                name: "Granita",
+                projectName: "Granita",
+                reason: .gitFailure,
+                lastRead: .never
+            )]
+        )))
+
+        // then
+        #expect(scenario.sut.state == loadedDiff)
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
+    @Test
+    func `given another worktree could not be scanned when a complete project no longer lists this worktree then its open review is removed`() async {
+        // given
+        let scenario = Scenario(files: aChangeSet(of: 1))
+        await scenario.sut.load()
+        let project = ProjectID(rawValue: "granita-project")
+        let other = WorktreeID(rawValue: "another-worktree")
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [],
+            scannedAt: Date(timeIntervalSince1970: 1_800_000_100),
+            issues: [WorktreeScanIssue(
+                target: .worktree(other), projectID: project, name: "Other checkout", projectName: "Granita",
+                reason: .gitFailure, lastRead: .never
+            )]
+        )))
+
+        // then
+        #expect(scenario.sut.state == .failed(.worktreeGone))
+        #expect(scenario.repository.changeSetReads == 1)
+    }
+
     @Test
     func `given a live review reload is suspended when its lifecycle is cancelled then no diff request follows its late answer`() async {
         // given

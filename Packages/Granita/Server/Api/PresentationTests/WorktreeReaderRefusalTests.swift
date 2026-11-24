@@ -166,7 +166,7 @@ struct WorktreeReaderRefusalTests {
                     store: store, service: service, directory: LocalWorktreeDirectory(),
                     suggestedAliases: { _ in [:] }
                 ),
-                service: service, store: store
+                service: service, store: store, registrationBackups: LocalWorktreeRegistrationBackups()
             )
         }
     }

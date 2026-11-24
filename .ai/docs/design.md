@@ -242,9 +242,9 @@ diagnostics. Keep recovery and reporting reachable in a scroll view at accessibi
 ### Refresh keeps the content, and makes its age visible
 
 > Live-update contract approved on 6 November 2026: prepared Mac snapshots update the active
-> worktree list without a global loading state. While a worktree is being reviewed, activity in
-> another worktree remains invisible, including in a sidebar. The open worktree automatically
-> reloads only when its own content changes. This replaces the earlier foreground-only policy
+> worktree list without a global loading state. While a worktree is being reviewed on iPhone or
+> iPad, activity in another worktree remains invisible, including in a sidebar. The open worktree
+> automatically reloads only when its own content changes. This replaces the earlier foreground-only policy
 > and SPEC section 10's required update pill; see
 > [0265](decisions/0265-prepare-worktree-summaries-and-refresh-only-the-review-that-changed.md).
 
@@ -260,6 +260,18 @@ The footer switches from *Read <age>, over Tailscale/on this network.* to *Showi
 <age>.* until a read succeeds. Unknown routes omit the route phrase. Authorization refusal replaces
 the list with Pair Again, because its rows no longer have a usable credential.
 Rejected: an alert hiding the old list, and a permanent diagnostic toolbar button.
+
+### An unavailable worktree leaves the rest of the list visible
+
+Put failed checkouts and projects in an *Unavailable* section below the readable rows. Each
+entry names the affected checkout or project and shows the age of its last read when available.
+*Try Again* rechecks that entry. An open review keeps its loaded diff until the server can confirm
+the checkout is gone.
+
+Git-marked stale registrations offer *Repair…*. A sheet names the host and repository, lists
+the affected registrations, and shows the Git preview command and backup behavior under
+*Details*. The reader can approve moving the listed registrations into a backup from the
+iPhone. When the preview has changed, offer a new preview.
 
 ### A read nobody asked for is reported beside the title *(Davide, 15 September 2026)*
 

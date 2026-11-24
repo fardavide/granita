@@ -4,6 +4,7 @@ import ClientMacDomain
 import ClientViewerPresentation
 import ClientWorktreesDomain
 import ClientWorktreesPresentation
+import CoreApiDomain
 import CoreDiffDomain
 
 @MainActor
@@ -193,6 +194,65 @@ struct LiveWorktreeListFixture: View {
                     Text("Live subscriptions")
                         .accessibilityIdentifier("live-probe.subscriptions")
                         .accessibilityValue(String(repository.subscriptionCount))
+                    ContextAnimationProbe().frame(height: 20)
+                }
+                .font(.caption)
+            }
+        }
+        .preferredColorScheme(.light)
+        .transaction { transaction in
+            if ProcessInfo.processInfo.arguments.contains("disable-test-animations") {
+                transaction.disablesAnimations = true
+                transaction.animation = nil
+            }
+        }
+    }
+}
+
+@MainActor
+struct WorktreeRepairFixture: View {
+    @State private var repository: FakeGranitaRepository
+    @State private var sidebar: ClientWorktreesModel
+
+    init() {
+        let issue = WorktreeScanIssue(
+            target: .worktree(WorktreeID(rawValue: "missing-review")),
+            projectID: ProjectID(rawValue: "live-project"),
+            name: "Missing review",
+            projectName: "Live fixture",
+            reason: .staleRegistration,
+            lastRead: .never
+        )
+        let preview = WorktreeRepairPreview(
+            approval: WorktreeRepairApproval(id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42))),
+            projectName: issue.projectName,
+            registrations: ["boiler-check-in", "boiler-reserve"]
+        )
+        let repository = FakeGranitaRepository(
+            liveWorktrees: [WorktreeID(rawValue: "healthy-review")],
+            repair: .available(issue, preview)
+        )
+        _repository = State(initialValue: repository)
+        _sidebar = State(initialValue: ClientWorktreesModel(
+            macName: "Fixture Mac", repository: repository,
+            preferences: LiveWorktreePreferences(),
+            copyingLogs: FakeDiagnosticLogsCopying(answering: .success(())),
+            announcing: LiveWorktreeAnnouncements(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        ))
+    }
+
+    var body: some View {
+        NavigationStack {
+            WorktreeSidebarScreen(model: sidebar, onPairAgain: {}, onOpenSettings: {}) { _, name, _, _ in
+                Text(name)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack {
+                    let approvals = repository.repairApprovals.map(\.id.uuidString)
+                    Text("Approved repairs")
+                        .accessibilityIdentifier("worktree-repair.approvals")
+                        .accessibilityValue(approvals.isEmpty ? "none" : approvals.joined(separator: ","))
                     ContextAnimationProbe().frame(height: 20)
                 }
                 .font(.caption)
