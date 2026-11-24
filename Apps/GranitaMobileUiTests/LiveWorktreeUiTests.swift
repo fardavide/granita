@@ -14,6 +14,10 @@ final class LiveWorktreeUiTests: XCTestCase {
         let animations = app.staticTexts["context-probe.animations"]
         XCTAssertTrue(animations.waitForExistence(timeout: 15), app.debugDescription)
         XCTAssertEqual(animations.value as? String, "UIKit=false;SwiftUI=true", app.debugDescription)
+        let loading = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Waiting for your Mac’s response.")).firstMatch
+        XCTAssertTrue(loading.waitForExistence(timeout: 15), app.debugDescription)
+        app.buttons["Finish fixture read"].tap()
         let healthy = app.staticTexts["Review A"]
         XCTAssertTrue(healthy.waitForExistence(timeout: 15), app.debugDescription)
         let approvals = app.staticTexts["worktree-repair.approvals"]
