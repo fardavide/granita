@@ -299,6 +299,7 @@ public final class ClientViewerModel {
 
     private var loadedRevision: LoadedRevision = .notRead
     private var observedRevision: LoadedRevision = .notRead
+    private var scanAvailability: ScanAvailability = .unknown
     private var generation = UUID()
 
     private let worktree: WorktreeID
@@ -388,9 +389,31 @@ public final class ClientViewerModel {
             state = .failed(.unauthorized)
             return
         }
-        guard case .snapshot(let snapshot) = update,
-              case .read(let revision) = loadedRevision else { return }
-        guard let row = snapshot.worktrees.first(where: { $0.id == worktree }) else {
+        guard case .snapshot(let snapshot) = update else { return }
+        let current = snapshot.worktrees.first { $0.id == worktree }
+        let scanIsUnavailable = snapshot.issues.contains { issue in
+            switch issue.target {
+            case .worktree(let id): id == worktree
+            case .project(let id): id == current?.projectId
+            }
+        }
+        // The initial read may fail just before the subscription sees the recovered snapshot.
+        let scanRecovered = switch scanAvailability {
+        case .unknown, .unavailable: !scanIsUnavailable && current != nil
+        case .available: false
+        }
+        if scanIsUnavailable {
+            scanAvailability = .unavailable
+        } else if scanRecovered {
+            scanAvailability = .available(recoveredDuring: generation)
+        }
+        if scanRecovered, case .failed(.gitFailure) = state {
+            await load(trigger: .pullToRefresh)
+            return
+        }
+
+        guard case .read(let revision) = loadedRevision else { return }
+        guard let row = current else {
             guard snapshot.issues.contains(where: { issue in
                 switch issue.target {
                 case .project: true
@@ -540,7 +563,14 @@ public final class ClientViewerModel {
             state = entries.isEmpty ? .loading : .reading(entries)
         } catch {
             guard self.generation == generation, !Task.isCancelled else { return }
-            state = .failed(error)
+            if case .gitFailure = error,
+               case .available(let recoveredDuring) = scanAvailability,
+               recoveredDuring == generation {
+                // The recovered scan answered after this read began. Try once with fresh Git state.
+                await load(trigger: .pullToRefresh)
+            } else {
+                state = .failed(error)
+            }
         }
     }
 
@@ -1371,6 +1401,12 @@ public final class ClientViewerModel {
     private enum LoadedRevision {
         case notRead
         case read(String)
+    }
+
+    private enum ScanAvailability {
+        case unknown
+        case unavailable
+        case available(recoveredDuring: UUID)
     }
 
     /// `Turbine.swift:41-44` — the file's name and the span, resolved against the diff.

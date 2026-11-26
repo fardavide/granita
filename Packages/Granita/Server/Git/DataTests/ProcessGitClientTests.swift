@@ -134,6 +134,18 @@ struct ProcessGitClientTests {
         #expect(scenario.text(of: output).contains("? untracked.txt"))
     }
 
+    @Test
+    func `given a configured filesystem monitor when reading status then Git does not invoke it`() async throws {
+        // given
+        let scenario = try Scenario(repository: .hostile)
+
+        // when
+        let output = try await scenario.sut.run(.worktreeStatus, in: scenario.location)
+
+        // then
+        #expect(output.standardError.contains("fixture filesystem monitor was invoked") == false)
+    }
+
     // MARK: - Failing in a way that can be read from a phone
 
     @Test

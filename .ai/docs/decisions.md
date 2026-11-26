@@ -291,3 +291,4 @@ read whole:
 - [0270](decisions/0270-keep-the-mac-worktree-sidebar-live-during-review.md) The Mac sidebar applies live snapshots during review, keeps the open diff scoped to its own worktree, and replaces the toolbar Refresh button with the existing age footer.
 - [0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md) Partial snapshots keep readable worktrees available and report scan failures by checkout or project. Paired readers can confirm a server-verified Git cleanup preview.
 - [0272](decisions/0272-pair-unstaged-renames-in-a-private-index.md) Git pairs tracked deletions with untracked destinations using a private index. One rename carries both paths and the line counts and hunks from that comparison.
+- [0273](decisions/0273-recover-from-git-scan-timeouts.md) Granita overrides Git's filesystem monitor per command, retries timed-out scans in the background, and restores a failed open diff on recovery.

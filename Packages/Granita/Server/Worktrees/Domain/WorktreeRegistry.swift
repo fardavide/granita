@@ -74,6 +74,7 @@ public actor WorktreeRegistry {
     private let directory: any WorktreeDirectoryReading
     private let suggestedAliases: @Sendable ([(path: String, branch: String?)]) async -> [String: String]
     private let now: @Sendable () -> Date
+    private let timing: any WorktreeObservationTiming
     private var recordsByProject: [ProjectID: [WorktreeRecord]] = [:]
     private var changesByWorktree: [WorktreeID: WorktreeChangeSet] = [:]
     private var scanDates: [WorktreeID: Date] = [:]
@@ -84,6 +85,7 @@ public actor WorktreeRegistry {
     private var requestedScans: [ProjectID: UInt64] = [:]
     private var completedScans: [ProjectID: UInt64] = [:]
     private var pendingScans: [ProjectID: ScanScope] = [:]
+    private var timeoutRetry: TimeoutRetry = .idle
     private var scanLifetime = UUID()
     private var cacheVersion: UInt64 = 0
     private var publicationVersion: UInt64 = 0
@@ -93,13 +95,15 @@ public actor WorktreeRegistry {
         service: WorktreeService,
         directory: any WorktreeDirectoryReading,
         suggestedAliases: @escaping @Sendable ([(path: String, branch: String?)]) async -> [String: String],
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        timing: any WorktreeObservationTiming = ContinuousWorktreeObservationTiming()
     ) {
         self.store = store
         self.service = service
         self.directory = directory
         self.suggestedAliases = suggestedAliases
         self.now = now
+        self.timing = timing
     }
 
     public func projects() async -> [Project] {
@@ -221,6 +225,8 @@ public actor WorktreeRegistry {
 
     public func stop() async {
         scanLifetime = UUID()
+        if case .scheduled(let task) = timeoutRetry { task.cancel() }
+        timeoutRetry = .idle
         let continuations = subscribers.values.map(\.continuation)
         subscribers = [:]
         for continuation in continuations { continuation.finish() }
@@ -390,14 +396,14 @@ public actor WorktreeRegistry {
         let names = Dictionary(worktrees.map { ($0.id, $0.displayName) }, uniquingKeysWith: { first, _ in first })
         return projects.flatMap { project -> [WorktreeScanIssue] in
             let records = recordsByProject[project.id] ?? []
-            if projectFailures[project.id] != nil {
+            if let failure = projectFailures[project.id] {
                 let lastRead = records.compactMap { scanDates[WorktreeID(canonicalPath: $0.location.path)] }.min()
                 return [WorktreeScanIssue(
                     target: .project(project.id),
                     projectID: project.id,
                     name: project.name,
                     projectName: project.name,
-                    reason: .gitFailure,
+                    reason: failure.scanIssueReason,
                     lastRead: lastRead.map(WorktreeScanIssue.LastRead.at) ?? .never
                 )]
             }
@@ -593,6 +599,44 @@ public actor WorktreeRegistry {
             scanDates = scanDates.filter { living.contains($0.key) }
             worktreeFailures = worktreeFailures.filter { living.contains($0.key) }
         }
+        scheduleTimedOutScans()
+    }
+
+    private func scheduleTimedOutScans() {
+        guard case .idle = timeoutRetry,
+              projectFailures.values.contains(where: { $0.scanIssueReason == .gitTimedOut })
+                  || worktreeFailures.values.contains(where: { $0.reason == .gitTimedOut })
+        else { return }
+        let lifetime = scanLifetime
+        timeoutRetry = .scheduled(Task { await retryTimedOutScans(lifetime: lifetime) })
+    }
+
+    private func retryTimedOutScans(lifetime: UUID) async {
+        defer { if scanLifetime == lifetime { timeoutRetry = .idle } }
+        var delay = Duration.seconds(2)
+        while scanLifetime == lifetime, !Task.isCancelled {
+            do { try await timing.sleep(for: delay) }
+            catch { return }
+
+            let state = await store.state()
+            guard scanLifetime == lifetime, !Task.isCancelled else { return }
+            let visible = state.projects.filter(\.isVisible).map(\.id)
+            let projects = visible.filter { projectFailures[$0]?.scanIssueReason == .gitTimedOut }
+            let readableProjects = visible.filter { projectFailures[$0] == nil }
+            let worktrees = Set(readableProjects.flatMap { recordsByProject[$0] ?? [] }.compactMap { record in
+                let id = WorktreeID(canonicalPath: record.location.path)
+                return worktreeFailures[id]?.reason == .gitTimedOut ? id : nil
+            })
+            guard !projects.isEmpty || !worktrees.isEmpty else { return }
+
+            if !worktrees.isEmpty { await refresh(in: worktrees) }
+            for project in projects where projectFailures[project]?.scanIssueReason == .gitTimedOut {
+                guard scanLifetime == lifetime, !Task.isCancelled else { return }
+                // The retry publishes the new issue or the recovered inventory.
+                _ = try? await retry(.project(project))
+            }
+            delay = min(delay + delay, .seconds(30))
+        }
     }
 
     /// One worktree, described the way the list describes every worktree.
@@ -729,6 +773,11 @@ public actor WorktreeRegistry {
         case partial
     }
 
+    private enum TimeoutRetry {
+        case idle
+        case scheduled(Task<Void, Never>)
+    }
+
     private enum ScanFailure: Sendable {
         case git(GitError)
         case staleRegistration
@@ -742,7 +791,7 @@ public actor WorktreeRegistry {
 
         var reason: WorktreeScanIssue.Reason {
             switch self {
-            case .git: .gitFailure
+            case .git(let failure): failure.scanIssueReason
             case .staleRegistration: .staleRegistration
             }
         }
@@ -771,6 +820,15 @@ public actor WorktreeRegistry {
             case (.worktrees(let ids), .missing), (.missing, .worktrees(let ids)): .worktrees(ids)
             case (.worktrees(let first), .worktrees(let second)): .worktrees(first.union(second))
             }
+        }
+    }
+}
+
+private extension GitError {
+    var scanIssueReason: WorktreeScanIssue.Reason {
+        switch self {
+        case .timedOut: .gitTimedOut
+        case .gitUnavailable, .workingDirectoryUnreadable, .commandFailed, .terminatedBySignal: .gitFailure
         }
     }
 }

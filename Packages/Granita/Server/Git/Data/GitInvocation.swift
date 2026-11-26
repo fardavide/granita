@@ -19,6 +19,8 @@ enum GitInvocation {
         "-c", "core.pager=cat",
         "-c", "color.ui=false",
         "-c", "core.quotePath=false",
+        // A stalled repository monitor can block status and diff before Git reads the worktree.
+        "-c", "core.fsmonitor=false",
         "--no-pager"
     ]
 
@@ -40,7 +42,6 @@ enum GitInvocation {
 
     private static let scratchIndexPrefix = [
         "-c", "core.splitIndex=false",
-        "-c", "core.fsmonitor=false",
         "-c", "core.hooksPath=/dev/null"
     ]
 

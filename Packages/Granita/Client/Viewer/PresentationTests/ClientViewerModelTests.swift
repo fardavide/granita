@@ -153,6 +153,89 @@ struct ClientViewerModelTests {
         #expect(scenario.sut.state == .loading)
     }
 
+    @Test(arguments: [true, false])
+    func `given the initial diff read failed when the same worktree scan recovers then the diff opens without a revision change`(
+        sawFailedScan: Bool
+    ) async throws {
+        // given
+        let files = aChangeSet(of: 1)
+        let failure = ApiFailure.gitFailure(message: "git status timed out")
+        let scenario = Scenario(files: files, changeSetFailure: failure)
+        let worktree = aLiveWorktree(aWorktree, revision: "7be82d19")
+        let lastSuccessfulScan = Date(timeIntervalSince1970: 1_800_000_000)
+        let failedScan = WorktreeScanIssue(
+            target: .worktree(worktree.id),
+            projectID: worktree.projectId,
+            name: worktree.displayName,
+            projectName: worktree.projectName,
+            reason: .gitTimedOut,
+            lastRead: .at(lastSuccessfulScan)
+        )
+        await scenario.sut.load()
+        if sawFailedScan {
+            await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+                worktrees: [worktree], scannedAt: lastSuccessfulScan, issues: [failedScan]
+            )))
+        }
+        try #require(scenario.sut.state == .failed(failure))
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: worktree.revision, stats: worktree.stats, files: files, isTruncated: false
+        ))
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [worktree], scannedAt: lastSuccessfulScan.addingTimeInterval(10)
+        )))
+
+        // then
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("A successful scan for the selected worktree must recover its failed diff.")
+            return
+        }
+        #expect(entries.map(\.file) == files)
+    }
+
+    @Test
+    func `given a refresh is in flight when the checkout recovers before its late Git failure then the diff reads again`() async {
+        // given
+        let files = aChangeSet(of: 1)
+        let scenario = Scenario(files: files, suspendingReadsAfter: 1)
+        let worktree = aLiveWorktree(aWorktree, revision: "7be82d19")
+        let lastSuccessfulScan = Date(timeIntervalSince1970: 1_800_000_000)
+        let failedScan = WorktreeScanIssue(
+            target: .worktree(worktree.id),
+            projectID: worktree.projectId,
+            name: worktree.displayName,
+            projectName: worktree.projectName,
+            reason: .gitTimedOut,
+            lastRead: .at(lastSuccessfulScan)
+        )
+        scenario.repository.replaceChanges(WorktreeChanges(
+            revision: worktree.revision, stats: worktree.stats, files: files, isTruncated: false
+        ))
+        await scenario.sut.load()
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [worktree], scannedAt: lastSuccessfulScan, issues: [failedScan]
+        )))
+        let refresh = Task { await scenario.sut.load(trigger: .pullToRefresh) }
+        await scenario.repository.waitUntilReadStarted(count: 2)
+
+        // when
+        await scenario.sut.receive(.snapshot(WorktreeSnapshot(
+            worktrees: [worktree], scannedAt: lastSuccessfulScan.addingTimeInterval(10)
+        )))
+        scenario.repository.releaseSuspendedRead(with: .failure(.gitFailure(message: "git status timed out")))
+        await refresh.value
+
+        // then
+        #expect(scenario.repository.changeSetReads == 3)
+        guard case .reading(let entries) = scenario.sut.state else {
+            Issue.record("A late failure must not hide the diff after the same checkout recovers.")
+            return
+        }
+        #expect(entries.map(\.file) == files)
+    }
+
     @Test
     func `given a changed summary when fresh content is no longer authorized then the review requires pairing again`() async {
         // given

@@ -64,6 +64,9 @@ Readers that opt into partial inventories receive typed scan issues with healthy
 rows. Stale-registration cleanup uses a server-owned Git preview and a separate one-use approval
 to back up exactly the listed registrations.
 See [0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md).
+The cache retries timed-out scans with backoff and broadcasts recovery through the same snapshots.
+The diff reader recognizes recovery for its own failed checkout independent of content revision.
+See [0273](decisions/0273-recover-from-git-scan-timeouts.md).
 
 ## One package, four layers, module boundaries as the enforcement
 

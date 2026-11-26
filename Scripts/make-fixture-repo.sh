@@ -47,7 +47,7 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE 2>/dev/null || true
 # The invocation prefix the product itself uses (§5.1), so a fixture is generated the same way it
 # will be read. `protocol.file.allow` is needed only for the submodule case.
 git_() {
-    git -c core.pager=cat -c color.ui=false -c core.quotePath=false \
+    git -c core.pager=cat -c color.ui=false -c core.quotePath=false -c core.fsmonitor=false \
         -c protocol.file.allow=always -c init.defaultBranch=main \
         -c advice.detachedHead=false --no-pager "$@"
 }
@@ -410,6 +410,15 @@ if git --no-pager -c color.ui=false diff --no-color HEAD > /dev/null 2>&1; then
 fi
 if git --no-pager status --porcelain=v2 -z | tr '\0' '\n' | grep -q '^?'; then
     echo "error: the hostile fixture no longer hides untracked files" >&2
+    exit 1
+fi
+
+# A configured monitor is observable even when Git falls back to a full scan after it fails.
+printf '#!/bin/sh\necho "fixture filesystem monitor was invoked" >&2\nexit 1\n' > .git/fixture-fsmonitor
+chmod +x .git/fixture-fsmonitor
+git_ config core.fsmonitor .git/fixture-fsmonitor
+if ! git --no-pager status --porcelain=v2 2>&1 | grep -F 'fixture filesystem monitor was invoked' > /dev/null; then
+    echo "error: the hostile fixture no longer invokes its filesystem monitor" >&2
     exit 1
 fi
 
