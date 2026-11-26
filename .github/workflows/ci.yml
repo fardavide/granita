@@ -145,17 +145,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/select-xcode
-      - name: Install XcodeGen
-        run: brew install --quiet xcodegen
-      # Both tools shape the committed output, so a red run below is only readable if you can see
-      # which versions produced it. A project.pbxproj diff usually means XcodeGen moved; a .diff
-      # fixture diff usually means git did.
-      - name: Report the tool versions that produced the comparison
+      # Use the release that produced the committed project. XcodeGen upgrades can rewrite the
+      # project and schemes without any change to project.yml.
+      - name: Download XcodeGen 2.46.0
         run: |
-          git --version
-          xcodegen --version
+          archive="$RUNNER_TEMP/xcodegen.zip"
+          curl --fail --silent --show-error --location --retry 3 --output "$archive" \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip
+          printf '%s  %s\n' 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806 "$archive" | shasum -a 256 -c
+          unzip -q "$archive" -d "$RUNNER_TEMP"
       - name: Regenerate and compare
-        run: make verify-generated
+        run: |
+          xcodegen="$RUNNER_TEMP/xcodegen/bin/xcodegen"
+          git --version
+          "$xcodegen" --version
+          make verify-generated XCODEGEN="$xcodegen"
 
       # Xcode resolves the project and the local package as ONE graph and writes the union into the
       # package's Package.resolved; `swift build` and `swift test` rewrite the same file with the

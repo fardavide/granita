@@ -6,6 +6,7 @@
 
 PACKAGE      := Packages/Granita
 PROJECT      := Granita.xcodeproj
+XCODEGEN     ?= xcodegen
 # **Resolved, never hardcoded**, and the same expression `ci.yml` and `measure-coverage.sh` already
 # use. This said `iPhone 17` while both of those resolved `iPhone 17 Pro`, so three commands in one
 # repository rendered the same baselines on two different devices — and `make snapshots` could not
@@ -47,7 +48,7 @@ help: ## Show this help
 
 .PHONY: project
 project: ## Regenerate Granita.xcodeproj from project.yml
-	xcodegen generate
+	"$(XCODEGEN)" generate
 
 .PHONY: test
 test: ## Run the package test suite — no simulator, no Xcode
