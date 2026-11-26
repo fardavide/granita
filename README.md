@@ -67,9 +67,9 @@ Deleting a worktree is the one thing the phone changes on the Mac. Names and pin
 
 ### What's new
 
+- **0.26.2** — resume reviews automatically after a temporary Git timeout.
 - **0.26.1** — review moved files as a single rename with just the edits.
 - **0.26.0** — keep reviewing healthy worktrees and confirm stale worktree cleanup from your phone.
-- **0.25.3** — Granita remembers your chosen icon and restores it after Christmas.
 
 [Every release](CHANGELOG.md).
 

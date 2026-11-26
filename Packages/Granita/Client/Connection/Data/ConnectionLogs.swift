@@ -8,12 +8,19 @@ public struct ConnectionLogContext: Sendable {
     public let build: String
     public let systemVersion: String
     public let deviceModel: String
+    public let reader: Reader
 
-    public init(appVersion: String, build: String, systemVersion: String, deviceModel: String) {
+    public init(appVersion: String, build: String, systemVersion: String, deviceModel: String, reader: Reader = .phone) {
         self.appVersion = appVersion
         self.build = build
         self.systemVersion = systemVersion
         self.deviceModel = deviceModel
+        self.reader = reader
+    }
+
+    public enum Reader: String, Sendable {
+        case phone
+        case mac
     }
 }
 
@@ -102,7 +109,7 @@ public actor ConnectionLogs: DiagnosticReportProviding, ConnectionTimingRecordin
         "Granita \(context.appVersion) (\(context.build))\n"
             + "\(context.systemVersion) — \(context.deviceModel)\n"
             + "Collected: \(now().ISO8601Format())\n"
-            + "Current app session · phone-side connection events only\n"
+            + "Current app session · \(context.reader.rawValue)-side connection events only\n"
             + "Credentials, query strings, headers, bodies and source text are excluded.\n\n"
             + (entries.isEmpty ? "No connection events recorded" : entries.joined(separator: "\n"))
     }

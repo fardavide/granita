@@ -209,6 +209,32 @@ struct SidebarCase: Sendable, CustomTestStringConvertible {
         ),
 
         SidebarCase(
+            name: "git-timeouts",
+            state: .noProjects,
+            mode: .groupedByProject,
+            showsQuietWorktrees: false,
+            readResult: .read(at: aFixedMoment, route: .local),
+            scanIssues: [
+                WorktreeScanIssue(
+                    target: .worktree(WorktreeID(rawValue: "scan-recovery")),
+                    projectID: ProjectID(rawValue: "granita"),
+                    name: "scan-recovery",
+                    projectName: "Granita",
+                    reason: .gitTimedOut,
+                    lastRead: .at(aFixedMoment)
+                ),
+                WorktreeScanIssue(
+                    target: .project(ProjectID(rawValue: "site-config")),
+                    projectID: ProjectID(rawValue: "site-config"),
+                    name: "site-config",
+                    projectName: "site-config",
+                    reason: .gitTimedOut,
+                    lastRead: .never
+                )
+            ]
+        ),
+
+        SidebarCase(
             name: "no-projects-stale",
             state: .noProjects,
             mode: .groupedByProject,

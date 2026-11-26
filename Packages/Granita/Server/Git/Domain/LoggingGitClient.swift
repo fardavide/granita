@@ -14,10 +14,20 @@ public struct LoggingGitClient: GitClient {
 
     private let client: any GitClient
     private let diagnostics: any Diagnostics
+    private let onFailure: @Sendable (GitError) async -> Void
 
     public init(client: any GitClient, diagnostics: any Diagnostics) {
+        self.init(client: client, diagnostics: diagnostics, onFailure: { _ in })
+    }
+
+    public init(
+        client: any GitClient,
+        diagnostics: any Diagnostics,
+        onFailure: @escaping @Sendable (GitError) async -> Void
+    ) {
         self.client = client
         self.diagnostics = diagnostics
+        self.onFailure = onFailure
     }
 
     /// **The command and where it ran, never what it said back.** Git's standard output here is the
@@ -43,6 +53,7 @@ public struct LoggingGitClient: GitClient {
             // failing `hash-object` had to be reproduced by hand because its stderr never reached
             // the log.
             diagnostics.note("git failed: \(sentence(for: error)) — running \(command) in \(location.path)", about: .git)
+            await onFailure(error)
             throw error
         }
     }

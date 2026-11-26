@@ -66,6 +66,10 @@ actor FakeGitClient: GitClient {
         failures[command] = failure
     }
 
+    func allow(_ command: GitCommand) {
+        failures.removeValue(forKey: command)
+    }
+
     func allowCommands(in location: RepositoryLocation) {
         failuresByLocation.removeValue(forKey: location)
     }

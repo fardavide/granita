@@ -89,6 +89,7 @@ final class MacComposition {
         // Wrapped rather than told to log, so the thing that runs a subprocess keeps having exactly
         // one job — and so the libgit2 client this protocol exists for would arrive logged without
         // knowing it.
+        let gitFailures = GitFailureJournal(capacity: 200, now: Date.init)
         let git = BoundedGitClient(
             client: LoggingGitClient(
                 client: ProcessGitClient(
@@ -96,7 +97,8 @@ final class MacComposition {
                     outputLimitBytes: ProcessGitClient.defaultOutputLimitBytes,
                     timeout: ProcessGitClient.defaultTimeout
                 ),
-                diagnostics: diagnostics
+                diagnostics: diagnostics,
+                onFailure: { await gitFailures.record($0) }
             ),
             limit: WorktreeReader.concurrentGitProcesses
         )
@@ -141,13 +143,14 @@ final class MacComposition {
                 appVersion: Branding.serverVersion,
                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown",
                 systemVersion: ProcessInfo.processInfo.operatingSystemVersionString,
-                deviceModel: "Mac"
+                deviceModel: "Mac",
+                reader: .mac
             ),
             capacity: 200,
             now: Date.init
         )
         copyingLogs = CopyDiagnosticLogs(
-            report: readerLogs,
+            report: MacReaderDiagnosticReport(connections: readerLogs, gitFailures: gitFailures),
             pasteboard: SystemDiagnosticPasteboard()
         )
         remote = MacRemoteComposition(logs: readerLogs, copyingLogs: copyingLogs)

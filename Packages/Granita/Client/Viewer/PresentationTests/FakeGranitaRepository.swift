@@ -73,7 +73,7 @@ final class FakeGranitaRepository: GranitaRepository {
     /// first, so a test can assert on the loading screen, and `1` lets the first answer and holds
     /// the one after it, which is the refresh.
     private let readsAnsweringImmediately: Int
-    private let suspendedReadReleased = Mutex<Bool>(false)
+    private let suspendedReadRelease = Mutex<Result<Void, ApiFailure>?>(nil)
 
     /// What each picture side answers with, or a refusal for the whole of them.
     private let imageAnswer: Result<Data, ApiFailure>
@@ -154,9 +154,9 @@ final class FakeGranitaRepository: GranitaRepository {
         settings.withLock { $0 = .failure(failure) }
     }
 
-    /// Lets a suspended change-set read answer.
-    func releaseSuspendedRead() {
-        suspendedReadReleased.withLock { $0 = true }
+    /// Lets suspended change-set reads answer, optionally refusing only the oldest one.
+    func releaseSuspendedRead(with answer: Result<Void, ApiFailure> = .success(())) {
+        suspendedReadRelease.withLock { $0 = answer }
     }
 
     /// Returns once `count` change-set reads have been asked for, so a test can assert on a screen
@@ -178,8 +178,11 @@ final class FakeGranitaRepository: GranitaRepository {
         if let refusesTheFirstRead, ordinal == 1 {
             throw refusesTheFirstRead
         }
-        while ordinal > readsAnsweringImmediately, suspendedReadReleased.withLock({ $0 }) == false {
+        while ordinal > readsAnsweringImmediately, suspendedReadRelease.withLock({ $0 }) == nil {
             await Task.yield()
+        }
+        if ordinal - 1 == readsAnsweringImmediately, let release = suspendedReadRelease.withLock({ $0 }) {
+            try release.get()
         }
         return try changeSet.withLock { $0 }.get()
     }

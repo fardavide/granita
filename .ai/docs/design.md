@@ -268,6 +268,10 @@ entry names the affected checkout or project and shows the age of its last read 
 *Try Again* rechecks that entry. An open review keeps its loaded diff until the server can confirm
 the checkout is gone.
 
+A timeout row says that Git timed out. Granita rechecks that entry in the background and restores
+the row when Git answers. If the reader is still on a failed diff for that checkout, it reopens
+after the successful scan. *Try Again* starts an immediate check.
+
 Git-marked stale registrations offer *Repair…*. A sheet names the host and repository, lists
 the affected registrations, and shows the Git preview command and backup behavior under
 *Details*. The reader can approve moving the listed registrations into a backup from the

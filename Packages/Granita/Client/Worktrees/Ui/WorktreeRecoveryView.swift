@@ -51,10 +51,12 @@ struct WorktreeRecoveryRow: View {
 
     private var explanation: String {
         switch issue.target {
-        case .project: "Git couldn’t list this project’s worktrees."
+        case .project:
+            issue.reason == .gitTimedOut ? "Git timed out while listing worktrees." : "Git couldn’t list this project’s worktrees."
         case .worktree:
             switch issue.reason {
             case .gitFailure: "Git can’t open this worktree."
+            case .gitTimedOut: "Git timed out while scanning this worktree."
             case .staleRegistration: "Git can’t find this worktree’s link."
             }
         }

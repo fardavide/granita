@@ -23,9 +23,31 @@ struct GitInvocationTests {
             "-c", "core.pager=cat",
             "-c", "color.ui=false",
             "-c", "core.quotePath=false",
+            "-c", "core.fsmonitor=false",
             "--no-pager",
             "rev-parse", "--is-inside-work-tree"
         ])
+    }
+
+    @Test(arguments: [
+        (GitCommand.worktreeStatus, "status"),
+        (GitCommand.trackedChanges(against: .head), "diff"),
+        (GitCommand.trackedStats(against: .head), "diff"),
+        (GitCommand.fileDiff(path: RepositoryRelativePath("src/modified.txt"), against: .head, contextLines: 3), "diff")
+    ])
+    func `when reading worktree changes then the invocation disables the repository's file system monitor`(
+        command: GitCommand,
+        subcommand: String
+    ) throws {
+        // given - when
+        let vector = arguments(of: command)
+
+        // then
+        let subcommandIndex = try #require(vector.firstIndex(of: subcommand))
+        let options = vector.prefix(upTo: subcommandIndex)
+        #expect(zip(options, options.dropFirst()).contains { option, value in
+            option == "-c" && value == "core.fsmonitor=false"
+        })
     }
 
     @Test
@@ -200,8 +222,9 @@ struct GitInvocationTests {
 
         // then
         #expect(vector == [
-            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false", "--no-pager",
-            "-c", "core.splitIndex=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
+            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false",
+            "-c", "core.fsmonitor=false", "--no-pager",
+            "-c", "core.splitIndex=false", "-c", "core.hooksPath=/dev/null",
             "--literal-pathspecs", "diff", "--no-ext-diff", "--no-color", "--src-prefix=a/", "--dst-prefix=b/",
             "HEAD", "-M", "-l1000", "--diff-filter=R", "-z", "--numstat", "--", "old/one[1].txt", "new/one[1].txt"
         ])
@@ -278,7 +301,8 @@ struct GitInvocationTests {
 
         // then
         #expect(vector == [
-            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false", "--no-pager",
+            "-c", "core.pager=cat", "-c", "color.ui=false", "-c", "core.quotePath=false",
+            "-c", "core.fsmonitor=false", "--no-pager",
             "worktree", "prune", "--dry-run", "--verbose", "--expire", "now"
         ])
     }
