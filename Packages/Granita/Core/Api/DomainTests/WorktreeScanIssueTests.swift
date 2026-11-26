@@ -23,8 +23,11 @@ struct WorktreeScanIssueTests {
         let encoded = try JSONEncoder().encode(issue)
 
         // then
+        let decoded = try JSONDecoder().decode(WorktreeScanIssue.self, from: encoded)
         #expect(try JSONDecoder().decode(LegacyIssue.self, from: encoded).reason == .gitFailure)
-        #expect(try JSONDecoder().decode(WorktreeScanIssue.self, from: encoded) == issue)
+        #expect(decoded.reason == .gitTimedOut)
+        #expect(decoded.id == .project(project))
+        #expect(decoded == issue)
     }
 
     private struct LegacyIssue: Decodable {

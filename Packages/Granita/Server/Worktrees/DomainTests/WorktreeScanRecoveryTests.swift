@@ -14,7 +14,7 @@ struct WorktreeScanRecoveryTests {
         // given
         let location = RepositoryLocation(path: "/project")
         let worktree = WorktreeID(canonicalPath: location.path)
-        let scenario = await Scenario(locations: [location], scanFailure: .timedOut(command: .worktreeStatus))
+        let scenario = await Scenario(locations: [location], timingOut: .worktreeStatus)
         var updates = await scenario.registry.observationUpdates().makeAsyncIterator()
         let initial = try #require(await updates.next())
         try #require(initial.issues.map(\.target) == [.worktree(worktree)])
@@ -49,13 +49,58 @@ struct WorktreeScanRecoveryTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
+    func `given project enumeration times out when Git becomes responsive then the retry publishes its inventory`() async throws {
+        // given
+        let location = RepositoryLocation(path: "/project")
+        let project = ProjectID(canonicalPath: location.path)
+        let worktree = WorktreeID(canonicalPath: location.path)
+        let scenario = await Scenario(locations: [location], timingOut: .worktrees)
+        var updates = await scenario.registry.observationUpdates().makeAsyncIterator()
+        let initial = try #require(await updates.next())
+        try #require(initial.issues.map(\.target) == [.project(project)])
+        try #require(initial.issues.map(\.reason) == [.gitTimedOut])
+        let delay = try #require(await scenario.timing.nextSleep())
+
+        // when
+        await scenario.git.allow(.worktrees)
+        await scenario.timing.advance(by: delay)
+        let recovered = await updates.next()
+        await scenario.registry.stop()
+
+        // then
+        let snapshot = try #require(recovered)
+        #expect(snapshot.worktrees.map(\.id) == [worktree])
+        #expect(snapshot.issues.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `given a timed out scan is waiting to retry when the registry stops then it cancels the retry`() async throws {
+        // given
+        let location = RepositoryLocation(path: "/project")
+        let scenario = await Scenario(locations: [location], timingOut: .worktreeStatus)
+        var updates = await scenario.registry.observationUpdates().makeAsyncIterator()
+        _ = try #require(await updates.next())
+        _ = try #require(await scenario.timing.nextSleep())
+        let previousCalls = await scenario.git.received
+
+        // when
+        await scenario.registry.stop()
+        let cancelled = await scenario.timing.nextCancellation()
+
+        // then
+        #expect(cancelled)
+        #expect(await updates.next() == nil)
+        #expect(await scenario.git.received == previousCalls)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
     func `given a project now refuses enumeration when another checkout retries then only the recoverable checkout is rescanned`() async throws {
         // given
         let unavailable = RepositoryLocation(path: "/unavailable")
         let recovering = RepositoryLocation(path: "/recovering")
         let project = ProjectID(canonicalPath: unavailable.path)
         let worktree = WorktreeID(canonicalPath: recovering.path)
-        let scenario = await Scenario(locations: [unavailable, recovering], scanFailure: .timedOut(command: .worktreeStatus))
+        let scenario = await Scenario(locations: [unavailable, recovering], timingOut: .worktreeStatus)
         var updates = await scenario.registry.observationUpdates().makeAsyncIterator()
         let initial = try #require(await updates.next())
         try #require(initial.issues.count == 2)
@@ -86,8 +131,8 @@ struct WorktreeScanRecoveryTests {
         let timing: FakeWorktreeObservationTiming
         let sut: WorktreeObservation
 
-        init(locations: [RepositoryLocation], scanFailure: GitError) async {
-            git = FakeGitClient(outputs: [.headCommit: Data("abc123\n".utf8)], failures: [.worktreeStatus: scanFailure])
+        init(locations: [RepositoryLocation], timingOut command: GitCommand) async {
+            git = FakeGitClient(outputs: [.headCommit: Data("abc123\n".utf8)], failures: [command: .timedOut(command: command)])
             for location in locations {
                 let gitDirectory = Data("\(location.path)/.git\n".utf8)
                 await git.answer(.worktrees, in: location, with: Data(

@@ -6,6 +6,7 @@ actor FakeWorktreeObservationTiming: WorktreeObservationTiming {
     private var elapsed: Duration = .zero
     private var waiting: [UUID: Waiter] = [:]
     private let sleeps = AsyncStream.makeStream(of: Duration.self)
+    private let cancellations = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
 
     func now() -> Duration { elapsed }
 
@@ -34,6 +35,11 @@ actor FakeWorktreeObservationTiming: WorktreeObservationTiming {
         return await iterator.next()
     }
 
+    func nextCancellation() async -> Bool {
+        var iterator = cancellations.stream.makeAsyncIterator()
+        return await iterator.next() != nil
+    }
+
     func advance(by duration: Duration) {
         elapsed += duration
         let ready = waiting.filter { $0.value.deadline <= elapsed }
@@ -44,7 +50,9 @@ actor FakeWorktreeObservationTiming: WorktreeObservationTiming {
     }
 
     private func cancel(_ id: UUID) {
-        waiting.removeValue(forKey: id)?.continuation.resume(throwing: CancellationError())
+        guard let waiter = waiting.removeValue(forKey: id) else { return }
+        waiter.continuation.resume(throwing: CancellationError())
+        cancellations.continuation.yield(())
     }
 
     private struct Waiter {
