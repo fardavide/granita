@@ -9,6 +9,95 @@ import ServerGitDomain
 struct WorktreeContextTests {
 
     @Test
+    func `given insertion and deletion hunks when preparing highlighting then neither shifts the hidden lines`() async throws {
+        // given
+        let original = ["start", "keep", "remove", "tail"]
+        let working = ["start", "insert", "keep", "tail"]
+        let scenario = Scenario(original: original, working: working, diff: """
+            diff --git a/long.txt b/long.txt
+            index aaaaaaa..bbbbbbb 100644
+            --- a/long.txt
+            +++ b/long.txt
+            @@ -1,0 +2 @@
+            +insert
+            @@ -3 +3,0 @@
+            -remove
+            """, language: "kotlin", workingEndsWithNewline: false)
+
+        // when
+        let diff = try await scenario.sut.fileDiff(
+            for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3
+        )
+
+        // then
+        #expect(diff.oldHighlightingSource == original.joined(separator: "\n"))
+        #expect(diff.newHighlightingSource == working.joined(separator: "\n"))
+    }
+
+    enum InconsistentPatch: CaseIterable {
+        case missingBlobSeparator, emptyBlob, incompleteWorkingCopy, mismatchedHunkOffsets, mismatchedHunkText, removedConflictMarker
+    }
+
+    @Test(arguments: InconsistentPatch.allCases)
+    func `given the patch cannot be reversed safely when reading a diff then no hidden source is sent`(
+        reason: InconsistentPatch
+    ) async throws {
+        // given
+        let index = switch reason {
+        case .missingBlobSeparator: "aaaaaaabbbbbbb"
+        case .emptyBlob: "aaaaaaa.."
+        case .incompleteWorkingCopy, .mismatchedHunkOffsets, .mismatchedHunkText, .removedConflictMarker: "aaaaaaa..bbbbbbb"
+        }
+        let changedLine = reason == .mismatchedHunkText ? "unexpected" : "after"
+        let oldLine = reason == .removedConflictMarker ? "<<<<<<< HEAD" : "before"
+        let oldStart = reason == .mismatchedHunkOffsets ? 1 : 2
+        let scenario = Scenario(original: ["hidden", oldLine], working: ["hidden", "after"], diff: """
+            diff --git a/long.txt b/long.txt
+            index \(index) 100644
+            --- a/long.txt
+            +++ b/long.txt
+            @@ -\(oldStart) +2 @@
+            -\(oldLine)
+            +\(changedLine)
+            """, language: "kotlin", workingDeclaredLineCount: reason == .incompleteWorkingCopy ? 3 : nil)
+
+        // when
+        let diff = try await scenario.sut.fileDiff(
+            for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3
+        )
+
+        // then
+        #expect(diff.hunks.count == 1)
+        #expect(diff.oldHighlightingSource == nil)
+        #expect(diff.newHighlightingSource == nil)
+    }
+
+    @Test
+    func `given hidden text exceeds the byte limit when reading a diff then the visible changes remain`() async throws {
+        // given
+        let hidden = String(repeating: "a", count: DiffHighlightingLimits.bytes)
+        let scenario = Scenario(original: [hidden, "before"], working: [hidden, "after"], diff: """
+            diff --git a/long.txt b/long.txt
+            index aaaaaaa..bbbbbbb 100644
+            --- a/long.txt
+            +++ b/long.txt
+            @@ -2 +2 @@
+            -before
+            +after
+            """, language: "kotlin")
+
+        // when
+        let diff = try await scenario.sut.fileDiff(
+            for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3
+        )
+
+        // then
+        #expect(diff.hunks.flatMap(\.lines).map(\.text) == ["before", "after"])
+        #expect(diff.oldHighlightingSource == nil)
+        #expect(diff.newHighlightingSource == nil)
+    }
+
+    @Test
     func `given a closing comment between hunks when reading the diff then the payload carries both complete sources`() async throws {
         // given
         let scenario = Scenario(
@@ -220,15 +309,19 @@ struct WorktreeContextTests {
         let path = RepositoryRelativePath("long.txt")
         let location = RepositoryLocation(path: "/repo")
 
-        init(original: [String], working: [String], diff: String, contextLineLimit: Int = .max, language: String? = nil) {
+        init(
+            original: [String], working: [String], diff: String, contextLineLimit: Int = .max,
+            language: String? = nil, workingEndsWithNewline: Bool = true, workingDeclaredLineCount: Int? = nil
+        ) {
+            let terminator = workingEndsWithNewline ? "\n" : "\n\\ No newline at end of file\n"
             let fullAddition = """
                 diff --git a/long.txt b/long.txt
                 new file mode 100644
                 index 0000000..bbbbbbb
                 --- /dev/null
                 +++ b/long.txt
-                @@ -0,0 +1,\(working.count) @@
-                """ + "\n" + working.prefix(contextLineLimit).map { "+" + $0 }.joined(separator: "\n") + "\n"
+                @@ -0,0 +1,\(workingDeclaredLineCount ?? working.count) @@
+                """ + "\n" + working.prefix(contextLineLimit).map { "+" + $0 }.joined(separator: "\n") + terminator
             sut = WorktreeService(
                 git: FakeGitClient(
                     outputs: [
