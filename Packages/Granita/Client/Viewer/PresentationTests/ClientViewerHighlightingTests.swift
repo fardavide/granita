@@ -40,6 +40,44 @@ struct ClientViewerHighlightingTests {
     }
 
     @Test
+    func `given a doc comment ends between hunks when the diff opens then the lexer receives the closing line automatically`() async {
+        // given
+        let opener = DiffLine(kind: .context, oldNumber: 1, newNumber: 1, text: "/**", displayColumns: 3, segments: nil)
+        let old = DiffLine(kind: .deletion, oldNumber: 3, newNumber: nil, text: "fun oldName() = 1", displayColumns: 17, segments: nil)
+        let new = DiffLine(kind: .addition, oldNumber: nil, newNumber: 3, text: "fun newName() = 1", displayColumns: 17, segments: nil)
+        let scenario = Scenario(
+            files: aChangeSet(of: 1, language: "kotlin"),
+            hunks: [Hunk(index: 0, oldStart: 1, oldCount: 1, newStart: 1, newCount: 1, sectionHeading: "", lines: [opener])],
+            additionalHunks: [Hunk(index: 1, oldStart: 3, oldCount: 1, newStart: 3, newCount: 1, sectionHeading: "", lines: [old, new])],
+            highlightingSources: [
+                .old: "/**\n */\nfun oldName() = 1",
+                .new: "/**\n */\nfun newName() = 1"
+            ]
+        )
+
+        // when
+        await scenario.sut.load()
+        await scenario.sut.reading(0)
+
+        // then
+        #expect(scenario.highlighter.requests.map(\.text) == [
+            "/**\n */\nfun oldName() = 1",
+            "/**\n */\nfun newName() = 1"
+        ])
+        let highlighted = scenario.sut.highlighted[scenario.fileIds[0]]
+        #expect(highlighted?.text(of: old) == AttributedString("fun oldName() = 1"))
+        #expect(highlighted?.text(of: new) == AttributedString("fun newName() = 1"))
+        let hidden = DiffLine(kind: .context, oldNumber: 2, newNumber: 2, text: " */", displayColumns: 3, segments: nil)
+        #expect(highlighted?.text(of: hidden) == nil)
+        guard case .reading(let entries) = scenario.sut.state,
+              case .ready(let prepared) = entries[0].content else {
+            Issue.record("Expected the diff to remain ready")
+            return
+        }
+        #expect(prepared.diff.hunks.map(\.lines) == [[opener], [old, new]])
+    }
+
+    @Test
     func `given a lexed file when a row asks for its code then it carries the line it came from`() async {
         // given
         let scenario = Scenario(files: aChangeSet(of: 1), hunks: [aChangedPair])
@@ -405,6 +443,8 @@ private struct Scenario {
     init(
         files: [FileChange],
         hunks: [Hunk],
+        additionalHunks: [Hunk] = [],
+        highlightingSources: [DiffSide: String] = [:],
         lexerRefuses: Bool = false,
         lexerDropsALine: Bool = false,
         holdingFirstHighlight: Bool = false
@@ -419,8 +459,9 @@ private struct Scenario {
         repository = FakeGranitaRepository(
             changeSet: .success(changes),
             hunks: Dictionary(
-                uniqueKeysWithValues: zip(files.map(\.id), hunks.map { [$0] })
-            )
+                uniqueKeysWithValues: zip(files.map(\.id), hunks.map { [$0] + additionalHunks })
+            ),
+            highlightingSources: highlightingSources
         )
         highlighter = FakeSyntaxHighlighter(
             refuses: lexerRefuses,
@@ -510,7 +551,7 @@ private let aFileWithNoLanguage = FileChange(
     language: nil
 )
 
-private func aChangeSet(of count: Int, viewedAt read: Int? = nil) -> [FileChange] {
+private func aChangeSet(of count: Int, viewedAt read: Int? = nil, language: String = "swift") -> [FileChange] {
     (0..<count).map { position in
         FileChange(
             id: FileID(rawValue: "file-\(position)"),
@@ -524,7 +565,7 @@ private func aChangeSet(of count: Int, viewedAt read: Int? = nil) -> [FileChange
             estimatedLineCount: 10 + position,
             isViewed: position == read,
             isTruncated: false,
-            language: "swift"
+            language: language
         )
     }
 }

@@ -260,6 +260,10 @@ public struct FileDiff: Hashable, Codable, Sendable {
     /// Why, in words a reader can act on, and only when `isTruncated`.
     public let truncationReason: String?
 
+    /// Bounded lexing inputs shipped by servers that can supply the hidden context.
+    public let oldHighlightingSource: String?
+    public let newHighlightingSource: String?
+
     public init(
         file: FileChange,
         hunks: [Hunk],
@@ -268,13 +272,37 @@ public struct FileDiff: Hashable, Codable, Sendable {
         isTruncated: Bool,
         truncationReason: String?
     ) {
+        self.init(
+            file: file, hunks: hunks, oldLineCount: oldLineCount, newLineCount: newLineCount,
+            isTruncated: isTruncated, truncationReason: truncationReason,
+            oldHighlightingSource: nil, newHighlightingSource: nil
+        )
+    }
+
+    public init(
+        file: FileChange,
+        hunks: [Hunk],
+        oldLineCount: Int,
+        newLineCount: Int,
+        isTruncated: Bool,
+        truncationReason: String?,
+        oldHighlightingSource: String?,
+        newHighlightingSource: String?
+    ) {
         self.file = file
         self.hunks = hunks
         self.oldLineCount = oldLineCount
         self.newLineCount = newLineCount
         self.isTruncated = isTruncated
         self.truncationReason = truncationReason
+        self.oldHighlightingSource = oldHighlightingSource
+        self.newHighlightingSource = newHighlightingSource
     }
+}
+
+public enum DiffHighlightingLimits {
+    public static let lines = 4_000
+    public static let bytes = 100 * 1024
 }
 
 /// Which side of a comparison raw lines are read from.

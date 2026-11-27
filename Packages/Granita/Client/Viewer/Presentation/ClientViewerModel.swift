@@ -915,7 +915,9 @@ public final class ClientViewerModel {
                     oldLineCount: diff.oldLineCount,
                     newLineCount: diff.newLineCount,
                     isTruncated: diff.isTruncated,
-                    truncationReason: diff.truncationReason
+                    truncationReason: diff.truncationReason,
+                    oldHighlightingSource: diff.oldHighlightingSource,
+                    newHighlightingSource: diff.newHighlightingSource
                 )
             )
             state = .reading(entries)
@@ -1375,19 +1377,22 @@ public final class ClientViewerModel {
             return
         }
         guard asked.contains(key) == false,
-              case .highlight(let source) = SyntaxHighlighting.plan(for: diff, side: side) else { return }
+              case .highlight(let visible) = SyntaxHighlighting.plan(for: diff, side: side) else { return }
         // Recorded before the await rather than after it, so two passes over one file — a batch
         // landing while the reader opens something — do not both put the same question.
         asked.insert(key)
+        let source = visible.includingContext(from: diff)
         guard let lines = await highlighter.highlight(
             source.text,
             as: key.language,
-            for: appearance,
-            themed: theme
+            for: key.appearance,
+            themed: key.theme
         ) else {
             return
         }
-        let indexed = source.indexed(lines)
+        // Context added by a later expansion can come from a newer working copy.
+        let visibleNumbers = Set(visible.lineNumbers)
+        let indexed = source.indexed(lines).filter { visibleNumbers.contains($0.key) }
         // Two refusals with one outcome, which is the file carrying on plain. **The key is no longer
         // in the set** when the screen changed appearance or size while this was in flight, so what
         // came back is the wrong colours rather than late ones. **`indexed` is empty** when the lexer

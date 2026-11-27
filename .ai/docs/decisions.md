@@ -292,3 +292,4 @@ read whole:
 - [0271](decisions/0271-isolate-worktree-scan-failures-and-preview-stale-cleanup.md) Partial snapshots keep readable worktrees available and report scan failures by checkout or project. Paired readers can confirm a server-verified Git cleanup preview.
 - [0272](decisions/0272-pair-unstaged-renames-in-a-private-index.md) Git pairs tracked deletions with untracked destinations using a private index. One rename carries both paths and the line counts and hunks from that comparison.
 - [0273](decisions/0273-recover-from-git-scan-timeouts.md) Granita overrides Git's filesystem monitor per command, retries timed-out scans in the background, and restores a failed open diff on recovery.
+- [0274](decisions/0274-highlight-diffs-with-hidden-context.md) Eligible diffs carry complete source for highlighting across hidden context, assembled from the working copy already read for line counts and the reverse patch.

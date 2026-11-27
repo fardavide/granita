@@ -19,6 +19,33 @@ import CoreDiffDomain
 @Suite("Syntax highlighting")
 struct SyntaxHighlightingTests {
 
+    enum RejectedContext: CaseIterable {
+        case changedLine, missingLine, tooManyLines, tooManyBytes, tooManyBytesAfterTabExpansion
+    }
+
+    @Test(arguments: RejectedContext.allCases)
+    func `given hidden source is inconsistent or too large when preparing highlighting then the visible source is retained`(
+        reason: RejectedContext
+    ) {
+        // given
+        let visible = HighlightSource(side: .new, text: "let value = 1", lineNumbers: [2])
+        let context = switch reason {
+        case .changedLine: "//\nlet value = 2"
+        case .missingLine: "//"
+        case .tooManyLines: String(repeating: "\n", count: DiffHighlightingLimits.lines) + "let value = 1"
+        case .tooManyBytes: String(repeating: "a", count: DiffHighlightingLimits.bytes) + "\nlet value = 1"
+        case .tooManyBytesAfterTabExpansion:
+            String(repeating: "\t", count: DiffHighlightingLimits.bytes / 2) + "\nlet value = 1"
+        }
+        let diff = aDiff(hunks: [], newHighlightingSource: context)
+
+        // when
+        let prepared = visible.includingContext(from: diff)
+
+        // then
+        #expect(prepared == visible)
+    }
+
     // MARK: - Which lines make up a side
 
     @Test
@@ -438,7 +465,7 @@ struct SyntaxHighlightingTests {
 
 // MARK: -
 
-private func aDiff(hunks: [Hunk], language: String? = "swift") -> FileDiff {
+private func aDiff(hunks: [Hunk], language: String? = "swift", newHighlightingSource: String? = nil) -> FileDiff {
     FileDiff(
         file: FileChange(
             id: FileID(rawValue: "f1"),
@@ -458,7 +485,9 @@ private func aDiff(hunks: [Hunk], language: String? = "swift") -> FileDiff {
         oldLineCount: 40,
         newLineCount: 40,
         isTruncated: false,
-        truncationReason: nil
+        truncationReason: nil,
+        oldHighlightingSource: nil,
+        newHighlightingSource: newHighlightingSource
     )
 }
 
