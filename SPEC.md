@@ -893,9 +893,9 @@ they do not, the arithmetic is wrong and that must be known before the UI is bui
   changed spans over the line level add/remove background.
 - **Syntax highlighting per file, per side, never per hunk.** A hunk starting inside a class body, a
   multi-line string or a heredoc gives the lexer no opening context and mis-lexes the whole block,
-  which is the same failure that highlighting line-at-a-time produces. Concatenate all old-side lines
-  (context plus deletions) of the file in order into one string and highlight once; same for the new
-  side; split back by newline and index into the hunks. Cache key
+  which is the same failure that highlighting line-at-a-time produces. Highlight each side from line one
+  with its unchanged context when bounded source is available. Split the result back by newline and
+  index it into the visible hunks. When the source is unavailable, use that side's visible lines. Cache key
   `(fileID, contentHash, side, language, colorScheme, fontSize)`. Skip entirely when a side exceeds
   100 KB or 4,000 lines, or when `language` is nil, and render plain monospaced text. Highlight the
   visible file first and never speculatively highlight unopened files. Render unhighlighted first and

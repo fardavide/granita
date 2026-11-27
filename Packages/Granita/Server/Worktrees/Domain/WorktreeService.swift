@@ -255,6 +255,7 @@ public struct WorktreeService: Sendable {
 
         var oldLineCount = hunks.last.map { max(0, $0.oldStart + $0.oldCount - 1) } ?? 0
         var newLineCount = hunks.last.map { max(0, $0.newStart + $0.newCount - 1) } ?? 0
+        var highlighting: (old: String?, new: String?) = (nil, nil)
         if truncationReason == nil, hunks.isEmpty == false,
            file.isBinary == false, file.isSubmodule == false,
            file.status != .deleted, file.status != .added, file.status != .untracked {
@@ -266,8 +267,14 @@ public struct WorktreeService: Sendable {
                 truncationReason = "the file is too large to expand unchanged lines"
             } else {
                 let wholeText = String(decoding: wholeFile.standardOutput, as: UTF8.self)
-                newLineCount = UnifiedDiffParser.parse(wholeText).first?.hunks.first?.newCount ?? 0
+                let workingHunk = UnifiedDiffParser.parse(wholeText).first?.hunks.first
+                newLineCount = workingHunk?.newCount ?? 0
                 oldLineCount = newLineCount + hunks.reduce(0) { $0 + $1.oldCount - $1.newCount }
+                if file.language != nil, file.status != .conflicted, let workingHunk,
+                   min(oldLineCount, newLineCount) <= DiffHighlightingLimits.lines,
+                   let blob = Self.workingBlob(in: text), blob == Self.workingBlob(in: wholeText) {
+                    highlighting = Self.highlightingSources(workingHunk: workingHunk, changes: hunks)
+                }
             }
         }
 
@@ -277,8 +284,60 @@ public struct WorktreeService: Sendable {
             oldLineCount: oldLineCount,
             newLineCount: newLineCount,
             isTruncated: truncationReason != nil,
-            truncationReason: truncationReason
+            truncationReason: truncationReason,
+            oldHighlightingSource: highlighting.old,
+            newHighlightingSource: highlighting.new
         )
+    }
+
+    /// Visible lines alone cannot distinguish two reads if a concurrent edit only touched a gap.
+    private static func workingBlob(in patch: String) -> Substring? {
+        let header = patch[..<(patch.range(of: "\n@@ ")?.lowerBound ?? patch.endIndex)]
+        guard let index = header.split(separator: "\n").first(where: { $0.hasPrefix("index ") }),
+              let hashes = index.dropFirst("index ".count).split(separator: " ").first,
+              let separator = hashes.range(of: "..") else { return nil }
+        let working = hashes[separator.upperBound...]
+        return working.isEmpty ? nil : working
+    }
+
+    /// Reverse the patch against the working source already read for line counts. The gaps are
+    /// unchanged on both sides, so the two existing Git reads supply both versions.
+    private static func highlightingSources(workingHunk: Hunk, changes: [Hunk]) -> (old: String?, new: String?) {
+        guard !workingHunk.lines.contains(where: { $0.kind == .conflictMarker }) else { return (nil, nil) }
+        let working = workingHunk.lines.compactMap { $0.newNumber == nil ? nil : $0.text }
+        guard working.count == workingHunk.newCount else { return (nil, nil) }
+        var original: [String] = []
+        var nextWorking = 0
+        for hunk in changes {
+            // Git numbers empty ranges at the line before their insertion point.
+            let oldStart = hunk.oldStart - (hunk.oldCount == 0 ? 0 : 1)
+            let newStart = hunk.newStart - (hunk.newCount == 0 ? 0 : 1)
+            let newEnd = newStart + hunk.newCount
+            guard !hunk.lines.contains(where: { $0.kind == .conflictMarker }),
+                  newStart >= nextWorking, newEnd <= working.count,
+                  oldStart - original.count == newStart - nextWorking else { return (nil, nil) }
+            let newLines = hunk.lines.compactMap { $0.newNumber == nil ? nil : $0.text }
+            let oldLines = hunk.lines.compactMap { $0.oldNumber == nil ? nil : $0.text }
+            guard working[newStart..<newEnd].elementsEqual(newLines), oldLines.count == hunk.oldCount else {
+                return (nil, nil)
+            }
+            original.append(contentsOf: working[nextWorking..<newStart])
+            original.append(contentsOf: oldLines)
+            nextWorking = newEnd
+        }
+        original.append(contentsOf: working[nextWorking...])
+        let oldVisible = changes.reduce(0) { $0 + $1.oldCount }
+        let newVisible = changes.reduce(0) { $0 + $1.newCount }
+        return (
+            boundedHighlightingSource(original, visibleLines: oldVisible),
+            boundedHighlightingSource(working, visibleLines: newVisible)
+        )
+    }
+
+    private static func boundedHighlightingSource(_ lines: [String], visibleLines: Int) -> String? {
+        guard visibleLines < lines.count, lines.count <= DiffHighlightingLimits.lines else { return nil }
+        let source = lines.joined(separator: "\n")
+        return source.utf8.count <= DiffHighlightingLimits.bytes ? source : nil
     }
 
     /// The raw lines of one side of a file, which is what context expansion is spliced from.

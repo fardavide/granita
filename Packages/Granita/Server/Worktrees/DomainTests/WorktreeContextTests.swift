@@ -9,6 +9,115 @@ import ServerGitDomain
 struct WorktreeContextTests {
 
     @Test
+    func `given a closing comment between hunks when reading the diff then the payload carries both complete sources`() async throws {
+        // given
+        let scenario = Scenario(
+            original: ["/**", " */", "fun oldName() = 1"],
+            working: ["/**", " */", "fun newName() = 1"],
+            diff: """
+                diff --git a/long.txt b/long.txt
+                index aaaaaaa..bbbbbbb 100644
+                --- a/long.txt
+                +++ b/long.txt
+                @@ -1 +1 @@
+                 /**
+                @@ -3 +3 @@
+                -fun oldName() = 1
+                +fun newName() = 1
+                """,
+            language: "kotlin"
+        )
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3)
+        let payload = try JSONDecoder().decode(HighlightingPayload.self, from: JSONEncoder().encode(diff))
+
+        // then
+        #expect(payload.oldHighlightingSource == "/**\n */\nfun oldName() = 1")
+        #expect(payload.newHighlightingSource == "/**\n */\nfun newName() = 1")
+        #expect(diff.hunks.flatMap(\.lines).allSatisfy { $0.text != " */" })
+    }
+
+    @Test
+    func `given the new side exceeds the highlighting limit when reading the diff then the old side keeps its context`() async throws {
+        // given
+        let original = Array(repeating: "// Kotlin", count: DiffHighlightingLimits.lines)
+        let scenario = Scenario(
+            original: original,
+            working: original + ["fun added() = 1"],
+            diff: """
+                diff --git a/long.txt b/long.txt
+                index aaaaaaa..bbbbbbb 100644
+                --- a/long.txt
+                +++ b/long.txt
+                @@ -4000 +4000,2 @@
+                 // Kotlin
+                +fun added() = 1
+                """,
+            language: "kotlin"
+        )
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3)
+
+        // then
+        #expect(diff.oldHighlightingSource == original.joined(separator: "\n"))
+        #expect(diff.newHighlightingSource == nil)
+    }
+
+    @Test
+    func `given literal conflict markers when sending a modified diff then they stay out of the highlighting source`() async throws {
+        // given
+        let scenario = Scenario(
+            original: ["// Kotlin", "<<<<<<< HEAD", "fun oldName() = 1"],
+            working: ["// Kotlin", "<<<<<<< HEAD", "fun newName() = 1"],
+            diff: """
+                diff --git a/long.txt b/long.txt
+                index aaaaaaa..bbbbbbb 100644
+                --- a/long.txt
+                +++ b/long.txt
+                @@ -3 +3 @@
+                -fun oldName() = 1
+                +fun newName() = 1
+                """,
+            language: "kotlin"
+        )
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3)
+
+        // then
+        #expect(diff.oldHighlightingSource == nil)
+        #expect(diff.newHighlightingSource == nil)
+    }
+
+    @Test
+    func `given the working blob changed between reads when sending the diff then hidden source is omitted`() async throws {
+        // given
+        let scenario = Scenario(
+            original: ["/**", " */", "fun oldName() = 1"],
+            working: ["/**", " * Still open", "fun newName() = 1"],
+            diff: """
+                diff --git a/long.txt b/long.txt
+                index aaaaaaa..ccccccc 100644
+                --- a/long.txt
+                +++ b/long.txt
+                @@ -3 +3 @@
+                -fun oldName() = 1
+                +fun newName() = 1
+                """,
+            language: "kotlin"
+        )
+
+        // when
+        let diff = try await scenario.sut.fileDiff(for: scenario.file, at: scenario.path, in: scenario.location, contextLines: 3)
+
+        // then
+        #expect(diff.oldHighlightingSource == nil)
+        #expect(diff.newHighlightingSource == nil)
+    }
+
+    @Test
     func `given unchanged lines after the last change when reading a diff then its line counts include the remainder`() async throws {
         // given
         let original = (1...1_000).map { "line \($0)" }
@@ -111,10 +220,11 @@ struct WorktreeContextTests {
         let path = RepositoryRelativePath("long.txt")
         let location = RepositoryLocation(path: "/repo")
 
-        init(original: [String], working: [String], diff: String, contextLineLimit: Int = .max) {
+        init(original: [String], working: [String], diff: String, contextLineLimit: Int = .max, language: String? = nil) {
             let fullAddition = """
                 diff --git a/long.txt b/long.txt
                 new file mode 100644
+                index 0000000..bbbbbbb
                 --- /dev/null
                 +++ b/long.txt
                 @@ -0,0 +1,\(working.count) @@
@@ -146,8 +256,13 @@ struct WorktreeContextTests {
                 estimatedLineCount: 4,
                 isViewed: false,
                 isTruncated: false,
-                language: nil
+                language: language
             )
         }
+    }
+
+    private struct HighlightingPayload: Decodable {
+        let oldHighlightingSource: String?
+        let newHighlightingSource: String?
     }
 }

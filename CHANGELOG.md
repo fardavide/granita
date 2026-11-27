@@ -7,6 +7,10 @@ The version lives in one place — `MARKETING_VERSION` in `project.yml` — and 
 entry here in the same pull request. Merging to `main` publishes the phone app to TestFlight; the Mac
 app also runs locally with `make run-mac`.
 
+### 0.26.3 — 2026-11-27
+
+- **Keep syntax colours across collapsed context.** Hidden lines are included when highlighting a diff, so a comment that ends between hunks no longer colours the code that follows as a comment.
+
 ### 0.26.2 — 2026-11-26
 - **Keep reviewing after a temporary Git timeout.** Granita retries scans in the background and
   restores a failed open diff once its checkout responds. Copy Logs on the Mac includes recent

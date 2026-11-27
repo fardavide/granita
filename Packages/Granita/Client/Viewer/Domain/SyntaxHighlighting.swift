@@ -32,12 +32,7 @@ public struct HighlightSource: Hashable, Sendable {
 
     public let side: DiffSide
 
-    /// Every line of this side of the file that the diff carries, newline-joined, in file order.
-    ///
-    /// **It is not the file.** Hunks have gaps between them, and what is here is their union — so a
-    /// construct opened in a gap and closed in a hunk is lexed without its opening. That is the
-    /// approximation `SPEC.md` §10 chooses knowingly, and it is a far smaller one than lexing a
-    /// hunk at a time, which gives the lexer no opening context at all.
+    /// Newline-joined source for one side, including the unchanged prefix and gaps when available.
     ///
     /// **The lines are on the grid the row draws, tabs already expanded.** A colour comes back as a
     /// range into this string and is applied to the string `DrawnDiffLine` produces, so the two have
@@ -54,6 +49,27 @@ public struct HighlightSource: Hashable, Sendable {
         self.side = side
         self.text = text
         self.lineNumbers = lineNumbers
+    }
+
+    /// Keep the file's lexical context from line one and check it still agrees with the visible rows.
+    public func includingContext(from diff: FileDiff) -> HighlightSource {
+        let source = switch side {
+        case .old: diff.oldHighlightingSource
+        case .new: diff.newHighlightingSource
+        }
+        guard let source, source.utf8.count <= SyntaxHighlighting.byteLimit else { return self }
+        let newline = UInt8(ascii: "\n")
+        let expanded = source.utf8.split(separator: newline, omittingEmptySubsequences: false).map {
+            MonospacedGrid.expandingTabs(in: String(decoding: $0, as: UTF8.self))
+        }
+        guard expanded.count <= SyntaxHighlighting.lineLimit else { return self }
+        let visible = text.utf8.split(separator: newline, omittingEmptySubsequences: false)
+        guard zip(lineNumbers, visible).allSatisfy({ number, line in
+            expanded.indices.contains(number - 1) && expanded[number - 1] == String(decoding: line, as: UTF8.self)
+        }) else { return self }
+        let complete = expanded.joined(separator: "\n")
+        guard complete.utf8.count <= SyntaxHighlighting.byteLimit else { return self }
+        return HighlightSource(side: side, text: complete, lineNumbers: Array(1...expanded.count))
     }
 
     /// The highlighter's answer, filed under the numbers the gutter draws.
@@ -172,8 +188,8 @@ public enum SyntaxHighlighting {
     /// They are two questions rather than one: four thousand short lines and forty enormous ones are
     /// both beyond what a JavaScript lexer should be handed on a phone, and neither limit catches
     /// the other's case. The minified file is the one the line count alone misses.
-    public static let lineLimit = 4_000
-    public static let byteLimit = 100 * 1024
+    public static let lineLimit = DiffHighlightingLimits.lines
+    public static let byteLimit = DiffHighlightingLimits.bytes
 
     /// What to lex for one side of a file, or why nothing.
     public static func plan(for diff: FileDiff, side: DiffSide) -> HighlightPlan {

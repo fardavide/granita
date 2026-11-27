@@ -46,6 +46,7 @@ final class FakeGranitaRepository: GranitaRepository {
     private let diffFailure: ApiFailure?
     private let viewedFailure: ApiFailure?
     private let linesAnswer: Result<FileLines, ApiFailure>
+    private let highlightingSources: [DiffSide: String]
 
     /// A file the change set never named, answered alongside the ones that were asked for.
     ///
@@ -97,6 +98,7 @@ final class FakeGranitaRepository: GranitaRepository {
         diffFailure: ApiFailure? = nil,
         viewedFailure: ApiFailure? = nil,
         linesAnswer: Result<FileLines, ApiFailure> = .failure(.fileGone),
+        highlightingSources: [DiffSide: String] = [:],
         imageAnswer: Result<Data, ApiFailure> = .success(Data([0x89, 0x50, 0x4E, 0x47])),
         imagesAnsweringBeforeRefusing: Int = .max,
         refusesTheFirstRead: ApiFailure? = nil,
@@ -116,6 +118,7 @@ final class FakeGranitaRepository: GranitaRepository {
         self.diffFailure = diffFailure
         self.viewedFailure = viewedFailure
         self.linesAnswer = linesAnswer
+        self.highlightingSources = highlightingSources
         self.imageAnswer = imageAnswer
         self.imagesAnsweringBeforeRefusing = imagesAnsweringBeforeRefusing
         self.refusesTheFirstRead = refusesTheFirstRead
@@ -208,7 +211,9 @@ final class FakeGranitaRepository: GranitaRepository {
                 oldLineCount: change.estimatedLineCount,
                 newLineCount: change.estimatedLineCount,
                 isTruncated: false,
-                truncationReason: nil
+                truncationReason: nil,
+                oldHighlightingSource: highlightingSources[.old],
+                newHighlightingSource: highlightingSources[.new]
             )
         }
     }

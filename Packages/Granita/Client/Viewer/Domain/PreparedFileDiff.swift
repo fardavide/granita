@@ -24,7 +24,9 @@ public struct PreparedFileDiff: Hashable, Sendable {
                 oldLineCount: diff.oldLineCount,
                 newLineCount: diff.newLineCount,
                 isTruncated: diff.isTruncated,
-                truncationReason: diff.truncationReason
+                truncationReason: diff.truncationReason,
+                oldHighlightingSource: diff.oldHighlightingSource,
+                newHighlightingSource: diff.newHighlightingSource
             ),
             linesByHunk: linesByHunk
         )
